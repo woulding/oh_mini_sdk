@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]evt_task_comm_fsm_except_handler except msg src_id(0x%x)dst_id(0x%x)msg_id(0x%x) @evt_task_fsm_sram.c(29),WARNING" ID="0x897800eb" />
+			</MSG_LOG>

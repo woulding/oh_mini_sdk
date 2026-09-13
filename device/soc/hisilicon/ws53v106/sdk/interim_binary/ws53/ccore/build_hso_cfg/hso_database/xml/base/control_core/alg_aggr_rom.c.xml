@@ -1,0 +1,42 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="alg_aggr_exit::vap[%d] IS NULL. @alg_aggr_rom.c(255),ERROR" ID="0x847807fa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[GLA][ALG][AGGR]:user_id=%d,aggr_time_us=%d @alg_aggr_rom.c(297),WARNING" ID="0x8478094b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_init_user: vap or user is null! vap[%d] user[%d]} @alg_aggr_rom.c(348),ERROR" ID="0x84780ae2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_init_user: get user index fail, lut_idx[%d]!} @alg_aggr_rom.c(354),WARNING" ID="0x84780b13" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_init_user:alloc user info fail! lut_idx[%d]} @alg_aggr_rom.c(361),WARNING" ID="0x84780b4b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{alg_aggr_init_user:[AUTO-AGGR] [USR-INIT] intf_adjch_status[%d], aggr_idx = %d, aggr_time = %dus, init_mpdu_bytes = %d} @alg_aggr_rom.c(390),INFO" ID="0x84780c35" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_exit_user:vap or user null! vap[%d] user[%d]} @alg_aggr_rom.c(407),ERROR" ID="0x84780cba" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_exit_user:dmac_alg_get_user_priv_stru fail! vap[%d] user[%d]} @alg_aggr_rom.c(417),WARNING" ID="0x84780d0b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_check_user_ac_type:data ac invalid, user[%d] ac[%d]} @alg_aggr_rom.c(437),WARNING" ID="0x84780dab" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_set_sch_aggr_num fail! user_id[%d]} @alg_aggr_rom.c(462),WARNING" ID="0x84780e73" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_set_sch_aggr_num fail! user_id[%d]} @alg_aggr_rom.c(472),WARNING" ID="0x84780ec3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_aggr_tx_process: cb is null! @alg_aggr_rom.c(502),ERROR" ID="0x84780fb2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_tx_process: user or txop_param null! user_id[%d] txop_param[%d]} @alg_aggr_rom.c(514),WARNING" ID="0x84781013" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_tx_process:dmac_alg_get_user_priv_stru fail! user[%d]} @alg_aggr_rom.c(522),WARNING" ID="0x84781053" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_check_tx_comp_condition::qry user probe flag fail! lut[%d], ret[%d]} @alg_aggr_rom.c(580),WARNING" ID="0x84781223" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_check_tx_comp_condition::probe_locked fail! user_lut_idx[%d], lock_type[%d]} @alg_aggr_rom.c(589),INFO" ID="0x8478126d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_get_instant_per::err mpdu num[%d], last_rank_tx_cnt[%d]!} @alg_aggr_rom.c(621),WARNING" ID="0x8478136b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_basic_normal_process: probe ppdu in idle state! user_id[%d], probe_type[%d]} @alg_aggr_rom.c(714),WARNING" ID="0x84781653" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{[AUTO-AGGR] [PROBE-INTVL] probe_intvl_cnt[%d] probe_intvl_num[%d]} @alg_aggr_rom.c(725),INFO" ID="0x847816ad" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_basic_normal_process::get user probe lock fail! ret[%d]} @alg_aggr_rom.c(734),WARNING" ID="0x847816f3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_basic_normal_process::user probe lock invalid! user_lut_idx[%d] probe_lock[%d]} @alg_aggr_rom.c(742),INFO" ID="0x84781735" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{[AUTO-AGGR] [PROBE-DIR] probe_dir[%d] probe_state[%d]} @alg_aggr_rom.c(752),INFO" ID="0x84781785" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="vap_id[%d] {invalid tid_id[%d]. @alg_aggr_rom.c(863),ERROR" ID="0x84781afa" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{[AUTO-AGGR] [SET AMPDU NUM] curr_rate_kbps[%d] aggr_idx[%d] tid[%d] final_mpdu_num[%d]} @alg_aggr_rom.c(896),INFO" ID="0x84781c05" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_aggr_tx_complete_process: cb is null!} @alg_aggr_rom.c(913),ERROR" ID="0x84781c8a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_tx_complete_process: user or tx_dscr null! user[%d] tx_dscr[%d]} @alg_aggr_rom.c(924),ERROR" ID="0x84781ce2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_tx_complete_process:dmac_alg_get_user_priv_stru fail! usr[%d]} @alg_aggr_rom.c(932),WARNING" ID="0x84781d23" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_tx_complete_process: probe_direct[%d] invalid! user[%d]} @alg_aggr_rom.c(943),ERROR" ID="0x84781d7a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_tx_complete_process:aggr_idx[%d] invalid} @alg_aggr_rom.c(950),ERROR" ID="0x84781db2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_set_sch_aggr_num fail! user_id[%d]} @alg_aggr_rom.c(969),WARNING" ID="0x84781e4b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_bestrate_update:dmac_alg_get_user_priv_stru fail! vap_id[%d] user_id[%d]} @alg_aggr_rom.c(1027),WARNING" ID="0x8478201b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_aggr_bestrate_update:alg_aggr_set_sch_aggr_num fail!} @alg_aggr_rom.c(1043),WARNING" ID="0x8478209b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_aggr_adj_intf_notify_process: input pointer is null!} @alg_aggr_rom.c(1129),ERROR" ID="0x8478234a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="alg_aggr_adj_intf_notify_process::vap[%d] null @alg_aggr_rom.c(1155),ERROR" ID="0x8478241a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_adj_intf_notify_process:updated aggr_idx[%d]} @alg_aggr_rom.c(1171),INFO" ID="0x8478249d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{[AUTO-AGGR] [ADJ_INTF_CHG] cur_intf_flag[%d] aggr_time_idx[%d]} @alg_aggr_rom.c(1178),INFO" ID="0x847824d5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_aggr_set_config_param:cfg id: %d param %d invalid!} @alg_aggr_rom.c(1227),WARNING" ID="0x8478265b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{alg_aggr_set_config_param: index = %u, cfg = %u, offset = %u,value = %u} @alg_aggr_rom.c(1238),WARNING" ID="0x847826b3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_aggr_probe_deadlock:dmac_user NULL} @alg_aggr_rom.c(1356),WARNING" ID="0x84782a63" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_probe_deadlock:release lock! user_lut[%d]} @alg_aggr_rom.c(1366),WARNING" ID="0x84782ab3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_aggr_probe_deadlock:dmac_alg_get_user_priv_stru fail, user_lut[%d]} @alg_aggr_rom.c(1371),WARNING" ID="0x84782adb" />
+			</MSG_LOG>

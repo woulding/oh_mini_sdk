@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA]gle_aa_mc_imb_request_cbk par null error @gle_aa_multicast_con_ui.c(133),ERROR" ID="0xdeea042a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="op_ev = 0x%04X  @gle_aa_multicast_con_ui.c(136),INFO" ID="0xdeea0445" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA]gle_aa_mc_imb_established_cbk null error @gle_aa_multicast_con_ui.c(155),ERROR" ID="0xdeea04da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="op_ev = 0x%04X  @gle_aa_multicast_con_ui.c(158),INFO" ID="0xdeea04f5" />
+			</MSG_LOG>

@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hal_btcoex_abort_end_isr::dispatch_event failed.} @hal_coex_reg_rom.c(120),ERROR" ID="0x806c03c2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hal_btcoex_post_event_device::post failed sub_type[%d].} @hal_coex_reg_rom.c(189),ERROR" ID="0x806c05ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hal_btcoex_wait_bt_release_rf::bt release rf timeout. @hal_coex_reg_rom.c(278),WARNING" ID="0x806c08b3" />
+			</MSG_LOG>

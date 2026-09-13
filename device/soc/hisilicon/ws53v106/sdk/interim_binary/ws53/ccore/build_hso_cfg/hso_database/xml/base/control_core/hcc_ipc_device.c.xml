@@ -1,0 +1,17 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="hcc mem loss add err @hcc_ipc_device.c(218),ERROR" ID="0xa63206d2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hcc ipc saveloss Q-%u alloc len:%u cnt:%u err @hcc_ipc_device.c(291),ERROR" ID="0xa632091a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hcc ipc req param[%u] que_id[%u] cnt[%u] err @hcc_ipc_device.c(399),ERROR" ID="0xa6320c7a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hcc ipc req[%u] len[%u] err @hcc_ipc_device.c(415),ERROR" ID="0xa6320cfa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc_ipc_mem_tx_match_addr[%u] fail @hcc_ipc_device.c(522),ERROR" ID="0xa6321052" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hcc ipc txcmplt param[%u] que_id[%u] cnt[%u] err @hcc_ipc_device.c(540),ERROR" ID="0xa63210e2" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hcc ipc txcmplt[%u-%u] Q[%u]-%u @hcc_ipc_device.c(548),ERROR" ID="0xa6321122" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc_ipc_mem_rx_match_addr[%u] fail @hcc_ipc_device.c(575),ERROR" ID="0xa63211fa" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hcc ipc rxcmplt param[%u] que_id[%u] cnt[%u] err @hcc_ipc_device.c(593),ERROR" ID="0xa632128a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hcc ipc rxcmplt[%u] info[%u-%u] @hcc_ipc_device.c(601),ERROR" ID="0xa63212ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ipc dev's hcc handler is null! @hcc_ipc_device.c(664),ERROR" ID="0xa63214c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc device ipc alloc fail @hcc_ipc_device.c(786),ERROR" ID="0xa6321892" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc device ipc queue err @hcc_ipc_device.c(805),ERROR" ID="0xa632192a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc ipc dfx q:%d @hcc_ipc_device.c(884),ERROR" ID="0xa6321ba2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc device ipc res fail @hcc_ipc_device.c(901),ERROR" ID="0xa6321c2a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc device ipc bus fail @hcc_ipc_device.c(908),ERROR" ID="0xa6321c62" />
+			</MSG_LOG>

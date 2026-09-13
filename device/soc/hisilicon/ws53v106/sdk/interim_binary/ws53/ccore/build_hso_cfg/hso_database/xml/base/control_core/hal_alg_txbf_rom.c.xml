@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{hal_irq_rx_txbf_frame_process:get hal vap %d fail} @hal_alg_txbf_rom.c(141),INFO" ID="0x83c8046d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hal_irq_rx_txbf_frame_process:get dmac vap %d fail} @hal_alg_txbf_rom.c(147),ERROR" ID="0x83c8049a" />
+			</MSG_LOG>

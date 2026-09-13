@@ -1,0 +1,10 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle mc callback register fail:0x%x @sle_at_mc.c(108),ERROR" ID="0xd9280362" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error]mc_set_default_param fail:0x%x @sle_at_mc.c(137),ERROR" ID="0xd928044a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error]create_multicast_group fail:0x%x @sle_at_mc.c(148),ERROR" ID="0xd92804a2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error]sle_remove_multicast_group fail:0x%x @sle_at_mc.c(159),ERROR" ID="0xd92804fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error][AT] mult conn info str len invalid! @sle_at_mc.c(169),ERROR" ID="0xd928054a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error][AT] string to conn_id error! @sle_at_mc.c(176),ERROR" ID="0xd9280582" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error][AT] string to member_id error! @sle_at_mc.c(182),ERROR" ID="0xd92805b2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error]member num invalid:%u @sle_at_mc.c(193),ERROR" ID="0xd928060a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error]sle_create_multicast_connections fail:0x%x @sle_at_mc.c(202),ERROR" ID="0xd9280652" />
+			</MSG_LOG>

@@ -1,0 +1,32 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[mc]event = 0x%x @gle_mc_core.c(42),INFO" ID="0xdef00155" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="mc_cbks null error @gle_mc_core.c(45),ERROR" ID="0xdef0016a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle create img result]status = 0x%x @gle_mc_core.c(74),INFO" ID="0xdef00255" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[gle_mc_create_img_cfm] img_id:%u, result:0x%x @gle_mc_core.c(91),ERROR" ID="0xdef002da" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[gle create img cfm] result:0x%x status = 0x%x @gle_mc_core.c(95),INFO" ID="0xdef002fd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle create img cfm] group not exist id = 0x%x @gle_mc_core.c(108),INFO" ID="0xdef00365" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[gle create img cfm] update_img_info err result:0x%x status = 0x%x @gle_mc_core.c(114),ERROR" ID="0xdef00392" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle_mc_rmv_img_cfm] result:0x%x @gle_mc_core.c(145),ERROR" ID="0xdef0048a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[gle img rmv cfm] result:0x%x status = 0x%x, img_id:%u @gle_mc_core.c(149),INFO" ID="0xdef004ad" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle_mc_imb_establish_evt]result:0x%x @gle_mc_core.c(168),ERROR" ID="0xdef00542" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[gle imb establish evt] result:0x%x status = 0x%x @gle_mc_core.c(172),INFO" ID="0xdef00565" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[imb_establish_evt] img info not found @gle_mc_core.c(175),ERROR" ID="0xdef0057a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[imb_establish_evt] imb not found or state not suitable @gle_mc_core.c(181),ERROR" ID="0xdef005aa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle_mc_reject_imb_cfm] result:0x%x @gle_mc_core.c(214),ERROR" ID="0xdef006b2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[gle_mc_reject_imb_cfm] imb_hdl:0x%x result:0x%x status = 0x%x @gle_mc_core.c(218),INFO" ID="0xdef006d5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle_mc_create_imb_req_evt] result:0x%x @gle_mc_core.c(229),ERROR" ID="0xdef0072a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[gle_mc_create_imb_req_evt] result:0x%x img_id = 0x%x @gle_mc_core.c(233),INFO" ID="0xdef0074d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_mc_create_imb_req_evt img invalid @gle_mc_core.c(239),ERROR" ID="0xdef0077a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_mc_create_imb_req_evt imb invalid @gle_mc_core.c(244),ERROR" ID="0xdef007a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_dm_mc_add_imb_info_to_img failed @gle_mc_core.c(249),ERROR" ID="0xdef007ca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[mc_acb_state_changed_evt] result:0x%x @gle_mc_core.c(266),ERROR" ID="0xdef00852" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="imb_data mem new failed @gle_mc_core.c(341),ERROR" ID="0xdef00aaa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="imb_data mem cpy failed @gle_mc_core.c(351),ERROR" ID="0xdef00afa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="pkt buff param err @gle_mc_core.c(386),ERROR" ID="0xdef00c12" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="default_group_param updated @gle_mc_core.c(400),INFO" ID="0xdef00c85" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_mc_establish_connections param invalid @gle_mc_core.c(444),ERROR" ID="0xdef00de2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle_mc_establish_connections link invalid, conn_id:0x%x @gle_mc_core.c(456),ERROR" ID="0xdef00e42" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_mc_establish_connections imb state invalid @gle_mc_core.c(465),ERROR" ID="0xdef00e8a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_mc_remove_group img invalid @gle_mc_core.c(486),ERROR" ID="0xdef00f32" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_mc_send_connect_response img invalid @gle_mc_core.c(504),ERROR" ID="0xdef00fc2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_mc_send_connect_response imb state invalid @gle_mc_core.c(511),ERROR" ID="0xdef00ffa" />
+			</MSG_LOG>

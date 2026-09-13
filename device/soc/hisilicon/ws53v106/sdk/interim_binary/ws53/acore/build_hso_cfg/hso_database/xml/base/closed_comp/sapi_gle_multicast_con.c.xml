@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="stack gle send data new fail. @sapi_gle_multicast_con.c(95),ERROR" ID="0xdef402fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="stack gle send data new fail. @sapi_gle_multicast_con.c(103),INFO" ID="0xdef4033d" />
+			</MSG_LOG>

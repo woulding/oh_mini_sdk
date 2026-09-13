@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{dmac_phy_get_data::send to host ret=%d} @dmac_phy_event.c(59),WARNING" ID="0x82f401db" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="dmac_phy_event_rpt:sample_start_addr=[0x%x] sample_end_addr=[0x%x] @dmac_phy_event.c(78),WARNING" ID="0x82f40273" />
+			</MSG_LOG>

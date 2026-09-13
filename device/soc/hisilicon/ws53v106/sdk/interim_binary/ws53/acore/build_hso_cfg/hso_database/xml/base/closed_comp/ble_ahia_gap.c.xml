@@ -1,0 +1,13 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble smp passkey number atb. @ble_ahia_gap.c(49),INFO" ID="0xd86c018d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble remove adv by handle atb. @ble_ahia_gap.c(59),INFO" ID="0xd86c01dd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble smp pair remote device atb. @ble_ahia_gap.c(177),INFO" ID="0xd86c058d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[INFO] uapi disconnect all ble link @ble_ahia_gap.c(187),INFO" ID="0xd86c05dd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[error] uapi disconnect ble link addr memcpy fail. @ble_ahia_gap.c(193),ERROR" ID="0xd86c060a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[INFO] uapi disconnect ble link ret:%d. @ble_ahia_gap.c(198),INFO" ID="0xd86c0635" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble smp remove pair info atb. @ble_ahia_gap.c(219),INFO" ID="0xd86c06dd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble add white list atb. @ble_ahia_gap.c(226),INFO" ID="0xd86c0715" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble rmv white list atb. @ble_ahia_gap.c(233),INFO" ID="0xd86c074d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble conn white list atb. @ble_ahia_gap.c(244),INFO" ID="0xd86c07a5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble get white list atb. @ble_ahia_gap.c(255),INFO" ID="0xd86c07fd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] mc ble smp set key from btc atb. @ble_ahia_gap.c(271),INFO" ID="0xd86c087d" />
+			</MSG_LOG>

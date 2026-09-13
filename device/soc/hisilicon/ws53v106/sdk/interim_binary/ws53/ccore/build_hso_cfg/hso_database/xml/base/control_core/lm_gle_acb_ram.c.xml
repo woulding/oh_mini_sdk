@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg4" NAME="lm_gle_acb_sed_init: 0x%4x 0x%4x 0x%4x 0x%4x  @lm_gle_acb_ram.c(126),INFO" ID="0x898c03f5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="lm_gle_acb_sed_init: 0x%4x @lm_gle_acb_ram.c(127),INFO" ID="0x898c03fd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[BGTP]lm_gle_acb_start con_hdl 0x%x, role %d @lm_gle_acb_ram.c(167),INFO" ID="0x898c053d" />
+			</MSG_LOG>

@@ -1,0 +1,10 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[GAP]hci command error new memcpy failed, len=%d @hci_core_ram.c(173),ERROR" ID="0xdbaa056a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hci command encode send tl memcpy error! op_code %04x len = %02x @hci_core_ram.c(877),ERROR" ID="0xdbaa1b6a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hci command encode send tl memcpy fail! @hci_core_ram.c(921),INFO" ID="0xdbaa1ccd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hci command encode send tl [len] %02x @hci_core_ram.c(938),INFO" ID="0xdbaa1d55" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[HCI][H--&gt;C] %02x @hci_core_ram.c(941),INFO" ID="0xdbaa1d6d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[TIMEOUT] OPCODE=0x%x @hci_core_ram.c(1306),WARNING" ID="0xdbaa28d3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[MEMCPY_FAILED]RecvDataBuff Memcpy fail @hci_core_ram.c(1521),ERROR" ID="0xdbaa2f8a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[MEMCPY_FAILED]RecvDataBuff Memcpy fail @hci_core_ram.c(1540),ERROR" ID="0xdbaa3022" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[NO GLE]Gle %d! @hci_core_ram.c(1572),INFO" ID="0xdbaa3125" />
+			</MSG_LOG>

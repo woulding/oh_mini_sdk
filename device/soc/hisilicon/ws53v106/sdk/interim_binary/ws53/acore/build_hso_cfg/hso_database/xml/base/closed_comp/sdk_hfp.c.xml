@@ -1,0 +1,12 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="hfp handle ev disconnect complete @sdk_hfp.c(206),INFO" ID="0xdb820675" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hfp set active mem id: sco_hdl=0x%x in_mem=0x%x out_mem=0x%x @sdk_hfp.c(233),INFO" ID="0xdb82074d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hfp map mem id: sco_hdl=0x%x in_mem=0x%x out_mem=0x%x @sdk_hfp.c(240),INFO" ID="0xdb820785" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hfp map mem id: sco_hdl=0x%x in_mem=0x%x out_mem=0x%x @sdk_hfp.c(270),INFO" ID="0xdb820875" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="SDK_HFP: send msg to mcu ev= 0x%x, role=0x%x @sdk_hfp.c(275),INFO" ID="0xdb82089d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="SDK_HFP: ev disconnect, conn_cfm-&gt;role = %x, conn_cfm-&gt;result=%d @sdk_hfp.c(339),INFO" ID="0xdb820a9d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="SDK_HFP: slc event = %d, slc_info-&gt;role = %x @sdk_hfp.c(367),INFO" ID="0xdb820b7d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[HFP][SDK]SLC RELEASED role=%d handle=0x%x @sdk_hfp.c(431),INFO" ID="0xdb820d7d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="SDK_HFP: establish sco, bk_inst-&gt;role = %d. @sdk_hfp.c(448),INFO" ID="0xdb820e05" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="SDK_HFP: client start, role = %d. @sdk_hfp.c(619),INFO" ID="0xdb82135d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="SDK_HFP: server start, role = %d. @sdk_hfp.c(803),INFO" ID="0xdb82191d" />
+			</MSG_LOG>

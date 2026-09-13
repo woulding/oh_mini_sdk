@@ -1,0 +1,19 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[ACore] config name memcpy err. @bt_database.c(85),ERROR" ID="0xd83002aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] config name memcpy err. @bt_database.c(95),ERROR" ID="0xd83002fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] smp keys write in. @bt_database.c(105),INFO" ID="0xd830034d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] smp keys write err. @bt_database.c(108),ERROR" ID="0xd8300362" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] smp keys write memcpy err. @bt_database.c(112),ERROR" ID="0xd8300382" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] nv reserv write in. @bt_database.c(119),INFO" ID="0xd83003bd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] nv reserv write err. @bt_database.c(122),ERROR" ID="0xd83003d2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] nv reserv write memcpy err. @bt_database.c(126),ERROR" ID="0xd83003f2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] data_config write err. @bt_database.c(135),INFO" ID="0xd830043d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] config sync data memcpy err. @bt_database.c(143),ERROR" ID="0xd830047a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble save smp key param error. @bt_database.c(151),INFO" ID="0xd83004bd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="bt acore set product type type:%02x! @bt_database.c(166),INFO" ID="0xd8300535" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="bt acore set sys param err! @bt_database.c(182),ERROR" ID="0xd83005b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="bt acore get smp keys param err! @bt_database.c(210),ERROR" ID="0xd8300692" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="bt acore get smp keys param err! @bt_database.c(248),ERROR" ID="0xd83007c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble acore smp keys memcmp err, addr not match! @bt_database.c(267),WARNING" ID="0xd830085b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="bt acore get system config read data err! @bt_database.c(298),ERROR" ID="0xd8300952" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="bt acore save smp full, write_index:%02x! @bt_database.c(396),INFO" ID="0xd8300c65" />
+			</MSG_LOG>

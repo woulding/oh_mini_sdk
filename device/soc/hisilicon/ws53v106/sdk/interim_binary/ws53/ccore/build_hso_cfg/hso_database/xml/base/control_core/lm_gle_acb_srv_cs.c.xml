@@ -1,0 +1,8 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[CS] unknown llcp message con_hdl %d, llcp opcode 0x%x @lm_gle_acb_srv_cs.c(169),INFO" ID="0x8990054d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp] evt_task_gle_slem_create fail @lm_gle_acb_srv_cs.c(393),ERROR" ID="0x89900c4a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp] refl srv_desc create fail! @lm_gle_acb_srv_cs.c(464),ERROR" ID="0x89900e82" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[lm_gle_acb_cs_get_offset][init send llcp]offset = %d, con_hdl = %d @lm_gle_acb_srv_cs.c(498),INFO" ID="0x89900f95" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[lm_gle_llcp_slem_refl_en_act][refl receive]offset = %d, con_hdl = %d @lm_gle_acb_srv_cs.c(532),INFO" ID="0x899010a5" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[IQ Report] remain_count=%d, count=%d, report_idx=%d,es_sn=%d @lm_gle_acb_srv_cs.c(588),INFO" ID="0x89901265" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[IQ Report ERROR] remain_count=%d, count=%d @lm_gle_acb_srv_cs.c(590),ERROR" ID="0x89901272" />
+			</MSG_LOG>

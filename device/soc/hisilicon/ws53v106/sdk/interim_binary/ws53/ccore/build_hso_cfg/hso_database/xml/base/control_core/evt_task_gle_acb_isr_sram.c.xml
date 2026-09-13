@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]ACB RX DATA MIC ERROR rxccmpktcnt=0x%x, new ble_rxccmpktcnt0=0x%x! @evt_task_gle_acb_isr_sram.c(109),ERROR" ID="0x89a0036a" />
+			</MSG_LOG>

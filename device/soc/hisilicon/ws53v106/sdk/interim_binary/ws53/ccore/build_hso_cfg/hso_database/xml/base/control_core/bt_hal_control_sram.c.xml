@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[ERROR]bt_hal_get_full_addr: INVALID reg 0x%x @bt_hal_control_sram.c(41),ERROR" ID="0x8898014a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ERROR]bt_ssi_read_reg: Read fail! Addr 0x%x @bt_hal_control_sram.c(82),ERROR" ID="0x88980292" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]write to:0x%x = 0x%x, read back value:0x%x @bt_hal_control_sram.c(94),INFO" ID="0x889802f5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]bt_write_rf_reg error address 0x%x, value 0x%x @bt_hal_control_sram.c(137),INFO" ID="0x8898044d" />
+			</MSG_LOG>

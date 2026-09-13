@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="EM_RF_START_ADDR = 0x%x @bt_rf_table.c(628),INFO" ID="0x889413a5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="rxdc_val_addr = 0x%x @bt_rf_table.c(632),INFO" ID="0x889413c5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="bt rf table start addr: 0x%x, used 0x%x @bt_rf_table.c(662),INFO" ID="0x889414b5" />
+			</MSG_LOG>

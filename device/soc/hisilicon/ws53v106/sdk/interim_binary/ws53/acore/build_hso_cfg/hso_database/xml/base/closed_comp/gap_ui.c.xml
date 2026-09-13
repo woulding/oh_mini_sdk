@@ -1,0 +1,8 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[GAP]memset failed @gap_ui.c(1329),ERROR" ID="0xdb5c298a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GAP]memcpy failed @gap_ui.c(1333),ERROR" ID="0xdb5c29aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GAP]gap get local name memcpy failed @gap_ui.c(1338),ERROR" ID="0xdb5c29d2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GAP]gap set simple pairing oob data memcpy failed @gap_ui.c(2124),ERROR" ID="0xdb5c4262" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gap create connection whitelist start @gap_ui.c(2448),INFO" ID="0xdb5c4c85" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GAP]gap le set oobtk value memcpy failed @gap_ui.c(2550),ERROR" ID="0xdb5c4fb2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[SADP][GAP] gap set local addr cbk result is %u @gap_ui.c(3009),INFO" ID="0xdb5c5e0d" />
+			</MSG_LOG>

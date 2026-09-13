@@ -1,0 +1,7 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[Error] sle at uuid cpy fail!. @sle_at_ssapc.c(135),ERROR" ID="0xd91e043a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sle at cmd discovery structure uuid[%d] = 0x%02x @sle_at_ssapc.c(146),INFO" ID="0xd91e0495" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error][AT] string to data error! @sle_at_ssapc.c(170),ERROR" ID="0xd91e0552" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error]at cmd ssapc write new fail! @sle_at_ssapc.c(193),ERROR" ID="0xd91e060a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error][AT] string to data error! @sle_at_ssapc.c(198),ERROR" ID="0xd91e0632" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] sle at uuid cpy fail!. @sle_at_ssapc.c(242),ERROR" ID="0xd91e0792" />
+			</MSG_LOG>

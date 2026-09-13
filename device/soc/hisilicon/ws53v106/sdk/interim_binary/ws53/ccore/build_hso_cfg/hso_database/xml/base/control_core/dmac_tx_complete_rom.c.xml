@@ -1,0 +1,29 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{dmac_tx_get_vap_id::hal_vap null hal_vap_id = %d.} @dmac_tx_complete_rom.c(61),WARNING" ID="0x805001eb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_complete_free_dscr::dscr is NULL.} @dmac_tx_complete_rom.c(106),ERROR" ID="0x80500352" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_tx_complete_free_dscr_list::buf null(dscr_num=%d, idx=%d). } @dmac_tx_complete_rom.c(133),WARNING" ID="0x8050042b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_complete_normal_buffer::buf null.} @dmac_tx_complete_rom.c(185),ERROR" ID="0x805005ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_complete_normal_buffer::vap id is 0, mac vap had been deleted.} @dmac_tx_complete_rom.c(193),WARNING" ID="0x8050060b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_complete_normal_buffer::dmac_vap null.} @dmac_tx_complete_rom.c(203),ERROR" ID="0x8050065a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_tx_complete_normal_buffer::hook return [%d] @dmac_tx_complete_rom.c(213),WARNING" ID="0x805006ab" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_tx_complete_normal_buffer:: no retry and drop. status:%d} @dmac_tx_complete_rom.c(233),WARNING" ID="0x8050074b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_tx_complete_ampdu_buffer_hw_send:: dscr_next NULL .} @dmac_tx_complete_rom.c(359),ERROR" ID="0x80500b3a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_tx_complete_ampdu_buffer_hw_send::dscr_cur-&gt;q_num out of range.} @dmac_tx_complete_rom.c(365),ERROR" ID="0x80500b6a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_tx_complete_ampdu_buffer_hw_send::q empty.} @dmac_tx_complete_rom.c(369),ERROR" ID="0x80500b8a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="vap_id[%d] {dmac_tx_complete_ampdu_buffer_hw::ba status[%d] error.} @dmac_tx_complete_rom.c(434),WARNING" ID="0x80500d93" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_complete_ampdu_buffer::buf null.} @dmac_tx_complete_rom.c(451),ERROR" ID="0x80500e1a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_complete_ampdu_buffer::vap id is 0,  mac vap had been deleted.} @dmac_tx_complete_rom.c(472),WARNING" ID="0x80500ec3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="vap_id[%d] {dmac_tx_complete_ampdu_buffer::dmac_vap[%d] null.} @dmac_tx_complete_rom.c(478),WARNING" ID="0x80500ef3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="vap_id[%d] {dmac_tx_complete_ampdu_buffer::dmac_user[%d] null.} @dmac_tx_complete_rom.c(487),WARNING" ID="0x80500f3b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_ba_seqnum_out_window::seq_num %d out of ba window.} @dmac_tx_complete_rom.c(551),WARNING" ID="0x8050113b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{tx ampdu num %d but sn %d rcv ba zero} @dmac_tx_complete_rom.c(558),WARNING" ID="0x80501173" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_tx_complete_ampdu_handle_dscr::q empty.} @dmac_tx_complete_rom.c(602),ERROR" ID="0x805012d2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_tx_complete_ampdu_handle_dscr:: dscr_next NULL .} @dmac_tx_complete_rom.c(607),ERROR" ID="0x805012fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_complete_buff::dscr is null.} @dmac_tx_complete_rom.c(706),ERROR" ID="0x80501612" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_tx_dscr_event_handler: queue_num wrong, %d} @dmac_tx_complete_rom.c(790),ERROR" ID="0x805018b2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_tx_dscr_event_handler:: TX Q(%d) IS EMPTY, is_first[%d].} @dmac_tx_complete_rom.c(797),ERROR" ID="0x805018ea" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_tx_dscr_event_handler::ppdu_cnt(%d), tx_q_status(%x).} @dmac_tx_complete_rom.c(801),WARNING" ID="0x8050190b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_dscr_event_handler::dmac_tx_complete_buff failed. @dmac_tx_complete_rom.c(818),WARNING" ID="0x80501993" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_tx_dscr_event_handler::dmac_vap or param is NULL. @dmac_tx_complete_rom.c(842),ERROR" ID="0x80501a52" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="dmac_tbtt_device_handler but dmac_vap or hal_vap is null! @dmac_tx_complete_rom.c(928),ERROR" ID="0x80501d02" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_tbtt_device_handler dmac_send_msg_to_host failed[%d]! @dmac_tx_complete_rom.c(947),WARNING" ID="0x80501d9b" />
+			</MSG_LOG>

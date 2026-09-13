@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="ble upper callback register add on module_id:%02x, event:%02x @ble_ahib_manager.c(57),INFO" ID="0xdec601cd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="ble upper callback register new on module_id:%02x, event:%02x @ble_ahib_manager.c(79),INFO" ID="0xdec6027d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ble upper callback get table is null, module_id:%02x @ble_ahib_manager.c(99),WARNING" ID="0xdec6031b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble ahib init @ble_ahib_manager.c(124),INFO" ID="0xdec603e5" />
+			</MSG_LOG>

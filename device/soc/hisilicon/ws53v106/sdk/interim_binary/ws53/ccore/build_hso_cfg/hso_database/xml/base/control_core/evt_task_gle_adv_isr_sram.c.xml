@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]evt_task_gle_adv_stop_cbk, timestamp=0x%x, current time=0x%x @evt_task_gle_adv_isr_sram.c(24),INFO" ID="0x898000c5" />
+			</MSG_LOG>

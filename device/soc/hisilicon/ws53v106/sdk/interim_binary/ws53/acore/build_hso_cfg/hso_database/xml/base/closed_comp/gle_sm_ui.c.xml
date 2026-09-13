@@ -1,0 +1,13 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] start init @gle_sm_ui.c(27),INFO" ID="0xde2400dd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] init new remote device. @gle_sm_ui.c(87),INFO" ID="0xde2402bd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] gle sm link init malloc fail @gle_sm_ui.c(90),ERROR" ID="0xde2402d2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] init old remote device. @gle_sm_ui.c(100),INFO" ID="0xde240325" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[GLE SM] sm link release, handle: 0x%04x @gle_sm_ui.c(114),INFO" ID="0xde240395" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] sm pairing start addr malloc fail @gle_sm_ui.c(142),ERROR" ID="0xde240472" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] sm pairing remove addr melloc fail @gle_sm_ui.c(173),ERROR" ID="0xde24056a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_sm_pairing_remove_all send msg fail @gle_sm_ui.c(196),ERROR" ID="0xde240622" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle_sm_set_all_unpaired send msg fail @gle_sm_ui.c(206),ERROR" ID="0xde240672" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] set security params succeed. @gle_sm_ui.c(226),INFO" ID="0xde240715" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] sm recover key malloc fail @gle_sm_ui.c(236),ERROR" ID="0xde240762" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE SM] sm recover key memcpy fail @gle_sm_ui.c(242),ERROR" ID="0xde240792" />
+			</MSG_LOG>

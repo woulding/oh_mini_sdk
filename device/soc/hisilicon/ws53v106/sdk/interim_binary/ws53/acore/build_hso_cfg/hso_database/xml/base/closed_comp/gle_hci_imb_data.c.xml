@@ -1,0 +1,7 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="gle hci imb data send2tl create par fail  @gle_hci_imb_data.c(37),ERROR" ID="0xdeee012a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[HCI][bt_onetrack][IMB]api h2c write: memcpy fail!!! @gle_hci_imb_data.c(47),ERROR" ID="0xdeee017a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[HCI]gle_hci_internal_imb_data_send busy @gle_hci_imb_data.c(76),ERROR" ID="0xdeee0262" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE HCI] recv data new fail. @gle_hci_imb_data.c(140),ERROR" ID="0xdeee0462" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE HCI] hci imb data parse failed @gle_hci_imb_data.c(162),ERROR" ID="0xdeee0512" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE HCI] hci imb data recv failed @gle_hci_imb_data.c(171),ERROR" ID="0xdeee055a" />
+			</MSG_LOG>

@@ -1,0 +1,11 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="ssap recv data ind rsp op[0x%02x], len = %u @gle_ssap_manager.c(23),INFO" ID="0xde8200bd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="op[0x%02x] can not support @gle_ssap_manager.c(70),ERROR" ID="0xde820232" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="ssap recv data ind req op[0x%02x], len = %u @gle_ssap_manager.c(84),INFO" ID="0xde8202a5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="op[0x%02x] can not support @gle_ssap_manager.c(119),ERROR" ID="0xde8203ba" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssap check type by opcode trans-&gt;op:0x%02x @gle_ssap_manager.c(146),INFO" ID="0xde820495" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="ssap recv data ind dispatch op:0x%02x, len = %u @gle_ssap_manager.c(168),INFO" ID="0xde820545" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="cs pdu error rsp @gle_ssap_manager.c(176),ERROR" ID="0xde820582" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="ssap recv data ind cbk data_len = %u, data_off = %u @gle_ssap_manager.c(192),INFO" ID="0xde820605" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="ssap recv data ind cbk data[%u]:0x%02x @gle_ssap_manager.c(195),INFO" ID="0xde82061d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssap recv data ind cbk tl not found by lcid[%u] @gle_ssap_manager.c(201),ERROR" ID="0xde82064a" />
+			</MSG_LOG>

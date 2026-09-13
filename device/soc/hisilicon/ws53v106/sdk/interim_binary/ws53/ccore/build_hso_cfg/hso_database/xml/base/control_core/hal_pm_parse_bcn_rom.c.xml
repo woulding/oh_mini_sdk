@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_bcn_tim_pos::hal vap id=%d &gt; max vap=%d]} @hal_pm_parse_bcn_rom.c(100),ERROR" ID="0x85020322" />
+			</MSG_LOG>

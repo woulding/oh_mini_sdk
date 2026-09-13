@@ -1,0 +1,6 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="uapi set default param conn_type:%u, param:0x%x @uapi_gle_multicast_con.c(45),INFO" ID="0xd92a016d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi create_multicast_connection mem new failed @uapi_gle_multicast_con.c(99),ERROR" ID="0xd92a031a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi multicast_data_tx mem new failed @uapi_gle_multicast_con.c(141),ERROR" ID="0xd92a046a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi multicast_data_tx mem cpy failed @uapi_gle_multicast_con.c(150),ERROR" ID="0xd92a04b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle multi conn manager register cbks pointer null @uapi_gle_multicast_con.c(162),ERROR" ID="0xd92a0512" />
+			</MSG_LOG>

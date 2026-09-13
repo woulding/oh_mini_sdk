@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[bgtp][gle_isr] isr_pos(%d) error @gle_isr.c(69),ERROR" ID="0x887e022a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp][gle_isr] isr(%d) not registered yet @gle_isr.c(126),INFO" ID="0x887e03f5" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[GLE_ERR_INT]comm_errint1=0x%x, comm_errint2=0x%x, gle_errint=0x%x @gle_isr.c(146),ERROR" ID="0x887e0492" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[GLE_ERR_INT]clk=0x%x, fincnt=%d @gle_isr.c(148),ERROR" ID="0x887e04a2" />
+			</MSG_LOG>

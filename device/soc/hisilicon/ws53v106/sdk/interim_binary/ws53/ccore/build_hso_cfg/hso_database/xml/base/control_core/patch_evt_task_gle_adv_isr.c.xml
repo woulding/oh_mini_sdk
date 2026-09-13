@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]evt_task_gle_adv_single_task_start, unexpected task_type: %d @patch_evt_task_gle_adv_isr.c(32),WARNING" ID="0x89aa0103" />
+			</MSG_LOG>

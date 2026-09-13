@@ -1,0 +1,63 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_per_frame_timeout_handler::no online cali 10sec timeout} @cali_online_tx_pwr.c(148),INFO" ID="0x810004a5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_intvl_timeout_handler: interval 200 ms timeout.} @cali_online_tx_pwr.c(164),INFO" ID="0x81000525" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{PWR entry} @cali_online_tx_pwr.c(187),INFO" ID="0x810005dd" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_dyn_cali_pwr_valid::tx pow[%d]up limit[%d]low limit[%d]} @cali_online_tx_pwr.c(268),ERROR" ID="0x81000862" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{online_cali_get_target_tx_power::Band[%d]table_len[%d]tpc_code[%d]rate_id[%d]} @cali_online_tx_pwr.c(315),ERROR" ID="0x810009da" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{ppa_code[0x%x],txpow[%d]=base pow[%d]+pow_gain[%d]} @cali_online_tx_pwr.c(327),INFO" ID="0x81000a3d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_dyn_pdet_check::pdet_val=%d cnt[%d]} @cali_online_tx_pwr.c(351),WARNING" ID="0x81000afb" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_is_need_flush_pdet_en: inteval[%d]band[%d]state[%d]} @cali_online_tx_pwr.c(372),ERROR" ID="0x81000ba2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_pow_tx_notify::state[%d]invertal[%d]} @cali_online_tx_pwr.c(419),INFO" ID="0x81000d1d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_pow_tx_notify::dev no vap up!} @cali_online_tx_pwr.c(427),WARNING" ID="0x81000d5b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_pow_tx_notify::rts_config_param::failed} @cali_online_tx_pwr.c(431),WARNING" ID="0x81000d7b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_adjust_dbb_scaling::abort pdet_diff[%d] real cur_dbb[%d]} @cali_online_tx_pwr.c(545),WARNING" ID="0x8100110b" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_adjust_dbb_scaling::new_dbb[%d] step[%x] pdet_diff[%d]} @cali_online_tx_pwr.c(555),INFO" ID="0x8100115d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_check_invalid_tx_pwr::chain[%d], pow_too_low_times[%d]} @cali_online_tx_pwr.c(593),ERROR" ID="0x8100128a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_check_invalid_tx_pwr::chain[%d], pow_too_high_times[%d]} @cali_online_tx_pwr.c(603),ERROR" ID="0x810012da" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{online_cali_tx_pow_calc_praw::pwr_avg[%d], dc_re[%d], dc_im[%d], p_raw[%d]} @cali_online_tx_pwr.c(629),WARNING" ID="0x810013ab" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_tx_pow_calc_praw::praw[%d] &lt; pdet_min_th[%d]} @cali_online_tx_pwr.c(636),WARNING" ID="0x810013e3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{online_cali_tx_pow_calc_praw::pwr_avg[%d], dc_re[%d], dc_im[%d], p_raw[%d]} @cali_online_tx_pwr.c(642),WARNING" ID="0x81001413" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_tx_pow_get_praw::dc_i[%d]dc_q[%d]pdet_cal[%d]} @cali_online_tx_pwr.c(660),WARNING" ID="0x810014a3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_temp_comp::temp[%d]delta_pwr[%d]real_pwr[%d]} @cali_online_tx_pwr.c(749),WARNING" ID="0x8100176b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_flush_dyn_cali_pwr::real pdet[%d], curve pow[%d]} @cali_online_tx_pwr.c(791),ERROR" ID="0x810018ba" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_flush_dyn_cali_pwr::praw[%d]curve pow[%d]comp pow[%d]} @cali_online_tx_pwr.c(810),INFO" ID="0x81001955" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_flush_get_pdet_para failed} @cali_online_tx_pwr.c(838),WARNING" ID="0x81001a33" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_flush_dyn_cali_pwr failed} @cali_online_tx_pwr.c(847),WARNING" ID="0x81001a7b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_flush_pow:exp_pow[%d]real_pow[%d]} @cali_online_tx_pwr.c(853),INFO" ID="0x81001aad" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_dyn_adjust_pwr_extend::real_pow is invalid! real_pow[%d], expect_pow[%d]} @cali_online_tx_pwr.c(925),WARNING" ID="0x81001ceb" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_calc_gain_code::target_gain[%d]&lt;[-%d] too small.} @cali_online_tx_pwr.c(974),WARNING" ID="0x81001e73" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_calc_gain_code::target_gain[%d]&gt;[%d] too large.} @cali_online_tx_pwr.c(988),WARNING" ID="0x81001ee3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_calc_gain_code::us_code[%d]&gt; max_code[%d] or 8*[%d]-1.} @cali_online_tx_pwr.c(996),INFO" ID="0x81001f25" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{online_cali_same_channel_index:soc ppat lut lock reg value[%d] was wrong set} @cali_online_tx_pwr.c(1101),ERROR" ID="0x8100226a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_same_channel_index:channel different abort ppa lut write:curr_chan[%d]dyn_chan[%d]} @cali_online_tx_pwr.c(1111),ERROR" ID="0x810022ba" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{update_tpc_lut:upc_idx[%d]bef_code[0x%x]curr_code[0x%x]pow_dif[%d]} @cali_online_tx_pwr.c(1183),INFO" ID="0x810024fd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{update_tpc_lut::upc_idx[%d]code before[0x%x]} @cali_online_tx_pwr.c(1191),INFO" ID="0x8100253d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{update_tpc_lut::upc_idx[%d]code after[0x%x]} @cali_online_tx_pwr.c(1202),INFO" ID="0x81002595" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{online_cali_tx_pwr_invalid_process::chain[%d], too_low_times[%d], real_unit[%d] &lt; min_unit[%d]} @cali_online_tx_pwr.c(1239),WARNING" ID="0x810026bb" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{online_cali_tx_pwr_invalid_process::chain[%d], too_high_times[%d], real_unit[%d] &gt; max_unit[%d]} @cali_online_tx_pwr.c(1245),WARNING" ID="0x810026eb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_tx_pwr_invalid_process failed} @cali_online_tx_pwr.c(1252),WARNING" ID="0x81002723" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{calc_upc_adj::upc idx[%d]range[&lt;%d]upc_adjust_gain[%d]upc_unit[0x%x]} @cali_online_tx_pwr.c(1303),INFO" ID="0x810028bd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{calc_upc_adj::lvl_idx[%d]ppa_lut_adjusted_flag[%d]} @cali_online_tx_pwr.c(1315),INFO" ID="0x8100291d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{online_cali_calc_upc_adj::pdet_chain[%d], pwr[%d], upc_code[%d], upc_code_ori[%d]} @cali_online_tx_pwr.c(1321),ERROR" ID="0x8100294a" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{online_cali_calc_upc_adj::exp_pow[%d], real_pow[%d], upc_adjust_gain[%d], gain_left[%d]} @cali_online_tx_pwr.c(1324),ERROR" ID="0x81002962" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{dyn_upc_dbb_adj::cur_dbb[0x%x] pdet_chain[%d]real_pow[%d]exp_pow[%d]} @cali_online_tx_pwr.c(1345),INFO" ID="0x81002a0d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dyn_upc_dbb_adj::diff[%d]max_th[%d]} @cali_online_tx_pwr.c(1352),INFO" ID="0x81002a45" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{0.3&lt;gain left&lt;=1dB,cur_dbb[0x%x]gain_left[%d]} @cali_online_tx_pwr.c(1373),INFO" ID="0x81002aed" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_dyn_adjust_pwr::no need to update ppa lut} @cali_online_tx_pwr.c(1399),INFO" ID="0x81002bbd" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{online_cali_dyn_adjust_pwr::chain[%d]min_th[%d]real_pow[%d]exp_pow[%d]} @cali_online_tx_pwr.c(1405),INFO" ID="0x81002bed" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dyn_cali_completed::set interval[%d]} @cali_online_tx_pwr.c(1457),INFO" ID="0x81002d8d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{al_tx_flag::set interval[%d]} @cali_online_tx_pwr.c(1466),INFO" ID="0x81002dd5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{not al_tx_flag and not dyn_cali_completed::set interval[%d]} @cali_online_tx_pwr.c(1475),INFO" ID="0x81002e1d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{al_tx_flag::set interval[%d]} @cali_online_tx_pwr.c(1499),INFO" ID="0x81002edd" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_init_flush_pow_code::pdet_en[%d]pdet_val[0x%x]tpc_code[%d]} @cali_online_tx_pwr.c(1525),INFO" ID="0x81002fad" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{soc ppat lut lock reg value[%d] was wrong set} @cali_online_tx_pwr.c(1539),ERROR" ID="0x8100301a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_init_flush_pow_code::dyn_chan[%d]device_chan[%d]read upc reg} @cali_online_tx_pwr.c(1549),INFO" ID="0x8100306d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_tx_pow_handler::hal dev is NULL} @cali_online_tx_pwr.c(1560),ERROR" ID="0x810030c2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_tx_pow_handler::tpc_code[%d] &gt; [%d] (power=10dBm) discard online tx pow} @cali_online_tx_pwr.c(1567),INFO" ID="0x810030fd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_tx_pow_handler::interval = 0.} @cali_online_tx_pwr.c(1577),ERROR" ID="0x8100314a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{online_cali_tx_pow_handler::abort chain[%d] pdet_en[0x%x] dyn_cali_chain[%d].} @cali_online_tx_pwr.c(1584),ERROR" ID="0x81003182" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_tx_pow_handler::invalid.} @cali_online_tx_pwr.c(1589),ERROR" ID="0x810031aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_tx_pow_handler::not in pwr work state.} @cali_online_tx_pwr.c(1616),ERROR" ID="0x81003282" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{online_cali_get_target_tx_power failed::ret[%d]exp_pow[%d].} @cali_online_tx_pwr.c(1623),ERROR" ID="0x810032ba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="end @cali_online_tx_pwr.c(1632),INFO" ID="0x81003305" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{online_cali_dyn_pow_event:: us_event[%d] INVALID!} @cali_online_tx_pwr.c(1674),ERROR" ID="0x81003452" />
+			</MSG_LOG>

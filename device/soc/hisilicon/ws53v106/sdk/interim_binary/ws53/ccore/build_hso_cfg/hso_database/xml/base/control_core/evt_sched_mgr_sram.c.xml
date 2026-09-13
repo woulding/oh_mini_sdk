@@ -1,0 +1,7 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp][ES info]elt_insert_check fail! task_id=0x%x timestamp(0x%x) above MAX_SLOT_CLOCK @evt_sched_mgr_sram.c(73),INFO" ID="0x8966024d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp][ES info]elt_insert_check fail! task_id=0x%x timestamp=0x%x &lt; first_allowed_ts=0x%x @evt_sched_mgr_sram.c(83),INFO" ID="0x8966029d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]es_task_insert arrangement OK! task_id=0x%x timestamp=0x%x es_sn=%d cur_priority=%d @evt_sched_mgr_sram.c(283),INFO" ID="0x896608dd" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ES debug]es_arrangement_periodic_task: task_id=0x%x timestamp=0x%x es_sn=%d cur_priority=%d @evt_sched_mgr_sram.c(309),INFO" ID="0x896609ad" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp][ES err]elt in ready list deleted due to late! task_id=0x%x timestamp=0x%x, cur_gle_time=0x%x @evt_sched_mgr_sram.c(336),ERROR" ID="0x89660a82" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp][ES warning]es_resched_task_elt: task_id=0x%x can't find! timestamp=0x%x instant=%d next_es_sn=%d @evt_sched_mgr_sram.c(389),WARNING" ID="0x89660c2b" />
+			</MSG_LOG>

@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[MSG PROC] msg_id:%u exceeds the upper limit @gle_hci_msg.c(73),ERROR" ID="0xded4024a" />
+			</MSG_LOG>

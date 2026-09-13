@@ -1,0 +1,15 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg4" NAME="Peripheral update error, con_hdl 0x%x, target counter %d, output es_sn %d, diff %d @evt_task_gle_iob.c(376),ERROR" ID="0x89060bc2" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP] Peripheral update es sed_index 0x%x, diff %d, es_sn %d, win %d @evt_task_gle_iob.c(387),INFO" ID="0x89060c1d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP] evt_task_gle_iob_statistics1: per=%d, noerr=%d, syncerr=%d, othererr=%d @evt_task_gle_iob.c(401),INFO" ID="0x89060c8d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP] ACL rx error, 8 packet status 0x%x, 0x%x, 0x%x, 0x%x @evt_task_gle_iob.c(856),WARNING" ID="0x89061ac3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[BGTP] Connection established sed_index 0x%x, time 0x%x:%d @evt_task_gle_iob.c(879),INFO" ID="0x89061b7d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[BGTP] IOB evt task update error, status %d, current es_sn %d, interval %d @evt_task_gle_iob.c(894),ERROR" ID="0x89061bf2" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP] IOB evt task update sed_index 0x%x, instant %d, update_clock %d, interval %d @evt_task_gle_iob.c(897),INFO" ID="0x89061c0d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP] evt_task_gle_iob_process_rx_desc_isr status %x, %d, 0x%x, 0x%x @evt_task_gle_iob.c(935),INFO" ID="0x89061d3d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[BGTP] evt_task_gle_iob_process_rx_desc_isr rxsn %d, nesn %d, rxbit 0x%x @evt_task_gle_iob.c(936),INFO" ID="0x89061d45" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[BGTP] evt_task_gle_iob_cancel_cbk con_hdl 0x%x, ts 0x%x, es_sn %d @evt_task_gle_iob.c(1074),INFO" ID="0x89062195" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP]evt_task_gle_iob_create_es_task conhdl 0x%x, interval %d, anchor point 0x%x, delay %d @evt_task_gle_iob.c(1361),INFO" ID="0x89062a8d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[BGTP] evt_task_gle_iob_create con_hdl 0x%x, task type %d @evt_task_gle_iob.c(1368),INFO" ID="0x89062ac5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[BGTP]evt_task_gle_iob_create env exist, con_hdl %d @evt_task_gle_iob.c(1373),ERROR" ID="0x89062aea" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[BGTP] evt_task_gle_iob_destory con_hdl 0x%x @evt_task_gle_iob.c(1538),INFO" ID="0x89063015" />
+			</MSG_LOG>

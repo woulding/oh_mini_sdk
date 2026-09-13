@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="[bgtp][ES info]elt_insert_check_reach_limit_ts fail! task_id=0x%x timestamp=0x%x limit_ts=0x%x @evt_sched_mgr.c(140),INFO" ID="0x88760465" />
+			</MSG_LOG>

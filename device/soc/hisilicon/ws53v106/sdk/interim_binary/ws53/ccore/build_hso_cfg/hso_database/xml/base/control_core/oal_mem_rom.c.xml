@@ -1,0 +1,17 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="oal_mem_init::start_addr &amp; end_addr is 0. @oal_mem_rom.c(148),ERROR" ID="0x817004a2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="oal_mem_init::osal_kmalloc pkt_ram[%d] failed. @oal_mem_rom.c(154),ERROR" ID="0x817004d2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="new start=%u, end=%u, netbuf start=%u @oal_mem_rom.c(174),INFO" ID="0x81700575" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="mem already inited @oal_mem_rom.c(187),WARNING" ID="0x817005db" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="oal_mem_init::oal_mem_init_pkt_cfg failed. @oal_mem_rom.c(203),ERROR" ID="0x8170065a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="oal_mem_get_pkt_payload::idx[%u] out of range, return NULL. @oal_mem_rom.c(226),ERROR" ID="0x81700712" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="oal_mem_netbuf_alloc::failed, len[%u] priority[%u] id[%u] lr[0x%x]. @oal_mem_rom.c(295),WARNING" ID="0x8170093b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="oal_dmac_netbuf_payload:: lr[0x%x] @oal_mem_rom.c(388),WARNING" ID="0x81700c23" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="oal_dmac_netbuf_payload:: lr[0x%x], netbuf[0x%x] invalid @oal_mem_rom.c(399),ERROR" ID="0x81700c7a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="oal_netbuf_get_hdr::netbuf is invalid, lr[0x%x]. @oal_mem_rom.c(412),ERROR" ID="0x81700ce2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="oal_mem_netbuf_reset_dog::para[0x%x], lr[0x%x]. @oal_mem_rom.c(424),ERROR" ID="0x81700d42" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="oal_mem_netbuf_reset_dog:done para[0x%x] lr[0x%x]. @oal_mem_rom.c(430),WARNING" ID="0x81700d73" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="oal_dmac_netbuf_end:: lr[0x%x] @oal_mem_rom.c(465),WARNING" ID="0x81700e8b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="oal_netbuf_dscr:: lr[0x%x], netbuf[0x%x] invalid @oal_mem_rom.c(488),ERROR" ID="0x81700f42" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="oal_netbuf_lwip:: lr[0x%x], netbuf[0x%x] invalid @oal_mem_rom.c(499),ERROR" ID="0x81700f9a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="oal_netbuf_skb:: lr[0x%x], netbuf[0x%x] invalid @oal_mem_rom.c(510),ERROR" ID="0x81700ff2" />
+			</MSG_LOG>

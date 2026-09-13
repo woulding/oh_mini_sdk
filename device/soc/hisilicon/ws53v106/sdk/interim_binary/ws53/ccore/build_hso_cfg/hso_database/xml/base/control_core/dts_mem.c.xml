@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp][mem]dts_malloc: size(0x%x)LR(0x%x) @dts_mem.c(74),ERROR" ID="0x88880252" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp][mem]btc_info_free: can not find the node(0x%x)LR(0x%x) @dts_mem.c(97),ERROR" ID="0x8888030a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[BTC heap]address: %p, lr: %p, size: %d @dts_mem.c(138),INFO" ID="0x88880455" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[BTC heap]heap used: %d, max heap used: %d, heap size:%d @dts_mem.c(148),INFO" ID="0x888804a5" />
+			</MSG_LOG>

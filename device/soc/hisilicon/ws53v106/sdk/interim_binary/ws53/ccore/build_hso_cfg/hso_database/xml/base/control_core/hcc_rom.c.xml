@@ -1,0 +1,12 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="hcc check header hdr is null @hcc_rom.c(105),ERROR" ID="0xa654034a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hcc_check_header_vaild S-%d, Q-%d failed @hcc_rom.c(111),ERROR" ID="0xa654037a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc sched is null @hcc_rom.c(159),ERROR" ID="0xa65404fa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hcc tx check srv[%d] or bus chanid[%d] null @hcc_rom.c(175),ERROR" ID="0xa654057a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hcc tx check srv t-%d, q-%d @hcc_rom.c(181),ERROR" ID="0xa65405aa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc tx check fc-%d @hcc_rom.c(186),ERROR" ID="0xa65405d2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc tx check qid-%d @hcc_rom.c(191),ERROR" ID="0xa65405fa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc tx check srv[%d] null @hcc_rom.c(196),ERROR" ID="0xa6540622" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hcc tx check err: len[%d] min[%d] max[%d] aligned[%d] @hcc_rom.c(207),ERROR" ID="0xa654067a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc tx_data params null! @hcc_rom.c(283),ERROR" ID="0xa65408da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc tx_state:%d @hcc_rom.c(294),ERROR" ID="0xa6540932" />
+			</MSG_LOG>

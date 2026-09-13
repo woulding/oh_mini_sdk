@@ -1,0 +1,12 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_send_free_arp::mem safe func err!} @dmac_arp_offload.c(120),WARNING" ID="0x838a03c3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_send_free_arp::mem safe func err!} @dmac_arp_offload.c(168),WARNING" ID="0x838a0543" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_ao_process_dhcp_filter::Get netbuf payload failed.} @dmac_arp_offload.c(452),WARNING" ID="0x838a0e23" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_ao_process_dhcp_filter:: invalid packet len.} @dmac_arp_offload.c(462),WARNING" ID="0x838a0e73" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_ao_process_dhcp_filter::Get DHCP type failed.} @dmac_arp_offload.c(468),WARNING" ID="0x838a0ea3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_ao_process_dhcp_filter::Recieve DHCP type[%d] is unknown} @dmac_arp_offload.c(489),WARNING" ID="0x838a0f4b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="dmac_ao_get_dhcpv6_client_mac_addr:: pus_opt memcpy fail. @dmac_arp_offload.c(565),WARNING" ID="0x838a11ab" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="dmac_ao_get_dhcpv6_client_mac_addr:: pus_opt memcpy fail. @dmac_arp_offload.c(574),WARNING" ID="0x838a11f3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_ao_process_dhcpv6_filter_ram::Get netbuf payload failed.} @dmac_arp_offload.c(600),WARNING" ID="0x838a12c3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_ao_process_dhcpv6_filter:: invalid packet len.} @dmac_arp_offload.c(623),WARNING" ID="0x838a137b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_config_cipher_info_sync::param null} @dmac_arp_offload.c(1251),WARNING" ID="0x838a271b" />
+			</MSG_LOG>

@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="sle config set max adv data len: [%d] @gle_conf.c(28),INFO" ID="0xdea000e5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle config set max adv num: [%d] @gle_conf.c(40),INFO" ID="0xdea00145" />
+			</MSG_LOG>

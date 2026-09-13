@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="hal_device_alg_init: alloc alg device failed. @hal_chip.c(92),ERROR" ID="0x817a02e2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_device_alg_exit::OSAL_NULL == p_alg_stru} @hal_chip.c(112),ERROR" ID="0x817a0382" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{hal_chip_init_rf_custom_cap::rf custom 2G chain[%d] nss[%d], 5g chain[%d] nss[%d].} @hal_chip.c(236),WARNING" ID="0x817a0763" />
+			</MSG_LOG>

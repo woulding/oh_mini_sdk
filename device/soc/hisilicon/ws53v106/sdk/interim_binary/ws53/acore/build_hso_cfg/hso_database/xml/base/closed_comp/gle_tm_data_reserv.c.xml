@@ -1,0 +1,12 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[GLE TM][data send] bth list node new failed, data is abandoned. @gle_tm_data_reserv.c(54),ERROR" ID="0xde1e01b2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[GLE TM][data send] TCID 0x%04x is not ready, data in queue. @gle_tm_data_reserv.c(61),INFO" ID="0xde1e01ed" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[GLE TM][data send] Invalid local TCID 0x%04x, transmission channel has not been established. @gle_tm_data_reserv.c(67),WARNING" ID="0xde1e021b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE TM] Not support dynamic tcid. @gle_tm_data_reserv.c(71),ERROR" ID="0xde1e023a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[GLE TM][data send] Data send successfully. LCID: 0x%04x, local TCID: 0x%04x. @gle_tm_data_reserv.c(87),INFO" ID="0xde1e02bd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[GLE TM][data send] Can not find logic link by LCID 0x%04x. @gle_tm_data_reserv.c(103),WARNING" ID="0xde1e033b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[GLE TM][data recv] Data receive failed. Can not find logic link by LCID: 0x%04x @gle_tm_data_reserv.c(136),WARNING" ID="0xde1e0443" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[GLE TM][data recv] Data receive failed. Wrong length, expect len: %d, actual len: %u. @gle_tm_data_reserv.c(145),WARNING" ID="0xde1e048b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[GLE TM][data recv] Data receive failed. Invalid TCID: 0x%04x. @gle_tm_data_reserv.c(163),WARNING" ID="0xde1e051b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE TM][data recv] Data receive failed. Callback function is NULL. @gle_tm_data_reserv.c(169),WARNING" ID="0xde1e054b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE TM][data recv] tcid trans mode is invalid value @gle_tm_data_reserv.c(187),ERROR" ID="0xde1e05da" />
+			</MSG_LOG>

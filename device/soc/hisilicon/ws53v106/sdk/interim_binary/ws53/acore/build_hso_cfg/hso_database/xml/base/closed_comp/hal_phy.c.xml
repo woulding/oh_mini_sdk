@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hh503_set_sec_bandwidth_offset::not support 80M.} @hal_phy.c(247),ERROR" ID="0x83fe07ba" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_phy_rx_get_snr_info::Origin data ERR, data is %d !!!} @hal_phy.c(370),ERROR" ID="0x83fe0b92" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hal_phy_rx_get_snr_info::Err rf chain %d @hal_phy.c(400),ERROR" ID="0x83fe0c82" />
+			</MSG_LOG>

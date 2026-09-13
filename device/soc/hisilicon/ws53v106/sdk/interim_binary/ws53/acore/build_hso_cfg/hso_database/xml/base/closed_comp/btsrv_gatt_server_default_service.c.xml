@@ -1,0 +1,7 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[btsrv][INFO] eatt support: %d @btsrv_gatt_server_default_service.c(23),INFO" ID="0xd89400bd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[btsrv][ERROR] memcpy appearance fail @btsrv_gatt_server_default_service.c(75),ERROR" ID="0xd894025a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] server get local name failed,ret = %x @btsrv_gatt_server_default_service.c(171),ERROR" ID="0xd894055a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[GAP service register][device name] handle: 0x%04x, value handle: 0x%04x @btsrv_gatt_server_default_service.c(179),INFO" ID="0xd894059d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[GAP service register][device appearance] handle: 0x%04x, value handle: 0x%04x @btsrv_gatt_server_default_service.c(188),INFO" ID="0xd89405e5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[GAP service register][prefer conn param] handle: 0x%04x, value handle: 0x%04x @btsrv_gatt_server_default_service.c(198),INFO" ID="0xd8940635" />
+			</MSG_LOG>

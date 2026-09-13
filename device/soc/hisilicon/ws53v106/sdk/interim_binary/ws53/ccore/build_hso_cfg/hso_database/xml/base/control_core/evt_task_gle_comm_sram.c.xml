@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[gle][scan]evt_task_gle_scan_check_aux_ptr, aux_offset=%d, channel_idx=%d @evt_task_gle_comm_sram.c(146),WARNING" ID="0x89740493" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[gle][scan]AUX phy check fail, frame_format=%d, phy=%d, pilot_ratio=%d @evt_task_gle_comm_sram.c(153),WARNING" ID="0x897404cb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[BGTP]evt_task_gle_set_syncword, invalid frame_format:%d @evt_task_gle_comm_sram.c(335),WARNING" ID="0x89740a7b" />
+			</MSG_LOG>

@@ -1,0 +1,45 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="sle get servcie cbk succ, start_hdl:%x, end_hdl:%x, handle:%X @sle_srv_ssap_server_cb.c(60),INFO" ID="0xd8c801e5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="add property memcpy fail @sle_srv_ssap_server_cb.c(96),ERROR" ID="0xd8c80302" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="add property uapi fail @sle_srv_ssap_server_cb.c(108),ERROR" ID="0xd8c80362" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="add descriptor uapi fail @sle_srv_ssap_server_cb.c(125),ERROR" ID="0xd8c803ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="start service uapi fail @sle_srv_ssap_server_cb.c(135),ERROR" ID="0xd8c8043a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle sle ssaps add descriptor(%d) @sle_srv_ssap_server_cb.c(146),INFO" ID="0xd8c80495" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle sle ssaps add property(%d) @sle_srv_ssap_server_cb.c(154),INFO" ID="0xd8c804d5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sle sle ssaps start server(%d) service(%d) @sle_srv_ssap_server_cb.c(159),INFO" ID="0xd8c804fd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="no service is being adding. @sle_srv_ssap_server_cb.c(166),INFO" ID="0xd8c80535" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="no property is being adding. @sle_srv_ssap_server_cb.c(184),INFO" ID="0xd8c805c5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="no descriptor is being adding. @sle_srv_ssap_server_cb.c(195),INFO" ID="0xd8c8061d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sle add item(%d) result(%d) @sle_srv_ssap_server_cb.c(206),INFO" ID="0xd8c80675" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="no service is being adding. @sle_srv_ssap_server_cb.c(292),INFO" ID="0xd8c80925" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="sle start service(%d) out of order, result-&gt;uuid(0x%02x%02x) @sle_srv_ssap_server_cb.c(305),ERROR" ID="0xd8c8098a" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="sle start service(%d) success, begin hdl(%d) end hdl(%d) property num(%d) @sle_srv_ssap_server_cb.c(311),INFO" ID="0xd8c809bd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sle start service(%d) failed ret 0x%x. @sle_srv_ssap_server_cb.c(327),ERROR" ID="0xd8c80a3a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssaps write value cbk failed, length:%d @sle_srv_ssap_server_cb.c(340),ERROR" ID="0xd8c80aa2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps start service cbk memcpy failed. @sle_srv_ssap_server_cb.c(344),ERROR" ID="0xd8c80ac2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ota service] sle ota cbk done @sle_srv_ssap_server_cb.c(351),INFO" ID="0xd8c80afd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssaps start service cbk send bt_service msg failed, ret %d @sle_srv_ssap_server_cb.c(358),ERROR" ID="0xd8c80b32" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssaps read value cbk failed, length:%d @sle_srv_ssap_server_cb.c(370),ERROR" ID="0xd8c80b92" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps sread value cbk memcpy failed. @sle_srv_ssap_server_cb.c(374),ERROR" ID="0xd8c80bb2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssaps sread value cbk send bt_service msg failed, ret %d @sle_srv_ssap_server_cb.c(381),ERROR" ID="0xd8c80bea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps find hdl by uuid cbk param null @sle_srv_ssap_server_cb.c(391),ERROR" ID="0xd8c80c3a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="uuid:[0x%02x][0x%02x] @sle_srv_ssap_server_cb.c(396),INFO" ID="0xd8c80c65" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hdl_count = %d @sle_srv_ssap_server_cb.c(397),INFO" ID="0xd8c80c6d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="handl_result[%d] = 0x%04x @sle_srv_ssap_server_cb.c(399),INFO" ID="0xd8c80c7d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps mtu value cbk failed @sle_srv_ssap_server_cb.c(408),ERROR" ID="0xd8c80cc2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssaps mtu value cbk send bt_service msg fail ret %d @sle_srv_ssap_server_cb.c(415),ERROR" ID="0xd8c80cfa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssaps indicate cfm value cbk failed, length:%d @sle_srv_ssap_server_cb.c(427),ERROR" ID="0xd8c80d5a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps indicate cfm value cbk memcpy failed. @sle_srv_ssap_server_cb.c(431),ERROR" ID="0xd8c80d7a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssaps read value cbk malloc failed, length:%d @sle_srv_ssap_server_cb.c(498),ERROR" ID="0xd8c80f92" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps read value cbk memcpy failed. @sle_srv_ssap_server_cb.c(502),ERROR" ID="0xd8c80fb2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle unhandled msg id: %d @sle_srv_ssap_server_cb.c(603),INFO" ID="0xd8c812dd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle unhandled msg id: %d @sle_srv_ssap_server_cb.c(635),INFO" ID="0xd8c813dd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle ssap server invalid msg id:%d. @sle_srv_ssap_server_cb.c(647),ERROR" ID="0xd8c8143a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle server manager init failed. @sle_srv_ssap_server_cb.c(669),ERROR" ID="0xd8c814ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle ssap server callback memcpy fail @sle_srv_ssap_server_cb.c(680),ERROR" ID="0xd8c81542" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle server register service cbk func is null. @sle_srv_ssap_server_cb.c(694),ERROR" ID="0xd8c815b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle ssap service callback memcpy fail @sle_srv_ssap_server_cb.c(707),ERROR" ID="0xd8c8161a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sle server register update servcie cbk, start_hdl:%x,  end_hdl:%x. @sle_srv_ssap_server_cb.c(712),INFO" ID="0xd8c81645" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle server register malloc fail @sle_srv_ssap_server_cb.c(717),ERROR" ID="0xd8c8166a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle ssap service callback memcpy fail @sle_srv_ssap_server_cb.c(721),ERROR" ID="0xd8c8168a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sle server register add servcie cbk, start_hdl:%x,  end_hdl:%x. @sle_srv_ssap_server_cb.c(729),INFO" ID="0xd8c816cd" />
+			</MSG_LOG>

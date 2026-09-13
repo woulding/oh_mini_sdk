@@ -1,0 +1,7 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_scan_create_desc, env_ptr is NULL @evt_task_gle_scan_ram.c(295),WARNING" ID="0x88d0093b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_scan_create_desc, fsm register fail! @evt_task_gle_scan_ram.c(304),WARNING" ID="0x88d00983" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_scan_start, start fail, env_ptr is NULL! @evt_task_gle_scan_ram.c(367),WARNING" ID="0x88d00b7b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_scan_start, task_start fail! @evt_task_gle_scan_ram.c(395),WARNING" ID="0x88d00c5b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_scan_fsm_start, switch to idle! @evt_task_gle_scan_ram.c(412),INFO" ID="0x88d00ce5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle][scan]evt_task_gle_scan_end_process! @evt_task_gle_scan_ram.c(445),INFO" ID="0x88d00ded" />
+			</MSG_LOG>

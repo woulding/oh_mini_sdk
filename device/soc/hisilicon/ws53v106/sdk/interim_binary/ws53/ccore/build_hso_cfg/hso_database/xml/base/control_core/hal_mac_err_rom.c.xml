@@ -1,0 +1,19 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hh503_clear_mac_error_int_status::status is NULL.} @hal_mac_err_rom.c(47),WARNING" ID="0x802a017b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hal_irq_hander_error_event callback failed[%d]! @hal_mac_err_rom.c(84),WARNING" ID="0x802a02a3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(122),ERROR" ID="0x802a03d2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(124),ERROR" ID="0x802a03e2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(125),ERROR" ID="0x802a03ea" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(126),ERROR" ID="0x802a03f2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(127),ERROR" ID="0x802a03fa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(129),ERROR" ID="0x802a040a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(131),ERROR" ID="0x802a041a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(133),ERROR" ID="0x802a042a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(135),ERROR" ID="0x802a043a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(137),ERROR" ID="0x802a044a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(139),ERROR" ID="0x802a045a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(141),ERROR" ID="0x802a046a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(143),ERROR" ID="0x802a047a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(145),ERROR" ID="0x802a048a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(147),ERROR" ID="0x802a049a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="addr:0x%x:0x%x @hal_mac_err_rom.c(158),ERROR" ID="0x802a04f2" />
+			</MSG_LOG>

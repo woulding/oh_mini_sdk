@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg4" NAME="hal_vap_set_noa, start_tsf:%u, dura:%d, intval:%d, cnt:%d @hal_p2p_rom.c(50),INFO" ID="0x81160195" />
+			</MSG_LOG>

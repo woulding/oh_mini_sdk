@@ -1,0 +1,10 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_write::hcc_write_reg failed!} @hal_reg_opt.c(80),WARNING" ID="0x85400283" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_write::frw_send_msg_to_device failed!} @hal_reg_opt.c(92),WARNING" ID="0x854002e3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_write16::hcc_write_reg failed!} @hal_reg_opt.c(115),WARNING" ID="0x8540039b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_write16::hcc_write_reg failed!} @hal_reg_opt.c(124),WARNING" ID="0x854003e3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_write16::frw_send_msg_to_device failed!} @hal_reg_opt.c(136),WARNING" ID="0x85400443" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_read::hcc_read_reg failed!} @hal_reg_opt.c(161),WARNING" ID="0x8540050b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_read::frw_send_msg_to_device failed!} @hal_reg_opt.c(172),WARNING" ID="0x85400563" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_read16::hcc_read_reg failed!} @hal_reg_opt.c(195),WARNING" ID="0x8540061b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_reg_read16::frw_send_msg_to_device failed!} @hal_reg_opt.c(206),WARNING" ID="0x85400673" />
+			</MSG_LOG>

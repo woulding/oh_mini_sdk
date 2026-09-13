@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]evt_task_gle_initiate_single_task_start, unexpected task_type: %d @evt_task_gle_initiate_isr.c(103),WARNING" ID="0x88f4033b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_initiate_pack_con_ind, clkn=0x%x, con_intv=%d, delay=%d, offset=%d @evt_task_gle_initiate_isr.c(261),INFO" ID="0x88f4082d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_initiate_parse_con_ind, con_ind_offset=0 @evt_task_gle_initiate_isr.c(290),WARNING" ID="0x88f40913" />
+			</MSG_LOG>

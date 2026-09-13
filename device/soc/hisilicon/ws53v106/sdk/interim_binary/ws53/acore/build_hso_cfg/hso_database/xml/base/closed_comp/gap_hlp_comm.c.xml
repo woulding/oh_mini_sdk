@@ -1,0 +1,12 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[GAP][create_handle] memcpy failed @gap_hlp_comm.c(261),ERROR" ID="0xdb92082a" />
+			<MSG STRUCTURE="diag_log_msg6" NAME="[GAP][ACL_EVENT_CALLBACK] JOB=%u, LINK_TYPE=%u, ACL_LINK_HANDLE=0x%x, REMOTE_ADDR=%02x:%02x:**:**:**:%02x @gap_hlp_comm.c(457),INFO" ID="0xdb920e4d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GAP]gaph execute command cfm callback memcpy failed @gap_hlp_comm.c(872),ERROR" ID="0xdb921b42" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="gaph hci command callback, operation=%x, code:%x @gap_hlp_comm.c(967),INFO" ID="0xdb921e3d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[GAP][MEMCPY_FAILED]CreateContext memcpy fail,ret=%d @gap_hlp_comm.c(1034),INFO" ID="0xdb922055" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[GAP][LINK_ALREADY_EXISTS] REMOTE_ADDR=%02x:%02x:**:**:**:%02x @gap_hlp_comm.c(1072),INFO" ID="0xdb922185" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GAP] gaph encrypt link memcpy failed @gap_hlp_comm.c(1323),ERROR" ID="0xdb92295a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GAP]gaph update remote device name memcpy failed @gap_hlp_comm.c(1840),ERROR" ID="0xdb923982" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GAP]gaph update remote device name memcpy failed @gap_hlp_comm.c(1860),ERROR" ID="0xdb923a22" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[GAP][LOCAL_DISC_REQ] REMOTE_ADDR=%02x:%02x:**:**:**:%02x, can't find acl link @gap_hlp_comm.c(2009),INFO" ID="0xdb923ecd" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[GAP][LOCAL_DISC_REQ] REMOTE_ADDR=%02x:%02x:**:**:**:%02x, can't find acl link @gap_hlp_comm.c(2039),INFO" ID="0xdb923fbd" />
+			</MSG_LOG>

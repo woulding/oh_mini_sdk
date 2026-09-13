@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{dmac_config_frame_pn_enable:: hmac_vap/param is null ptr!} @dmac_forward_main.c(152),ERROR" ID="0x814204c2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_forward_init:: register_netbuf_hooks error! ret = 0x%x @dmac_forward_main.c(395),ERROR" ID="0x81420c5a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_forward_init:: msg_hook_register error! ret = 0x%x @dmac_forward_main.c(413),ERROR" ID="0x81420cea" />
+			</MSG_LOG>

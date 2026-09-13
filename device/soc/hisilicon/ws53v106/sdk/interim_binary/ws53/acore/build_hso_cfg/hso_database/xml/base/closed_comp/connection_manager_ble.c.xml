@@ -1,0 +1,21 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="btsrv connect state change cbk arg NULL! @connection_manager_ble.c(104),ERROR" ID="0xd8980342" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="connect state change cannot find conn node by handle: 0x%04x. @connection_manager_ble.c(121),ERROR" ID="0xd89803ca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="connect state update send bt_service fail, ret %d @connection_manager_ble.c(131),ERROR" ID="0xd898041a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble smp paired keys cbk param error @connection_manager_ble.c(143),ERROR" ID="0xd898047a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="paired keys malloc fail. @connection_manager_ble.c(157),ERROR" ID="0xd89804ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="paired keys malloc fail. @connection_manager_ble.c(162),ERROR" ID="0xd8980512" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="pair keys notify, keys memcpy fail. @connection_manager_ble.c(181),ERROR" ID="0xd89805aa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="pair keys notify send bt_service fail ret %d @connection_manager_ble.c(191),ERROR" ID="0xd89805fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble smp paired keys cbk param error @connection_manager_ble.c(207),ERROR" ID="0xd898067a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="connect param update incomes arg is NULL! @connection_manager_ble.c(221),ERROR" ID="0xd89806ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="connect param update, conn_node not found. @connection_manager_ble.c(227),ERROR" ID="0xd898071a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="connect param update,connect_params NULL. @connection_manager_ble.c(233),ERROR" ID="0xd898074a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="connect param update done ret:%d. @connection_manager_ble.c(245),WARNING" ID="0xd89807ab" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gap ble connect remote device param id null @connection_manager_ble.c(258),ERROR" ID="0xd8980812" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[btsrv]conn node find fail. @connection_manager_ble.c(287),ERROR" ID="0xd89808fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="read remote device rssi, conn_node not found. @connection_manager_ble.c(303),ERROR" ID="0xd898097a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="read remote device rssi fail @connection_manager_ble.c(310),ERROR" ID="0xd89809b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle set rssi param err @connection_manager_ble.c(321),ERROR" ID="0xd8980a0a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="set connect rssi fail @connection_manager_ble.c(326),ERROR" ID="0xd8980a32" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="show ble conn list: @connection_manager_ble.c(399),INFO" ID="0xd8980c7d" />
+			</MSG_LOG>

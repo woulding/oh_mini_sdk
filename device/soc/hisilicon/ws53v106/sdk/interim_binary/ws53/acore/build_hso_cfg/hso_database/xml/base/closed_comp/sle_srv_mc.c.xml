@@ -1,0 +1,44 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="group node count limit @sle_srv_mc.c(91),ERROR" ID="0xd92e02da" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="create group node alloc failed @sle_srv_mc.c(101),ERROR" ID="0xd92e032a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="group node count limit @sle_srv_mc.c(114),ERROR" ID="0xd92e0392" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="create group node alloc failed @sle_srv_mc.c(120),ERROR" ID="0xd92e03c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle delete group node is null. @sle_srv_mc.c(134),ERROR" ID="0xd92e0432" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle_create_multicast_group group_id or num invalid @sle_srv_mc.c(191),ERROR" ID="0xd92e05fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle_create_multicast_group param invalid @sle_srv_mc.c(195),ERROR" ID="0xd92e061a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi_gle_create_multicast_group failed, ret=0x%x @sle_srv_mc.c(206),ERROR" ID="0xd92e0672" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="group param invalid, member_id =%u @sle_srv_mc.c(230),ERROR" ID="0xd92e0732" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="group param invalid, group_id =0x%x @sle_srv_mc.c(255),ERROR" ID="0xd92e07fa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="conn(%d) not exsited or connected. @sle_srv_mc.c(268),ERROR" ID="0xd92e0862" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi_gle_create_multicast_group failed, ret=0x%x @sle_srv_mc.c(280),ERROR" ID="0xd92e08c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="frame_type param invalid @sle_srv_mc.c(294),ERROR" ID="0xd92e0932" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="g2t param invalid @sle_srv_mc.c(304),ERROR" ID="0xd92e0982" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="t2g param invalid @sle_srv_mc.c(315),ERROR" ID="0xd92e09da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi_gle_create_multicast_group failed, ret=0x%x @sle_srv_mc.c(320),ERROR" ID="0xd92e0a02" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="multicast group invalid, group_id =0x%x @sle_srv_mc.c(330),ERROR" ID="0xd92e0a52" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle_remove_multicast_group failed, ret=0x%x @sle_srv_mc.c(335),ERROR" ID="0xd92e0a7a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="multicast group not exsited, group_id =%u @sle_srv_mc.c(349),ERROR" ID="0xd92e0aea" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="member invalid, group_id:%u, member_cnt:%u, id:%u @sle_srv_mc.c(356),ERROR" ID="0xd92e0b22" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="send conn response failed, ret=0x%x @sle_srv_mc.c(362),ERROR" ID="0xd92e0b52" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="data:0x%x,len:%u, invalid @sle_srv_mc.c(378),ERROR" ID="0xd92e0bd2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="data tx, group invalid, id =%u @sle_srv_mc.c(383),ERROR" ID="0xd92e0bfa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="send_multicast_data failed, ret=0x%x @sle_srv_mc.c(389),ERROR" ID="0xd92e0c2a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="create group cbk, multicast group invalid, group_id =0x%x @sle_srv_mc.c(410),ERROR" ID="0xd92e0cd2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="connection connect req, group created fail, group_id=0x%x @sle_srv_mc.c(462),ERROR" ID="0xd92e0e72" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="msg param is null @sle_srv_mc.c(505),ERROR" ID="0xd92e0fca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="unsupported msg id %x @sle_srv_mc.c(533),INFO" ID="0xd92e10ad" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="create group cbk, multicast group invalid, group_id =0x%x @sle_srv_mc.c(550),ERROR" ID="0xd92e1132" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="create_group_cbk failed @sle_srv_mc.c(558),ERROR" ID="0xd92e1172" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="create group cbk, err status:%u, group_id =0x%x @sle_srv_mc.c(566),ERROR" ID="0xd92e11b2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="err, create group cbk, list member_cnt=0x%x, cbk member_cnt=0x%x @sle_srv_mc.c(575),ERROR" ID="0xd92e11fa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="rmv group cbk, multicast group not exsited, group_id =0x%x @sle_srv_mc.c(595),ERROR" ID="0xd92e129a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="create_group_cbk failed @sle_srv_mc.c(603),ERROR" ID="0xd92e12da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="connection connect req, group exists, group_id=0x%x @sle_srv_mc.c(617),ERROR" ID="0xd92e134a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="connection connect req, group create fail, group_id=0x%x @sle_srv_mc.c(623),ERROR" ID="0xd92e137a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="connect_req_cbk failed @sle_srv_mc.c(631),ERROR" ID="0xd92e13ba" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="connection_state_changed, find group fail, group_id=0x%x @sle_srv_mc.c(644),ERROR" ID="0xd92e1422" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="conn_state_cbk failed @sle_srv_mc.c(651),ERROR" ID="0xd92e145a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="conn_state_cbk send bt_service failed ret %d @sle_srv_mc.c(657),ERROR" ID="0xd92e148a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="data_send_cbk failed @sle_srv_mc.c(669),ERROR" ID="0xd92e14ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="data_recv_cbk failed @sle_srv_mc.c(681),ERROR" ID="0xd92e154a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle multicast connection init failed. @sle_srv_mc.c(706),ERROR" ID="0xd92e1612" />
+			</MSG_LOG>

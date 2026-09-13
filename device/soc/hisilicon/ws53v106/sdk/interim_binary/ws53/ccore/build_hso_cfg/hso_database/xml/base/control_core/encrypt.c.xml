@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[bgtp] selected unsupported key derivation encryption algorithm! @encrypt.c(206),WARNING" ID="0x88ae0673" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp] selected unsupported key exchange encryption algorithm! @encrypt.c(219),WARNING" ID="0x88ae06db" />
+			</MSG_LOG>

@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[Error][AT] announce tx power id is error -127~20, 127 @sle_at_dd.c(258),ERROR" ID="0xd91c0812" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] sle at cmd sdk set dd announce data new fail! @sle_at_dd.c(288),ERROR" ID="0xd91c0902" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] sle at cmd sdk set dd scan rsp data new fail! @sle_at_dd.c(300),ERROR" ID="0xd91c0962" />
+			</MSG_LOG>

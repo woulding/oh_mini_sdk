@@ -1,0 +1,18 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="gle set adv ext param check failed @uapi_gle_dev_discovery.c(30),ERROR" ID="0xd8e400f2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="check conn_param null error @uapi_gle_dev_discovery.c(42),ERROR" ID="0xd8e40152" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle check conn param failed @uapi_gle_dev_discovery.c(53),ERROR" ID="0xd8e401aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle set adv param check failed @uapi_gle_dev_discovery.c(77),ERROR" ID="0xd8e4026a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="adv_params is null @uapi_gle_dev_discovery.c(111),ERROR" ID="0xd8e4037a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle set adv check adv params fail @uapi_gle_dev_discovery.c(119),ERROR" ID="0xd8e403ba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="adv_enable is null @uapi_gle_dev_discovery.c(130),ERROR" ID="0xd8e40412" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="adv_handle = 0x%x @uapi_gle_dev_discovery.c(141),INFO" ID="0xd8e4046d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="set scan param pointer is null @uapi_gle_dev_discovery.c(154),ERROR" ID="0xd8e404d2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="set scan param check failed @uapi_gle_dev_discovery.c(161),ERROR" ID="0xd8e4050a" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[uapi gle set scan]set scan param check idx 0x%x scan_type 0x%x interval 0x%x windows 0x%x  @uapi_gle_dev_discovery.c(174),ERROR" ID="0xd8e40572" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle set scan enable pointer is null @uapi_gle_dev_discovery.c(185),ERROR" ID="0xd8e405ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle set public address pointer is null @uapi_gle_dev_discovery.c(198),ERROR" ID="0xd8e40632" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle get public address addr is null @uapi_gle_dev_discovery.c(220),ERROR" ID="0xd8e406e2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle dev discovery register cbks pointer null @uapi_gle_dev_discovery.c(231),ERROR" ID="0xd8e4073a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle dev discovery register cbks pointer null @uapi_gle_dev_discovery.c(241),ERROR" ID="0xd8e4078a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle dev discovery register cbks pointer null @uapi_gle_dev_discovery.c(251),ERROR" ID="0xd8e407da" />
+			</MSG_LOG>

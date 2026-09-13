@@ -1,0 +1,19 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="gle adapter init fail %d @gle_manager_ui.c(52),ERROR" ID="0xde4601a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle manger enable]enter @gle_manager_ui.c(87),INFO" ID="0xde4602bd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle cmd reset]  error @gle_manager_ui.c(94),INFO" ID="0xde4602f5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle manger enable]  error @gle_manager_ui.c(104),INFO" ID="0xde460345" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle manger enable]result = 0x%02x @gle_manager_ui.c(110),INFO" ID="0xde460375" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle manger disable] enter reset @gle_manager_ui.c(129),INFO" ID="0xde46040d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle cmd reset]  error @gle_manager_ui.c(136),INFO" ID="0xde460445" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle adapter deinit fail @gle_manager_ui.c(151),ERROR" ID="0xde4604ba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle manger disable] done @gle_manager_ui.c(164),INFO" ID="0xde460525" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle ind cbks table new fail @gle_manager_ui.c(240),ERROR" ID="0xde460782" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle manager exter_cbks will be overlaped @gle_manager_ui.c(248),WARNING" ID="0xde4607c3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle manager exter_cbks mem new failed @gle_manager_ui.c(253),ERROR" ID="0xde4607ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle manager exter_cbks memcpy failed @gle_manager_ui.c(258),ERROR" ID="0xde460812" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle execute command cmd_node is NULL @gle_manager_ui.c(277),ERROR" ID="0xde4608aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="cmd_node-&gt;param alloc fail @gle_manager_ui.c(290),ERROR" ID="0xde460912" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle general cmd evt proc] param err. @gle_manager_ui.c(339),ERROR" ID="0xde460a9a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle general cmd evt proc] find node error, module id(%d). @gle_manager_ui.c(345),ERROR" ID="0xde460aca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle gerneral cmd evt dispatch func new fail @gle_manager_ui.c(366),ERROR" ID="0xde460b72" />
+			</MSG_LOG>

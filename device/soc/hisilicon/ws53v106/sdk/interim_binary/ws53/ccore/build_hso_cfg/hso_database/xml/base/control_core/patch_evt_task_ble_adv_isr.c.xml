@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp][scan]evt_task_ble_adv_start_cbk, adv_stop_type=%d, prog_num=%d @patch_evt_task_ble_adv_isr.c(22),WARNING" ID="0x899800b3" />
+			</MSG_LOG>

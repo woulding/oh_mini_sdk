@@ -1,0 +1,8 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="hcc alloc srv-%d null @hcc_adapt_rom.c(70),ERROR" ID="0xa6460232" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc alloc priv srv- %d @hcc_adapt_rom.c(75),ERROR" ID="0xa646025a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hcc free srv err, q-%d, srv-%d @hcc_adapt_rom.c(88),ERROR" ID="0xa64602c2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc free adapt srv- %d null @hcc_adapt_rom.c(93),ERROR" ID="0xa64602ea" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc adapt free-%d null @hcc_adapt_rom.c(102),ERROR" ID="0xa6460332" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc mem free param err @hcc_adapt_rom.c(143),ERROR" ID="0xa646047a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc unc enq null @hcc_adapt_rom.c(159),ERROR" ID="0xa64604fa" />
+			</MSG_LOG>

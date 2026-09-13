@@ -1,0 +1,32 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="g_sle_hook.get_rssi is NULL!! @achba_netdev.c(66),WARNING" ID="0x8fda0213" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="There is no link in achba. @achba_netdev.c(82),WARNING" ID="0x8fda0293" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="unkown link type @achba_netdev.c(112),ERROR" ID="0x8fda0382" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="achba_add_wifi_link peer_mac:%02x:xx:xx:xx:%02x:%02x @achba_netdev.c(127),INFO" ID="0x8fda03fd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="achba_add_wifi_link wifi dev is NULL!! @achba_netdev.c(129),ERROR" ID="0x8fda040a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="The peer end does not have the chba capability, cap_len=%d @achba_netdev.c(136),INFO" ID="0x8fda0445" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="g_sle_hook.set_sleinfo is NULL!! @achba_netdev.c(142),WARNING" ID="0x8fda0473" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACHBA]g_wifi_hook.achba_keepalive is NULL!! @achba_netdev.c(158),ERROR" ID="0x8fda04f2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="achba_del_wifi_link @achba_netdev.c(219),INFO" ID="0x8fda06dd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="del wifi link fail, link_id=%d @achba_netdev.c(221),ERROR" ID="0x8fda06ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="g_sle_hook.switch_link_ack is null @achba_netdev.c(232),WARNING" ID="0x8fda0743" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="switch sle link fail! sle is null!! @achba_netdev.c(241),ERROR" ID="0x8fda078a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="switch wifi link fail! wifi is null!! @achba_netdev.c(249),ERROR" ID="0x8fda07ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="achba_add_sle_link sle dev is NULL!! @achba_netdev.c(265),ERROR" ID="0x8fda084a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="peer mac is invalid!! @achba_netdev.c(270),ERROR" ID="0x8fda0872" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="del sle link fail, link_id=%d @achba_netdev.c(284),WARNING" ID="0x8fda08e3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="achba is down!! @achba_netdev.c(384),ERROR" ID="0x8fda0c02" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="wlan dev is invalid!! @achba_netdev.c(396),WARNING" ID="0x8fda0c63" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle dev is invalid!! @achba_netdev.c(405),WARNING" ID="0x8fda0cab" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="achba net dev is invalid!! @achba_netdev.c(420),WARNING" ID="0x8fda0d23" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="achba net dev is invalid!! @achba_netdev.c(441),WARNING" ID="0x8fda0dcb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="g_sle_hook.get_sleinfo is null !! @achba_netdev.c(455),ERROR" ID="0x8fda0e3a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="g_sle_hook.get_sleinfo fail !! @achba_netdev.c(460),WARNING" ID="0x8fda0e63" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="g_sle_hook.achba_quit is NULL!! @achba_netdev.c(471),WARNING" ID="0x8fda0ebb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="osal_timer_init fail! @achba_netdev.c(500),ERROR" ID="0x8fda0fa2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="achba_priv malloc fail! @achba_netdev.c(510),ERROR" ID="0x8fda0ff2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="achba_priv_init err(%d)! @achba_netdev.c(556),ERROR" ID="0x8fda1162" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="%s: create netif fail err(%d)! @achba_netdev.c(567),ERROR" ID="0x8fda11ba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="achba_init_module get achba mac fail! @achba_netdev.c(573),ERROR" ID="0x8fda11ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ACHBA module init done. @achba_netdev.c(587),INFO" ID="0x8fda125d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="netifapi_netif_remove fail! @achba_netdev.c(595),ERROR" ID="0x8fda129a" />
+			</MSG_LOG>

@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]evt_task_comm_task_start sched update fail task_id(0x%x) @evt_task_fsm.c(17),WARNING" ID="0x880a008b" />
+			</MSG_LOG>

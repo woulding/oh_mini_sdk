@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="{dmac_psm_update_dtime_period::set dtim period[%d], bcn tout max cnt[%d]listen interval[%d]} @dmac_sta_pm_init.c(115),WARNING" ID="0x8526039b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_sta_pm_bcn_timeout_update beacon timeout %d! @dmac_sta_pm_init.c(191),WARNING" ID="0x852605fb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="dmac_sta_pm_netbuf_filter register fail! @dmac_sta_pm_init.c(226),ERROR" ID="0x85260712" />
+			</MSG_LOG>

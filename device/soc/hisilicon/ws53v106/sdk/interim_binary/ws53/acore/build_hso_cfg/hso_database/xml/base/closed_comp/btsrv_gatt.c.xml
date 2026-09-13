@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[btsrv][ERROR] gatt exchange mtu param error @btsrv_gatt.c(32),ERROR" ID="0xd8920102" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[btsrv][ERROR] mc ble gatt mtu config req atb ret: %d @btsrv_gatt.c(41),ERROR" ID="0xd892014a" />
+			</MSG_LOG>

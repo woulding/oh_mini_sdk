@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="pbap pce update status null returned @sdk_pbap.c(165),WARNING" ID="0xdb78052b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="btsdk pbap pull phone book conn_hdl=0x%x @sdk_pbap.c(637),INFO" ID="0xdb7813ed" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="btsdk pbap pull phone book err ret=0x%x @sdk_pbap.c(650),WARNING" ID="0xdb781453" />
+			</MSG_LOG>

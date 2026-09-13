@@ -1,0 +1,32 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="sdp_clear_tx_buffer: cnt %d ret %d @dmac_sdp_rom.c(255),INFO" ID="0x83d007fd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_sdp_switch_channel_off:mac_fcs_request failed[%d]} @dmac_sdp_rom.c(360),WARNING" ID="0x83d00b43" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="vap[%d]{dmac_switch_channel_off::switch src channel[%d][%d] to dst channel[%d].} @dmac_sdp_rom.c(388),INFO" ID="0x83d00c25" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{dmac_switch_channel_off, status:%d, %d, %d, %d} @dmac_sdp_rom.c(393),INFO" ID="0x83d00c4d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_sdp_switch_channel_back:hal_device null} @dmac_sdp_rom.c(408),WARNING" ID="0x83d00cc3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="vap_id[%d] {dmac_sdp_switch_channel_back::switch src channel[%d] to dst[%d].} @dmac_sdp_rom.c(424),INFO" ID="0x83d00d45" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{sdp_timer_hook_callback::callback NULL} @dmac_sdp_rom.c(497),WARNING" ID="0x83d00f8b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{sdp_timer_hook_callback::callback failed[%d]} @dmac_sdp_rom.c(503),WARNING" ID="0x83d00fbb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{sdp_period_timer_hook_callback::send msg failed, restart peroid timer} @dmac_sdp_rom.c(517),WARNING" ID="0x83d0102b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sdp_wake_timer_hook dw_timer:%d @dmac_sdp_rom.c(608),INFO" ID="0x83d01305" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sdp_period_time_hook period:%d wake:%d @dmac_sdp_rom.c(671),INFO" ID="0x83d014fd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sdp_proc_wakeup_timer:sdp not init, dw %d total %d @dmac_sdp_rom.c(720),INFO" ID="0x83d01685" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sdp_proc_wakeup_timer:dw_period %d total %d err @dmac_sdp_rom.c(733),WARNING" ID="0x83d016eb" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sdp_proc_wakeup_timer dw_period:%d, total_period:%d @dmac_sdp_rom.c(760),INFO" ID="0x83d017c5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="SDP tx ok, tx_buffer_cnt %d @dmac_sdp_rom.c(779),INFO" ID="0x83d0185d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="SDP tx save, tx_buffer_cnt %d @dmac_sdp_rom.c(785),INFO" ID="0x83d0188d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="dmac_sdp_private_frame_time_check, time:%d_%d_%d_%d @dmac_sdp_rom.c(815),WARNING" ID="0x83d0197b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="process_sdp_private_frame, t_%d, d_%d @dmac_sdp_rom.c(822),WARNING" ID="0x83d019b3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="process_sdp_private_frame, P_%02x_%02x, A_%02x_%02x @dmac_sdp_rom.c(876),INFO" ID="0x83d01b65" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="process_sdp_sync_beacon, P_%02x_%02x, A_%02x_%02x @dmac_sdp_rom.c(907),INFO" ID="0x83d01c5d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="SDP is_private_sync %d @dmac_sdp_rom.c(947),INFO" ID="0x83d01d9d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sdp_mgnt_data_init period_timer start [%d][%d] @dmac_sdp_rom.c(1005),WARNING" ID="0x83d01f6b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sdp_dmac_rx_hook para invalid @dmac_sdp_rom.c(1037),INFO" ID="0x83d0206d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="SDP deinit @dmac_sdp_rom.c(1092),WARNING" ID="0x83d02223" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="SDP reinit @dmac_sdp_rom.c(1114),WARNING" ID="0x83d022d3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="SDP alloc len_%d fail @dmac_sdp_rom.c(1121),ERROR" ID="0x83d0230a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="SDP init OK:len_%d @dmac_sdp_rom.c(1127),WARNING" ID="0x83d0233b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sdp_dmac_rx_hook register fail! @dmac_sdp_rom.c(1134),ERROR" ID="0x83d02372" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sdp_dmac_tx_hook register fail! @dmac_sdp_rom.c(1141),ERROR" ID="0x83d023aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_config_sdp_init_status, init_info is null} @dmac_sdp_rom.c(1159),WARNING" ID="0x83d0243b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="dmac_config_sdp_add_peer_mac %x_%x,handle %d valid %d @dmac_sdp_rom.c(1192),WARNING" ID="0x83d02543" />
+			</MSG_LOG>

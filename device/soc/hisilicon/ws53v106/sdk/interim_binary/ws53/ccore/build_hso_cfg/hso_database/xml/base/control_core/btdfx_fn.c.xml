@@ -1,0 +1,16 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[INFO][DFX]dfx_bt_debug_cmd_callback:start_tx, freq=%d, mode=%d @btdfx_fn.c(131),INFO" ID="0x88a2041d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[INFO][DFX]dfx_bt_debug_cmd_callback:stop_tx @btdfx_fn.c(140),INFO" ID="0x88a20465" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[INFO][DFX]dfx_bt_debug_cmd_callback:start_rx : %d @btdfx_fn.c(148),INFO" ID="0x88a204a5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[INFO][DFX]dfx_bt_debug_cmd_callback:stop_rx @btdfx_fn.c(156),INFO" ID="0x88a204e5" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="dfx_sp_samp, clkn=0x%x, sp_intv=%d, enable_mode=%d @btdfx_fn.c(304),INFO" ID="0x88a20985" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="c_trim code write succ: XO_CORE_CTRIM_MAN = 0x%x @btdfx_fn.c(312),INFO" ID="0x88a209c5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="c_trim code XO_CORE_CTRIM_MAN = 0x%x @btdfx_fn.c(319),INFO" ID="0x88a209fd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dfx_es_reduce flag = %d @btdfx_fn.c(332),INFO" ID="0x88a20a65" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dfx_es_debug flag = %d @btdfx_fn.c(344),INFO" ID="0x88a20ac5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[memory dump start] type=%d @btdfx_fn.c(358),INFO" ID="0x88a20b35" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[memory dump end] @btdfx_fn.c(368),INFO" ID="0x88a20b85" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]BTC_MIPS_SWITCH=%d @btdfx_fn.c(380),INFO" ID="0x88a20be5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dfx_low_latency_auto_trans en = %d @btdfx_fn.c(403),INFO" ID="0x88a20c9d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]dfx_ble_latency_trans en=%d @btdfx_fn.c(415),INFO" ID="0x88a20cfd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]dfx_gle_latency_trans en=%d @btdfx_fn.c(427),INFO" ID="0x88a20d5d" />
+			</MSG_LOG>

@@ -1,0 +1,6 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="[GLE AA] enable encryption, crypt %d, key_deriv %d, integr_chk %d. @gle_aa_secu_ui.c(41),INFO" ID="0xde52014d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA] encrypt param req cbk par null error @gle_aa_secu_ui.c(73),ERROR" ID="0xde52024a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="op_ev = 0x%04X  @gle_aa_secu_ui.c(76),INFO" ID="0xde520265" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA] encrypt change cbk par null error @gle_aa_secu_ui.c(84),ERROR" ID="0xde5202a2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="op_ev = 0x%04X  @gle_aa_secu_ui.c(87),INFO" ID="0xde5202bd" />
+			</MSG_LOG>

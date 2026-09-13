@@ -14,10 +14,14 @@ prebuilts/
 docs/
 
 # ===== XTS 大体积测试集（mini 系统一般不用；保留 testfwk/device_attest_lite）=====
+# 注意：test/xts/tools/lite/hctest/hctest_opt_args.gni 是 gn 必需 import 文件，必须保留
 test/xts/acts/
 test/xts/hats/
 test/xts/dcts/
-test/xts/tools/
+test/xts/tools/*
+!test/xts/tools/lite
+test/xts/tools/lite/*
+!test/xts/tools/lite/hctest
 
 # ===== 与 mini 系统无关的大型三方测试集 =====
 third_party/vk-gl-cts/
@@ -25,9 +29,23 @@ third_party/vk-gl-cts/
 # ===== 芯片 SDK 非源码部分 =====
 # 编译产物
 device/soc/hisilicon/*/sdk/output/
-device/soc/hisilicon/*/sdk/interim_binary/
-# 原厂工具（ws63v100 的 tools 含独立工具链，排除后新机器需自备工具链才能编译 SDK）
-device/soc/hisilicon/*/sdk/tools/
+device/soc/hisilicon/*/sdk/interim_binary/*
+!device/soc/hisilicon/*/sdk/interim_binary/ws63
+!device/soc/hisilicon/*/sdk/interim_binary/ws53
+!device/soc/hisilicon/*/sdk/interim_binary/bs21e
+# ws63/bs21e 的 interim_binary 只保留 bin（boot/nv 占位二进制），libs 为大体积预编译产物
+device/soc/hisilicon/*/sdk/interim_binary/ws63/*
+!device/soc/hisilicon/*/sdk/interim_binary/ws63/bin
+device/soc/hisilicon/*/sdk/interim_binary/bs21e/*
+!device/soc/hisilicon/*/sdk/interim_binary/bs21e/bin
+# ws53 只保留 bin/acore/ccore（原厂随包发布的 boot/nv/hso 数据库）；
+# libs/{ohos,wifi} 是每次构建由 hm_build.sh / cmake 重新生成的链接产物，不提交
+device/soc/hisilicon/*/sdk/interim_binary/ws53/*
+!device/soc/hisilicon/*/sdk/interim_binary/ws53/bin
+!device/soc/hisilicon/*/sdk/interim_binary/ws53/acore
+!device/soc/hisilicon/*/sdk/interim_binary/ws53/ccore
+# 原厂工具：SDK 自带交叉编译工具链，缺它新机器无法编译（约 1.3GB，随仓库提交）
+!device/soc/hisilicon/*/sdk/tools/
 
 # ===== 个人工具配置（按需取消注释）=====
 # .agents/

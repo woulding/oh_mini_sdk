@@ -1,0 +1,8 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[bgtp][scan]txpd_node alloc fail! @evt_task_ble_scan.c(279),ERROR" ID="0x886008ba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp][scan]txbuff_node alloc fail! @evt_task_ble_scan.c(288),ERROR" ID="0x88600902" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp][scan]evt_task_ble_scan_create_desc, env_ptr is NULL @evt_task_ble_scan.c(325),WARNING" ID="0x88600a2b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp][scan]evt_task_ble_scan_end_process, prog_num=%d @evt_task_ble_scan.c(381),INFO" ID="0x88600bed" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp][scan]evt_task_ble_scan_fsm_start, evt task scan fsm switch to idle! @evt_task_ble_scan.c(419),INFO" ID="0x88600d1d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp][scan]evt_task_ble_scan_start, start fail, env_ptr is NULL! @evt_task_ble_scan.c(470),WARNING" ID="0x88600eb3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp][scan]evt_task_ble_scan_start, evt task start fail! @evt_task_ble_scan.c(498),WARNING" ID="0x88600f93" />
+			</MSG_LOG>

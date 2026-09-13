@@ -1,0 +1,7 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]hci_gle_cmd_reject: opcode = 0x%x, err_code = 0x%x @hci_gle.c(280),INFO" ID="0x888208c5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_gle_send_hw_err: error code(0x%x) @hci_gle.c(325),WARNING" ID="0x88820a2b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]hci_gle_cmd_received: opcode = 0x%x, payload length = 0x%x @hci_gle.c(416),INFO" ID="0x88820d05" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_gle_cmd_received unknown hci cmd opcode(0x%x) @hci_gle.c(423),WARNING" ID="0x88820d3b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_gle_cmd_received opcode(0x%x) out of command window @hci_gle.c(430),WARNING" ID="0x88820d73" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_gle_pack_evt get unknown evt_code(0x%x) @hci_gle.c(630),WARNING" ID="0x888213b3" />
+			</MSG_LOG>

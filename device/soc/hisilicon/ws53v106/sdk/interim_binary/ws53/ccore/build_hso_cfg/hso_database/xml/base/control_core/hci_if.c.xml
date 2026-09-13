@@ -1,0 +1,9 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_if_tx_start, tx_func_fail, data_len=0x%x @hci_if.c(237),WARNING" ID="0x8808076b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]hci_rx_packet_generic_handler: length invalid @hci_if.c(395),WARNING" ID="0x88080c5b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]hci_rx_packet_generic_handler: get_buf fail @hci_if.c(405),WARNING" ID="0x88080cab" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]hci_if_rx_in_message_mode: protocol_type = %d, unknown msg_type = 0x%x @hci_if.c(437),WARNING" ID="0x88080dab" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_if_rx_in_message_mode: data length invalid, msg_len = %d @hci_if.c(444),WARNING" ID="0x88080de3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_if_rx_in_stream_mode: pkt type unknown(0x%x) @hci_if.c(544),WARNING" ID="0x88081103" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_if_register memset_s fail hci_if_t len(%d) @hci_if.c(599),WARNING" ID="0x880812bb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_if_register memset_s fail hci_rx_stream_t len(%d) @hci_if.c(618),WARNING" ID="0x88081353" />
+			</MSG_LOG>

@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{cali_rc_comp::pst_device-&gt;uc_trans_chn &gt; 2!} @cali_rc_comp.c(31),ERROR" ID="0x816000fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{cali_rc_comp::pst_device-&gt;uc_trans_chn &gt; 2!} @cali_rc_comp.c(71),ERROR" ID="0x8160023a" />
+			</MSG_LOG>

@@ -1,0 +1,22 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{dmac_btcoex_vap_one_packet_send::ps_bit[%d].} @dmac_btcoex_rom.c(98),WARNING" ID="0x82dc0313" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_btcoex_ps_switch_on::mac_fcs busy.} @dmac_btcoex_rom.c(165),WARNING" ID="0x82dc052b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_btcoex_ps_switch_on::dmac_vap[%d] IS NULL.} @dmac_btcoex_rom.c(179),ERROR" ID="0x82dc059a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_btcoex_device_ps_status_handler::dmac_vap[%d] IS NULL.} @dmac_btcoex_rom.c(242),ERROR" ID="0x82dc0792" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_btcoex_dev_ps_status_handler::ignore ps on cur_state=%d.} @dmac_btcoex_rom.c(299),WARNING" ID="0x82dc095b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_btcoex_btble_status_handler::post failed sub_type[%d].} @dmac_btcoex_rom.c(319),ERROR" ID="0x82dc09fa" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="dmac_btcoex_set_ps_flag_handler::one_pkt_en:%u, dis_abort:%u, reply_cts:%u, rsp_frame_ps:%u. @dmac_btcoex_rom.c(347),WARNING" ID="0x82dc0adb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_btcoex_post_miss_beacon, send_cfg_to_host failed[%d]! @dmac_btcoex_rom.c(441),ERROR" ID="0x82dc0dca" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="  ps_en=%u in_ps_on=%u in_que_pause=%u @dmac_btcoex_rom.c(458),WARNING" ID="0x82dc0e53" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="  dis_abort=%u reply_cts=%u rsp_frame_ps=%u @dmac_btcoex_rom.c(460),WARNING" ID="0x82dc0e63" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="  abort_total=%us %uus @dmac_btcoex_rom.c(461),WARNING" ID="0x82dc0e6b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="  mode_select_cnt=%u, %u @dmac_btcoex_rom.c(470),WARNING" ID="0x82dc0eb3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="  abort_start=%u, %u @dmac_btcoex_rom.c(473),WARNING" ID="0x82dc0ecb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="  duration_total=%u @dmac_btcoex_rom.c(476),WARNING" ID="0x82dc0ee3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="  duration_ps=%u @dmac_btcoex_rom.c(479),WARNING" ID="0x82dc0efb" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="duration_bt=%u, %u @dmac_btcoex_rom.c(482),WARNING" ID="0x82dc0f13" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="  ps_delay[0-3]=%u,%u,%u,%u @dmac_btcoex_rom.c(487),WARNING" ID="0x82dc0f3b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="  ps_delay[4-7]=%u,%u,%u,%u @dmac_btcoex_rom.c(490),WARNING" ID="0x82dc0f53" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="dmac_btcoex_config_aggr_num:aggr_num[%u] over max[%u]. @dmac_btcoex_rom.c(512),ERROR" ID="0x82dc1002" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_btcoex_config_aggr_num:config aggr num:%u. @dmac_btcoex_rom.c(516),INFO" ID="0x82dc1025" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_btcoex_sync_occupied_time:tbtt occupied_utime:%uus. @dmac_btcoex_rom.c(527),WARNING" ID="0x82dc107b" />
+			</MSG_LOG>

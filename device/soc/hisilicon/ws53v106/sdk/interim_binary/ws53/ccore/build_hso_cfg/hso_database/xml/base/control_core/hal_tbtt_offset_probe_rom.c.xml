@@ -1,0 +1,11 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{hal_tbtt_offset_probe_init fail:vap[%d]} @hal_tbtt_offset_probe_rom.c(38),ERROR" ID="0x85060132" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{hal_tbtt_offset_probe_init vap[%d] offset_siso_base[%d] offset_mimo_base[%d]} @hal_tbtt_offset_probe_rom.c(58),WARNING" ID="0x850601d3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] hh503_tbtt_offset_probe_no_frm_int::probe restart @hal_tbtt_offset_probe_rom.c(91),WARNING" ID="0x850602db" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="vap_id[%d] hal_tbtt_offset_up_probe:index[%d] beacon_rx[%d],frm_switch[%d] @hal_tbtt_offset_probe_rom.c(105),WARNING" ID="0x8506034b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hal_tbtt_offset_down_probe::done:idx-%d,ration-%d,best idx-%d,ration-%d. @hal_tbtt_offset_probe_rom.c(148),WARNING" ID="0x850604a3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="vap_id[%d] hal_tbtt_offset_probe:index[%d]rx ration[%d]no_frm_switch[%d] @hal_tbtt_offset_probe_rom.c(184),ERROR" ID="0x850605c2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="vap_id[%d] hal_tbtt_offset_probe:siso mimo offset[%d] [%d] @hal_tbtt_offset_probe_rom.c(186),ERROR" ID="0x850605d2" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="vap_id[%d] hal_tbtt_offset_probe:index[%d]rx ration[%d]no_frm_switch[%d] @hal_tbtt_offset_probe_rom.c(189),WARNING" ID="0x850605eb" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="vap_id[%d] hal_tbtt_offset_probe:siso mimo offset[%d] [%d] @hal_tbtt_offset_probe_rom.c(191),WARNING" ID="0x850605fb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_tbtt_offset_probe:pst_tbtt_offset_probe is NULL} @hal_tbtt_offset_probe_rom.c(211),ERROR" ID="0x8506069a" />
+			</MSG_LOG>

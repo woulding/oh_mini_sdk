@@ -1,0 +1,9 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hh503_initialize_single_rf_sys::device == NULL} @hal_rf.c(302),ERROR" ID="0x82880972" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hh503_initialize_rf_sys::hal_device is null! @hal_rf.c(319),ERROR" ID="0x828809fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hh503_initialize_rf_sys::support bw_rxdc_txdciq_txpwr. @hal_rf.c(323),INFO" ID="0x82880a1d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_config_custom_rf::param is null.} @hal_rf.c(342),ERROR" ID="0x82880ab2" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hh503_config_custom_rf::delt_20_2g=%d,delt_40_2g=%d,delt_20_5g=%d,delt_40_5g=%d. @hal_rf.c(380),WARNING" ID="0x82880be3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hh503_config_custom_rf::far_dist_pow_gain[%d],far_dist_dsss_scale_promote[%d],chn_radio_cap[%d],temp[%d] @hal_rf.c(384),WARNING" ID="0x82880c03" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_config_custom_rssi_for_loss::rssi == NULL} @hal_rf.c(414),ERROR" ID="0x82880cf2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_adjust_tx_power_level_ext::ch=%u power=%d} @hal_rf.c(447),WARNING" ID="0x82880dfb" />
+			</MSG_LOG>

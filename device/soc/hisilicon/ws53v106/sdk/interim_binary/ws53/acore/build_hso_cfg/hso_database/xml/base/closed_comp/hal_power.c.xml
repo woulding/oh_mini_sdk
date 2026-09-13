@@ -1,0 +1,11 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{hh503_set_resp_frm_phy_tx_mode: distance_idx[%u] invalid!} @hal_power.c(111),ERROR" ID="0x80ca037a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hal_pow_set_resp_frame_tx_power::band[%u]chan_idx[%u] is invalid} @hal_power.c(182),WARNING" ID="0x80ca05b3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hh503_pow_set_band_user_resp_frame_tx_power::distance[%d]subband[%d]2g_ack_cts_pow_code dsss[0x%x]ofdm 24M[0x%x] @hal_power.c(214),INFO" ID="0x80ca06b5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_pow_set_user_resp_frm_phy_tx_mode: pow_code[0x%x] tpc_code[0x%x]!} @hal_power.c(271),INFO" ID="0x80ca087d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_pow_set_band_spec_frame_tx_power::band[%u]chan_idx[%u] is invalid} @hal_power.c(313),WARNING" ID="0x80ca09cb" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{set_pow_to_pow_code_tpc_cali:ch_idx:%d sar:%d max_power_tmp1:%d table len:%d} @hal_power.c(420),INFO" ID="0x80ca0d25" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="set_pow_to_pow_code::max_power_tmp:%d limit:%d tgt_pow:%d tpc_code:0x%x @hal_power.c(445),INFO" ID="0x80ca0ded" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_rf_limit_power::band = %u, limit_power = %u} @hal_power.c(545),WARNING" ID="0x80ca110b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_peer_macaddr::waiting lut ce idle timeout!} @hal_power.c(676),ERROR" ID="0x80ca1522" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_peer_macaddr::waiting lut ce idle timeout!} @hal_power.c(686),ERROR" ID="0x80ca1572" />
+			</MSG_LOG>

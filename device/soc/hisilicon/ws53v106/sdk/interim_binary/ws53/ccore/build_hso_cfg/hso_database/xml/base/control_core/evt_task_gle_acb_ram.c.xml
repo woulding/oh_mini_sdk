@@ -1,0 +1,10 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="evt_task_gle_acb_llcp_tx sed 0x%x, opcode 0x%x filter by enc @evt_task_gle_acb_ram.c(304),INFO" ID="0x89840985" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[BGTP] evt_task_gle_acb_set_mic_trx_filter con_hdl 0x%x, tx 0x%x, rx 0x%x @evt_task_gle_acb_ram.c(346),INFO" ID="0x89840ad5" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="evt_task_gle_acb_set_phy_info tx_format(0x%x)rx_format(0x%x)tx_phy(0x%x)rx_phy(0x%x) @evt_task_gle_acb_ram.c(422),INFO" ID="0x89840d35" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="evt_task_gle_acb_set_phy_info tx_pilot_ratio(0x%x)rx_pilot_ratio(0x%x)mcs(0x%x) @evt_task_gle_acb_ram.c(424),INFO" ID="0x89840d45" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP]evt_task_gle_acb_init sed_index(%d), timestamp(0x%x)us_offset(%d)rx_win(%d) @evt_task_gle_acb_ram.c(594),INFO" ID="0x89841295" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP]evt_task_gle_acb_create_es_task sed_index 0x%x, interval %d, anchor point 0x%x, delay %d @evt_task_gle_acb_ram.c(647),INFO" ID="0x8984143d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[BGTP]evt_task_gle_acb_create env exist, sed_index %d @evt_task_gle_acb_ram.c(689),ERROR" ID="0x8984158a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[BGTP] evt_task_gle_acb_destory con_hdl 0x%x @evt_task_gle_acb_ram.c(795),INFO" ID="0x898418dd" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[BGTP]evt_task_gle_acb_update_param_with_instant sed_index(%d)timestamp(0x%x)us_offset(%d)rx_win(%d) @evt_task_gle_acb_ram.c(852),INFO" ID="0x89841aa5" />
+			</MSG_LOG>

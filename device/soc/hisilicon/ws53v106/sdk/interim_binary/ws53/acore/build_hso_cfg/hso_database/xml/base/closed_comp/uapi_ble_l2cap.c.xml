@@ -1,0 +1,30 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[ACore] ble general: l2cap general interface conn_node find fail @uapi_ble_l2cap.c(211),ERROR" ID="0xd87a069a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general main conn cfm: psm:%d @uapi_ble_l2cap.c(237),INFO" ID="0xd87a076d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[ACore] ble general: l2cap general main conn complete: cid %d rcid %d role %d. @uapi_ble_l2cap.c(252),INFO" ID="0xd87a07e5" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ACore] ble general: l2cap general main conn complete: addr:0x%02x:**:**:**:**:%02x atype %d cap %d. @uapi_ble_l2cap.c(255),INFO" ID="0xd87a07fd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ACore] ble general: l2cap general main conn indication: psm %d cid %d. @uapi_ble_l2cap.c(279),INFO" ID="0xd87a08bd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general psm:%d not regist. @uapi_ble_l2cap.c(293),INFO" ID="0xd87a092d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ACore] ble general: l2cap general channel req result: psm %d cid %d rcid %d result %d. @uapi_ble_l2cap.c(307),INFO" ID="0xd87a099d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general channel disconnect: cid %d. @uapi_ble_l2cap.c(319),INFO" ID="0xd87a09fd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ST L2cap]sdk_reg done! @uapi_ble_l2cap.c(350),INFO" ID="0xd87a0af5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general interface reg psm fail. len = %u @uapi_ble_l2cap.c(361),ERROR" ID="0xd87a0b4a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general interface reg psm fail: %d @uapi_ble_l2cap.c(367),ERROR" ID="0xd87a0b7a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[ACore] ble general: l2cap reg psm. psm:0x%x cid:0x%x ch_type:0x%x @uapi_ble_l2cap.c(372),INFO" ID="0xd87a0ba5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general interface credit conn req fail. len = %u @uapi_ble_l2cap.c(383),ERROR" ID="0xd87a0bfa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general interface fail: %d @uapi_ble_l2cap.c(389),ERROR" ID="0xd87a0c2a" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ACore] ble general: l2cap credit conn req. psm:0x%x cid:0x%x add:0x%02x:**:**:**:**:%02x @uapi_ble_l2cap.c(395),INFO" ID="0xd87a0c5d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general interface credit ch rx fail. len = %u @uapi_ble_l2cap.c(409),ERROR" ID="0xd87a0cca" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[ACore] ble general: l2cap credit conn rx cid 0x%x conn_hdl 0x%x pkt_len %d.  @uapi_ble_l2cap.c(415),INFO" ID="0xd87a0cfd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general interface disconnect fail. len = %u @uapi_ble_l2cap.c(434),ERROR" ID="0xd87a0d92" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble general: l2cap general interface fail: %d @uapi_ble_l2cap.c(440),ERROR" ID="0xd87a0dc2" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ACore] ble general: l2cap disconnect .cid:0x%x reason:0x%x add:0x%02x:**:**:**:**:%02x @uapi_ble_l2cap.c(445),INFO" ID="0xd87a0ded" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ACore] ble conn general l2cap proc:cmdid:0x%02X pay_len:%d. @uapi_ble_l2cap.c(471),INFO" ID="0xd87a0ebd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble conn general l2cap proc no handle for command id:0x%02x.  @uapi_ble_l2cap.c(486),INFO" ID="0xd87a0f35" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ACore] ble: l2cap le psm. psm:%d type:%d error. @uapi_ble_l2cap.c(499),ERROR" ID="0xd87a0f9a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ACore] ble: l2cap le psm. psm:%d type:%d error. @uapi_ble_l2cap.c(505),ERROR" ID="0xd87a0fca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble: l2cap reg le psm:%d already regist. @uapi_ble_l2cap.c(523),INFO" ID="0xd87a105d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] ble: l2cap reg le psm create psm_node fail. @uapi_ble_l2cap.c(529),INFO" ID="0xd87a108d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble: l2cap unreg le psm:%d not regist. @uapi_ble_l2cap.c(551),ERROR" ID="0xd87a113a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] ble: l2cap reg le psm:%d not regist. @uapi_ble_l2cap.c(569),ERROR" ID="0xd87a11ca" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[ACore] ble: l2cap channel tx addr is not ready addr:0x%02x:**:**:**:%02x:%02x. @uapi_ble_l2cap.c(588),ERROR" ID="0xd87a1262" />
+			</MSG_LOG>

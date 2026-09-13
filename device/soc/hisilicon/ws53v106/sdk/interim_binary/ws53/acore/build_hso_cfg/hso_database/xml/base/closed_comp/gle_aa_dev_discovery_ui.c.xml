@@ -1,0 +1,21 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="adv_param is null @gle_aa_dev_discovery_ui.c(27),ERROR" ID="0xde5000da" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="aa set adv params in @gle_aa_dev_discovery_ui.c(63),INFO" ID="0xde5001fd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="data_off point null @gle_aa_dev_discovery_ui.c(82),ERROR" ID="0xde500292" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="adv data_off = %u, data_len = %u, operation = 0x%x, ops = 0x%x @gle_aa_dev_discovery_ui.c(97),INFO" ID="0xde50030d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle aa set adv data mem new failed @gle_aa_dev_discovery_ui.c(102),ERROR" ID="0xde500332" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle aa set adv data memcpy failed @gle_aa_dev_discovery_ui.c(111),ERROR" ID="0xde50037a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="adv_handle = 0x%x, adv_enable = 0x%x @gle_aa_dev_discovery_ui.c(140),INFO" ID="0xde500465" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="adv_handle = 0x%x @gle_aa_dev_discovery_ui.c(152),INFO" ID="0xde5004c5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle aa clear adv sets @gle_aa_dev_discovery_ui.c(162),INFO" ID="0xde500515" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA] adv terminated cbk par null error @gle_aa_dev_discovery_ui.c(172),ERROR" ID="0xde500562" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="op_ev = 0x%02X  @gle_aa_dev_discovery_ui.c(176),INFO" ID="0xde500585" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA] link is null @gle_aa_dev_discovery_ui.c(185),ERROR" ID="0xde5005ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA] scan_params is null @gle_aa_dev_discovery_ui.c(205),ERROR" ID="0xde50066a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="cmd mem new failed @gle_aa_dev_discovery_ui.c(212),ERROR" ID="0xde5006a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA] scan_params is null @gle_aa_dev_discovery_ui.c(233),ERROR" ID="0xde50074a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="cmd mem new failed @gle_aa_dev_discovery_ui.c(241),ERROR" ID="0xde50078a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA] scan_enable is null @gle_aa_dev_discovery_ui.c(264),ERROR" ID="0xde500842" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="scan_enable = 0x%x, filter_duplicates = 0x%x @gle_aa_dev_discovery_ui.c(272),INFO" ID="0xde500885" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE AA] adv report cbk par null error @gle_aa_dev_discovery_ui.c(283),ERROR" ID="0xde5008da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="op_ev = 0x%02X  @gle_aa_dev_discovery_ui.c(287),INFO" ID="0xde5008fd" />
+			</MSG_LOG>

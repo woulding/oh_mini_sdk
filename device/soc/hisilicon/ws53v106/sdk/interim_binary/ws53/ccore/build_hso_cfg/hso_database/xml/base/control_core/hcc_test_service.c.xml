@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="hcc test task init failed @hcc_test_service.c(155),ERROR" ID="0xa64004da" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="malloc user_param ERR @hcc_test_service.c(223),ERROR" ID="0xa64006fa" />
+			</MSG_LOG>

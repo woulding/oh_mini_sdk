@@ -1,0 +1,29 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="ssapc discovery services conn_handle = 0x%x @gle_ssap_client_ui.c(28),INFO" ID="0xde8a00e5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="disc_srv_param new failed @gle_ssap_client_ui.c(31),ERROR" ID="0xde8a00fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="discovery_service memcpy failed @gle_ssap_client_ui.c(36),ERROR" ID="0xde8a0122" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="discovery_service point null @gle_ssap_client_ui.c(60),ERROR" ID="0xde8a01e2" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="addr:%02x:**:**:**:%02x:%02x, type = 0x%x @gle_ssap_client_ui.c(65),INFO" ID="0xde8a020d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssap discovery service all @gle_ssap_client_ui.c(68),INFO" ID="0xde8a0225" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssap discovery service by uuid @gle_ssap_client_ui.c(70),INFO" ID="0xde8a0235" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssap discovery service link not found @gle_ssap_client_ui.c(74),ERROR" ID="0xde8a0252" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssapc discovery services = 0x%x failed @gle_ssap_client_ui.c(79),ERROR" ID="0xde8a027a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssapc indication cfm param error @gle_ssap_client_ui.c(93),ERROR" ID="0xde8a02ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="indication_cfm_val mem new failed @gle_ssap_client_ui.c(98),ERROR" ID="0xde8a0312" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssapc indication cfm mem cpy failed @gle_ssap_client_ui.c(103),ERROR" ID="0xde8a033a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssapc write cmd param null @gle_ssap_client_ui.c(127),ERROR" ID="0xde8a03fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property mem new failed @gle_ssap_client_ui.c(144),ERROR" ID="0xde8a0482" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property mem cpy failed @gle_ssap_client_ui.c(149),ERROR" ID="0xde8a04aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle read req failed, param len upper limit exceeded. @gle_ssap_client_ui.c(171),ERROR" ID="0xde8a055a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property mem new failed @gle_ssap_client_ui.c(176),ERROR" ID="0xde8a0582" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property mem cpy failed @gle_ssap_client_ui.c(181),ERROR" ID="0xde8a05aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="read_param mem new failed @gle_ssap_client_ui.c(205),ERROR" ID="0xde8a066a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="read_param mem cpy failed @gle_ssap_client_ui.c(210),ERROR" ID="0xde8a0692" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssapc write req param null @gle_ssap_client_ui.c(233),ERROR" ID="0xde8a074a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property mem new failed @gle_ssap_client_ui.c(238),ERROR" ID="0xde8a0772" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property mem cpy failed @gle_ssap_client_ui.c(243),ERROR" ID="0xde8a079a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[gle ssapc_exchange_info]param null @gle_ssap_client_ui.c(266),ERROR" ID="0xde8a0852" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle ssapc_exchange_mtu]mtu = 0x%x invalid @gle_ssap_client_ui.c(270),ERROR" ID="0xde8a0872" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle ssapc_exchange_mtu]mtu = 0x%x @gle_ssap_client_ui.c(273),INFO" ID="0xde8a088d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="exchange_info mem new failed @gle_ssap_client_ui.c(276),ERROR" ID="0xde8a08a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="exchange_info memcpy failed @gle_ssap_client_ui.c(281),ERROR" ID="0xde8a08ca" />
+			</MSG_LOG>

@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="ScanResultCallback primPhy: %d secPhy: %d event_type: %d @ble_at_cmd_gap_test.c(75),INFO" ID="0xd848025d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="ScanResultCallback data_status: %d addr_type: %d @ble_at_cmd_gap_test.c(77),INFO" ID="0xd848026d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble at cmd gap register callbacks in @ble_at_cmd_gap_test.c(136),INFO" ID="0xd8480445" />
+			</MSG_LOG>

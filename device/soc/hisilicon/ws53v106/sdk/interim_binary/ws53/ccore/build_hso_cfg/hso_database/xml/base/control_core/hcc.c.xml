@@ -1,0 +1,20 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="hcc stop xfer q:%d @hcc.c(89),ERROR" ID="0xa64402ca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc queue rx srv[%d] null @hcc.c(170),ERROR" ID="0xa6440552" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc thread err qid:%d @hcc.c(235),ERROR" ID="0xa644075a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc thread dir err qid:%d @hcc.c(252),ERROR" ID="0xa64407e2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc thread null @hcc.c(284),ERROR" ID="0xa64408e2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc task wait err @hcc.c(493),ERROR" ID="0xa6440f6a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc thread create failed! @hcc.c(502),ERROR" ID="0xa6440fb2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc module init err:%d @hcc.c(566),ERROR" ID="0xa64411b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc module malloc err @hcc.c(580),ERROR" ID="0xa6441222" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc module malloc err @hcc.c(590),ERROR" ID="0xa6441272" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc init param err @hcc.c(659),ERROR" ID="0xa644149a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc init module init err @hcc.c(664),ERROR" ID="0xa64414c2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc init dfx init, ret %x @hcc.c(670),ERROR" ID="0xa64414f2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc init bus load fail @hcc.c(677),ERROR" ID="0xa644152a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc bt tx proc state:%d @hcc.c(695),ERROR" ID="0xa64415ba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc bt tx params null! @hcc.c(723),ERROR" ID="0xa644169a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hcc bt tx srv err q-%d, serv-%d @hcc.c(737),ERROR" ID="0xa644170a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc bt tx srv-%d alloc or free  null @hcc.c(742),ERROR" ID="0xa6441732" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc bt tx srv alloc fail @hcc.c(748),ERROR" ID="0xa6441762" />
+			</MSG_LOG>

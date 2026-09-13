@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="hal_pow_sync_tpc_code_to_dmac:send tpc fail[%d] @fe_tpc_rate_pow.c(172),ERROR" ID="0x81760562" />
+			</MSG_LOG>

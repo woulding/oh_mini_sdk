@@ -1,0 +1,11 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle create connection cancel fail! ret = %d  @sle_at_cm.c(205),ERROR" ID="0xd918066a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle disconnect remote device fail! ret = %d  @sle_at_cm.c(223),ERROR" ID="0xd91806fa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle set phy fail! ret = %d  @sle_at_cm.c(273),ERROR" ID="0xd918088a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle read access filter list size fail! ret = %d  @sle_at_cm.c(330),ERROR" ID="0xd9180a52" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle clear access filter list size fail! ret = %d  @sle_at_cm.c(343),ERROR" ID="0xd9180aba" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle add device to access filter list fail! ret = %d  @sle_at_cm.c(361),ERROR" ID="0xd9180b4a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle remove device from access filter list fail! ret = %d  @sle_at_cm.c(379),ERROR" ID="0xd9180bda" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle set channel map classification fail! ret = %d  @sle_at_cm.c(399),ERROR" ID="0xd9180c7a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle set data len fail! ret = %d  @sle_at_cm.c(412),ERROR" ID="0xd9180ce2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] sle set mcs fail! mcs 0~12 ret = %d  @sle_at_cm.c(425),ERROR" ID="0xd9180d4a" />
+			</MSG_LOG>

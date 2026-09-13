@@ -1,0 +1,7 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hh503_alloc_vap::create hal vap failed.} @hal_vap_rom.c(37),ERROR" ID="0x804c012a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_add_vap::vap num[%d] execeed spec[3], add failed.} @hal_vap_rom.c(71),ERROR" ID="0x804c023a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hal_del_vap::hal vap[%d] had alread del!} @hal_vap_rom.c(143),INFO" ID="0x804c047d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_vap_clr_opmode::hal vap id=%d &gt;= max vap=%d]} @hal_vap_rom.c(192),ERROR" ID="0x804c0602" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hal_vap_set_opmode::hal sta id=%d &gt;= max vap=%d]} @hal_vap_rom.c(223),ERROR" ID="0x804c06fa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hal_vap_set_opmode::hal sta id=%d,wrong vap mode[%d]} @hal_vap_rom.c(232),ERROR" ID="0x804c0742" />
+			</MSG_LOG>

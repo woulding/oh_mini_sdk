@@ -1,0 +1,10 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[ACore] recover key num:0x%02x. @device_manager.c(43),INFO" ID="0xd808015d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] recover product type:0x%02x. @device_manager.c(55),INFO" ID="0xd80801bd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] recover nv config:0x%02x. @device_manager.c(65),INFO" ID="0xd808020d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] recover system config:0x%02x. @device_manager.c(68),INFO" ID="0xd8080225" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ACore][Error] mc bt dev enable ble comp cmdid:0x%02X pay_len:%d. @device_manager.c(125),ERROR" ID="0xd80803ea" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ACore][Error] mc bt dev disable ble comp cmdid:0x%02X pay_len:%d. @device_manager.c(138),ERROR" ID="0xd8080452" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ACore][Error] mc bt dev power on comp cmdid:0x%02X pay_len:%d. @device_manager.c(151),ERROR" ID="0xd80804ba" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ACore] bt device mgr svr proc cmdid:0x%02X pay_len:%d. @device_manager.c(184),INFO" ID="0xd80805c5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ACore] bt device mgr svr proc command id:0x%02X invaild. @device_manager.c(197),ERROR" ID="0xd808062a" />
+			</MSG_LOG>

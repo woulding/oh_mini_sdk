@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[ERROR]ssi read return err @mpw_poweron.c(199),ERROR" ID="0x889a063a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ERROR]bt ssi write err:Addr 0x%x-&gt;%x @mpw_poweron.c(204),ERROR" ID="0x889a0662" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]write to:0x%x = 0x%x, read back value:0x%x @mpw_poweron.c(226),INFO" ID="0x889a0715" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]write to:0x%x = 0x%x, read back value:0x%x @mpw_poweron.c(235),INFO" ID="0x889a075d" />
+			</MSG_LOG>

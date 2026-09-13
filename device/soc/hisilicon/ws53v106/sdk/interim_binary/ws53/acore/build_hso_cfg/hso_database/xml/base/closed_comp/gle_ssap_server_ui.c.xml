@@ -1,0 +1,18 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="ssaps reg tree param null @gle_ssap_server_ui.c(36),ERROR" ID="0xde860122" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps reg tree send msg failed @gle_ssap_server_ui.c(44),ERROR" ID="0xde860162" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps update item value param null @gle_ssap_server_ui.c(68),ERROR" ID="0xde860222" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property_value mem new failed @gle_ssap_server_ui.c(73),ERROR" ID="0xde86024a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property_value mem cpy failed @gle_ssap_server_ui.c(78),ERROR" ID="0xde860272" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle ssaps update item value by uuid param null @gle_ssap_server_ui.c(99),ERROR" ID="0xde86031a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property_value mem new failed @gle_ssap_server_ui.c(104),ERROR" ID="0xde860342" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="property_value mem cpy failed @gle_ssap_server_ui.c(109),ERROR" ID="0xde86036a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps find hdl by uuid param null @gle_ssap_server_ui.c(134),ERROR" ID="0xde860432" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="find_handl mem new failed @gle_ssap_server_ui.c(139),ERROR" ID="0xde86045a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="target uuid mem cpy failed @gle_ssap_server_ui.c(150),ERROR" ID="0xde8604b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps mtu param null @gle_ssap_server_ui.c(173),ERROR" ID="0xde86056a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sssaps mtu mem new failed @gle_ssap_server_ui.c(178),ERROR" ID="0xde860592" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ssap mtu size:%d @gle_ssap_server_ui.c(183),ERROR" ID="0xde8605ba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ssaps find hdl by uuid param null @gle_ssap_server_ui.c(204),ERROR" ID="0xde860662" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="send_rsp mem new failed @gle_ssap_server_ui.c(209),ERROR" ID="0xde86068a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="send_rsp mem mem cpy failed @gle_ssap_server_ui.c(215),ERROR" ID="0xde8606ba" />
+			</MSG_LOG>

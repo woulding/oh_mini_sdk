@@ -1,0 +1,17 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[R Code]code=%d @cali_rx.c(293),INFO" ID="0x88be092d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[MOM CAP]process_code=%d @cali_rx.c(347),INFO" ID="0x88be0add" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="dc_dig_i is %d, dc_dig_q is %d, @cali_rx.c(423),INFO" ID="0x88be0d3d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="rxdc lna = %d, val = 0x%x @cali_rx.c(436),INFO" ID="0x88be0da5" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="rxdc lna4 CH0 = 0x%x, rxdc lna4 CH39 = 0x%x, rxdc lna4 CH78 = 0x%x @cali_rx.c(452),INFO" ID="0x88be0e25" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="dc_dig_i is %d, dc_dig_q is %d, @cali_rx.c(473),INFO" ID="0x88be0ecd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[Rx DC][Digital]I=0x%x Q=0x%x @cali_rx.c(532),INFO" ID="0x88be10a5" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[Rx DC][Analog][DLNA]lvl.0=0x%x lvl.1=0x%x lvl.2=0x%x lvl.3=0x%x @cali_rx.c(535),INFO" ID="0x88be10bd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Rx DC][Analog][DLNA]lvl.4=0x%x @cali_rx.c(536),INFO" ID="0x88be10c5" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="LPF pwr_1m = %d, pwr_2_5m = %d, opt_i_q_lpf_cal = 0x%x @cali_rx.c(669),INFO" ID="0x88be14ed" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Rx LPF BW]code=0x%x @cali_rx.c(793),INFO" ID="0x88be18cd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="RF Cali LNA SAT DC Cali voffset is %d, vdet is %d @cali_rx.c(895),INFO" ID="0x88be1bfd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="RF Cali LNA SAT DC Cali voffset is %d, vdet is %d @cali_rx.c(922),INFO" ID="0x88be1cd5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[Rx IQ][DLNA]P=0x%x, E=0x%x @cali_rx.c(1055),INFO" ID="0x88be20fd" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[HADM_MULTI_TONE]val = %d, %d, %d, %d @cali_rx.c(1211),INFO" ID="0x88be25dd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[DUALTONE CALI] lna_lvl = %d, vga_val = %d @cali_rx.c(1220),INFO" ID="0x88be2625" />
+			</MSG_LOG>

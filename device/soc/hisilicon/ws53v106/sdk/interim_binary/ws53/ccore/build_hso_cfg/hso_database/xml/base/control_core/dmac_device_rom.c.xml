@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{dmac_device_init::dmac_device_init_etc failed[%d].} @dmac_device_rom.c(114),ERROR" ID="0x814a0392" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_device_init::mac_fcs_init failed.} @dmac_device_rom.c(119),WARNING" ID="0x814a03bb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_chip_init::dmac_device_init failed[%d].} @dmac_device_rom.c(211),WARNING" ID="0x814a069b" />
+			</MSG_LOG>

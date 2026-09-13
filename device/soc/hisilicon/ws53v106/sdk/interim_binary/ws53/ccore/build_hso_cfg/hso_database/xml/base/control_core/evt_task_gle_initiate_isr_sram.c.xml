@@ -1,0 +1,27 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]evt_task_gle_initiate_start_cbk, prog_num=%d @evt_task_gle_initiate_isr_sram.c(80),WARNING" ID="0x88f20283" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_initiate_abnormal_cbk, timestamp=0x%x, current time=0x%x, state=%d, task_id=0x%x @evt_task_gle_initiate_isr_sram.c(113),INFO" ID="0x88f2038d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]evt_task_gle_initiate_abnormal_cbk, prog_num=%d @evt_task_gle_initiate_isr_sram.c(118),WARNING" ID="0x88f203b3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[early version] evt_task_gle_initiate_start_aux_rx initiate with early version remote. @evt_task_gle_initiate_isr_sram.c(178),INFO" ID="0x88f20595" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_initiate_start_aux_rx, rx_winsz_us=%d, phy=%d, frame_format=%d, ch_idx=%d @evt_task_gle_initiate_isr_sram.c(198),INFO" ID="0x88f20635" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_initiate_start_rsp_rx, clock=0x%x, anchor_point=0x%x, us_offset=%d, rsp_offset=%d @evt_task_gle_initiate_isr_sram.c(233),INFO" ID="0x88f2074d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_initiate_start_req_tx, req_offset(%d)req_max_len(%d)rsp_offset(%d)req_num(%d) @evt_task_gle_initiate_isr_sram.c(352),WARNING" ID="0x88f20b03" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]evt_task_gle_initiate_start_req_tx, Init gt_role_ind=%d, adv gt_role_ind=%d @evt_task_gle_initiate_isr_sram.c(360),WARNING" ID="0x88f20b43" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_initiate_start_req_tx, clock=0x%x, us_offset=%d, anchor_point=0x%x, tx_offset=%d @evt_task_gle_initiate_isr_sram.c(387),INFO" ID="0x88f20c1d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[gle][initiate]check_targeta, peer_addr=%d, peer_addr_type=%d, own_addr_type=%d @evt_task_gle_initiate_isr_sram.c(423),WARNING" ID="0x88f20d3b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[gle][initiate]check_targeta, txadd=%d, rxadd=%d @evt_task_gle_initiate_isr_sram.c(425),WARNING" ID="0x88f20d4b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]evt_task_gle_initiate_rx_check, whitelist connect!, peer_addr_type=%d @evt_task_gle_initiate_isr_sram.c(433),INFO" ID="0x88f20d8d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]evt_task_gle_initiate_rx_check, state=%d, pdu_type=%d @evt_task_gle_initiate_isr_sram.c(444),INFO" ID="0x88f20de5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]evt_task_gle_initiate_rx_check, state=%d, pdu_type=%d @evt_task_gle_initiate_isr_sram.c(451),INFO" ID="0x88f20e1d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]evt_task_gle_initiate_rx_check, state=%d, pdu_type=%d @evt_task_gle_initiate_isr_sram.c(457),INFO" ID="0x88f20e4d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_initiate_parse_con_rsp, con_rsp_offset=0! @evt_task_gle_initiate_isr_sram.c(475),WARNING" ID="0x88f20edb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_initiate_parse_con_rsp, rsp_num=0! @evt_task_gle_initiate_isr_sram.c(482),WARNING" ID="0x88f20f13" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_initiate_rsp_rx_handle, parse_con_rsp fail! @evt_task_gle_initiate_isr_sram.c(525),WARNING" ID="0x88f2106b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE][INITIATE]MSG_ALLOC_FAILED! @evt_task_gle_initiate_isr_sram.c(540),ERROR" ID="0x88f210e2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]evt_task_gle_initiate_rsp_rx_handle, rsp_type=%d @evt_task_gle_initiate_isr_sram.c(549),WARNING" ID="0x88f2112b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_initiate_rsp_rx_handle, rsp_type=%d, con_role=%d, tx_addr=%d, rxpd_index=%d @evt_task_gle_initiate_isr_sram.c(566),INFO" ID="0x88f211b5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_initiate_rx_handle, unexpected behavior! @evt_task_gle_initiate_isr_sram.c(593),INFO" ID="0x88f2128d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]evt_task_gle_initiate_recv_data, status=0x%x, state=%d, rxpd_index=%d @evt_task_gle_initiate_isr_sram.c(616),INFO" ID="0x88f21345" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]evt_task_gle_initiate_evt_cbk, prog_num=%d @evt_task_gle_initiate_isr_sram.c(648),WARNING" ID="0x88f21443" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_initiate_cancel_cbk, timestamp=0x%x, current time=0x%x, state=%d, task_id=0x%x @evt_task_gle_initiate_isr_sram.c(677),INFO" ID="0x88f2152d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp][initiate]stop_cbk, timestamp=0x%x, current time=0x%x, task_id=0x%x @evt_task_gle_initiate_isr_sram.c(701),INFO" ID="0x88f215ed" />
+			</MSG_LOG>

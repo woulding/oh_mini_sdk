@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] hh503_tbtt_offset_probe_no_frm_int::probe restart @hal_tbtt_offset_probe.c(164),WARNING" ID="0x85060523" />
+			</MSG_LOG>

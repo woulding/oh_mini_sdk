@@ -1,0 +1,6 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[SMP]smp ecc gen key err. ret: 0x%x @smp_reserv.c(117),ERROR" ID="0xddfc03aa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[SMP]smp check on curve err. ret: 0x%x @smp_reserv.c(151),ERROR" ID="0xddfc04ba" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[SMP]smp gen ecdh key err. ret: 0x%x @smp_reserv.c(181),ERROR" ID="0xddfc05aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[INIT] ECDH public and private key calculate done. @smp_reserv.c(190),INFO" ID="0xddfc05f5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[INIT] ECDH public and private key calculate done. @smp_reserv.c(220),INFO" ID="0xddfc06e5" />
+			</MSG_LOG>

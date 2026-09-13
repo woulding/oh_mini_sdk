@@ -1,0 +1,7 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="hal_pm_wifi_cbb_iso_cfg::timeout. @hal_pm.c(111),ERROR" ID="0x8218037a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hal_pm_wifi_cbb_iso_cfg_down::timeout. @hal_pm.c(163),ERROR" ID="0x8218051a" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{sta0: inner status[%d], offset[%d], old ext offset[%d] new[%d].} @hal_pm.c(251),WARNING" ID="0x821807db" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hal_pm_get_tbtt_offset_adjust val %d} @hal_pm.c(587),WARNING" ID="0x8218125b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hal_pm_tsf_cali_beacon_timeout_proc adjust %d} @hal_pm.c(629),WARNING" ID="0x821813ab" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{hal_pm_tsf_cali_done_proc ne num[%d] ratio[%d] po num[%d] ratio[%d]} @hal_pm.c(654),WARNING" ID="0x82181473" />
+			</MSG_LOG>

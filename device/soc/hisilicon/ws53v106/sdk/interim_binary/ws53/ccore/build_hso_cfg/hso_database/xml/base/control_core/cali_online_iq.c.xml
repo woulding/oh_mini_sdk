@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{online_iq_send_msg2host:: fail, ret=%d} @cali_online_iq.c(173),WARNING" ID="0x8538056b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{online_iq_send_cali_frame:: fail, ret=%d} @cali_online_iq.c(235),WARNING" ID="0x8538075b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{online_iq_send_cali_frame:: fail, ret=%d} @cali_online_iq.c(283),WARNING" ID="0x853808db" />
+			</MSG_LOG>

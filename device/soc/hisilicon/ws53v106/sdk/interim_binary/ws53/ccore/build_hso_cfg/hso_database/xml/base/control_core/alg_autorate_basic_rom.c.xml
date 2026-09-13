@@ -1,0 +1,101 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_vap_rate_info::vap_id[%d] is invalid!} @alg_autorate_basic_rom.c(312),ERROR" ID="0x819e09c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_get_vap_rate_info_by_dmac_vap::dmac_vap pointer null!} @alg_autorate_basic_rom.c(324),ERROR" ID="0x819e0a22" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_get_user_rate_info:: dmac_user null.} @alg_autorate_basic_rom.c(341),WARNING" ID="0x819e0aab" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_user_rate_info:dmac_alg_get_user_priv_stru fail, user_lut[%d]} @alg_autorate_basic_rom.c(348),WARNING" ID="0x819e0ae3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_hal_rate_by_wlan_11b_rate::rate[%d] overflow!} @alg_autorate_basic_rom.c(380),WARNING" ID="0x819e0be3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_hal_rate_by_wlan_legacy_rate:rate[%d]overflow!} @alg_autorate_basic_rom.c(399),WARNING" ID="0x819e0c7b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_tx_param_legacy_rate_transfer::hal_tx_rate[0x%x]} @alg_autorate_basic_rom.c(413),WARNING" ID="0x819e0ceb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_tx_param_legacy_rate_transfer::hal_tx_rate[0x%x]} @alg_autorate_basic_rom.c(419),WARNING" ID="0x819e0d1b" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{alg_autorate_get_hal_nss_rate::err! protocol[%d], nss[%d], rat[%d]} @alg_autorate_basic_rom.c(461),ERROR" ID="0x819e0e6a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_wlan_protocol_to_su_phy_protocol_mode:protocol=%d err!} @alg_autorate_basic_rom.c(498),ERROR" ID="0x819e0f92" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_su_wlan_phy_protocol_mode_to_wlan_protocol:: phy_protocol[%d] err!} @alg_autorate_basic_rom.c(547),ERROR" ID="0x819e111a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_ht_nss_by_mcs_index:: HT rate_value[%d] invalid!} @alg_autorate_basic_rom.c(558),ERROR" ID="0x819e1172" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_tx_param_nss_mcs_analysis::input ptr null!} @alg_autorate_basic_rom.c(578),ERROR" ID="0x819e1212" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{tx_nss_mcs_analys:protocol[%d]rate[%d] invalid} @alg_autorate_basic_rom.c(622),ERROR" ID="0x819e1372" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{alg_rate_table_obtain::ERR PARAM! protocol[%d] bw[%d] nss[%d]} @alg_autorate_basic_rom.c(691),WARNING" ID="0x819e159b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{alg_ar_rate_stat_calc_goodput:fail! protocol[%d] gi[%d] dcm[%d] index[%d] @alg_autorate_basic_rom.c(739),ERROR" ID="0x819e171a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_rate_stat_calc_goodput: protocol[%d] invalid! @alg_autorate_basic_rom.c(765),ERROR" ID="0x819e17ea" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_rate_stat_subfrm_size_init::protocol[%d] invalid} @alg_autorate_basic_rom.c(811),ERROR" ID="0x819e195a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_get_vap_user_support_ldpc:ldpc support user=%d ldpc_support=%d } @alg_autorate_basic_rom.c(852),WARNING" ID="0x819e1aa3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_get_vap_user_support_ldpc:ldpc support user=%d vap=%d } @alg_autorate_basic_rom.c(863),WARNING" ID="0x819e1afb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_autorate_notify_best_rate_change:get rate table fail! user=%d} @alg_autorate_basic_rom.c(903),ERROR" ID="0x819e1c3a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_max_rate_avail::nss[%d] invalid!} @alg_autorate_basic_rom.c(974),ERROR" ID="0x819e1e72" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_max_rate_avail::bw[%d] invalid!} @alg_autorate_basic_rom.c(979),ERROR" ID="0x819e1e9a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{get_max_rate_avail:protocol[%d] invalid!} @alg_autorate_basic_rom.c(1003),ERROR" ID="0x819e1f5a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_min_rate_avail::nss[%d] invalid!} @alg_autorate_basic_rom.c(1017),ERROR" ID="0x819e1fca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_get_min_rate_avail::bw[%d] invalid!} @alg_autorate_basic_rom.c(1022),ERROR" ID="0x819e1ff2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{get_min_rate_avail:protocol[%d] invalid!} @alg_autorate_basic_rom.c(1046),ERROR" ID="0x819e20b2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_rate_set_index_available::protocol[%d] invalid!} @alg_autorate_basic_rom.c(1088),ERROR" ID="0x819e2202" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{check_rate_index::err protocol[%d] rate[%d]!} @alg_autorate_basic_rom.c(1126),ERROR" ID="0x819e2332" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_ar_rate_set_index_available::nss[%d]bw[%d] invalid!} @alg_autorate_basic_rom.c(1131),ERROR" ID="0x819e235a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_get_bigger_rate_index::max rate get fail!} @alg_autorate_basic_rom.c(1149),WARNING" ID="0x819e23eb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_get_smaller_rate_index::min rate get fail!} @alg_autorate_basic_rom.c(1173),WARNING" ID="0x819e24ab" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_set_schedule_fix_rate_info::nss_mcs_analysis fail!} @alg_autorate_basic_rom.c(1206),WARNING" ID="0x819e25b3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_set_schedule_fix_rate_info:table null} @alg_autorate_basic_rom.c(1218),WARNING" ID="0x819e2613" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{alg_ar_set_schedule_fix_rate_info::err gi type[%d] phy_protocol[%d] phy_gi[%d] dcm[%d]!} @alg_autorate_basic_rom.c(1223),WARNING" ID="0x819e263b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_set_schedule_fix_rate_info:get theorygoodput err} @alg_autorate_basic_rom.c(1231),WARNING" ID="0x819e267b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_set_schedule_fix_rate_info:set_normal_rate_stats fail!} @alg_autorate_basic_rom.c(1241),WARNING" ID="0x819e26cb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_set_schedule_rate_info:table null} @alg_autorate_basic_rom.c(1279),WARNING" ID="0x819e27fb" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{alg_ar_set_schedule_rate_info::err gi type[%d] protocol[%d] dcm[%d]!} @alg_autorate_basic_rom.c(1284),WARNING" ID="0x819e2823" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_set_schedule_rate_info:set_normal_rate_stats fail} @alg_autorate_basic_rom.c(1297),WARNING" ID="0x819e288b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{alg_autorate_change_protocol_mode::vap[%d] user[%d] protocol [%d] to [%d]} @alg_autorate_basic_rom.c(1316),WARNING" ID="0x819e2923" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_autorate_change_protocol_mode: change to legacy, set tid[%d] normal send.} @alg_autorate_basic_rom.c(1328),WARNING" ID="0x819e2983" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_autorate_change_protocol_mode:vap %d, syn fail!} @alg_autorate_basic_rom.c(1337),WARNING" ID="0x819e29cb" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[GLA][ALG][AR][AR_BITMAP1]:user_id=%d,protocol_bw_gi=0x%x,nss_mcs=0x%x,short_per=%d @alg_autorate_basic_rom.c(1348),WARNING" ID="0x819e2a23" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_init_bcast_data_tx_param::invalid en_protocol[%d].} @alg_autorate_basic_rom.c(1396),ERROR" ID="0x819e2ba2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_add_vap::vap NULL!} @alg_autorate_basic_rom.c(1474),WARNING" ID="0x819e2e13" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_autorate_add_vap::has been registered! new vap[%d]} @alg_autorate_basic_rom.c(1480),WARNING" ID="0x819e2e43" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_autorate_add_vap::VAP[%d]_CREATE} @alg_autorate_basic_rom.c(1487),WARNING" ID="0x819e2e7b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_start_vap::vap NULL!} @alg_autorate_basic_rom.c(1499),WARNING" ID="0x819e2edb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_autorate_start_vap::VAP[%d]_CREATE} @alg_autorate_basic_rom.c(1505),WARNING" ID="0x819e2f0b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_exit_vap::pst_vap pointer null!} @alg_autorate_basic_rom.c(1523),ERROR" ID="0x819e2f9a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_exit_vap:: vap null!} @alg_autorate_basic_rom.c(1533),ERROR" ID="0x819e2fea" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_autorate_exit_vap:vap[%d] not register} @alg_autorate_basic_rom.c(1538),WARNING" ID="0x819e3013" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_autorate_exit_vap::VAP[%d] DEL} @alg_autorate_basic_rom.c(1553),WARNING" ID="0x819e308b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_param_sync::alg_ar_get_device_rate_info fail!!} @alg_autorate_basic_rom.c(1569),WARNING" ID="0x819e310b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_dev_para_init::alg_ar_get_device_rate_info fail!!} @alg_autorate_basic_rom.c(1586),WARNING" ID="0x819e3193" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_basic_info::hal device null!} @alg_autorate_basic_rom.c(1602),ERROR" ID="0x819e3212" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{alg_ar_init_user::bw[%d], protocol[%d], enable_ampdu[%d] supp_ldpc[%d].} @alg_autorate_basic_rom.c(1632),WARNING" ID="0x819e3303" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{alg_ar_init_user::user nss[%d], user avail nss[%d], device nss[%d].} @alg_autorate_basic_rom.c(1634),WARNING" ID="0x819e3313" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_legacy_rate_set_capability:dmac_user NULL} @alg_autorate_basic_rom.c(1651),WARNING" ID="0x819e339b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{init_user_legacy_rate_set:user[%d] ratenum 0} @alg_autorate_basic_rom.c(1661),WARNING" ID="0x819e33eb" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_ar_init_user_legacy_rate:legacy_bitmap[0x%x], 11b_bitmat[0x%x]} @alg_autorate_basic_rom.c(1691),WARNING" ID="0x819e34db" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_ht_rate_set_capability:dmac_user NULL} @alg_autorate_basic_rom.c(1707),ERROR" ID="0x819e355a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{alg_ar_init_user_ht_rate_set_capability:ht_bitmap[0x%x], 20M_supp_sgi[%d], 40M_supp_sgi[%d]} @alg_autorate_basic_rom.c(1737),WARNING" ID="0x819e364b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_vht_rate_set_capability:dmac_user NULL} @alg_autorate_basic_rom.c(1758),ERROR" ID="0x819e36f2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_ar_init_user_vht_rate_set_capability:vht_1ss_bitmap[0x%x] max_nss[%d]} @alg_autorate_basic_rom.c(1797),WARNING" ID="0x819e382b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_ar_init_user_vht_rate_set_cap:20M_sgi[%d]40M_sgi[%d]} @alg_autorate_basic_rom.c(1799),WARNING" ID="0x819e383b" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{autorate_init_user_he_rate_set_cap:max_nss[%d] le80M_1SS_rateset[0x%x] he_ltf_gi_cap_bitmap[0x%x](B0:HE_SU_1x_GI1, B1:ER_SU_1x_GI1, B2:ER_SU_4x_GI1, B3:SU/MU_4x_GI1, B4:NDP_4x_GI4)} @alg_autorate_basic_rom.c(1820),WARNING" ID="0x819e38e3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{autorate_init_user_he::dcm_max_constellation_rx[%d]partial_bw_extended_range[%d] er_su_disable[%d])} @alg_autorate_basic_rom.c(1824),WARNING" ID="0x819e3903" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_he_rate_set_capability:dmac_user NULL} @alg_autorate_basic_rom.c(1841),ERROR" ID="0x819e398a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_he_rate_set_capability:HE invaild} @alg_autorate_basic_rom.c(1848),ERROR" ID="0x819e39c2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_init_user_rate_set_capability:protocol[%d] err} @alg_autorate_basic_rom.c(1906),WARNING" ID="0x819e3b93" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_init_user_get_start_rate_index_by_protocol::protocol[%d] invalid!} @alg_autorate_basic_rom.c(1954),ERROR" ID="0x819e3d12" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_ar_init_user_get_start_rate_index::pro[%d], start is unavailable! new[%d]} @alg_autorate_basic_rom.c(1975),WARNING" ID="0x819e3dbb" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{alg_ar_init_user_get_start_rate_index::max rate get fail! pro[%d] bw[%d] nss[%d]}  @alg_autorate_basic_rom.c(1980),ERROR" ID="0x819e3de2" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{alg_ar_init_user_get_start_rate_index::start_rate_index[%d] bigger than max rate[%d]! pro[%d] nss[%d]} @alg_autorate_basic_rom.c(1987),ERROR" ID="0x819e3e1a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_rate_stat_info::dmac user null!} @alg_autorate_basic_rom.c(2181),WARNING" ID="0x819e442b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_rate_stat_info:table null} @alg_autorate_basic_rom.c(2190),WARNING" ID="0x819e4473" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{alg_ar_init_user_rate_stat_info:rate get fail! pro[%d] bw[%d] nss[%d]} @alg_autorate_basic_rom.c(2197),WARNING" ID="0x819e44ab" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{alg_ar_init_user_rate_stat_info:get theorygoodput err, user[%d] rate[%d] protocol[%d] gi[%d]} @alg_autorate_basic_rom.c(2212),WARNING" ID="0x819e4523" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{[ALG_AR_DBG] [UPDATE_USER] STAT_RATE Rate[%d] short_per[%d] long_per[%d] thry_gp[%d]} @alg_autorate_basic_rom.c(2217),WARNING" ID="0x819e454b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ALG_AR_DBG] [UPDATE_USER] BEST_RATE BEFORE user[%d] protocol[%d] bw[%d] nss[%d] @alg_autorate_basic_rom.c(2234),WARNING" ID="0x819e45d3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ALG_AR_DBG] [UPDATE_USER] BEST_RATE BEFORE gi_type[%d]rate_idx[%d] short_per[%d]theory_gp[%d] @alg_autorate_basic_rom.c(2236),WARNING" ID="0x819e45e3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_best_rate_info:table null} @alg_autorate_basic_rom.c(2250),WARNING" ID="0x819e4653" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_rate_stat_info:get theorygoodput err} @alg_autorate_basic_rom.c(2258),WARNING" ID="0x819e4693" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ALG_AR_DBG] [UPDATE_USER] BEST_RATE AFTER user[%d] protocol[%d] bw[%d] nss[%d] @alg_autorate_basic_rom.c(2262),WARNING" ID="0x819e46b3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ALG_AR_DBG] [UPDATE_USER] BEST_RATE AFTER gi_type[%d] rate_idx[%d] short_per[%d]theory_gp[%d] @alg_autorate_basic_rom.c(2264),WARNING" ID="0x819e46c3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_init_user_best_rate_info:user[%d]set sched rate fail!} @alg_autorate_basic_rom.c(2272),WARNING" ID="0x819e4703" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_rate_info:init best rate err} @alg_autorate_basic_rom.c(2293),WARNING" ID="0x819e47ab" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_rate_info:init rate stat err} @alg_autorate_basic_rom.c(2298),WARNING" ID="0x819e47d3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_rate::get start_rate_index by protocol fail!} @alg_autorate_basic_rom.c(2313),ERROR" ID="0x819e484a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user_rate:init rate err} @alg_autorate_basic_rom.c(2325),WARNING" ID="0x819e48ab" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_init_user:PTR null!} @alg_autorate_basic_rom.c(2340),WARNING" ID="0x819e4923" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_ar_init_user:dmac_alg registered fail} @alg_autorate_basic_rom.c(2345),WARNING" ID="0x819e494b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_init_user:err user[%d]!} @alg_autorate_basic_rom.c(2353),WARNING" ID="0x819e498b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="alg_autorate_init_user::user[%d] @alg_autorate_basic_rom.c(2356),WARNING" ID="0x819e49a3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_init_user:alloc user info fail! lut_idx[%d]} @alg_autorate_basic_rom.c(2363),WARNING" ID="0x819e49db" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_ar_init_user:init rate fail!user=%d} @alg_autorate_basic_rom.c(2371),WARNING" ID="0x819e4a1b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_autorate_exit_user:PTR null!} @alg_autorate_basic_rom.c(2394),WARNING" ID="0x819e4ad3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_autorate_exit_user:alg_ar_get_user_rate_info fail vap[%d] user[%d]} @alg_autorate_basic_rom.c(2407),WARNING" ID="0x819e4b3b" />
+			</MSG_LOG>

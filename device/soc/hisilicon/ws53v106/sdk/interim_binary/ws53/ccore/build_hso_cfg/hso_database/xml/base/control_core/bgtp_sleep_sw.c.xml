@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[BGTP][SLEEP]bgtp_sleep_irq_handler, pmu cur_state:%d @bgtp_sleep_sw.c(159),WARNING" ID="0x889e04fb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[BGTP][SLEEP]bgtp_soc_wakeup_irq_handler cur_state:%d @bgtp_sleep_sw.c(190),INFO" ID="0x889e05f5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[BGTP][PMU]bgtp_sleep_wait_to_idle extern wakeup timeout @bgtp_sleep_sw.c(219),ERROR" ID="0x889e06da" />
+			</MSG_LOG>

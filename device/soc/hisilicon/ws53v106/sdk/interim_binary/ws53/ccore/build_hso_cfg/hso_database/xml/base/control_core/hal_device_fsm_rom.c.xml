@@ -1,0 +1,9 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hal_device_fsm_init_rx_dscr::hw_rx_queue not empty!!!} @hal_device_fsm_rom.c(58),WARNING" ID="0x848e01d3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_device_work_sub_state_trans::dev no vap up!} @hal_device_fsm_rom.c(230),WARNING" ID="0x848e0733" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_device_work_sub_state_trans::sub state error!} @hal_device_fsm_rom.c(241),ERROR" ID="0x848e078a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_device_idle_check_timeout_fn::hal_device is null} @hal_device_fsm_rom.c(335),WARNING" ID="0x848e0a7b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hal_device_idle_check_timeout_fn :: hal_dev_fsm_current[%d]} @hal_device_fsm_rom.c(343),WARNING" ID="0x848e0abb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_fsm_idle_entry_ps_process into_sleep_prepare} @hal_device_fsm_rom.c(364),WARNING" ID="0x848e0b63" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hal_device_set_pm_bitmap::vap[%d] not up!} @hal_device_fsm_rom.c(400),WARNING" ID="0x848e0c83" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hal_device_fsm_attach::hal device fsm have attached @hal_device_fsm_rom.c(542),WARNING" ID="0x848e10f3" />
+			</MSG_LOG>

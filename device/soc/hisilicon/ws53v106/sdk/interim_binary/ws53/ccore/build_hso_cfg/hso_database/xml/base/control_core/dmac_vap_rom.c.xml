@@ -1,0 +1,28 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_vap_init_etc::mib_info alloc null} @dmac_vap_rom.c(63),ERROR" ID="0x800801fa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_vap_add_single_hal_vap::hal_vap null.} @dmac_vap_rom.c(104),WARNING" ID="0x80080343" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_vap_add_hal_vap:: vap[%d]add hal vap failed.} @dmac_vap_rom.c(133),ERROR" ID="0x8008042a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_vap_add_hal_device:add hal vap failed} @dmac_vap_rom.c(158),ERROR" ID="0x800804f2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_config_add_vap_proc::add_hal_vap failed} @dmac_vap_rom.c(187),ERROR" ID="0x800805da" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{dmac_config_add_vap::vap mode[%d] p2p mode[%d] vap id[%d] hal vap id[%d]!} @dmac_vap_rom.c(282),WARNING" ID="0x800808d3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_config_add_vap::add vap failed. cfg_vap null.} @dmac_vap_rom.c(287),ERROR" ID="0x800808fa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_config_add_vap::alloc_dmac_vap error.} @dmac_vap_rom.c(295),ERROR" ID="0x8008093a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_config_add_vap::add vap failed. dmac_vap null.} @dmac_vap_rom.c(301),ERROR" ID="0x8008096a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_vap_exit_etc::mac_device's vap_num is zero} @dmac_vap_rom.c(423),ERROR" ID="0x80080d3a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_config_del_vap_ext:: del vap[%d] success.} @dmac_vap_rom.c(454),WARNING" ID="0x80080e33" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="vap_id[%d] {dmac_config_del_vap::vap_mode[%d] state[%d]} @dmac_vap_rom.c(479),WARNING" ID="0x80080efb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_config_del_vap::mac_res_get_dmac_vap ERROR!} @dmac_vap_rom.c(507),ERROR" ID="0x80080fda" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_config_del_vap::dmac_send_msg_to_host ERROR!} @dmac_vap_rom.c(513),ERROR" ID="0x8008100a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="mac_device_find_2up_vap_etc::vap is null, vap id is %d @dmac_vap_rom.c(595),ERROR" ID="0x8008129a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {dmac_one_packet_send_null_data::alloc null} @dmac_vap_rom.c(647),ERROR" ID="0x8008143a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{dmac_get_user_and_send_null_data::get_dmac_user failed! assoc_vap_id=%d,vap_mode:%d, p2p_mode:%d} @dmac_vap_rom.c(684),WARNING" ID="0x80081563" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_vap_resume_tx_by_chl::dmac_vap is null} @dmac_vap_rom.c(721),ERROR" ID="0x8008168a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_vap_resume_tx_by_chl:: vap[%d] is up because powsave when connect!} @dmac_vap_rom.c(748),WARNING" ID="0x80081763" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{dmac_vap_resume_tx_by_chl::vap id=%d, state[%d], preempt state[%d].} @dmac_vap_rom.c(751),WARNING" ID="0x8008177b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{vap id[%d] dmac_vap_pause_tx_bitmap fail} @dmac_vap_rom.c(789),ERROR" ID="0x800818aa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{vap id[%d] dmac_vap_resume_tx_bitmap fail} @dmac_vap_rom.c(826),ERROR" ID="0x800819d2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_vap_pause_tx_by_chl::dmac_vap null, vap id is %d.} @dmac_vap_rom.c(873),ERROR" ID="0x80081b4a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_config_mac_ant_sel_tx_dscr::pointer null!} @dmac_vap_rom.c(923),ERROR" ID="0x80081cda" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_config_tx_dscr_ant_sel::tx_dscr_ant_sel=%d. @dmac_vap_rom.c(928),WARNING" ID="0x80081d03" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_roam_sync_bssid_and_dbac_status::memcpy_s fail[%d].} @dmac_vap_rom.c(945),ERROR" ID="0x80081d8a" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="dmac_roam_sync_bssid_and_dbac_status : %02X:%02X:%02X:%02X:XX:XX @dmac_vap_rom.c(955),INFO" ID="0x80081ddd" />
+			</MSG_LOG>

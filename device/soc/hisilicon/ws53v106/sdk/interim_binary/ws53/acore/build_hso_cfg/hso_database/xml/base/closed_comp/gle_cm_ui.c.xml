@@ -1,0 +1,10 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="gle cm init enter @gle_cm_ui.c(16),INFO" ID="0xde580085" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle cm cleanup enter @gle_cm_ui.c(24),INFO" ID="0xde5800c5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="set connect rssi param new fail @gle_cm_ui.c(33),ERROR" ID="0xde58010a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="read remote feature param new fail @gle_cm_ui.c(206),ERROR" ID="0xde580672" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="read remote version param new fail @gle_cm_ui.c(226),ERROR" ID="0xde580712" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="set data len new fail @gle_cm_ui.c(245),ERROR" ID="0xde5807aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[cm_set_acb_evt_param]null @gle_cm_ui.c(293),ERROR" ID="0xde58092a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[cm_set_acb_evt_param]con_hdl:%u, evt_intv:%u, evt_num:%u @gle_cm_ui.c(297),INFO" ID="0xde58094d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="new acb_evt_param failed @gle_cm_ui.c(300),ERROR" ID="0xde580962" />
+			</MSG_LOG>

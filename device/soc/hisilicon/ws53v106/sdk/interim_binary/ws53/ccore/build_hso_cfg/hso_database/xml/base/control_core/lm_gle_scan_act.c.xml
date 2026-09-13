@@ -1,0 +1,12 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg4" NAME="[bgtp][gle scan]invalid scan params, i=%d, scan_type=%d, scan_window=%d, scan_interval=%d @lm_gle_scan_act.c(64),WARNING" ID="0x88ce0203" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]set_scan_params_act, own_address_type=%d, scan_filter_policy=%d, scan_phys=%d @lm_gle_scan_act.c(100),INFO" ID="0x88ce0325" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]set_scan_params_act, scan_type=%d, scan_interval=%d, scan_window=%d @lm_gle_scan_act.c(102),INFO" ID="0x88ce0335" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]lm_gle_scan_off_hci_set_scan_data_act, scan_data_len:%d @lm_gle_scan_act.c(111),INFO" ID="0x88ce037d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]lm_gle_set_scan_enable, scan evt task env exists, start task fsm! @lm_gle_scan_act.c(192),INFO" ID="0x88ce0605" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]lm_gle_set_scan_enable, switch to scanning state @lm_gle_scan_act.c(207),INFO" ID="0x88ce067d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]set_scan_enable_act, scan_enable=%d, filter_duplicates=%d @lm_gle_scan_act.c(216),INFO" ID="0x88ce06c5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]hci_set_scan_enable_act, scan_enable=%d, filter_duplicates=%d @lm_gle_scan_act.c(256),INFO" ID="0x88ce0805" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]lm_gle_scanning_hci_set_scan_data_act, scan_data_len:%d @lm_gle_scan_act.c(287),INFO" ID="0x88ce08fd" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]lm_gle_scan_report_adv, evt_type=0x%x, data_len=%d, primary_phy=%d, secondary_phy=%d @lm_gle_scan_act.c(409),INFO" ID="0x88ce0ccd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]lm_gle_scan_event_sched_stop_act, switch to LM_GLE_STATE_SCAN_OFF @lm_gle_scan_act.c(437),INFO" ID="0x88ce0dad" />
+			</MSG_LOG>

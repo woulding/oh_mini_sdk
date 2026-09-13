@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[L2CAP]SDU Reassemble BuffNew Error, sdu_len=%u @l2cap_ert.c(188),ERROR" ID="0xdadc05e2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[L2CAP]SDU Reassemble memcpy Error, ret=%u, destSize=%u, srcSize=%u @l2cap_ert.c(197),ERROR" ID="0xdadc062a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[L2CAP]SDU Reassemble memcpy Error, ret=%u, destSize=%u, srcSize=%u @l2cap_ert.c(213),ERROR" ID="0xdadc06aa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[L2CAP]l2cap ert adjust ack frames_sent = %u @l2cap_ert.c(627),ERROR" ID="0xdadc139a" />
+			</MSG_LOG>

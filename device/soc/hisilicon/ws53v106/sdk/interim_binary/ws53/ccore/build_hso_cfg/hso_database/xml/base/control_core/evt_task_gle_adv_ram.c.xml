@@ -1,0 +1,12 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_adv_create, env_ptr exists! @evt_task_gle_adv_ram.c(80),INFO" ID="0x89820285" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_adv_create, fsm_register fail! @evt_task_gle_adv_ram.c(101),WARNING" ID="0x8982032b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_adv_get_con_intv_offset, get intv fail! @evt_task_gle_adv_ram.c(201),WARNING" ID="0x8982064b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_adv_get_con_intv_offset, get offset fail! @evt_task_gle_adv_ram.c(207),WARNING" ID="0x8982067b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_adv_set_param:adv_handle(%d),adv_mode(%d),interval(%d),own_addr_type(%d) @evt_task_gle_adv_ram.c(287),INFO" ID="0x898208fd" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_adv_set_param:channel_map(0x%x),gt_role_ind(%d),req_max_num(%d),req_notif_en(%d) @evt_task_gle_adv_ram.c(289),INFO" ID="0x8982090d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]evt_task_gle_adv_set_param:sec_format(%d),sec_phy(%d),sec_mcs(%d),sec_pilot(%d) @evt_task_gle_adv_ram.c(291),INFO" ID="0x8982091d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]evt_task_gle_adv_set_param:own_addr 0x%x:0x%x:xx:xx:xx:0x%x @evt_task_gle_adv_ram.c(293),INFO" ID="0x8982092d" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]evt_task_gle_adv_set_param:peer_addr 0x%x:0x%x:xx:xx:xx:0x%x @evt_task_gle_adv_ram.c(295),INFO" ID="0x8982093d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_adv_set_adv_en, init_txnode fail! @evt_task_gle_adv_ram.c(435),INFO" ID="0x89820d9d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp]evt_task_gle_adv_set_adv_en, evt task start fail! @evt_task_gle_adv_ram.c(453),WARNING" ID="0x89820e2b" />
+			</MSG_LOG>

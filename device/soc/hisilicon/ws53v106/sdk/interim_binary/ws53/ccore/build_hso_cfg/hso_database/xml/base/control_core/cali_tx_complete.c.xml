@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{online_cali_get_pdet_val:: tx_comp_event is NULL} @cali_tx_complete.c(123),ERROR" ID="0x813803da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{online_cali_proc_tx_complete::dispatch_event fail, ret=%d} @cali_tx_complete.c(223),WARNING" ID="0x813806fb" />
+			</MSG_LOG>

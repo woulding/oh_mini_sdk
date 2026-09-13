@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[BGTP]lm_ble_phy_upd_ind_act instant(0x%x), prog directly @lm_ble_acl_srv_phy_upd.c(659),INFO" ID="0x8828149d" />
+			</MSG_LOG>

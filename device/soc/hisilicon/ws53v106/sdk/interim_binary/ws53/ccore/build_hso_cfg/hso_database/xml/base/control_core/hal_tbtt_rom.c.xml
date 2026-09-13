@@ -1,0 +1,15 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hal_vap_tsf_get_64bit::pointer hal_vap is NULL.} @hal_tbtt_rom.c(62),ERROR" ID="0x803601f2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_enable_sta_tsf_tbtt::dmac vap err. id[%d,%d]} @hal_tbtt_rom.c(120),WARNING" ID="0x803603c3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_vap_ap_start_tsf::vap mode [%d]!= WLAN_VAP_MODE_BSS_AP,or hal vap id=%d &gt;= max vap=%d! @hal_tbtt_rom.c(154),WARNING" ID="0x803604d3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {hh503_irq_tbtt_isr::hal_vap null.} @hal_tbtt_rom.c(194),ERROR" ID="0x80360612" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hh503_irq_tbtt_isr callback failed[%d]! @hal_tbtt_rom.c(205),WARNING" ID="0x8036066b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hh503_set_psm_tbtt_offset::vap[%d] id[%d] invalid.} @hal_tbtt_rom.c(220),WARNING" ID="0x803606e3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hh503_set_psm_tbtt_offset::vap[%d] id[%d] invalid.} @hal_tbtt_rom.c(240),WARNING" ID="0x80360783" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_psm_listen_interval::vap mode [%d] != WLAN_VAP_MODE_BSS_STA,or hal vap id=%d &gt;= max vap=%d! @hal_tbtt_rom.c(289),WARNING" ID="0x8036090b" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_sta_dtim_period::vap mode [%d]!= WLAN_VAP_MODE_BSS_STA,or hal vap id=%d &gt;= max vap=%d]} @hal_tbtt_rom.c(316),WARNING" ID="0x803609e3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_psm_dtim_count_cb::vap mode [%d] != WLAN_VAP_MODE_BSS_STA,or hal vap id=%d &gt;= max vap=%d! @hal_tbtt_rom.c(343),WARNING" ID="0x80360abb" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_psm_listen_interval_count::vap mode [%d] != WLAN_VAP_MODE_BSS_STA,hal vap id=%d &gt;= max vap=%d! @hal_tbtt_rom.c(367),WARNING" ID="0x80360b7b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hh503_get_psm_dtim_count::vap is not sta! @hal_tbtt_rom.c(381),WARNING" ID="0x80360beb" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_psm_beacon_period::vap mode [%d]!= WLAN_VAP_MODE_BSS_STA,or hal vap id=%d &gt;= max vap=%d]} @hal_tbtt_rom.c(411),WARNING" ID="0x80360cdb" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_psm_beacon_period::after config,hal vap id[%d] beacon period[%d]} @hal_tbtt_rom.c(423),WARNING" ID="0x80360d3b" />
+			</MSG_LOG>

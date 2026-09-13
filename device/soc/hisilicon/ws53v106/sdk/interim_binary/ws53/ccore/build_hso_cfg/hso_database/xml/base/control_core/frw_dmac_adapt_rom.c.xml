@@ -1,0 +1,21 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{frw_dmac_check_rcv_msg::msg_adapt is null!} @frw_dmac_adapt_rom.c(47),ERROR" ID="0x8086017a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="frw_dmac_check_rcv_msg vap is null, vap id:%u @frw_dmac_adapt_rom.c(53),WARNING" ID="0x808601ab" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[E]frw_rx_msg_cb unregister! @frw_dmac_adapt_rom.c(68),ERROR" ID="0x80860222" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{msg_trace::H2D_SYNC msg_id %d, seq %d} @frw_dmac_adapt_rom.c(92),WARNING" ID="0x808602e3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_process_cfg_msg, msg %d not found @frw_dmac_adapt_rom.c(102),ERROR" ID="0x80860332" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="dmac_process_cfg_msg, msg %d type %d error @frw_dmac_adapt_rom.c(108),ERROR" ID="0x80860362" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{dmac_report_sync_msg fail! ret[%d], msg[%d], cb_ret[%d]} @frw_dmac_adapt_rom.c(118),WARNING" ID="0x808603b3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{msg_trace::SYNC_RSP msg_id %d seq %d} @frw_dmac_adapt_rom.c(120),WARNING" ID="0x808603c3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_frw_msg_event::msg_type error:%d!} @frw_dmac_adapt_rom.c(136),ERROR" ID="0x80860442" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{frw_dmac_rcv_cfg::msg_id %d fail, ret %d!} @frw_dmac_adapt_rom.c(143),WARNING" ID="0x8086047b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_frw_msg_event::msg_id %d, malloc fail!} @frw_dmac_adapt_rom.c(155),ERROR" ID="0x808604da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_frw_msg_event::msg_id %d, memcpy_s fail!} @frw_dmac_adapt_rom.c(164),ERROR" ID="0x80860522" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{frw_dmac_rcv_mgnt_data::msg_type %d invalid.} @frw_dmac_adapt_rom.c(190),ERROR" ID="0x808605f2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{frw_dmac_rcv_mgnt_data[%d]::vap[%d] is null.} @frw_dmac_adapt_rom.c(202),WARNING" ID="0x80860653" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_hal_post_async_msg::vap[%d] fail.ret[%d]} @frw_dmac_adapt_rom.c(214),WARNING" ID="0x808606b3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="dmac_frw_send_msg: alloc failed.msg_id %d sync %d @frw_dmac_adapt_rom.c(273),WARNING" ID="0x8086088b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_frw_send_msg: memcpy_s failed, msg %d @frw_dmac_adapt_rom.c(283),ERROR" ID="0x808608da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_frw_send_msg: memcpy_s failed, msg %d @frw_dmac_adapt_rom.c(292),ERROR" ID="0x80860922" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="frw_dmac_tx_wifi_cfg_by_hcc fail, msg %d, ret = 0x%x @frw_dmac_adapt_rom.c(306),WARNING" ID="0x80860993" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="dmac_frw_send_data::wkup host failed @frw_dmac_adapt_rom.c(332),ERROR" ID="0x80860a62" />
+			</MSG_LOG>

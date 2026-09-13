@@ -1,0 +1,6 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{hh503_wait_mac_done_timeout::lut done timeout value[%d]!} @hal_mac_rom.c(109),WARNING" ID="0x8058036b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_register_alg_isr_hook::hal_alg_register_isr_func failed.} @hal_mac_rom.c(318),ERROR" ID="0x805809f2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_unregister_alg_isr_hook::hal_alg_unregister_isr_func failed.} @hal_mac_rom.c(333),ERROR" ID="0x80580a6a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hal_set_bcn_phy_tx_mode::vap mode [%d]!= WLAN_VAP_MODE_BSS_AP,or hal vap id=%d &gt;= max vap=%d]} @hal_mac_rom.c(361),WARNING" ID="0x80580b4b" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_sta_bssid::vap mode [%d]!= WLAN_VAP_MODE_BSS_STA,or hal vap id=%d &gt;= max vap=%d]} @hal_mac_rom.c(426),WARNING" ID="0x80580d53" />
+			</MSG_LOG>

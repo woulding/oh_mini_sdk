@@ -1,0 +1,12 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="bt_productline_get_curve_params is NULL @cali_tx.c(252),WARNING" ID="0x88c007e3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp][pwrcali]get efuse c_offset fail @cali_tx.c(265),WARNING" ID="0x88c0084b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp][pwrcali]get efuse c_offset: %d @cali_tx.c(267),INFO" ID="0x88c0085d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[2ND_HARMONIC_CALI][NMOS]code = %x, s_cur_abs_val = %d, vdcc_value = %d,ef = %d @cali_tx.c(516),INFO" ID="0x88c01025" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[2ND_HARMONIC_CALI][PMOS]code = %x, s_cur_abs_val = %d, vdcc_value = %d,ef = %d @cali_tx.c(539),INFO" ID="0x88c010dd" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[BT CALI][TX 2ND] index = %d n_mos = 0x%x, p_mos = 0x%x @cali_tx.c(590),INFO" ID="0x88c01275" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[DYN_CALI][PWR] Tx power delta OVERRANGE! Gain %d, delta %d @cali_tx.c(753),WARNING" ID="0x88c0178b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[DYN_CALI][PWR] Tx power delta OVERRANGE! Gain %d, delta %d @cali_tx.c(759),WARNING" ID="0x88c017bb" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[DYN_CALI][PWR] channel %d, p_det = %d, pest = %d, delta %d @cali_tx.c(865),INFO" ID="0x88c01b0d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[DYN_CALI][PWR] OPEN! power on temp %d, current temp %d @cali_tx.c(882),INFO" ID="0x88c01b95" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[DYN_CALI][PWR] result status = %d @cali_tx.c(907),WARNING" ID="0x88c01c5b" />
+			</MSG_LOG>

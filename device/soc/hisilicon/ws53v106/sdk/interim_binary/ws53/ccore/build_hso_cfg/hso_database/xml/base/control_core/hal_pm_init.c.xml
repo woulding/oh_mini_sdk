@@ -1,0 +1,9 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg4" NAME="psm_time_dump::ext_tbtt[%lu] wakeup[%lu] wake_finish[%lu] wait_tbtt[%lu] @hal_pm_init.c(179),WARNING" ID="0x8528059b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="psm_time_dump::rf_recovery[%lu] ready_bcn[%lu] bcn_no_frm[%lu] bcn_rx[%lu] @hal_pm_init.c(185),WARNING" ID="0x852805cb" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="psm_time_dump::no_frm2rfoff[%lu] rx2rf_off[%lu] rfoff2sleep[%lu] sleep[%lu] @hal_pm_init.c(191),WARNING" ID="0x852805fb" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hal_pm_debug::lp bcn en[%d] support[%d] @hal_pm_init.c(207),WARNING" ID="0x8528067b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hal_pm_debug::plt ls cnt[%lu] ls wk cnt[%lu] ds cnt[%lu] ds wk cnt[%lu] @hal_pm_init.c(212),WARNING" ID="0x852806a3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hal_pm_debug::plt all wkup cnt[%lu] @hal_pm_init.c(214),WARNING" ID="0x852806b3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hal_pm_debug::cnt ext tbtt[%d] tbtt[%d] 11b[%d] @hal_pm_init.c(227),WARNING" ID="0x8528071b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hal_pm_debug::cnt no_frm[%d] timeout[%d] @hal_pm_init.c(229),WARNING" ID="0x8528072b" />
+			</MSG_LOG>

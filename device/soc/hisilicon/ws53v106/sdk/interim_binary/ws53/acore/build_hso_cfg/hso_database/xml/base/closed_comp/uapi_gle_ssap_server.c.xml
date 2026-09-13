@@ -1,0 +1,36 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="ssaps_exter_cbks pointer null @uapi_gle_ssap_server.c(24),ERROR" ID="0xd8ec00c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps add property ex data is NULL @uapi_gle_ssap_server.c(76),ERROR" ID="0xd8ec0262" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps add property mem new failed @uapi_gle_ssap_server.c(84),ERROR" ID="0xd8ec02a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps add property uuid mem cpy failed @uapi_gle_ssap_server.c(93),ERROR" ID="0xd8ec02ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps add property data mem cpy failed @uapi_gle_ssap_server.c(101),ERROR" ID="0xd8ec032a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi ssaps add property data error, data len : %u  @uapi_gle_ssap_server.c(107),ERROR" ID="0xd8ec035a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps add descriptor ex data is NULL @uapi_gle_ssap_server.c(128),ERROR" ID="0xd8ec0402" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps add descriptor mem new failed @uapi_gle_ssap_server.c(137),ERROR" ID="0xd8ec044a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps add descriptor mem cpy failed @uapi_gle_ssap_server.c(150),ERROR" ID="0xd8ec04b2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi ssaps add descriptor ex data error, data len : %u  @uapi_gle_ssap_server.c(156),ERROR" ID="0xd8ec04e2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi ssaps update item value by property_handle len = %u param error @uapi_gle_ssap_server.c(189),ERROR" ID="0xd8ec05ea" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="property_handle = 0x%02x, len = %u @uapi_gle_ssap_server.c(194),INFO" ID="0xd8ec0615" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by buff mem new failed @uapi_gle_ssap_server.c(200),ERROR" ID="0xd8ec0642" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item mem cpy failed @uapi_gle_ssap_server.c(207),ERROR" ID="0xd8ec067a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by property_handle mem cpy failed @uapi_gle_ssap_server.c(217),ERROR" ID="0xd8ec06ca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi ssaps update item value by property_handle len = %u param error @uapi_gle_ssap_server.c(234),ERROR" ID="0xd8ec0752" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="property_handle = 0x%02x, len = %u @uapi_gle_ssap_server.c(239),INFO" ID="0xd8ec077d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by property_handle mem new failed @uapi_gle_ssap_server.c(245),ERROR" ID="0xd8ec07aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item mem cpy failed @uapi_gle_ssap_server.c(250),ERROR" ID="0xd8ec07d2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by property_handle mem cpy failed @uapi_gle_ssap_server.c(260),ERROR" ID="0xd8ec0822" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by uuid param error @uapi_gle_ssap_server.c(279),ERROR" ID="0xd8ec08ba" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi ssaps update item value by uuid len = %u @uapi_gle_ssap_server.c(284),INFO" ID="0xd8ec08e5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by uuid mem new failed @uapi_gle_ssap_server.c(289),ERROR" ID="0xd8ec090a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item mem cpy failed @uapi_gle_ssap_server.c(295),ERROR" ID="0xd8ec093a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by uuid mem cpy failed @uapi_gle_ssap_server.c(306),ERROR" ID="0xd8ec0992" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by uuid mem cpy failed @uapi_gle_ssap_server.c(312),ERROR" ID="0xd8ec09c2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="uapi ssaps update item value by property_handle len = %u param error @uapi_gle_ssap_server.c(326),ERROR" ID="0xd8ec0a32" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps update item value by uuid param error @uapi_gle_ssap_server.c(338),ERROR" ID="0xd8ec0a92" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps find hdl by uuid param error @uapi_gle_ssap_server.c(354),ERROR" ID="0xd8ec0b12" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="begin_hdl:0x%04x, end_hdl:0x%04x @uapi_gle_ssap_server.c(359),INFO" ID="0xd8ec0b3d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="uuid-&gt;u[%u]:0x%02x @uapi_gle_ssap_server.c(362),INFO" ID="0xd8ec0b55" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps find hdl by uuid memcpy failed @uapi_gle_ssap_server.c(369),ERROR" ID="0xd8ec0b8a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps send response mem new failed @uapi_gle_ssap_server.c(381),ERROR" ID="0xd8ec0bea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps send response mem cpy failed @uapi_gle_ssap_server.c(390),ERROR" ID="0xd8ec0c32" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="uapi ssaps mtu set param error @uapi_gle_ssap_server.c(406),ERROR" ID="0xd8ec0cb2" />
+			</MSG_LOG>

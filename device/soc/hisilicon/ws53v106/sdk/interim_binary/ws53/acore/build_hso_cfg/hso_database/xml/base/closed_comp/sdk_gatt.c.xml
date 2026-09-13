@@ -1,0 +1,15 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="btsdk gatt get descriptor value memcpy failed @sdk_gatt.c(385),ERROR" ID="0xdb840c0a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatt get descriptor value memcpy error @sdk_gatt.c(568),ERROR" ID="0xdb8411c2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="btsdk gatt get characteristics by uuid start_handle:0x%x end_handle:0x%x, uuid:0x%x @sdk_gatt.c(794),INFO" ID="0xdb8418d5" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="btsdk gatt get characteristic value by uuid start_handle:0x%x end_handle:0x%x @sdk_gatt.c(846),INFO" ID="0xdb841a75" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="btsdk gatt get descriptor by handle start_handle:0x%x end_handle:0x%x @sdk_gatt.c(866),INFO" ID="0xdb841b15" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="btsdk gatt get multiple characteristics by handle handle_count:0x%x @sdk_gatt.c(887),INFO" ID="0xdb841bbd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatt set gap ui attributes memcpy error @sdk_gatt.c(1166),ERROR" ID="0xdb842472" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatt set gap ui attributes memcpy error @sdk_gatt.c(1179),ERROR" ID="0xdb8424da" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatt get gap ui attributes memcpy error @sdk_gatt.c(1251),ERROR" ID="0xdb84271a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatt send response memcpy error @sdk_gatt.c(1849),ERROR" ID="0xdb8439ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatt change descriptor value memcpy error @sdk_gatt.c(1930),ERROR" ID="0xdb843c52" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatt notify characteristic changed before memcpy error @sdk_gatt.c(1974),ERROR" ID="0xdb843db2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatt notify characteristic changed after memcpy error @sdk_gatt.c(1981),ERROR" ID="0xdb843dea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]can't find hdl by uuid @sdk_gatt.c(2172),INFO" ID="0xdb8443e5" />
+			</MSG_LOG>

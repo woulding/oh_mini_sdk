@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]bt_common_msg_except_process src_id(0x%x) dst_id(0x%x) msg_id(0x%x) @bt_main.c(155),WARNING" ID="0x880404db" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]device_sca_cfg_init sca_cfg(%d) @bt_main.c(195),WARNING" ID="0x8804061b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]bt_init em_end(%d) @bt_main.c(201),INFO" ID="0x8804064d" />
+			</MSG_LOG>

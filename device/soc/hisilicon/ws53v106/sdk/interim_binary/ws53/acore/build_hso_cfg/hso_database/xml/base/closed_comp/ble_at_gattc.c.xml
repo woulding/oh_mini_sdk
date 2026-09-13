@@ -1,0 +1,25 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc register at fail. @ble_at_gattc.c(135),ERROR" ID="0xd910043a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc register callback at fail. @ble_at_gattc.c(143),ERROR" ID="0xd910047a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc register client param error. @ble_at_gattc.c(153),ERROR" ID="0xd91004ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc register client at cmd fail. @ble_at_gattc.c(161),ERROR" ID="0xd910050a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] gattc register client failed,ret = 0x%x @ble_at_gattc.c(168),ERROR" ID="0xd9100542" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc unregister client param error. @ble_at_gattc.c(178),ERROR" ID="0xd9100592" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] gattc unregister client failed,ret = 0x%x @ble_at_gattc.c(184),ERROR" ID="0xd91005c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc discovery service param error. @ble_at_gattc.c(193),ERROR" ID="0xd910060a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc find service at cmd fail. @ble_at_gattc.c(201),ERROR" ID="0xd910064a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] gattc discovery service failed,ret = 0x%x @ble_at_gattc.c(209),ERROR" ID="0xd910068a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc discovery character param error. @ble_at_gattc.c(218),ERROR" ID="0xd91006d2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc discovery character at cmd fail. @ble_at_gattc.c(227),ERROR" ID="0xd910071a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] gattc discovery character failed,ret = 0x%x @ble_at_gattc.c(235),ERROR" ID="0xd910075a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] gattc handle common param error type = %u @ble_at_gattc.c(245),ERROR" ID="0xd91007aa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[Error] gattc handle common failed,type = %u, ret = 0x%x @ble_at_gattc.c(263),ERROR" ID="0xd910083a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc read req by uuid param error @ble_at_gattc.c(282),ERROR" ID="0xd91008d2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc read req by uuid at cmd fail @ble_at_gattc.c(291),ERROR" ID="0xd910091a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] gattc read req by uuid failed,ret = 0x%x @ble_at_gattc.c(298),ERROR" ID="0xd9100952" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] gattc write common param error type = %u @ble_at_gattc.c(308),ERROR" ID="0xd91009a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc write req at cmd data new fail. @ble_at_gattc.c(318),ERROR" ID="0xd91009f2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc write req str to data fail. @ble_at_gattc.c(323),ERROR" ID="0xd9100a1a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[Error] gattc write common failed,type : %u, ret = 0x%x @ble_at_gattc.c(344),ERROR" ID="0xd9100ac2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[Error] gattc exchange mtu req param error. @ble_at_gattc.c(363),ERROR" ID="0xd9100b5a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Error] gattc exchange mtu req failed,ret = 0x%x @ble_at_gattc.c(369),ERROR" ID="0xd9100b8a" />
+			</MSG_LOG>

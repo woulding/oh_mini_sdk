@@ -1,0 +1,17 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="gle aa read local channel sounding caps @gle_aa_hadm_ui.c(29),INFO" ID="0xde6200ed" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle aa read remote channel sounding caps, conn id(%d) @gle_aa_hadm_ui.c(43),INFO" ID="0xde62015d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle aa set channel sounding param, conn id(%d) @gle_aa_hadm_ui.c(84),INFO" ID="0xde6202a5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle aa set channel sounding param gttt, conn id(%d) @gle_aa_hadm_ui.c(134),INFO" ID="0xde620435" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle aa set channel sounding enable state(%d) @gle_aa_hadm_ui.c(148),INFO" ID="0xde6204a5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle aa set channel sounding enable gttt state(%d) @gle_aa_hadm_ui.c(175),INFO" ID="0xde62057d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle read local cs caps malloc fail @gle_aa_hadm_ui.c(191),INFO" ID="0xde6205fd" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle read local cs caps status(%d) @gle_aa_hadm_ui.c(203),INFO" ID="0xde62065d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle read remote cs caps malloc fail @gle_aa_hadm_ui.c(213),INFO" ID="0xde6206ad" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle read remote cs caps status(%d) @gle_aa_hadm_ui.c(226),INFO" ID="0xde620715" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle set cs config malloc fail @gle_aa_hadm_ui.c(237),INFO" ID="0xde62076d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle set cs config status(%d) @gle_aa_hadm_ui.c(247),INFO" ID="0xde6207bd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle set cs enable malloc fail @gle_aa_hadm_ui.c(256),INFO" ID="0xde620805" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle set cs enable status(%d) @gle_aa_hadm_ui.c(266),INFO" ID="0xde620855" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle cs iq report malloc fail @gle_aa_hadm_ui.c(275),INFO" ID="0xde62089d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="gle cs iq report status(%d) @gle_aa_hadm_ui.c(286),INFO" ID="0xde6208f5" />
+			</MSG_LOG>

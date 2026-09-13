@@ -1,0 +1,20 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{fe_custom_config_power_cali_ref_power:memcpy fail.} @fe_rf_customize_power_cali.c(52),WARNING" ID="0x852a01a3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{fe_custom_config_power_cali_power_curve_high:memcpy fail.} @fe_rf_customize_power_cali.c(60),WARNING" ID="0x852a01e3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{fe_custom_config_power_cali_power_curve_low:memcpy fail.} @fe_rf_customize_power_cali.c(68),WARNING" ID="0x852a0223" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{fe_custom_config_power_cali_curve_factor:memcpy fail.} @fe_rf_customize_power_cali.c(76),WARNING" ID="0x852a0263" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="fe_custom_config_power_cali::band:%d @fe_rf_customize_power_cali.c(89),ERROR" ID="0x852a02ca" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="fe_rf_custom_get_txpwr_pow_ref::band:%d, level:%d, subband:%d @fe_rf_customize_power_cali.c(111),ERROR" ID="0x852a037a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="fe_custom_get_txpwr_addr::band:%d @fe_rf_customize_power_cali.c(123),ERROR" ID="0x852a03da" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="fe_custom_get_curve_protocol_idx::band:%d @fe_rf_customize_power_cali.c(137),ERROR" ID="0x852a044a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="fe_custom_set_all_power_curve::band:%d. @fe_rf_customize_power_cali.c(158),ERROR" ID="0x852a04f2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{fe_custom_set_all_power_curve:copy fail:level[%d],count[%d] &gt;= len[%d].} @fe_rf_customize_power_cali.c(167),WARNING" ID="0x852a053b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="fe_custom_get_all_power_curve::band:%d. @fe_rf_customize_power_cali.c(189),ERROR" ID="0x852a05ea" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{fe_custom_get_all_power_curve:copy fail:level[%d],count[%d] &gt;= len[%d].} @fe_rf_customize_power_cali.c(198),WARNING" ID="0x852a0633" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="fe_custom_set_all_power_curve::band:%d. @fe_rf_customize_power_cali.c(219),ERROR" ID="0x852a06da" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="fe_custom_get_power_curve::band:%d, level:%d, protocal:%d @fe_rf_customize_power_cali.c(240),ERROR" ID="0x852a0782" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="fe_custom_get_curve_factor::band:%d, level:%d @fe_rf_customize_power_cali.c(258),ERROR" ID="0x852a0812" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{fe_custom_check_curve::extre_point[%d], curve[%d %d %d]} @fe_rf_customize_power_cali.c(284),WARNING" ID="0x852a08e3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{fe_custom_calc_curve_pow::curve [%d,%d,%d]real power:%d} @fe_rf_customize_power_cali.c(307),INFO" ID="0x852a099d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{fe_custom_calc_curve_pow::factor [%d,%d,%d]p_val:%d} @fe_rf_customize_power_cali.c(309),INFO" ID="0x852a09ad" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{fe_custom_calc_curve_pow::real power[%d] out of range} @fe_rf_customize_power_cali.c(314),INFO" ID="0x852a09d5" />
+			</MSG_LOG>

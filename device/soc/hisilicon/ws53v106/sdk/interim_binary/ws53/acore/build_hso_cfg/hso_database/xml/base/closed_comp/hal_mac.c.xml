@@ -1,0 +1,88 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="hh503_set_mac_freq: wrong mac_clk_freq=[%u] @hal_mac.c(411),ERROR" ID="0x84020cda" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_set_rx_filter_reg::rx_filter_val is 0x%08x} @hal_mac.c(661),WARNING" ID="0x840214ab" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_del_vap::hal_to_dmac_vap[%u] is NULL!} @hal_mac.c(928),WARNING" ID="0x84021d03" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_wait_mac_done_timeout::lut done timeout value[%u]!} @hal_mac.c(1121),WARNING" ID="0x8402230b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_clear_all::wait lut ce set done failed.} @hal_mac.c(1196),ERROR" ID="0x84022562" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_clear_all::wait lut ce set done failed.} @hal_mac.c(1204),ERROR" ID="0x840225a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_clear_all::waiting lut done timeout!} @hal_mac.c(1218),ERROR" ID="0x84022612" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_alloc_vap::create hal vap failed.} @hal_mac.c(1267),ERROR" ID="0x8402279a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_add_vap::vap num[%u] execeed spec[3], add failed.} @hal_mac.c(1308),ERROR" ID="0x840228e2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_vap_read_tbtt_timer::vap mode [%d]hal vap id=%d &gt;= max vap=%d! @hal_mac.c(1368),WARNING" ID="0x84022ac3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_vap_set_machw_beacon_period::vap mode [%d] != WLAN_VAP_MODE_BSS_AP,or hal vap id=%d &gt;= max vap=%d! @hal_mac.c(1439),WARNING" ID="0x84022cfb" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hh503_vap_set_machw_beacon_period::wrong beacon period 0 @hal_mac.c(1446),WARNING" ID="0x84022d33" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hal_vap_set_noa, start_tsf:%u, dura:%d, intval:%d, cnt:%d @hal_mac.c(1500),INFO" ID="0x84022ee5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_clear_mac_error_int_status::status is NULL.} @hal_mac.c(1575),WARNING" ID="0x8402313b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_cipher_key_mpy::memmove fail[%u]. @hal_mac.c(1665),ERROR" ID="0x8402340a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_cipher_key_mpy::memmove fail[%u]. @hal_mac.c(1672),ERROR" ID="0x84023442" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_cipher_key_mpy::memmove fail[%u]. @hal_mac.c(1679),ERROR" ID="0x8402347a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_cipher_key_mpy::memmove fail[%u]. @hal_mac.c(1685),ERROR" ID="0x840234aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_cipher_key::wait lut ce idle failed before add.} @hal_mac.c(1709),ERROR" ID="0x8402356a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_ce_add_cipher_key::memmove fail[%u]. @hal_mac.c(1716),ERROR" ID="0x840235a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_cipher_key::wait lut ce idle failed when add key } @hal_mac.c(1757),ERROR" ID="0x840236ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_compare_cipher_key::KEY is not matched the target!!} @hal_mac.c(1805),ERROR" ID="0x8402386a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_compare_tkip_mic_key::TKIP_MIC_KEY is not matched the target!!!} @hal_mac.c(1843),ERROR" ID="0x8402399a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_compare_mic_key::TKIP_MIC_KEY is not matched the target!!!} @hal_mac.c(1891),ERROR" ID="0x84023b1a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_get_cipher_key:: security_key or cipher_key is null} @hal_mac.c(1908),ERROR" ID="0x84023ba2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_get_cipher_key:: wait lut ce idle timeout!!!} @hal_mac.c(1914),ERROR" ID="0x84023bd2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_get_cipher_key:: wait lut ce set done timeout!!!} @hal_mac.c(1937),ERROR" ID="0x84023c8a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_ce_get_cipher_key::memmove fail[%u]. @hal_mac.c(1944),ERROR" ID="0x84023cc2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_get_cipher_key:wait lut ce set done timeout for cipher key read} @hal_mac.c(1951),ERROR" ID="0x84023cfa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{uapi102_clear_tx_pn::waiting lut pn idle timeout!} @hal_mac.c(1981),ERROR" ID="0x84023dea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_get_key_process:: wait lut ce idle timeout!!!} @hal_mac.c(2179),ERROR" ID="0x8402441a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_get_key_process:: wait lut ce set done timeout!!!} @hal_mac.c(2206),ERROR" ID="0x840244f2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_get_key_process:: wait lut ce set done timeout for mic key read !!!} @hal_mac.c(2219),ERROR" ID="0x8402455a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_get_key:: key is null} @hal_mac.c(2240),ERROR" ID="0x84024602" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_key::config_pa_ce_control failed.} @hal_mac.c(2272),ERROR" ID="0x84024702" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_key::config_ce_ce_control failed.} @hal_mac.c(2278),ERROR" ID="0x84024732" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_key::add_cipher_key failed.} @hal_mac.c(2284),ERROR" ID="0x84024762" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_ce_add_key::get_cipher_key failed.ul_ret =[%d]} @hal_mac.c(2288),ERROR" ID="0x84024782" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_bcn_phy_tx_mode::vap mode [%d]!= WLAN_VAP_MODE_BSS_AP,or hal vap id=%d &gt;= max vap=%d]} @hal_mac.c(2368),WARNING" ID="0x84024a03" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_get_bcn_rate::vap mode [%d]!= WLAN_VAP_MODE_BSS_AP,or hal vap id=%d &gt;= max vap=%d]} @hal_mac.c(2394),ERROR" ID="0x84024ad2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hh503_set_psm_tbtt_offset::vap[%u] id[%u] invalid.} @hal_mac.c(2412),WARNING" ID="0x84024b63" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_psm_beacon_period::vap mode [%d]!= WLAN_VAP_MODE_BSS_STA,or hal vap id=%d &gt;= max vap=%d]} @hal_mac.c(2454),WARNING" ID="0x84024cb3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_psm_beacon_period::after config,hal vap id[%u] beacon period[%u]} @hal_mac.c(2465),WARNING" ID="0x84024d0b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_ce_del_key_process::lut_idx=%u, reg_value=0x%08x.} @hal_mac.c(2599),WARNING" ID="0x8402513b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_del_key_process::wait lut ce setting done timeout.} @hal_mac.c(2621),ERROR" ID="0x840251ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_del_key::wait lut ce idle failed.} @hal_mac.c(2635),ERROR" ID="0x8402525a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_del_key::wait lut ce set done failed.} @hal_mac.c(2670),ERROR" ID="0x84025372" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_del_key::wait lut ce set done failed.} @hal_mac.c(2683),ERROR" ID="0x840253da" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_tpc_params::band[%u]chan_idx[%u] is invalid} @hal_mac.c(2783),WARNING" ID="0x840256fb" />
+			<MSG STRUCTURE="diag_log_msg5" NAME="{hh503_show_irq_info::ct_end[%d], absent_start[%d], noa_absent_end[%d], absent_start[%d], absent_end[%d]} @hal_mac.c(2822),INFO" ID="0x84025835" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_dft_report_all_reg_state::alloc netbuff failed! size[%d].} @hal_mac.c(3020),WARNING" ID="0x84025e63" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{OBSS_PD = %d,  NON_SRG = %d,  SRG = %d!} @hal_mac.c(3062),WARNING" ID="0x84025fb3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{NON_SRG PD_LV = 0x%x, PD_SR_TX_POWER = 0x%x, SRG PD_LV = 0x%x, SRG TX_POWER = 0x%x!} @hal_mac.c(3068),WARNING" ID="0x84025fe3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="NON_SRG_62_68_CNT = %d, NON_SRG_68_74_CNT = %d, NON_SRG_74_78_CNT = %d, NON_SRG_78_82_CNT = %d @hal_mac.c(3078),WARNING" ID="0x84026033" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="SRG_62_68_CNT = %d, SRG_68_74_CNT = %d, SRG_74_78_CNT = %d, SRG_78_82_CNT = %d @hal_mac.c(3082),WARNING" ID="0x84026053" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="TX_SUCCESS_NUM = %u, TX_NUM = %u @hal_mac.c(3084),WARNING" ID="0x84026063" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_set_dev_support_11ax:: hal dev enable.} @hal_mac.c(3603),WARNING" ID="0x8402709b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_bss_color::hal vap id=%u &gt; max vap=%d]} @hal_mac.c(3733),ERROR" ID="0x840274aa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_partial_bss_color::hal vap id=%u &gt; max vap=%d]} @hal_mac.c(3758),ERROR" ID="0x84027572" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_set_ac_queue_size failed, vap = %u} @hal_mac.c(3938),ERROR" ID="0x84027b12" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_set_machw_tx_suspend::wait suspend status failed in btcoex scene.} @hal_mac.c(3983),WARNING" ID="0x84027c7b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_set_machw_tx_suspend::wait suspend status failed.} @hal_mac.c(3986),ERROR" ID="0x84027c92" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_set_tx_nonqos_seq_num::failed.} @hal_mac.c(4023),ERROR" ID="0x84027dba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_set_tx_qos_seq_num::failed.} @hal_mac.c(4053),ERROR" ID="0x84027eaa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_vap_set_macaddr::hal vap id=%u &gt;= max vap=%d]} @hal_mac.c(4117),ERROR" ID="0x840280aa" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{hh503_vap_set_macaddr_patch:: MAC ADDR:: %02x:%02x:%02x:%02x:xx:xx.} @hal_mac.c(4136),WARNING" ID="0x84028143" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_vap_clr_opmode::hal vap id=%u &gt;= max vap=%d]} @hal_mac.c(4152),ERROR" ID="0x840281c2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_vap_set_opmode::hal sta id=%u &gt;= max vap=%d]} @hal_mac.c(4183),ERROR" ID="0x840282ba" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_vap_set_opmode::hal sta id=%u,wrong vap mode[%u]} @hal_mac.c(4192),ERROR" ID="0x84028302" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_vap_set_beacon_rate::vap mode [%d]!= WLAN_VAP_MODE_BSS_AP,or hal vap id=%d &gt;= max vap=%d]} @hal_mac.c(4258),WARNING" ID="0x84028513" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_set_sta_bssid::vap mode [%d]!= WLAN_VAP_MODE_BSS_STA,or hal vap id=%d &gt;= max vap=%d]} @hal_mac.c(4290),WARNING" ID="0x84028613" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_ce_add_peer_macaddr::invalid lut idx [%u]!} @hal_mac.c(4347),ERROR" ID="0x840287da" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_peer_macaddr::waiting lut ce idle timeout!} @hal_mac.c(4354),ERROR" ID="0x84028812" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_add_peer_macaddr::waiting lut ce idle timeout!} @hal_mac.c(4381),ERROR" ID="0x840288ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_del_peer_macaddr::waiting lut idle timeout!} @hal_mac.c(4397),ERROR" ID="0x8402896a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_ce_del_peer_macaddr::waiting lut done timeout!} @hal_mac.c(4416),ERROR" ID="0x84028a02" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_txop_ps_partial_aid::hal vap id=%d &gt; max vap=%d]} @hal_mac.c(4695),ERROR" ID="0x840292ba" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_set_mac_aid::hal vap id=%u &gt; max vap=%d]} @hal_mac.c(4718),ERROR" ID="0x84029372" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_vap_set_machw_aifsn_ac_wfa::ac illegal[%u], fail to set reg val.} @hal_mac.c(4840),WARNING" ID="0x84029743" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_vap_set_edca_machw_cw_wfa::ac illegal[%u], fail to set reg val.} @hal_mac.c(4920),WARNING" ID="0x840299c3" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hal_show_linkloss_reg_info::mac rx_cnt[0x%x], rx_queue[0x%x], intr[0x%x], err_intr[0x%x] @hal_mac.c(5252),ERROR" ID="0x8402a422" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hal_show_linkloss_reg_info::mac vector word0[0x%x], word1[0x%x], word2[0x%x], word3[0x%x] @hal_mac.c(5257),WARNING" ID="0x8402a44b" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="hal_show_linkloss_reg_info::mac vector word4[0x%x], word5[0x%x], word6[0x%x], word7[0x%x] @hal_mac.c(5262),WARNING" ID="0x8402a473" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="hal_show_linkloss_reg_info::mac err_intr2[0x%x], phy 11b frame cnt[0x%x] @hal_mac.c(5265),ERROR" ID="0x8402a48a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hal_pkt_ram_sample_deinit done! @hal_mac.c(5275),INFO" ID="0x8402a4dd" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{mac_daq_reg_cfg::clk[0x%x] ctl1[0x%x] reuser1[0x%x] diag_en[0x%x]} @hal_mac.c(5303),WARNING" ID="0x8402a5bb" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{daq_done_reg_info::sample_done_reg[%x] sample_done_addr_reg[%x] fifo_status_reg[%x]} @hal_mac.c(5311),WARNING" ID="0x8402a5fb" />
+			</MSG_LOG>

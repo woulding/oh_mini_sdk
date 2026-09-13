@@ -1,0 +1,19 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="ble hci factory cbk param error @btsrv_hci_factory.c(49),ERROR" ID="0xd89e018a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ble factory evt proc] type invalid. cmd/evt(%d) @btsrv_hci_factory.c(57),ERROR" ID="0xd89e01ca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ble factory evt proc] malloc fail. cmd/evt(%d) @btsrv_hci_factory.c(63),ERROR" ID="0xd89e01fa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ble factory evt proc] type invalid. cmd/evt(%d) @btsrv_hci_factory.c(95),ERROR" ID="0xd89e02fa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ble factory evt proc] send bt_service msg error ret %d evt %d @btsrv_hci_factory.c(101),ERROR" ID="0xd89e032a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[btsrv][ERROR] failed to register bcore callback. @btsrv_hci_factory.c(114),ERROR" ID="0xd89e0392" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="unhandled msg id %x @btsrv_hci_factory.c(222),ERROR" ID="0xd89e06f2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf tx start general param memcpy error @btsrv_hci_factory.c(241),ERROR" ID="0xd89e078a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf tx start fail  @btsrv_hci_factory.c(248),ERROR" ID="0xd89e07c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf rx start general param memcpy error @btsrv_hci_factory.c(267),ERROR" ID="0xd89e085a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf rx start fail  @btsrv_hci_factory.c(274),ERROR" ID="0xd89e0892" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf trx end fail  @btsrv_hci_factory.c(287),ERROR" ID="0xd89e08fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf reset fail  @btsrv_hci_factory.c(300),ERROR" ID="0xd89e0962" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf cali nv fail  @btsrv_hci_factory.c(313),ERROR" ID="0xd89e09ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf rx start general param memcpy error @btsrv_hci_factory.c(331),ERROR" ID="0xd89e0a5a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory rf single tone fail  @btsrv_hci_factory.c(338),ERROR" ID="0xd89e0a92" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory vendor productline cmd general param memcpy error @btsrv_hci_factory.c(376),ERROR" ID="0xd89e0bc2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ble factory vendor productline cmd tone fail  @btsrv_hci_factory.c(383),ERROR" ID="0xd89e0bfa" />
+			</MSG_LOG>

@@ -1,0 +1,3 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="dmac_data_sample_resv_mem::param is NULL @dmac_data_sample_rom.c(42),WARNING" ID="0x81260153" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="dmac_data_sample_resv_mem::resv[%dK] mem ret[%d] @dmac_data_sample_rom.c(48),WARNING" ID="0x81260183" />
+			</MSG_LOG>

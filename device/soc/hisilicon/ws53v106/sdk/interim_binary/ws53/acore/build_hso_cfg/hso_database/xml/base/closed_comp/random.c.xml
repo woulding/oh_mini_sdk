@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[SMP]trng get random err. ret: 0x%x @random.c(25),ERROR" ID="0xdef600ca" />
+			</MSG_LOG>

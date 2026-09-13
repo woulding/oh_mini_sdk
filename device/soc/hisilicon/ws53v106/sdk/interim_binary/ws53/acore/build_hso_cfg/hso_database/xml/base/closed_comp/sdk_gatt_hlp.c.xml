@@ -1,0 +1,46 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[SDK]convert uuid to sdk memcpy error @sdk_gatt_hlp.c(103),ERROR" ID="0xddaa033a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]convert uuid to stack memcpy error @sdk_gatt_hlp.c(115),ERROR" ID="0xddaa039a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[SDK]btsdk gatth get descriptors from cache type : %u error @sdk_gatt_hlp.c(240),ERROR" ID="0xddaa0782" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att exchange mtu addr memcpy fail @sdk_gatt_hlp.c(576),ERROR" ID="0xddaa1202" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[SDK]btsdk gatth character value cbk type : %u error @sdk_gatt_hlp.c(778),ERROR" ID="0xddaa1852" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="btsdk gatth get multiple characteristic value mtu:0x%x @sdk_gatt_hlp.c(870),INFO" ID="0xddaa1b35" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="btsdk gatth get characteristics by uuid start_handle:0x%x end_handle:0x%x @sdk_gatt_hlp.c(1000),INFO" ID="0xddaa1f45" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ble core: ble notify att read by uuid complete! error_code = %x @sdk_gatt_hlp.c(1020),ERROR" ID="0xddaa1fe2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ble core: att read data cbk event type:%d! @sdk_gatt_hlp.c(1032),INFO" ID="0xddaa2045" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="bt sdk gatt read value handle:%d, offset:%d. @sdk_gatt_hlp.c(1045),INFO" ID="0xddaa20ad" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="bt sdk gatt read value can't find remote device. @sdk_gatt_hlp.c(1049),ERROR" ID="0xddaa20ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="bt sdk gatt read value addr memcpy fail. @sdk_gatt_hlp.c(1054),ERROR" ID="0xddaa20f2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="btsdk gatth get descriptor by handle arg-&gt;start_handle:0x%x arg-&gt;end_handle:0x%x @sdk_gatt_hlp.c(1098),INFO" ID="0xddaa2255" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="btsdk gatth set reliable characteristic value in @sdk_gatt_hlp.c(1143),INFO" ID="0xddaa23bd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="btsdk gatth set characteristic value memcpy failed @sdk_gatt_hlp.c(1180),ERROR" ID="0xddaa24e2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[SDK]btsdk gatth get descriptors type : %u error @sdk_gatt_hlp.c(1233),ERROR" ID="0xddaa268a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[SDK]btsdk gatth descriptor value cbk type : %u error @sdk_gatt_hlp.c(1298),ERROR" ID="0xddaa2892" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="btsdk gatth check and save value memcpy failed @sdk_gatt_hlp.c(1674),ERROR" ID="0xddaa3452" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatth server execute write complete memcpy error @sdk_gatt_hlp.c(1771),ERROR" ID="0xddaa375a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="btsdk gatth server write ind @sdk_gatt_hlp.c(1863),INFO" ID="0xddaa3a3d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatth server write ind memcpy error @sdk_gatt_hlp.c(1896),ERROR" ID="0xddaa3b42" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatth server write ind memcpy error @sdk_gatt_hlp.c(1911),ERROR" ID="0xddaa3bba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="btsdk gatth server write ind pend_ind = NULL @sdk_gatt_hlp.c(1940),INFO" ID="0xddaa3ca5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SDK]btsdk gatth send response memcpy error @sdk_gatt_hlp.c(2265),ERROR" ID="0xddaa46ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ATT] btsdk gatth send response item is NULL. @sdk_gatt_hlp.c(2435),INFO" ID="0xddaa4c1d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ATT]btsdk gatth notify multiple characteristic changed memcpy error @sdk_gatt_hlp.c(2506),ERROR" ID="0xddaa4e52" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write ind data info mem new fail @sdk_gatt_hlp.c(2561),ERROR" ID="0xddaa500a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write ind data info service uuid memcpy fail @sdk_gatt_hlp.c(2572),ERROR" ID="0xddaa5062" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write ind data info attribute uuid memcpy fail @sdk_gatt_hlp.c(2577),ERROR" ID="0xddaa508a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write ind data info addr memcpy fail @sdk_gatt_hlp.c(2582),ERROR" ID="0xddaa50b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write ind data info val memcpy fail @sdk_gatt_hlp.c(2587),ERROR" ID="0xddaa50da" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write ind can't find service by service hdl @sdk_gatt_hlp.c(2633),ERROR" ID="0xddaa524a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write pkt null @sdk_gatt_hlp.c(2639),ERROR" ID="0xddaa527a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write ind can't find server cbk by server hdl @sdk_gatt_hlp.c(2646),ERROR" ID="0xddaa52b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att write not need rep. @sdk_gatt_hlp.c(2657),INFO" ID="0xddaa530d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att read ind data info mem new fail @sdk_gatt_hlp.c(2680),ERROR" ID="0xddaa53c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att read ind data info service uuid memcpy fail @sdk_gatt_hlp.c(2692),ERROR" ID="0xddaa5422" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att read ind data info attribute uuid memcpy fail @sdk_gatt_hlp.c(2697),ERROR" ID="0xddaa544a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att read ind data info addr memcpy fail @sdk_gatt_hlp.c(2702),ERROR" ID="0xddaa5472" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att read ind data info val memcpy fail @sdk_gatt_hlp.c(2708),ERROR" ID="0xddaa54a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att read ind can't find service by service hdl @sdk_gatt_hlp.c(2728),ERROR" ID="0xddaa5542" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att read pkt null @sdk_gatt_hlp.c(2734),ERROR" ID="0xddaa5572" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]att read ind can't find server cbk by server hdl @sdk_gatt_hlp.c(2741),ERROR" ID="0xddaa55aa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]write element @sdk_gatt_hlp.c(2778),INFO" ID="0xddaa56d5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[sdk_gatt_hlp]read element @sdk_gatt_hlp.c(2782),INFO" ID="0xddaa56f5" />
+			</MSG_LOG>

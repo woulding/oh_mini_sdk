@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="[MSG PROC] msg_id:%u exceeds the upper limit @gle_mc_msg.c(70),ERROR" ID="0xded80232" />
+			</MSG_LOG>

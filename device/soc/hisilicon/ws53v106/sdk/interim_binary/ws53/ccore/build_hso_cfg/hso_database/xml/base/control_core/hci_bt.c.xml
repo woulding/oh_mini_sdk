@@ -1,0 +1,8 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]hci_bt_cmd_reject: opcode = 0x%x, err_code = 0x%x @hci_bt.c(340),INFO" ID="0x88800aa5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_bt_send_hw_err: err_code(0x%x) @hci_bt.c(392),WARNING" ID="0x88800c43" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]hci_bt_cmd_received: opcode = 0x%x, payload length = 0x%x @hci_bt.c(486),INFO" ID="0x88800f35" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_bt_cmd_received unknown hci cmd opcode(0x%x) @hci_bt.c(493),WARNING" ID="0x88800f6b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_bt_cmd_received opcode(0x%x) out of command window @hci_bt.c(500),WARNING" ID="0x88800fa3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_bt_pack_le_evt get unknown subcode(0x%x) @hci_bt.c(681),WARNING" ID="0x8880154b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_bt_pack_evt get unknown evt_code(0x%x) @hci_bt.c(711),WARNING" ID="0x8880163b" />
+			</MSG_LOG>

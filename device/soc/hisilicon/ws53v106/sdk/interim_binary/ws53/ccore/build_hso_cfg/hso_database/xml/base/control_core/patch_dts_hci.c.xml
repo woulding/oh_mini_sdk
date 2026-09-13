@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="hcc_bt_tx_datac fail size=%d @patch_dts_hci.c(68),WARNING" ID="0x89b00223" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hci_if_tx_start_retry if_id[%d] tx_state[%d] buffer[0x%x] check failed @patch_dts_hci.c(112),WARNING" ID="0x89b00383" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp]hci_if_tx_start, tx_func_fail, data_len=0x%x @patch_dts_hci.c(126),WARNING" ID="0x89b003f3" />
+			</MSG_LOG>

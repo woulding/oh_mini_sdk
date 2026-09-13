@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]lm_ble_adv_set_ext_param_check_intv:intv_min(0x%x)intv_max(0x%x) @lm_ble_adv_ext_act.c(212),INFO" ID="0x881206a5" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp]lm_ble_adv_hci_set_ext_param_act properties(0x%x)ch_map(0x%x)own_type(0x%x)peer_type(0x%x) @lm_ble_adv_ext_act.c(355),INFO" ID="0x88120b1d" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[bgtp] policy(0x%x)power(%d)prim_phy(%d)notif(%d) @lm_ble_adv_ext_act.c(357),INFO" ID="0x88120b2d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[bgtp]lm_ble_adv_comm_hci_enable_ext_adv_act enable(%d) num_sets(%d) @lm_ble_adv_ext_act.c(746),INFO" ID="0x88121755" />
+			</MSG_LOG>

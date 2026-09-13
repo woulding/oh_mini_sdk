@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="{hal_rx_init_alloc_dscr_lowpower rx_dscr_queue %d is empty @hal_dscr.c(46),WARNING" ID="0x843e0173" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="Switch tx dscr debug %d @hal_dscr.c(176),WARNING" ID="0x843e0583" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hal_rx_dscr_set_rssi_comp, hal_device or hal_rx_dscr is null} @hal_dscr.c(215),ERROR" ID="0x843e06ba" />
+			</MSG_LOG>

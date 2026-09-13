@@ -1,0 +1,8 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="hal_device_btcoex_sw_init::support siso switch 6slot[%u]ldac[%u]. @hal_coex_reg.c(114),WARNING" ID="0x848a0393" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hal_extcoex_mode_init coex_mode_4 don't support share_ant! @hal_coex_reg.c(218),WARNING" ID="0x848a06d3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hal_extcoex_init::invalid mode[%d].} @hal_coex_reg.c(261),WARNING" ID="0x848a082b" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{hal_btcoex_sw_preempt_init::sw_preempt_mode is [0x%x], type[%d], subtype[%d].} @hal_coex_reg.c(340),WARNING" ID="0x848a0aa3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hal_set_btcoex_abort_qos_null_seq_num::empty function @hal_coex_reg.c(458),INFO" ID="0x848a0e55" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hal_get_btcoex_abort_qos_null_seq_num::empty function @hal_coex_reg.c(469),INFO" ID="0x848a0ead" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hal_btcoex_sync_btble_status::ble:0x%04x, req:0x%04x, bt:0x%04x. @hal_coex_reg.c(590),INFO" ID="0x848a1275" />
+			</MSG_LOG>

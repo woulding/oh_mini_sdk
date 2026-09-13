@@ -1,0 +1,9 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg4" NAME="[Rx IQ]numer(real=%d imag=%d), denom=(real=%d imag=%d) @rf_calibration_alg.c(144),INFO" ID="0x88c80485" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[Rx IQ]multiply_res(real=%d imag=%d), after=(real=%d imag=%d) @rf_calibration_alg.c(157),INFO" ID="0x88c804ed" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[Rx IQ]power=%d @rf_calibration_alg.c(158),INFO" ID="0x88c804f5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ERROR]bt_interp: length = 0 @rf_calibration_alg.c(178),ERROR" ID="0x88c80592" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="[ERROR]bt_interp: XARRAY not INC! xarray[%d]=%d, xarray[%d]=%d @rf_calibration_alg.c(202),ERROR" ID="0x88c80652" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ERROR] bt_rf_interp: Run error! @rf_calibration_alg.c(225),ERROR" ID="0x88c8070a" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="g_al_acc_val_i = %d, g_al_acc_val_q = %d, us_accum_times = %d, power = %d @rf_calibration_alg.c(265),INFO" ID="0x88c8084d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[SQRT] Negative input @rf_calibration_alg.c(339),WARNING" ID="0x88c80a9b" />
+			</MSG_LOG>

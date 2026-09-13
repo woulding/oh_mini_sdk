@@ -1,0 +1,9 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="gle manager new fail @gle_manager.c(36),ERROR" ID="0xde480122" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle manager init g_gle_manager already init @gle_manager.c(42),INFO" ID="0xde480155" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle manager init g_gle_fsminst already init @gle_manager.c(65),INFO" ID="0xde48020d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle manager init g_gle_fsminst new fail @gle_manager.c(70),INFO" ID="0xde480235" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle fsm free arg enter @gle_manager.c(127),INFO" ID="0xde4803fd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle manager cleanup enter @gle_manager.c(140),INFO" ID="0xde480465" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="gle execute cmd cbk opscode:0x%02x,ret:%u @gle_manager.c(153),INFO" ID="0xde4804cd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="mgr_cbks null error @gle_manager.c(191),ERROR" ID="0xde4805fa" />
+			</MSG_LOG>

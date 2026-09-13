@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="[GLE DM][DM init] transmission management module init @gle_dm_trans_ui.c(18),INFO" ID="0xde680095" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="gle dm trans mgt init new fail @gle_dm_trans_ui.c(22),ERROR" ID="0xde6800b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[GLE DM][DM done] transmission management module done @gle_dm_trans_ui.c(37),INFO" ID="0xde68012d" />
+			</MSG_LOG>

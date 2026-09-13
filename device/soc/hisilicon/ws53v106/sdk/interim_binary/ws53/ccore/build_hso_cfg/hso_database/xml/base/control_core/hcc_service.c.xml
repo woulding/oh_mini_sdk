@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="hcc srv init null @hcc_service.c(30),ERROR" ID="0xa63e00f2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="hcc srv add-%d @hcc_service.c(42),ERROR" ID="0xa63e0152" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hcc srv deinit null @hcc_service.c(63),ERROR" ID="0xa63e01fa" />
+			</MSG_LOG>

@@ -1,0 +1,10 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="hh503_vap_ap_start_tsf::vap mode [%d]!= WLAN_VAP_MODE_BSS_AP,or hal vap id=%d &gt;= max vap=%d! @hal_tbtt.c(191),WARNING" ID="0x831e05fb" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_enable_ap_tsf_tbtt::VAP(hal id%u)TSF ENABLE, tsf reg val[0x%08x]} @hal_tbtt.c(201),WARNING" ID="0x831e064b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_enable_sta_tsf_tbtt::dmac vap err. id[%u,%u]} @hal_tbtt.c(220),WARNING" ID="0x831e06e3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hh503_vap_set_machw_tsf_disable::vap mode [%d] != WLAN_VAP_MODE_BSS_AP,or hal vap id=%d &gt;= max vap=%d! @hal_tbtt.c(260),WARNING" ID="0x831e0823" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_disable_sta_tsf_tbtt::vap id[%u] invalid} @hal_tbtt.c(282),WARNING" ID="0x831e08d3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_enable_tsf_tbtt::hal_vap null} @hal_tbtt.c(303),ERROR" ID="0x831e097a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="vap_id[%d] {hh503_enable_tsf_tbtt::hal vap[%d],wrong vap mode[%d]} @hal_tbtt.c(313),ERROR" ID="0x831e09ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_disable_tsf_tbtt::hal_vap null} @hal_tbtt.c(324),ERROR" ID="0x831e0a22" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{hh503_disable_tsf_tbtt::hal vap[%u],wrong vap mode[%u]} @hal_tbtt.c(334),ERROR" ID="0x831e0a72" />
+			</MSG_LOG>

@@ -1,0 +1,5 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hh503_device_get_cur_bcn_rf_chain:dev no up vap} @hal_pm.c(138),ERROR" ID="0x84c20452" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_device_get_cur_bcn_rf_chain:dev cannot find up vap,up_vap_num[%u]} @hal_pm.c(152),ERROR" ID="0x84c204c2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{hh503_pm_on::check ext osc stability timeout} @hal_pm.c(178),WARNING" ID="0x84c20593" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hh503_pm_on::fetch ext tsf freq failed, freq[%d].} @hal_pm.c(185),WARNING" ID="0x84c205cb" />
+			</MSG_LOG>

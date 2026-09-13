@@ -1,0 +1,6 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="vap_id[%d] {hmac_tx_encap_etc::hdr null.} @hmac_tx_pk.c(110),ERROR" ID="0x85480372" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="vap_id[%d] {hmac_tx_encap_etc::memcpy_s failed[%d].} @hmac_tx_pk.c(139),ERROR" ID="0x8548045a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="vap_id[%d] {hmac_tx_lan_mpdu_process_sta::hmac_tx_encap_etc failed[%d].} @hmac_tx_pk.c(215),WARNING" ID="0x854806bb" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{hmac_tx_set_txopps_param: unvalid vap mode[%d]} @hmac_tx_pk.c(249),ERROR" ID="0x854807ca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[E]hmac_tx_process_encap_data[%u] drop! @hmac_tx_pk.c(385),WARNING" ID="0x85480c0b" />
+			</MSG_LOG>

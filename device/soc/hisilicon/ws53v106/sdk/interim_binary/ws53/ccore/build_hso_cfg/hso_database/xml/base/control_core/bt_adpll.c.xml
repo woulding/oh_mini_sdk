@@ -1,0 +1,8 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[ERROR][bt_adpll_start_tx]freq=%d mode=%d @bt_adpll.c(607),ERROR" ID="0x889212fa" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="bt_adpll_stop_tx_if end @bt_adpll.c(633),INFO" ID="0x889213cd" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ERROR][bt_adpll_start_tx_if]freq=%d mode=%d @bt_adpll.c(639),ERROR" ID="0x889213fa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[ERROR][bt_adpll_start_tx_if]freq=%d mode=%d @bt_adpll.c(644),ERROR" ID="0x88921422" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[ERROR][bt_rf_start_rx_if]freq_rf=%d @bt_adpll.c(728),ERROR" ID="0x889216c2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="bt_rf_start_rx_if param-&gt;freq_rf=%d @bt_adpll.c(731),INFO" ID="0x889216dd" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="bt_rf_start_rx_if end @bt_adpll.c(734),INFO" ID="0x889216f5" />
+			</MSG_LOG>

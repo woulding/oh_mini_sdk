@@ -1,0 +1,8 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="tm recv data cbk buf null. @gle_tm_data.c(39),INFO" ID="0xde1c013d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="tm recv data cbk buf len error. @gle_tm_data.c(44),INFO" ID="0xde1c0165" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="tm recv data cbk ev_code = 0x%x, buf-&gt;len = %u, buf-&gt;off = %u @gle_tm_data.c(49),INFO" ID="0xde1c018d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="tm recv data cbk bg_pkt_buff new fail @gle_tm_data.c(53),INFO" ID="0xde1c01ad" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="tm recv data cbk buff_stru new fail. @gle_tm_data.c(61),ERROR" ID="0xde1c01ea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="tm recv data cbk pkt buf data memcpy fail. @gle_tm_data.c(68),ERROR" ID="0xde1c0222" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="ev_code = 0x%x not support @gle_tm_data.c(76),INFO" ID="0xde1c0265" />
+			</MSG_LOG>

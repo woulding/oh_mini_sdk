@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg4" NAME="{hh503_irq_mac_error_isr::error status1[0x%08x], error status2[0x%08x], mask1[0x%08x], mask2[0x%08x]} @hal_irq.c(85),ERROR" ID="0x812e02aa" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{hh503_irq_mac_error_isr::error status1[0x%08x], error status2[0x%08x], mask1[0x%08x], mask2[0x%08x]} @hal_irq.c(90),WARNING" ID="0x812e02d3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="wbase:0x%x wlen:0x%x @hal_irq.c(105),ERROR" ID="0x812e034a" />
+			</MSG_LOG>

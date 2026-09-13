@@ -1,0 +1,10 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg4" NAME="[BTH MIPS][TRANS_TASK][%ld]MS,[RECV TASK][%ld]MS, [SCHEDULE TASK][%ld]MS, [ISR][%ld]MS @bt_dfx.c(114),INFO" ID="0xde040395" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bt hci send cmd][len] %02x @bt_dfx.c(158),INFO" ID="0xde0404f5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bt hci recv event][len] %02x @bt_dfx.c(161),INFO" ID="0xde04050d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bt hci send acl data][len] %02x @bt_dfx.c(165),INFO" ID="0xde04052d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle hci send cmd][len] %02x @bt_dfx.c(169),INFO" ID="0xde04054d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle hci recv event][len] %02x @bt_dfx.c(172),INFO" ID="0xde040565" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[gle hci send acb data][len] %02x @bt_dfx.c(176),INFO" ID="0xde040585" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[UNKOWN hci data][len] %02x @bt_dfx.c(179),INFO" ID="0xde04059d" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[HCI] byte[%02x]: %02x @bt_dfx.c(184),INFO" ID="0xde0405c5" />
+			</MSG_LOG>

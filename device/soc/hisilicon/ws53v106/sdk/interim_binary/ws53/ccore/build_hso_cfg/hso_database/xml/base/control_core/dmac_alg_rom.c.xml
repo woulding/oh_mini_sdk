@@ -1,0 +1,42 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg1" NAME="dmac_config_temp_tpc_notify:try to notify tpc. flag:%u. @dmac_alg_rom.c(135),WARNING" ID="0x814e043b" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="dmac_config_temp_tpc_notify:notify tpc success. @dmac_alg_rom.c(139),WARNING" ID="0x814e045b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="dmac_config_temp_aggr_notify:try to notify aggr. aggr:%u. @dmac_alg_rom.c(152),WARNING" ID="0x814e04c3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="OAL_ERR_CODE_PTR_NULL @dmac_alg_rom.c(180),ERROR" ID="0x814e05a2" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_alg_get_tx_best_rate:: ERROR INFO: mac_user=%d, pul_rate_kbps=%d.} @dmac_alg_rom.c(218),ERROR" ID="0x814e06d2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_alg_get_tx_best_rate::p_get_rate_by_table_func is null} @dmac_alg_rom.c(223),WARNING" ID="0x814e06fb" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{dmac_alg_register_device_priv_stru:: ERROR INFO: hal_dev=%p, dev_stru=%p, dev_stru_type=%d.} @dmac_alg_rom.c(691),ERROR" ID="0x814e159a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_alg_register_device_priv_stru:: dev_info is NULL!.} @dmac_alg_rom.c(697),ERROR" ID="0x814e15ca" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_alg_unregister_device_priv_stru:: ERROR INFO: hal_dev=%p, dev_stru_type=%d.} @dmac_alg_rom.c(718),ERROR" ID="0x814e1672" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_alg_unregister_device_priv_stru:: dev_info is NULL!.} @dmac_alg_rom.c(724),ERROR" ID="0x814e16a2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{dmac_alg_register_user_priv_stru:: ERROR INFO: user=%p, user_stru=%p, user_stru_type=%d.} @dmac_alg_rom.c(745),ERROR" ID="0x814e174a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_alg_register_user_priv_stru:: alg_info is NULL!.} @dmac_alg_rom.c(753),ERROR" ID="0x814e178a" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_alg_unregister_user_priv_stru:: ERROR INFO:user=%p, user_stru_type=%d.} @dmac_alg_rom.c(772),ERROR" ID="0x814e1822" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="ERROR INFO: p_alg_priv is NULL PTR @dmac_alg_rom.c(779),ERROR" ID="0x814e185a" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{dmac_alg_get_device_priv_stru:: ERROR INFO: hal_dev=%p, dev_stru=%p, dev_stru_type=%d.} @dmac_alg_rom.c(802),ERROR" ID="0x814e1912" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_alg_get_device_priv_stru::dev_info is null} @dmac_alg_rom.c(809),ERROR" ID="0x814e194a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_alg_get_device_priv_stru::dev_stru null, type=%d} @dmac_alg_rom.c(816),ERROR" ID="0x814e1982" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_alg_get_user_priv_stru:: ERROR: pp_user_stru=%d, user_stru_type=%d.} @dmac_alg_rom.c(836),ERROR" ID="0x814e1a22" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_alg_get_user_priv_stru:: assoc_id=%d, user_asoc_state=%d} @dmac_alg_rom.c(846),WARNING" ID="0x814e1a73" />
+			<MSG STRUCTURE="diag_log_msg4" NAME="{dmac_alg_get_user_priv_stru:: user mac:%02x:%02x:%02x:%02x:xx:xx} @dmac_alg_rom.c(849),WARNING" ID="0x814e1a8b" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="vap_id[%d] {dmac_alg_get_user_priv_stru::alg priv user_stru is null, type=%d, user idx = %d} @dmac_alg_rom.c(860),WARNING" ID="0x814e1ae3" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{alg_dmac_intf_det_mode_notify:: ERROR INFO: hal_device=%p.} @dmac_alg_rom.c(910),ERROR" ID="0x814e1c72" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_alg_cfg_user_bandwidth_notify:: ERROR INFO: vap=%p,dmac_user=%p.} @dmac_alg_rom.c(937),ERROR" ID="0x814e1d4a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_alg_config_get_tx_params::mac_user[%u] is NULL!} @dmac_alg_rom.c(966),WARNING" ID="0x814e1e33" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_alg_config_get_tx_params:user_lut_idx[%u] get best rate fail!} @dmac_alg_rom.c(974),WARNING" ID="0x814e1e73" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="dmac_alg_config_get_tx_params::user_id[%u], rate_kbps[%u] @dmac_alg_rom.c(981),INFO" ID="0x814e1ead" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="dmac_alg_config_get_tx_params:: memcpy_s fail @dmac_alg_rom.c(984),WARNING" ID="0x814e1ec3" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_alg_cfg_user_protocol_notify:: ERROR INFO: vap=%p,dmac_user=%p.} @dmac_alg_rom.c(1000),ERROR" ID="0x814e1f42" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_alg_cfg_user_spatial_stream_notify:: ERROR INFO: dmac_user=%p.} @dmac_alg_rom.c(1026),ERROR" ID="0x814e2012" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="OAL_ERR_CODE_PTR_NULL @dmac_alg_rom.c(1056),ERROR" ID="0x814e2102" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="dmac_alg_add_assoc_user_notify: alloc mem fail, dmac_alg_user_stru,pool id is OAL_DMAC_MEM_POOL_ID_LOCAL @dmac_alg_rom.c(1069),ERROR" ID="0x814e216a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="OAL_ERR_CODE_PTR_NULL @dmac_alg_rom.c(1104),ERROR" ID="0x814e2282" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{dmac_alg_rx_mgmt_notify:: ERROR INFO: vap=%p, buf=%p.} @dmac_alg_rom.c(1143),ERROR" ID="0x814e23ba" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_alg_create_vap_notify::dmac_vap is null} @dmac_alg_rom.c(1173),ERROR" ID="0x814e24aa" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="vap_id[%d] {dmac_alg_syn_info::dispatch_event fail, ret=%d} @dmac_alg_rom.c(1233),WARNING" ID="0x814e268b" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="vap_id[%d] {dmac_alg_voice_aggr: dispatch_event fail, ret=%d} @dmac_alg_rom.c(1253),WARNING" ID="0x814e272b" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="vap_id[%d] {dmac_alg_get_user_lut_index::user lut index: %d; assoc id: %d @dmac_alg_rom.c(1270),ERROR" ID="0x814e27b2" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="{dmac_alg_get_rate_by_table:: ERROR INFO: dmac_user=%p, cb_ctrl=%p, rate_kbps=%p.} @dmac_alg_rom.c(1332),ERROR" ID="0x814e29a2" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="{dmac_alg_delete_ba_fail_notify:: ERROR INFO: dmac_user=%p.} @dmac_alg_rom.c(1373),ERROR" ID="0x814e2aea" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_alg_delete_ba_fail_notify::p_delete_ba_fail_notify_func is null} @dmac_alg_rom.c(1378),WARNING" ID="0x814e2b13" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{dmac_alg_tx_check_notify::tx_ctl null!} @dmac_alg_rom.c(1461),WARNING" ID="0x814e2dab" />
+			</MSG_LOG>

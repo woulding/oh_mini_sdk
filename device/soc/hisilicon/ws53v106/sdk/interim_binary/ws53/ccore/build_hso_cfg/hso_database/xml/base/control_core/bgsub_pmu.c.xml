@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="bgsub_sleep_reg_backup_init mem_offset:0x%x RX_BUFF_SRART:0x%x RX_BUFF_END:0x%x @bgsub_pmu.c(82),WARNING" ID="0x899a0293" />
+			</MSG_LOG>

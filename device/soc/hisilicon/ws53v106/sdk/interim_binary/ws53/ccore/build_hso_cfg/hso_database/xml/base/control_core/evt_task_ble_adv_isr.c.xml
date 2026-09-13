@@ -1,0 +1,9 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[bgtp][scan]evt_task_ble_adv_start_cbk, adv_stop_type=%d, prog_num=%d @evt_task_ble_adv_isr.c(52),WARNING" ID="0x88ec01a3" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]evt_task_ble_adv_end_isr_rx_handle rx remained:sed_id(%d)ble_aclrxdesccnt(%d)rx_counter(%d) @evt_task_ble_adv_isr.c(72),WARNING" ID="0x88ec0243" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[bgtp][adv]evt_task_ble_adv_end_isr_rx_handle: receive a scan req @evt_task_ble_adv_isr.c(83),INFO" ID="0x88ec029d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ADV]prog_num is 0 @evt_task_ble_adv_isr.c(118),ERROR" ID="0x88ec03b2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ADV]prog_num is 0 @evt_task_ble_adv_isr.c(139),ERROR" ID="0x88ec045a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="evt_task_ble_adv_rx_cbk prog_num is 0 @evt_task_ble_adv_isr.c(167),ERROR" ID="0x88ec053a" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp][adv]evt_task_ble_adv_recv_isr: receive a conn req, req_rx_type(%d) @evt_task_ble_adv_isr.c(225),INFO" ID="0x88ec070d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="[bgtp][adv]evt_task_ble_adv_recv_isr: rxtype err : %d @evt_task_ble_adv_isr.c(233),WARNING" ID="0x88ec074b" />
+			</MSG_LOG>

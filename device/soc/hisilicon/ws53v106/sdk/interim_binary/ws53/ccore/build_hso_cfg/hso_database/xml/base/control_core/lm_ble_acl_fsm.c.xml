@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="[bgtp]lm_ble_acl_fsm_exception_handler except msg src_id(0x%x)dst_id(0x%x)msg_id(0x%x) @lm_ble_acl_fsm.c(69),WARNING" ID="0x8848022b" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="lm_ble_acl_fsm_create_srv fsm_id(0x%x) @lm_ble_acl_fsm.c(161),INFO" ID="0x8848050d" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="lm_ble_acl_fsm_delete_srv srv_fsm_id(0x%x) @lm_ble_acl_fsm.c(197),INFO" ID="0x8848062d" />
+			</MSG_LOG>

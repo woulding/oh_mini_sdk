@@ -1,0 +1,13 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{alg_dmac_cfg_user_best_rate_change_notify::dmac_user null.} @alg_main_rom.c(82),ERROR" ID="0x821c0292" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_dmac_config_param::alg_rts_config_param::failed} @alg_main_rom.c(159),WARNING" ID="0x821c04fb" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="[device]alg_cfg:%d, new param:%d. @alg_main_rom.c(206),WARNING" ID="0x821c0673" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_dmac_anti_intf_config_param: alg_anti_inf_config_param failed!} @alg_main_rom.c(212),WARNING" ID="0x821c06a3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_dmac_config_param: alg_anti_inf_config_param failed!} @alg_main_rom.c(222),WARNING" ID="0x821c06f3" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_dmac_config_param::alg_tpc_config_param failed!} @alg_main_rom.c(232),WARNING" ID="0x821c0743" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_dmac_config_param::alg_aggr_config_param failed!} @alg_main_rom.c(242),WARNING" ID="0x821c0793" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="{alg_dmac_mem_alloc:alloc fail.alg_id %d, len %d} @alg_main_rom.c(266),ERROR" ID="0x821c0852" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_distance_notify: user = NULL} @alg_main_rom.c(308),ERROR" ID="0x821c09a2" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="{alg_distance_notify: distance_info = NULL} @alg_main_rom.c(313),ERROR" ID="0x821c09ca" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="alg_get_vap_and_device_user_num::vap[%d] err. @alg_main_rom.c(384),ERROR" ID="0x821c0c02" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="alg_get_vap_and_device_user_num::vap[%d] err. @alg_main_rom.c(417),ERROR" ID="0x821c0d0a" />
+			</MSG_LOG>

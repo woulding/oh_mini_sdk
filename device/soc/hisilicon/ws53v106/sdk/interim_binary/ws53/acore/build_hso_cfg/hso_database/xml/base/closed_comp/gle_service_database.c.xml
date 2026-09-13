@@ -1,0 +1,14 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg3" NAME="sle set addr: 0x%02x:**:**:**:%02x:%02x @gle_service_database.c(62),INFO" ID="0xd8e001f5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="memcpy failed @gle_service_database.c(66),ERROR" ID="0xd8e00212" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle set name memcpy = %d failed @gle_service_database.c(82),INFO" ID="0xd8e00295" />
+			<MSG STRUCTURE="diag_log_msg2" NAME="sle set name[%d] = 0x%02x @gle_service_database.c(86),INFO" ID="0xd8e002b5" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] sle data config write err. @gle_service_database.c(105),INFO" ID="0xd8e0034d" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="[ACore] sle config sync data memcpy err. @gle_service_database.c(109),ERROR" ID="0xd8e0036a" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle acore get smp keys param err! @gle_service_database.c(121),ERROR" ID="0xd8e003ca" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle acore smp keys memcmp err, data all zero! @gle_service_database.c(136),WARNING" ID="0xd8e00443" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle acore smp keys memcmp err, addr not match! @gle_service_database.c(140),WARNING" ID="0xd8e00463" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="sle acore save smp keys param err! @gle_service_database.c(159),ERROR" ID="0xd8e004fa" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle acore save sm key write_index:%02x! @gle_service_database.c(250),INFO" ID="0xd8e007d5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle acore save sm full, write_index:%02x! @gle_service_database.c(284),INFO" ID="0xd8e008e5" />
+			<MSG STRUCTURE="diag_log_msg1" NAME="sle acore save sm key write_index:%02x! @gle_service_database.c(299),INFO" ID="0xd8e0095d" />
+			</MSG_LOG>

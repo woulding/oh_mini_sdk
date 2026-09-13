@@ -1,0 +1,4 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg0" NAME="{hal_register_alg_isr_hook::hal_alg_register_isr_func failed.} @hal_pm_rom.c(448),ERROR" ID="0x804e0e02" />
+			<MSG STRUCTURE="diag_log_msg0" NAME="hal_pm_check_tsf_sync_status::timeout. @hal_pm_rom.c(546),ERROR" ID="0x804e1112" />
+			<MSG STRUCTURE="diag_log_msg3" NAME="hal_pm_update_dtim_count_after_sleep::pre tbtt %d, tbtt %d, ex tbtt %d @hal_pm_rom.c(593),ERROR" ID="0x804e128a" />
+			</MSG_LOG>

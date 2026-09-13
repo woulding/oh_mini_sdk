@@ -1,0 +1,2 @@
+<MSG_LOG><MSG STRUCTURE="diag_log_msg2" NAME="[BGTP] evt_task_ble_acl_update_active_tx_octets tx_phy %d, active_tx_octets %d @evt_task_ble_acl_ram.c(50),INFO" ID="0x896a0195" />
+			</MSG_LOG>
