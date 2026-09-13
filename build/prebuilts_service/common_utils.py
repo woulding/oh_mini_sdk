@@ -327,10 +327,6 @@ def npm_install(operate: dict, global_args: object) -> tuple:
             print(
                 "npm install path {} not exist, skip".format(full_code_path)
             )
-            if global_args.build_type != "indep":
-                raise Exception(
-                    "npm install path {} not exist, it shouldn't happen, pls check...".format(full_code_path)
-                )
 
     if global_args.parallel_install:
         print('run npm install in parallel mode, please wait.')

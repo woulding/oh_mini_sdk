@@ -222,6 +222,12 @@ class OperateHanlder:
                 continue
             dest_dir = copy_config.get("dest")
             use_symlink = copy_config.get("use_symlink")
+            if use_symlink != "True" and "/node_modules/" in dest_dir:
+                package_root = dest_dir.split("/node_modules/", 1)[0]
+                if not os.path.exists(package_root):
+                    print(f"{package_root} not exist, skip node_modules copy.")
+                    continue
+                os.makedirs(os.path.dirname(dest_dir), exist_ok=True)
             if os.path.exists(os.path.dirname(dest_dir)):
                 print("remove", os.path.dirname(dest_dir))
                 shutil.rmtree(os.path.dirname(dest_dir))
