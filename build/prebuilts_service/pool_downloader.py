@@ -17,7 +17,10 @@ from download_util import (
     check_sha256,
     check_sha256_by_mark,
     extract_compress_files_and_gen_mark,
+    find_reusable_local_path,
     get_local_path,
+    get_remote_sha256,
+    register_local_path_by_sha,
     run_cmd,
     import_rich_module,
 )
@@ -120,21 +123,32 @@ class PoolDownloader:
             else:
                 run_cmd(["rm", "-rf", '{}/{}'.format(unzip_dir, unzip_filename)])
             run_cmd(["rm", "-rf"] + glob.glob(f"{unzip_dir}/*.{unzip_filename}.mark", recursive=False))
-            # 校验压缩包
-            if os.path.exists(local_path):
-                check_result = check_sha256(remote_url, local_path)
-                if check_result:
-                    self._adaptive_print(
-                        "{}, Sha256 check download OK.".format(local_path),
-                        style="green",
-                    )
-                else:
-                    # 压缩包不一致则删除压缩包，重新下载
-                    os.remove(local_path)
-                    self._try_download(remote_url, local_path)
+            # 内容寻址复用: 若其他URL已下载过同sha256的包, 直接复用, 免下载
+            remote_sha256 = get_remote_sha256(remote_url)
+            reusable_path = find_reusable_local_path(download_root, remote_url, remote_sha256)
+            if reusable_path:
+                self._adaptive_print(
+                    "{}, reuse cached package with same sha256: {}".format(remote_url, reusable_path),
+                    style="green",
+                )
+                local_path = reusable_path
             else:
-                # 压缩包不存在则下载
-                self._try_download(remote_url, local_path)
+                # 校验压缩包
+                if os.path.exists(local_path):
+                    check_result = check_sha256(remote_url, local_path)
+                    if check_result:
+                        self._adaptive_print(
+                            "{}, Sha256 check download OK.".format(local_path),
+                            style="green",
+                        )
+                    else:
+                        # 压缩包不一致则删除压缩包，重新下载
+                        os.remove(local_path)
+                        self._try_download(remote_url, local_path)
+                else:
+                    # 压缩包不存在则下载
+                    self._try_download(remote_url, local_path)
+                register_local_path_by_sha(local_path, remote_sha256)
 
             # 解压缩包
             self._adaptive_print("Start decompression {}".format(local_path))
