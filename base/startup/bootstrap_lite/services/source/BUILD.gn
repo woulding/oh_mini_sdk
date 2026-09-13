@@ -1,0 +1,25 @@
+# Copyright (c) 2020 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+import("../../config.gni")
+
+static_library("bootstrap") {
+  sources = [ "system_init.c" ]
+  if (bootstrap_lite_enable_bootstrap_service) {
+    sources += [ "bootstrap_service.c" ]
+  }
+  include_dirs = [
+    "../source",
+    "//foundation/systemabilitymgr/samgr_lite/interfaces/kits/samgr",
+    "//commonlibrary/utils_lite/include",
+    "//base/startup/init/interfaces/innerkits",
+  ]
+  if (ohos_kernel_type == "liteos_m" || ohos_kernel_type == "uniproton") {
+    include_dirs += []
+  } else if (ohos_kernel_type == "liteos_a" || ohos_kernel_type == "linux") {
+    include_dirs += [ "//third_party/bounds_checking_function/include" ]
+  }
+
+  deps = [ "//base/startup/init/interfaces/innerkits:libbegetutil" ]
+  cflags = [ "-Wall" ]
+}

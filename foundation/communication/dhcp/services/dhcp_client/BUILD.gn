@@ -1,0 +1,330 @@
+# Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  import("//foundation/communication/dhcp/dhcp_lite.gni")
+} else {
+  import("//build/ohos.gni")
+  import("//foundation/communication/dhcp/dhcp.gni")
+}
+
+################################################################################
+local_base_include_dirs = [
+  "$DHCP_ROOT_DIR/interfaces",
+  "$DHCP_ROOT_DIR/interfaces/kits/c",
+  "$DHCP_ROOT_DIR/interfaces/inner_api",
+  "$DHCP_ROOT_DIR/interfaces/inner_api/include",
+  "$DHCP_ROOT_DIR/frameworks/native/include",
+  "$DHCP_ROOT_DIR/frameworks/native/interfaces",
+  "$DHCP_ROOT_DIR/frameworks/native/src",
+  "$DHCP_ROOT_DIR/services",
+  "$DHCP_ROOT_DIR/services/dhcp_client/include",
+]
+if (dhcpv6_feature_enable) {
+  local_base_include_dirs += [ "$DHCP_ROOT_DIR/services/dhcp_v6_client/include" ]
+}
+local_base_include_dirs += [
+  "$DHCP_ROOT_DIR/services/utils/include",
+  "$DHCP_ROOT_DIR/frameworks/native/c_adapter/inc",
+]
+if (defined(ohos_lite)) {
+  shared_library("dhcp_client") {
+    sources = [
+      "src/dhcp_client_callback_proxy_lite.cpp",
+      "src/dhcp_client_service_impl.cpp",
+      "src/dhcp_client_state_machine.cpp",
+      "src/dhcp_client_stub_lite.cpp",
+      "src/dhcp_function.cpp",
+      "src/dhcp_ipv6_client.cpp",
+      "src/dhcp_ipv6_dns_repository.cpp",
+      "src/dhcp_ipv6_info.cpp",
+      "src/dhcp_options.cpp",
+      "src/dhcp_result.cpp",
+      "src/dhcp_socket.cpp",
+    ]
+
+    include_dirs = local_base_include_dirs
+    include_dirs += [
+      "//base/hiviewdfx/hilog_lite/interfaces/native/innerkits",
+      "//third_party/bounds_checking_function/include",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/innerkits/registry",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/innerkits/samgr",
+    ]
+
+    deps = [
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//foundation/systemabilitymgr/samgr_lite/samgr:samgr",
+    ]
+    external_deps = [ "bounds_checking_function:libsec_shared" ]
+    defines = [
+      "_GNU_SOURCE",
+      "OHOS_ARCH_LITE",
+      "VENDOR_NAME_PREFIX=\"$VENDOR_NAME\"",
+      "DEFAULT_IPV4_DNS_PRI=\"$IPV4_DNS_PRI\"",
+      "DEFAULT_IPV4_DNS_SEC=\"$IPV4_DNS_SEC\"",
+    ]
+
+    if (defined(global_parts_info) && defined(global_parts_info.startup_init)) {
+      external_deps += [ "init:libbegetutil" ]
+      defines += [ "INIT_LIB_ENABLE" ]
+    }
+
+    configs -= [ "//build/lite/config:language_cpp" ]
+    cflags = [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+    cflags_cc = [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+  }
+} else {
+  local_base_sources = [
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_client_callback_proxy.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_client_death_recipient.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_client_service_impl.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_client_state_machine.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_client_stub.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_function.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_ipv6_client.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_ipv6_dns_repository.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_ipv6_event.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_ipv6_info.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_options.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_result.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_result_store_manager.cpp",
+    "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_socket.cpp",
+  ]
+  if (dhcpv6_feature_enable) {
+    local_base_sources += [
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_v6_callback_impl.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_v6_feature_switch.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_v6_client/src/dhcp_v6_client.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_v6_client/src/dhcp_v6_statemachine.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_v6_client/src/dhcp_v6_message.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_v6_client/src/dhcp_v6_socket.cpp",
+    ]
+  }
+  config("dhcp_manager_service_header") {
+    visibility = [ ":*" ]
+    include_dirs = local_base_include_dirs
+  }
+  ohos_shared_library("dhcp_client") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = true  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = true  # Enable integer overflow detection
+      ubsan = true  # Enable some Ubsan options
+      debug = false
+    }
+    install_enable = true
+    sources = local_base_sources
+    include_dirs = local_base_include_dirs
+    defines = [
+      "VENDOR_NAME_PREFIX=\"$VENDOR_NAME\"",
+      "DEFAULT_IPV4_DNS_PRI=\"$IPV4_DNS_PRI\"",
+      "DEFAULT_IPV4_DNS_SEC=\"$IPV4_DNS_SEC\"",
+    ]
+    if (dhcpv6_feature_enable) {
+      defines += [ "DHCPV6_ENABLE" ]
+    }
+    if (is_asan) {
+      defines += [ "DTFUZZ_TEST" ]
+    }
+
+    deps = [
+      "$DHCP_ROOT_DIR/services/utils:dhcp_utils",
+    ]
+
+    external_deps = [
+      "ability_runtime:wantagent_innerkits",
+      "bundle_framework:appexecfwk_base",
+      "c_utils:utils",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "netmanager_base:net_native_manager_if",
+      "netmanager_base:netsys_controller",
+      "safwk:system_ability_fwk",
+      "time_service:time_client",
+      "wifi:wifi_base",
+    ]
+
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.resourceschedule_ffrt)) {
+      external_deps += [ "ffrt:libffrt" ]
+      defines += [ "DHCP_FFRT_ENABLE" ]
+    }
+
+    if (defined(global_parts_info) && defined(global_parts_info.startup_init)) {
+      external_deps += [ "init:libbegetutil" ]
+      defines += [ "INIT_LIB_ENABLE" ]
+    }
+    cflags_cc = memory_optimization_cflags_cc
+    cflags_cc += [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+    ldflags = memory_optimization_ldflags
+    ldflags += [
+      "-fPIC",
+      "-Wl,-E",
+    ]
+    shlib_type = "sa"
+    part_name = "dhcp"
+    subsystem_name = "communication"
+  }
+
+  ohos_static_library("dhcp_client_static") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = true  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = true  # Enable integer overflow detection
+      ubsan = true  # Enable some Ubsan options
+      debug = false
+    }
+    sources = local_base_sources
+    include_dirs = local_base_include_dirs
+    defines = [
+      "VENDOR_NAME_PREFIX=\"$VENDOR_NAME\"",
+      "DEFAULT_IPV4_DNS_PRI=\"$IPV4_DNS_PRI\"",
+      "DEFAULT_IPV4_DNS_SEC=\"$IPV4_DNS_SEC\"",
+    ]
+    if (dhcpv6_feature_enable) {
+      defines += [ "DHCPV6_ENABLE" ]
+    }
+    if (is_asan) {
+      defines += [ "DTFUZZ_TEST" ]
+    }
+
+    deps = [
+      "$DHCP_ROOT_DIR/services/utils:dhcp_utils",
+    ]
+
+    external_deps = [
+      "ability_runtime:wantagent_innerkits",
+      "bundle_framework:appexecfwk_base",
+      "c_utils:utils",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "netmanager_base:net_native_manager_if",
+      "netmanager_base:netsys_controller",
+      "safwk:system_ability_fwk",
+      "time_service:time_client",
+      "wifi:wifi_base",
+    ]
+
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.resourceschedule_ffrt)) {
+      external_deps += [ "ffrt:libffrt" ]
+      defines += [ "DHCP_FFRT_ENABLE" ]
+    }
+
+    if (defined(global_parts_info) && defined(global_parts_info.startup_init)) {
+      external_deps += [ "init:libbegetutil" ]
+      defines += [ "INIT_LIB_ENABLE" ]
+    }
+    cflags_cc = memory_optimization_cflags_cc
+    cflags_cc += [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+    ldflags = memory_optimization_ldflags
+    ldflags += [
+      "-fPIC",
+      "-Wl,-E",
+    ]
+    part_name = "dhcp"
+    subsystem_name = "communication"
+  }
+
+  ohos_shared_library("dhcp_updater_client") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = true  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = true  # Enable integer overflow detection
+      ubsan = true  # Enable some Ubsan options
+      debug = false
+    }
+    install_enable = true
+    sources = [
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_client_service_impl.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_client_state_machine.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_client_stub_lite.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_function.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_ipv6_client.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_ipv6_dns_repository.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_ipv6_event.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_ipv6_info.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_options.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_result.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_result_store_manager.cpp",
+      "$DHCP_ROOT_DIR/services/dhcp_client/src/dhcp_socket.cpp",
+      "$DHCP_ROOT_DIR/services/utils/src/dhcp_thread.cpp",
+      "$DHCP_ROOT_DIR/services/utils/src/dhcp_arp_checker.cpp",
+      "$DHCP_ROOT_DIR/services/utils/src/dhcp_common_utils.cpp",
+      "$DHCP_ROOT_DIR/services/utils/src/dhcp_permission_utils.cpp",
+    ]
+    include_dirs = local_base_include_dirs
+
+    public_configs = [ ":dhcp_manager_service_header" ]
+
+    cflags_cc = [
+      "-std=c++17",
+      "-Wall",
+    ]
+
+    defines = [
+      "OHOS_ARCH_LITE",
+      "OHOS_EUPDATER",
+      "VENDOR_NAME_PREFIX=\"$VENDOR_NAME\"",
+      "DEFAULT_IPV4_DNS_PRI=\"$IPV4_DNS_PRI\"",
+      "DEFAULT_IPV4_DNS_SEC=\"$IPV4_DNS_SEC\"",
+    ]
+
+    deps = []
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "hilog:libhilog",
+      "netmanager_base:net_native_manager_if",
+      "netmanager_base:netsys_controller",
+    ]
+
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.resourceschedule_ffrt)) {
+      external_deps += [ "ffrt:libffrt" ]
+      defines += [ "DHCP_FFRT_ENABLE" ]
+    }
+
+    if (defined(global_parts_info) && defined(global_parts_info.startup_init)) {
+      external_deps += [ "init:libbegetutil" ]
+      defines += [ "INIT_LIB_ENABLE" ]
+    }
+    ldflags = [
+      "-fPIC",
+      "-Wl,-E",
+    ]
+    install_images = [ "updater" ]
+    part_name = "dhcp"
+    subsystem_name = "communication"
+  }
+}

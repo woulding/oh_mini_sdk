@@ -1,0 +1,67 @@
+# Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+domain: BUNDLE_MANAGER
+
+################################################################################
+#                                   FAULT EVENT                                #
+################################################################################
+DB_ERROR:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: db error}
+  DB_NAME: {type: STRING, desc: db name}
+  OPERATION_TYPE: {type: INT32, desc: db operation type}
+  ERROR_CODE: {type: INT32, desc: db error code}
+  REBUILD_TYPE: {type: INT32, desc: db rebuild type}
+
+QUERY_BUNDLE_INFO:
+  __BASE: {type: BEHAVIOR, level: MINOR, desc: query bundle info}
+  FUNC_ID_LIST: {type: INT32, desc: function of query}
+  USERID_LIST: {type: INT32, arrsize: 100, desc: userId of the bundle}
+  BUNDLE_NAME_LIST: {type: STRING, arrsize: 100, desc: bundleName}
+  UID_LIST: {type: INT32, arrsize: 100, desc: uid of bundlename}
+  APP_INDEX_LIST: {type: INT32, arrsize: 100, desc: app index}
+  CALLING_UID_LIST: {type: INT32, arrsize: 100, desc: calling uid}
+  CALLING_APP_ID_LIST: {type: STRING, arrsize: 100, desc: calling appId}
+  CALLING_BUNDLE_NAME_LIST: {type: STRING, arrsize: 100, desc: calling bundleName}
+  GET_BUNDLE_INFO_FLAG_LIST: {type: INT32, arrsize: 100, desc: flag of bundle info}
+  ERROR_CODE: {type: INT32, desc: error code}
+
+APP_STATUS_CHANGE:
+  __BASE: {type: STATISTIC, level: MINOR, desc: app disable forbidden state change}
+  BUNDLE_NAME: {type: STRING, desc: bundle name}
+  USERID: {type: INT32, desc: userId of the bundle}
+  APP_INDEX: {type: INT32, desc: app index}
+  DISABLE_FORBIDDEN: {type: BOOL, desc: disable forbidden}
+  ERROR_CODE: {type: INT32, desc: error code}
+  CALLING_UID: {type: INT32, desc: calling uid}
+
+HIGH_RISK_EVENT:
+  __BASE: {type: STATISTIC, level: MINOR, desc: high risk event}
+  ACTION_TYPE: {type: INT32, desc: action type}
+  OPERATION_TYPE: {type: INT32, desc: operation type}
+  BUNDLE_NAME: {type: STRING, desc: bundle name}
+  USERID: {type: INT32, desc: userId of the bundle}
+  APP_INDEX: {type: INT32, desc: app index}
+  VERSION: {type: UINT32, desc: versionCode}
+  FILE_PATH: {type: STRING, arrsize: 99, desc: file path}
+  START_TIME: {type: INT64, desc: start time}
+  END_TIME: {type: INT64, desc: end time}
+
+BUNDLE_LOCAL_PLUGIN_OPERATION:
+  __BASE: {type: STATISTIC, level: MINOR, desc: local plugin operation}
+  USERID_LIST: {type: INT32, arrsize: 30, desc: userId list of the host bundle}
+  HOST_BUNDLE_NAME_LIST: {type: STRING, arrsize: 30, desc: host bundleName list}
+  BUNDLE_NAME_LIST: {type: STRING, arrsize: 30, desc: plugin bundleName list}
+  ACTION_TYPE_LIST: {type: INT32, arrsize: 30, desc: action type list}
+  FILE_PATH_LIST: {type: STRING, arrsize: 30, desc: plugin hsp file path list}
+  ERROR_CODE_LIST: {type: INT32, arrsize: 30, desc: error code list}

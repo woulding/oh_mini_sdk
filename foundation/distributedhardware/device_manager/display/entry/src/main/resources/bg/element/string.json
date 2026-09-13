@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"Код за връзка",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"%1$s на %2$s иска достъп до това устройство. Доверявате ли се на това приложение?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Отказ",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Въведете код за връзка",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Това е необходимо за синхронизиране на данни между устройства и сътрудничество.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Доверяване този път",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Винаги се доверявай",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"Доверяване само този път",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s иска да получи достъп до услугата „%2$s“ на устройството ви. Доверявате ли се на това устройство?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"Приложението %2$s на %1$s иска да получи достъп до услугата %3$s на вашето устройство. Доверявате ли се на това приложение?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s иска да се свърже с услугите на вашето устройство. Изберете услуги, които да разрешите:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

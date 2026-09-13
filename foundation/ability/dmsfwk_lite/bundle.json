@@ -1,0 +1,54 @@
+{
+    "name": "@ohos/dmsfwk_lite",
+    "description": "distributed abiltiy manager service",
+    "homePage": "https://gitee.com/openharmony",
+    "version": "3.1",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/ability_dmsfwk_lite",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/ability/dmsfwk_lite"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "dmsfwk_lite",
+        "subsystem": "ability",
+        "adapted_system_type": [
+            "small"
+        ],
+        "rom": "",
+        "ram": "",
+        "deps": {
+            "components": [
+            "utils_lite",
+            "hilog_lite",
+            "samgr_lite",
+            "bundle_framework_lite",
+            "ability_lite",
+            "huks"
+            ],
+            "third_party": [
+                "bounds_checking_function",
+                "cJSON"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//foundation/ability/dmsfwk_lite:dtbschedmgr",
+                "//foundation/ability/dmsfwk_lite/moduletest/dtbschedmgr_lite:distributed_schedule_test_dms_door"
+            ],
+            "inner_kits": [
+                {
+                    "header": {
+                        "header_base": "foundation/ability/dmsfwk_lite/interfaces/innerkits/",
+                        "header_files": [
+                            "dmsfwk_interface.h"
+                        ]
+                    },
+                    "name": "//foundation/ability/dmsfwk_lite:dtbschedmgr"
+                }
+            ]
+        }
+    }
+}

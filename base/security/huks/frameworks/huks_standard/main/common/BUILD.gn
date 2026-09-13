@@ -1,0 +1,118 @@
+# Copyright (C) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/huks/build/config.gni")
+import("//build/ohos.gni")
+
+config("huks_config") {
+  include_dirs = [
+    "include",
+    "//base/security/huks/interfaces/inner_api/huks_standard/main/include",
+  ]
+}
+
+if (os_level == "standard") {
+  ohos_static_library("libhuks_common_standard_static") {
+    defines = [ "L2_STANDARD" ]
+    subsystem_name = "security"
+    part_name = "huks"
+
+    public_configs =
+        [ ":huks_config" ]  # Share include files for other gn when deps.
+
+    include_dirs = [
+      "//base/security/huks/frameworks/huks_standard/main/crypto_engine/openssl/include",
+      "//base/security/huks/interfaces/inner_api/huks_standard/main/include",
+    ]
+
+    sources = [
+      "src/hks_ability.c",
+      "src/hks_base_check.c",
+      "src/hks_check_paramset.c",
+      "src/hks_common_check.c",
+      "src/hks_crypto_adapter.c",
+      "src/hks_error_msg.c",
+      "src/hks_param.c",
+      "src/hks_tags_type_manager.c",
+      "src/hks_cpp_paramset.cpp",
+      "src/hks_cpp_abilityinfo.cpp",
+      "src/hks_external_error_info.c",
+    ]
+
+    if (huks_enable_ukey_config == true) {
+      sources += [
+        "src/hks_json_wrapper.cpp",
+        "src/hks_ukey_check.cpp",
+      ]
+    }
+
+    complete_static_lib = true
+
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      integer_overflow = true
+      cfi = true
+      debug = false
+      cfi_cross_dso = true
+      boundary_sanitize = true
+      ubsan = true
+    }
+    configs = [
+      "//base/security/huks/frameworks/config/build:l2_standard_common_config",
+    ]
+    sources += [ "src/hks_errcode_adapter.c" ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "cJSON:cjson",
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+  }
+} else {
+  ohos_static_library("libhuks_common_small_static") {
+    defines = [ "_HUKS_LOG_ENABLE_" ]
+    public_configs =
+        [ ":huks_config" ]  # Share include files for other gn when deps.
+
+    include_dirs = [
+      "//base/security/huks/interfaces/inner_api/huks_standard/main/include",
+    ]
+
+    sources = [
+      "src/hks_ability.c",
+      "src/hks_base_check.c",
+      "src/hks_check_paramset.c",
+      "src/hks_common_check.c",
+      "src/hks_crypto_adapter.c",
+      "src/hks_error_msg.c",
+      "src/hks_param.c",
+      "src/hks_tags_type_manager.c",
+    ]
+
+    cflags = []
+
+    complete_static_lib = true
+    cflags += [ "-DHUKS_UID_TRUST_LIST=${huks_uid_trust_list_define}" ]
+
+    external_deps = [ "hilog_lite:hilog_shared" ]
+
+    configs = [
+      "//base/security/huks/frameworks/config/build:l1_small_common_config",
+    ]
+
+    if (huks_enable_upgrade_small_to_service) {
+      sources += [ "src/hks_check_trust_list.c" ]
+    }
+  }
+}

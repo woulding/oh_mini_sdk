@@ -1,0 +1,54 @@
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+
+hiappevent_native_path = "//base/hiviewdfx/hiappevent/frameworks/native"
+
+config("hiappevent_ndk_config") {
+  visibility = [ "*:*" ]
+  include_dirs = [ "//base/hiviewdfx/hiappevent/interfaces/native/kits/include" ]
+}
+
+ohos_shared_library("hiappevent_ndk") {
+  branch_protector_ret = "pac_ret"
+  public_configs = [ ":hiappevent_ndk_config" ]
+
+  include_dirs = [
+    "$hiappevent_native_path/libhiappevent/include",
+    "$hiappevent_native_path/ndk/include",
+    "//base/hiviewdfx/hiappevent/interfaces/native/kits/include",
+  ]
+
+  sources = [
+    "hiappevent_ndk.c",
+    "src/ndk_app_event_processor.cpp",
+    "src/ndk_app_event_processor_service.cpp",
+    "src/ndk_app_event_watcher.cpp",
+    "src/ndk_app_event_watcher_proxy.cpp",
+    "src/ndk_app_event_watcher_service.cpp",
+  ]
+
+  deps = [ "$hiappevent_native_path/libhiappevent:libhiappevent_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "relational_store:native_rdb",
+  ]
+
+  version_script = "libhiappevent_ndk.map"
+  part_name = "hiappevent"
+  subsystem_name = "hiviewdfx"
+}

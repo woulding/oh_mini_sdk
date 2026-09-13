@@ -1,0 +1,155 @@
+{
+    "name": "@ohos/device_manager",
+    "description": "device manager service",
+    "version": "3.0",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/distributedhardware_device_manager",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/distributedhardware/device_manager"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "device_manager",
+        "subsystem": "distributedhardware",
+        "syscap": ["SystemCapability.DistributedHardware.DeviceManager"],
+        "features": [
+            "device_manager_no_interaction_auth",
+            "device_manager_feature_product",
+            "device_manager_enable_ets_frontend",
+            "device_manager_capability"
+        ],
+        "adapted_system_type": ["standard", "mini"],
+        "rom": "2048KB",
+        "ram": "16384KB",
+        "hisysevent_config": [
+            "//foundation/distributedhardware/device_manager/hisysevent.yaml"
+        ],
+        "deps": {
+            "components": [
+                "ability_base",
+                "ability_runtime",
+                "access_token",
+                "bounds_checking_function",
+                "bluetooth",
+                "bundle_framework",
+                "cJSON",
+                "c_utils",
+                "common_event_service",
+                "data_share",
+                "device_auth",
+                "device_info_manager",
+                "dsoftbus",
+                "ets_frontend",
+                "eventhandler",
+                "ffrt",
+                "hicollie",
+                "hisysevent",
+                "hitrace",
+                "hilog",
+                "init",
+                "ipc",
+                "json",
+                "kv_store",
+                "mbedtls",
+                "memmgr",
+                "napi",
+                "libuv",
+                "node",
+                "openssl",
+                "os_account",
+                "power_manager",
+                "resource_management",
+                "runtime_core",
+                "safwk",
+                "samgr",
+                "screenlock_mgr",
+                "selinux_adapter",
+                "wifi",
+                "zlib"
+            ],
+            "third_party": []
+        },
+        "build": {
+            "group_type": {
+                "base_group": [],
+                "fwk_group": [
+                    "//foundation/distributedhardware/device_manager:device_manager_fwk"
+                ],
+                "service_group": [
+                    "//foundation/distributedhardware/device_manager:device_manager",
+                    "//foundation/distributedhardware/device_manager/sa_profile:device_manager.cfg",
+                    "//foundation/distributedhardware/device_manager/sa_profile:dm_sa_profile",
+                    "//foundation/distributedhardware/device_manager/permission:dm_permission_json"
+                ]
+            },
+            "inner_kits": [{
+                "type": "so",
+                "name": "//foundation/distributedhardware/device_manager/interfaces/inner_kits/native_cpp:devicemanagersdk",
+                "header": {
+                    "header_files": [
+                        "device_manager.h",
+                        "device_manager_callback.h",
+                        "dm_device_info.h",
+                        "dm_publish_info.h",
+                        "dm_subscribe_info.h"
+                    ],
+                    "header_base": "//foundation/distributedhardware/device_manager/interfaces/inner_kits/native_cpp/include"
+                }
+            }, {
+                "type": "so",
+                "name": "//foundation/distributedhardware/device_manager/interfaces/mini_tools_kits/native_cpp:devicemanagerminisdk",
+                "header": {
+                    "header_files": [
+                        "device_manager_mini.h"
+                    ],
+                    "header_base": "//foundation/distributedhardware/device_manager/interfaces/mini_tools_kits/native_cpp/include"
+                }
+            }, {
+                "name": "//foundation/distributedhardware/device_manager/interfaces/cj/kits:cj_distributed_device_manager_ffi"
+            }, {
+                "type": "so",
+                "name": "//foundation/distributedhardware/device_manager/json:devicemanagerjson",
+                "header": {
+                    "header_files": [
+                        "json_object.h"
+                    ],
+                    "header_base": "//foundation/distributedhardware/device_manager/json/include"
+                }
+            }, {
+                "type": "so",
+                "name": "//foundation/distributedhardware/device_manager/interfaces/kits/ndk:devicemanager_ndk",
+                "header": {
+                    "header_files": [
+                        "oh_device_manager_err_code.h",
+                        "oh_device_manager.h"
+                    ],
+                    "header_base": "//foundation/distributedhardware/device_manager/interfaces/kits/ndk/include"
+                }
+            }, {
+                "type": "so",
+                "name": "//foundation/distributedhardware/device_manager/3rd/interfaces:devicemanager3rdsdk",
+                "header": {
+                    "header_files": [
+                        "device_manager_callback_3rd.h",
+                        "device_manager_impl_3rd.h"
+                    ],
+                    "header_base": "//foundation/distributedhardware/device_manager/3rd/interfaces/include/interface"
+                }
+            }, {
+                "type": "so",
+                "name": "//foundation/distributedhardware/device_manager/3rd/utils:devicemanager3rdutils",
+                "header": {
+                    "header_files": [
+                        "device_manager_data_struct_3rd.h"
+                    ],
+                    "header_base": "//foundation/distributedhardware/device_manager/3rd/utils/include"
+                }
+            }],
+            "test": [
+                "//foundation/distributedhardware/device_manager:device_manager_test"
+            ]
+        }
+    }
+}

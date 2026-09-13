@@ -1,0 +1,184 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+
+config("trace_unified_collection_test_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "include",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/include",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/include",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/test/include",
+    "$hiview_framework/native/unified_collection/decorator/include",
+    "$hiview_framework/native/unified_collection/collector/inner_include",
+    "$hiview_interfaces/inner_api/unified_collection",
+    "$hiview_interfaces/inner_api/unified_collection/utility"
+  ]
+
+  cflags = [
+    "-D__UNITTEST__",
+    "-frtti",
+  ]
+}
+
+ohos_unittest("TraceUtilsTest") {
+  module_out_path = hiview_module + "/ucollection/trace"
+
+  configs = [ ":trace_unified_collection_test_config" ]
+
+  sources = [
+    "trace_utils_test.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/trace_utils.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "$hiview_framework/native/unified_collection/trace_manager:libtrace_manager",
+  ]
+
+  external_deps = [
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ffrt:libffrt",
+    "c_utils:utils",
+    "hitrace:hitrace_dump",
+    "relational_store:native_rdb",
+  ]
+}
+
+ohos_unittest("TraceStrategyTest") {
+  module_out_path = hiview_module + "/ucollection/trace"
+
+  configs = [ ":trace_unified_collection_test_config" ]
+
+  sources = [
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/src/trace_handler.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/src/trace_strategy.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/test/trace_strategy_test.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/trace_utils.cpp",
+    "$hiview_framework/native/unified_collection/decorator/trace_decorator.cpp",
+    "$hiview_framework/native/unified_collection/decorator/decorator_util.cpp",
+    "$hiview_framework/native/unified_collection/decorator/decorator.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "$hiview_framework/native/unified_collection/trace_manager:libtrace_manager",
+    "$hiview_interfaces/inner_api/unified_collection/utility:trace_strategy_for_tdd",
+  ]
+
+  external_deps = [
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ffrt:libffrt",
+    "cJSON:cjson",
+    "jsoncpp:jsoncpp",
+    "zlib:libz",
+    "hisysevent:libhisysevent",
+    "c_utils:utils",
+    "hitrace:hitrace_dump",
+    "relational_store:native_rdb",
+  ]
+
+  defines = [
+    "TRACE_STRATEGY_UNITTEST",
+  ]
+
+  resource_config_file = "$hiview_framework/native/unified_collection/collector/impl/trace/test/resource/ohos_test.xml"
+}
+
+ohos_unittest("TraceStrategyExTest") {
+  module_out_path = hiview_module + "/ucollection/trace"
+
+  configs = [ ":trace_unified_collection_test_config" ]
+
+  sources = [
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/src/trace_handler.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/src/trace_strategy.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/test/trace_strategy_ex_test.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/trace_utils.cpp",
+    "$hiview_framework/native/unified_collection/decorator/trace_decorator.cpp",
+    "$hiview_framework/native/unified_collection/decorator/decorator_util.cpp",
+    "$hiview_framework/native/unified_collection/decorator/decorator.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "$hiview_framework/native/unified_collection/trace_manager:libtrace_manager",
+    "$hiview_interfaces/inner_api/unified_collection/utility:trace_strategy_for_tdd",
+  ]
+
+  external_deps = [
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ffrt:libffrt",
+    "cJSON:cjson",
+    "jsoncpp:jsoncpp",
+    "zlib:libz",
+    "hisysevent:libhisysevent",
+    "c_utils:utils",
+    "hitrace:hitrace_dump",
+    "relational_store:native_rdb",
+  ]
+
+  defines = [
+    "TRACE_STRATEGY_UNITTEST",
+  ]
+
+  resource_config_file = "$hiview_framework/native/unified_collection/collector/impl/trace/test/resource/ohos_test.xml"
+}
+
+ohos_unittest("TraceImplTest") {
+  module_out_path = hiview_module + "/ucollection/trace"
+
+  configs = [ ":trace_unified_collection_test_config" ]
+
+  sources = [
+    "trace_impl_test.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/src/trace_handler.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/src/trace_strategy.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/src/trace_strategy_factory.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/trace_collector_impl.cpp",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/trace_utils.cpp",
+    "$hiview_framework/native/unified_collection/decorator/trace_decorator.cpp",
+    "$hiview_framework/native/unified_collection/decorator/decorator_util.cpp",
+    "$hiview_framework/native/unified_collection/decorator/decorator.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "$hiview_framework/native/unified_collection/trace_manager:libtrace_manager",
+    "$hiview_interfaces/inner_api/unified_collection/utility:trace_strategy_for_tdd",
+  ]
+
+  external_deps = [
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ffrt:libffrt",
+    "cJSON:cjson",
+    "jsoncpp:jsoncpp",
+    "zlib:libz",
+    "hisysevent:libhisysevent",
+    "c_utils:utils",
+    "hitrace:hitrace_dump",
+    "relational_store:native_rdb",
+  ]
+
+  defines = [
+    "TRACE_IMPL_UNITTEST",
+  ]
+
+  resource_config_file = "$hiview_framework/native/unified_collection/collector/impl/trace/test/resource/ohos_test.xml"
+}

@@ -1,0 +1,14 @@
+{
+  "description": "Get local successful verification",
+  "environment": [
+    {
+      "type": "device"
+    }
+  ],
+  "driver": {
+    "type": "DeviceTest",
+    "py_file": [
+      "testcases/level0/case04_get002.py"
+    ]
+  }
+}

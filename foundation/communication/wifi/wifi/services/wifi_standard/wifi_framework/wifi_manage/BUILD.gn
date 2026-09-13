@@ -1,0 +1,933 @@
+# Copyright (C) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  import("//foundation/communication/wifi/wifi/wifi_lite.gni")
+} else {
+  import("//build/ohos.gni")
+  import("//build/ohos/sa_profile/sa_profile.gni")
+  import("//build/ohos_var.gni")
+  import("//foundation/communication/wifi/wifi/wifi.gni")
+}
+
+################################################################################
+
+if (defined(ohos_lite)) {
+  shared_library("wifi_service_base") {
+    sources = [
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/concrete_clientmode_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/concrete_manager_state_machine.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/wifi_controller_state_machine.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/wifi_service_scheduler.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa/wifi_scan_callback_proxy_lite.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa/wifi_scan_service_impl.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa/wifi_scan_stub_lite.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_callback_proxy_lite.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_service_impl.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_stub_lite.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_common_service_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_scan_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_sta_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_toggler_manager.cpp",
+      "wifi_manager.cpp",
+      "wifi_service_manager.cpp",
+    ]
+
+    include_dirs = [
+      "$WIFI_ROOT_DIR/base/state_machine/include",
+      "$WIFI_ROOT_DIR/base/cRPC/include",
+      "$WIFI_ROOT_DIR/base/utils",
+      "$WIFI_ROOT_DIR/base/inner_api",
+      "$WIFI_ROOT_DIR/interfaces/inner_api",
+      "$WIFI_ROOT_DIR/frameworks/native/include",
+      "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/common",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/wifi_hal_interface",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client/idl_interface",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage",
+      "$DHCP_ROOT_DIR/interfaces/inner_api/include",
+      "$DHCP_ROOT_DIR/interfaces/inner_api/interfaces",
+      "$WIFI_ROOT_DIR/utils/inc",
+      "//base/hiviewdfx/hilog_lite/interfaces/native/innerkits",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/innerkits/registry",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/innerkits/samgr",
+      "//third_party/bounds_checking_function/include",
+      "$WIFI_ROOT_DIR/services/wifi_standard/include",
+    ]
+
+    deps = [
+      "$WIFI_ROOT_DIR/base:wifi_base",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common:wifi_common_service",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native:wifi_native",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit:wifi_toolkit",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//foundation/systemabilitymgr/samgr_lite/samgr:samgr",
+    ]
+
+    external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+    defines = [
+      "OHOS_ARCH_LITE",
+      "STA_INSTANCE_MAX_NUM=$wifi_feature_with_sta_num",
+      "AP_INSTANCE_MAX_NUM=$wifi_feature_with_ap_num",
+    ]
+
+    if (wifi_feature_with_auth_disable) {
+      defines += [ "PERMISSION_ALWAYS_GRANT" ]
+    }
+
+    configs -= [ "//build/lite/config:language_cpp" ]
+    cflags_cc = [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+  }
+
+  executable("wifi_manager_service") {
+    sources = [
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa/wifi_scan_feature_lite.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_feature_lite.cpp",
+      "wifi_sa_service_lite.c",
+      "wifi_service_main_lite.c",
+    ]
+
+    include_dirs = [
+      "$WIFI_ROOT_DIR/base/state_machine/include",
+      "$WIFI_ROOT_DIR/base/cRPC/include",
+      "$WIFI_ROOT_DIR/base/utils",
+      "$WIFI_ROOT_DIR/interfaces/inner_api",
+      "$WIFI_ROOT_DIR/frameworks/native/include",
+      "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/common",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/wifi_hal_interface",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client/idl_interface",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa",
+      "$DHCP_ROOT_DIR/interfaces/inner_api/include",
+      "$DHCP_ROOT_DIR/interfaces/inner_api/interfaces",
+      "$WIFI_ROOT_DIR/utils/inc",
+      "//base/hiviewdfx/hilog_lite/interfaces/native/innerkits",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/innerkits/registry",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/innerkits/samgr",
+      "//third_party/bounds_checking_function/include",
+    ]
+
+    deps = [
+      "$WIFI_ROOT_DIR/base:wifi_base",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage:wifi_service_base",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common:wifi_common_service",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native:wifi_native",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//foundation/systemabilitymgr/samgr_lite/samgr:samgr",
+    ]
+
+    external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+    defines = [ "OHOS_ARCH_LITE" ]
+    cflags_cc = [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+  }
+} else {
+  config("wifi_manager_service_header") {
+    include_dirs = [
+      "$WIFI_ROOT_DIR/base/utils",
+      "$WIFI_ROOT_DIR/interfaces/inner_api",
+      "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+      "$WIFI_ROOT_DIR/frameworks/native/include",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/app_network_speed_limit",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/network_status_history",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/net_eap",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/rdb",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/common",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/hal_device_manage",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/wifi_hal_interface",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client/idl_interface",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_ext",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_ext/wifi_data_report",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_security_detect",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_ext/wifi_telephony_utils",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_self_cure",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap_sa",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p/hid2d",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p_sa",
+      "$WIFI_ROOT_DIR/utils/inc",
+      "$WIFI_ROOT_DIR/services/wifi_standard/include",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_country_code",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/wifi_asset",
+    ]
+  }
+
+  config("wifi_manager_service_config") {
+    visibility = [ ":*" ]
+    include_dirs = [ ":wifi_fw_common_header" ]
+    cflags = memory_optimization_cflags
+    cflags_cc = memory_optimization_cflags_cc
+    ldflags = memory_optimization_ldflags
+    cflags += [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+    if (target_cpu == "arm") {
+      cflags += [ "-DBINDER_IPC_32BIT" ]
+    }
+
+    if (wifi_feature_non_seperate_p2p) {
+      defines = [ "NON_SEPERATE_P2P" ]
+    }
+  }
+
+  ohos_source_set("wifi_scan_service_impl") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa/wifi_scan_callback_proxy.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa/wifi_scan_death_recipient.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa/wifi_scan_mgr_service_impl.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa/wifi_scan_service_impl.cpp",
+    ]
+
+    configs = [
+      ":wifi_manager_service_config",
+      ":wifi_manager_service_header",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_scan_config",
+    ]
+
+    deps = [
+      "$WIFI_ROOT_DIR/base:wifi_base",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_scan_stub",
+    ]
+    
+    defines = [
+      "STA_INSTANCE_MAX_NUM=$wifi_feature_with_sta_num",
+      "FEATURE_AP_SUPPORT",
+      "FEATURE_STA_SUPPORT",
+    ]
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+    if (wifi_feature_with_local_security_detect) {
+      defines += [ "WIFI_LOCAL_SECURITY_DETECT_ENABLE" ]
+    }
+
+    external_deps = [
+      "ability_base:want",
+      "ability_runtime:app_manager",
+      "cJSON:cjson",
+      "c_utils:utils",
+      "common_event_service:cesfwk_core",
+      "hilog:libhilog",
+      "huks:libhukssdk",
+      "ipc:ipc_single",
+      "safwk:system_ability_fwk",
+      "samgr:samgr_proxy",
+      "window_manager:libdm_lite",
+      "netmanager_base:net_conn_manager_if",
+    ]
+    if (defined(global_parts_info) &&
+      defined(global_parts_info.telephony_core_service) &&
+      defined(global_parts_info.telephony_state_registry) &&
+      defined(global_parts_info.telephony_cellular_data) &&
+      wifi_feature_autoopen_specified_location) {
+      external_deps += [ "core_service:tel_core_service_api" ]
+      external_deps += [ "cellular_data:tel_cellular_data_api" ]
+      external_deps += [ "state_registry:tel_state_registry_api"]
+      defines += [ "FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT" ]
+    }
+  }
+  ohos_source_set("wifi_device_service_impl") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_callback_proxy.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_death_recipient.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_mgr_service_impl.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_mgr_stub.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_service_impl.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa/wifi_device_stub.cpp",
+    ]
+    configs = [
+      ":wifi_manager_service_config",
+      ":wifi_manager_service_header",
+    ]
+    defines = [
+      "STA_INSTANCE_MAX_NUM=$wifi_feature_with_sta_num",
+      "FEATURE_STA_SUPPORT",
+      "FEATURE_SELF_CURE_SUPPORT",
+    ]
+    if (wifi_feature_with_ap_num > 0) {
+      defines += [ "FEATURE_AP_SUPPORT" ]
+    }
+
+    if (wifi_feature_sta_ap_exclusion) {
+      defines += [ "FEATURE_STA_AP_EXCLUSION" ]
+    }
+    if (wifi_feature_with_local_random_mac) {
+      defines += [ "SUPPORT_LOCAL_RANDOM_MAC" ]
+    }
+    if (wifi_feature_wifi_pro_ctrl) {
+      defines += [ "FEATURE_WIFI_PRO_SUPPORT" ]
+    }
+    if (wifi_feature_with_local_security_detect) {
+      defines += [ "WIFI_LOCAL_SECURITY_DETECT_ENABLE" ]
+    }
+    deps = [
+      ":wifi_manager_service",
+      "$WIFI_ROOT_DIR/base:wifi_base",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+    ]
+
+    if (wifi_feature_with_p2p) {
+      defines += [ "FEATURE_P2P_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_encryption) {
+      defines += [ "FEATURE_ENCRYPTION_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+
+    if (wifi_feature_mdm_restricted_enable) {
+      defines += [ "FEATURE_WIFI_MDM_RESTRICTED_SUPPORT" ]
+    }
+
+    if (wifi_feature_dynamic_unload_sa) {
+      defines += [ "DYNAMIC_UNLOAD_SA" ]
+    }
+
+    if (wifi_feature_pluggable_supported) {
+      defines += [ "WLAN_PLUGGABLE_SUPPORTED" ]
+    }
+
+    external_deps = [
+      "ability_base:want",
+      "ability_runtime:app_manager",
+      "bundle_framework:appexecfwk_base",
+      "c_utils:utils",
+      "common_event_service:cesfwk_innerkits",
+      "hilog:libhilog",
+      "huks:libhukssdk",
+      "ipc:ipc_single",
+      "safwk:system_ability_fwk",
+      "samgr:samgr_proxy",
+      "window_manager:libdm_lite",
+      "netmanager_base:net_conn_manager_if",
+    ]
+
+    if (wifi_feature_pluggable_supported) {
+      external_deps += [ "init:libbegetutil" ]
+    }
+
+    if (defined(global_parts_info) &&
+      defined(global_parts_info.telephony_core_service) &&
+      defined(global_parts_info.telephony_state_registry) &&
+      defined(global_parts_info.telephony_cellular_data) &&
+      wifi_feature_autoopen_specified_location) {
+      external_deps += [ "core_service:tel_core_service_api" ]
+      external_deps += [ "cellular_data:tel_cellular_data_api" ]
+      external_deps += [ "state_registry:tel_state_registry_api"]
+      defines += [ "FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT" ]
+    }
+  }
+  ohos_source_set("wifi_hotspot_service_impl") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap_sa/wifi_hotspot_callback_proxy.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap_sa/wifi_hotspot_death_recipient.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap_sa/wifi_hotspot_mgr_service_impl.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap_sa/wifi_hotspot_service_impl.cpp",
+    ]
+    configs = [
+      ":wifi_manager_service_config",
+      ":wifi_manager_service_header",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_hotspot_config",
+    ]
+
+    deps = [
+      ":wifi_manager_service",
+      "$WIFI_ROOT_DIR/base:wifi_base",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_sdk",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_hotspot_stub",
+    ]
+
+    external_deps = [
+      "ability_base:want",
+      "ability_runtime:app_manager",
+      "c_utils:utils",
+      "common_event_service:cesfwk_core",
+      "hilog:libhilog",
+      "huks:libhukssdk",
+      "ipc:ipc_single",
+      "libxml2:libxml2",
+      "safwk:system_ability_fwk",
+      "samgr:samgr_proxy",
+      "window_manager:libdm_lite",
+      "netmanager_base:net_conn_manager_if",
+    ]
+
+    defines = [
+      "FEATURE_AP_SUPPORT",
+      "STA_INSTANCE_MAX_NUM=$wifi_feature_with_sta_num",
+      "AP_INSTANCE_MAX_NUM=$wifi_feature_with_ap_num",
+    ]
+
+    if (wifi_feature_sta_ap_exclusion) {
+      defines += [ "FEATURE_STA_AP_EXCLUSION" ]
+    }
+
+    if (wifi_feature_with_ap_extension) {
+      defines += [ "FEATURE_AP_EXTENSION" ]
+    }
+
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+
+    if (wifi_feature_with_rpt) {
+      defines += [ "FEATURE_RPT_SUPPORT" ]
+    }
+
+    if (defined(global_parts_info) &&
+      defined(global_parts_info.telephony_core_service) &&
+      defined(global_parts_info.telephony_state_registry) &&
+      defined(global_parts_info.telephony_cellular_data) &&
+      wifi_feature_autoopen_specified_location) {
+      external_deps += [ "core_service:tel_core_service_api" ]
+      external_deps += [ "cellular_data:tel_cellular_data_api" ]
+      external_deps += [ "state_registry:tel_state_registry_api"]
+      defines += [ "FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT" ]
+    }
+  }
+  ohos_source_set("wifi_p2p_service_impl") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p_sa/wifi_p2p_callback_proxy.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p_sa/wifi_p2p_death_recipient.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p_sa/wifi_p2p_service_impl.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p_sa/wifi_p2p_stub.cpp",
+    ]
+    configs = [
+      ":wifi_manager_service_config",
+      ":wifi_manager_service_header",
+    ]
+
+    deps = [
+      "$WIFI_ROOT_DIR/base:wifi_base",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_sdk",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+    ]
+
+    external_deps = [
+      "ability_base:want",
+      "ability_runtime:app_manager",
+      "c_utils:utils",
+      "common_event_service:cesfwk_core",
+      "hilog:libhilog",
+      "huks:libhukssdk",
+      "ipc:ipc_single",
+      "netmanager_base:net_conn_manager_if",
+      "safwk:system_ability_fwk",
+      "samgr:samgr_proxy",
+      "window_manager:libdm_lite",
+    ]
+    defines = [
+      "FEATURE_P2P_SUPPORT",
+      "FEATURE_AP_SUPPORT",
+      "FEATURE_STA_SUPPORT",
+    ]
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+    if (defined(global_parts_info) &&
+      defined(global_parts_info.telephony_core_service) &&
+      defined(global_parts_info.telephony_state_registry) &&
+      defined(global_parts_info.telephony_cellular_data) &&
+      wifi_feature_autoopen_specified_location) {
+      external_deps += [ "core_service:tel_core_service_api" ]
+      external_deps += [ "cellular_data:tel_cellular_data_api" ]
+      external_deps += [ "state_registry:tel_state_registry_api"]
+      defines += [ "FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT" ]
+    }
+  }
+
+  ohos_static_library("wifi_manager_service_static") {
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+
+    sources = [
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/concrete_clientmode_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/concrete_manager_state_machine.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/multi_sta_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/multi_sta_state_machine.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/rpt_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/rpt_manager_state_machine.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/softap_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/softap_manager_state_machine.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/wifi_controller_state_machine.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/wifi_service_scheduler.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_common_service_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_event_subscriber_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_hotspot_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_location_mode_observer.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_multi_vap_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_p2p_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_scan_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_sta_manager.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_toggler_manager.cpp",
+      "wifi_manager.cpp",
+      "wifi_service_manager.cpp",
+    ]
+
+    deps = [
+      "$WIFI_ROOT_DIR/base:wifi_base",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_sdk",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+    ]
+
+    configs = [ ":wifi_manager_service_header" ]
+    cflags = memory_optimization_cflags
+    cflags_cc = memory_optimization_cflags_cc
+    ldflags = memory_optimization_ldflags
+    external_deps = [
+      "ability_base:want",
+      "ability_base:zuri",
+      "ability_runtime:ability_manager",
+      "ability_runtime:app_context",
+      "ability_runtime:app_manager",
+      "ability_runtime:connection_obs_manager",
+      "ability_runtime:dataobs_manager",
+      "ability_runtime:wantagent_innerkits",
+      "access_token:libaccesstoken_sdk",
+      "bundle_framework:appexecfwk_base",
+      "bundle_framework:appexecfwk_core",
+      "c_utils:utils",
+      "common_event_service:cesfwk_innerkits",
+      "cJSON:cjson",
+      "data_share:datashare_common",
+      "data_share:datashare_consumer",
+      "dhcp:dhcp_sdk",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "libxml2:libxml2",
+      "netmanager_base:net_conn_manager_if",
+      "netmanager_base:net_native_manager_if",
+      "power_manager:powermgr_client",
+      "safwk:system_ability_fwk",
+      "samgr:samgr_proxy",
+      "time_service:time_client",
+      "window_manager:libdm_lite",
+    ]
+
+    if (wifi_feature_with_encryption || wifi_feature_with_local_random_mac) {
+      external_deps += [ "huks:libhukssdk" ]
+    }
+    defines = [
+      "FEATURE_AP_SUPPORT",
+      "FEATURE_STA_SUPPORT",
+      "STA_INSTANCE_MAX_NUM=$wifi_feature_with_sta_num",
+      "AP_INSTANCE_MAX_NUM=$wifi_feature_with_ap_num",
+      "FEATURE_SELF_CURE_SUPPORT",
+      "HAS_NETMANAGER_EVENT_PART",
+    ]
+
+    if (wifi_feature_auto_enable_support) {
+      defines += [ "FEATURE_AUTO_STARTUP_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_ipv6_selfcure) {
+      defines += [ "FEATURE_IPV6_SELF_CURE" ]
+    }
+
+    if (wifi_feature_dynamic_unload_sa) {
+      defines += [ "DYNAMIC_UNLOAD_SA" ]
+    }
+
+    if (is_asan) {
+      defines += [ "DTFUZZ_TEST" ]
+    }
+
+    if (wifi_feature_with_sta_asset) {
+      external_deps += [ "asset:asset_sdk" ]
+      defines += [ "SUPPORT_ClOUD_WIFI_ASSET" ]
+    }
+
+    if (wifi_feature_with_security_detect) {
+      defines += [ "WIFI_SECURITY_DETECT_ENABLE" ]
+      external_deps += [ "security_guard:libsg_classify_sdk" ]
+      sources += [ 
+        "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_security_detect/wifi_security_detect.cpp",
+        "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_security_detect/wifi_security_detect_observer.cpp",
+      ]
+    }
+
+    if (wifi_feature_with_local_security_detect) {
+      defines += [ "WIFI_LOCAL_SECURITY_DETECT_ENABLE" ]
+      sources += [ 
+        "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_security_detect/wifi_local_security_detect.cpp",
+      ]
+    }
+
+    if (wifi_feature_wifi_pro_ctrl) {
+      defines += [ "FEATURE_WIFI_PRO_SUPPORT" ]
+    }
+
+    if (wifi_feature_voicewifi_enable) {
+      defines += [ "FEATURE_VOWIFI_SUPPORT" ]
+    }
+
+    if (wifi_feature_mdm_restricted_enable) {
+      defines += [ "FEATURE_WIFI_MDM_RESTRICTED_SUPPORT" ]
+    }
+
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.telephony_core_service)) {
+      external_deps += [ "core_service:tel_core_service_api" ]
+      defines += [ "TELEPHONE_CORE_SERVICE_ENABLE" ]
+    }
+
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.powermgr_power_manager)) {
+      if (wifi_feature_powermgr_support) {
+        defines += [ "HAS_POWERMGR_PART" ]
+      }
+    }
+
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.account_os_account)) {
+      external_deps += [ "os_account:os_account_innerkits" ]
+      defines += [ "HAS_ACCOUNT_PART" ]
+    }
+
+    if (wifi_feature_with_app_frozen) {
+      defines += [ "FEATURE_APP_FROZEN" ]
+    }
+
+    if (wifi_feature_with_auth_disable) {
+      defines += [ "PERMISSION_ALWAYS_GRANT" ]
+    }
+
+    if (wifi_feature_with_encryption) {
+      defines += [ "FEATURE_ENCRYPTION_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_p2p) {
+      defines += [ "FEATURE_P2P_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_rpt) {
+      defines += [ "FEATURE_RPT_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_ap_extension) {
+      defines += [ "FEATURE_AP_EXTENSION" ]
+    }
+
+    if (wifi_feature_sta_ap_exclusion) {
+      defines += [ "FEATURE_STA_AP_EXCLUSION" ]
+    }
+
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+
+    if (wifi_feature_with_hpf_supported) {
+      defines += [ "FEATURE_HPF_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_hdi_chip_supported) {
+      defines += [ "HDI_CHIP_INTERFACE_SUPPORT" ]
+      external_deps += [ "drivers_interface_wlan:libchip_proxy_2.0" ]
+    }
+
+    if (wifi_feature_with_vap_manager) {
+      defines += [ "FEATURE_VAP_MANAGER_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_data_report) {
+      defines += [ "WIFI_DATA_REPORT_ENABLE" ]
+    }
+
+    if (wifi_feature_with_extensible_authentication) {
+      defines += [ "EXTENSIBLE_AUTHENTICATION" ]
+      external_deps += ["netmanager_ext:ethernet_manager_if"]
+    }
+
+    if (wifi_feature_with_dynamic_adjust_wifi_power_save) {
+      defines += [ "DYNAMIC_ADJUST_WIFI_POWER_SAVE" ]
+    }
+  
+    if (defined(global_parts_info) &&
+      defined(global_parts_info.telephony_state_registry) &&
+      defined(global_parts_info.telephony_cellular_data) &&
+      wifi_feature_autoopen_specified_location) {
+      external_deps += [ "cellular_data:tel_cellular_data_api" ]
+      external_deps += [ "state_registry:tel_state_registry_api"]
+      defines += [ "FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT" ]
+    }
+
+    if (wifi_feature_with_p2p_untrust_invitation) {
+      defines += [ "SUPPORT_P2P_UNTRUST_INVITATION" ]
+    }
+
+    part_name = "wifi"
+    subsystem_name = "communication"
+  }
+
+  ohos_shared_library("wifi_manager_service") {
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+
+    install_enable = true
+
+    deps = [
+      ":wifi_manager_service_static",
+      "$WIFI_ROOT_DIR/base:wifi_base",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_sdk",
+      "$WIFI_ROOT_DIR/services/wifi_standard/etc/init:etc",
+      "$WIFI_ROOT_DIR/services/wifi_standard/etc/param:etc",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/network_select:network_select",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common:wifi_common_service",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native:wifi_native",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro:wifi_pro",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan:wifi_scan_service",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_self_cure:wifi_self_cure",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta:wifi_sta_service",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_ext:wifi_sta_ext_service",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit:wifi_toolkit",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_ext:wifi_telephony_utils",
+    ]
+
+    configs = [ ":wifi_manager_service_header" ]
+    cflags = memory_optimization_cflags
+    cflags_cc = memory_optimization_cflags_cc
+    ldflags = memory_optimization_ldflags
+
+    external_deps = [
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "libxml2:libxml2",
+      "netmanager_base:net_conn_manager_if",
+    ]
+
+    version_script = "libwifi_manager.map"
+    part_name = "wifi"
+    subsystem_name = "communication"
+  }
+
+  ohos_shared_library("wifi_device_ability") {
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    install_enable = true
+    deps = [
+      ":wifi_device_service_impl",
+      ":wifi_manager_service",
+    ]
+    external_deps = [
+      "hilog:libhilog",
+      "netmanager_base:net_conn_manager_if",
+    ]
+    shlib_type = "sa"
+    part_name = "wifi"
+    subsystem_name = "communication"
+  }
+
+  ohos_shared_library("wifi_scan_ability") {
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    install_enable = true
+    deps = [
+      ":wifi_manager_service",
+      ":wifi_scan_service_impl",
+      "$WIFI_ROOT_DIR/frameworks/native:wifi_sdk",
+    ]
+    external_deps = [ "hilog:libhilog" ]
+    shlib_type = "sa"
+    part_name = "wifi"
+    subsystem_name = "communication"
+  }
+
+  ohos_shared_library("wifi_hotspot_ability") {
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    install_enable = true
+    deps = [
+      ":wifi_hotspot_service_impl",
+      ":wifi_manager_service",
+    ]
+    external_deps = [ "hilog:libhilog" ]
+    shlib_type = "sa"
+    part_name = "wifi"
+    subsystem_name = "communication"
+  }
+
+  if (wifi_feature_with_p2p) {
+    ohos_shared_library("wifi_p2p_ability") {
+      branch_protector_ret = "pac_ret"
+
+      sanitize = {
+        cfi = true  # Enable/disable control flow integrity detection
+        boundary_sanitize = false  # Enable boundary san detection
+        cfi_cross_dso = true  # Cross-SO CFI Checks
+        integer_overflow = false  # Enable integer overflow detection
+        ubsan = false  # Enable some Ubsan options
+        cfi_vcall_icall_only = true
+        debug = false
+      }
+      install_enable = true
+      deps = [
+        ":wifi_manager_service",
+        ":wifi_p2p_service_impl",
+      ]
+      external_deps = [ "hilog:libhilog" ]
+      shlib_type = "sa"
+      part_name = "wifi"
+      subsystem_name = "communication"
+    }
+  }
+}

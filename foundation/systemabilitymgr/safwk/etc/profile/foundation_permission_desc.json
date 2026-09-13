@@ -1,0 +1,385 @@
+{
+    "permissions" : [
+        {
+            "name" : "ohos.permission.MANAGE_HAP_TOKENID",
+            "said" : "3503",
+            "description" : "Invoke AccessToken::AccessTokenKit::AllocHapToken interface should have own this permission."
+        },
+        {
+            "name" : "ohos.permission.PERMISSION_USED_STATS",
+            "said" : "3299",
+            "description" : "Invoke AccessToken::PrivacyKit::AddPermissionUsedRecord interface should have own this permission."
+        },
+        {
+            "name" : "ohos.permission.MANAGE_AUDIO_CONFIG",
+            "said" : "4005",
+            "description" : "permission required for telephony to set microphone mute."
+        },
+        {
+            "name" : "ohos.permission.WRITE_CALL_LOG",
+            "said" : "4005",
+            "description" : "permission required for telephony to write call log."
+        },
+        {
+            "name" : "ohos.permission.READ_CONTACTS",
+            "said" : "4005",
+            "description" : "permission required for telephony to read contacts info."
+        },
+        {
+            "name" : "ohos.permission.START_ABILITIES_FROM_BACKGROUND",
+            "said" : "4005",
+            "description" : "Permission required for telephony to access AbillityManagerService."
+        },
+        {
+            "name" : "ohos.permission.START_SYSTEM_DIALOG",
+            "said" : "4005",
+            "description" : "permission required for telephony to start system dialog."
+        },
+        {
+            "name" : "ohos.permission.MODIFY_AUDIO_SETTINGS",
+            "said" : "4005",
+            "description" : "permission required for telephony to set audio mode."
+        },
+        {
+            "name" : "ohos.permission.GRANT_SENSITIVE_PERMISSIONS",
+            "said" : "401",
+            "description" : "Permission required for BMS to grant sensitive permissions."
+        },
+        {
+            "name" : "ohos.permission.REVOKE_SENSITIVE_PERMISSIONS",
+            "said" : "401",
+            "description" : "Permission required for BMS to revoke sensitive permissions."
+        },
+        {
+            "name" : "ohos.permission.STORAGE_MANAGER",
+            "said" : ["183"],
+            "description" : "Permission required for UPMS to create or delete files shared between applications."
+        },
+        {
+            "name" : "ohos.permission.PROXY_AUTHORIZATION_URI",
+            "said" : ["180"],
+            "description" : "Permission required for Grant Uri permission between applications."
+        },
+        {
+            "name" : "ohos.permission.ABILITY_BACKGROUND_COMMUNICATION",
+            "said" : "403",
+            "description" : "Permission required for FMS to communicate in the background."
+        },
+        {
+            "name" : "ohos.permission.MANAGE_LOCAL_ACCOUNTS",
+            "said" : "403",
+            "description" : "Permission required for FMS to manage local accounts."
+        },
+        {
+            "name" : "ohos.permission.LISTEN_BUNDLE_CHANGE",
+            "said" : "403",
+            "description" : "Permission required for FMS to listen bundle change."
+        },
+        {
+            "name" : "ohos.permission.INSTALL_SANDBOX_BUNDLE",
+            "said" : "403",
+            "description" : "Permission required for FMS to install sandbox bundle."
+        },
+        {
+            "name" : "ohos.permission.GET_TELEPHONY_STATE",
+            "said" : "4005",
+            "description" : "Permission required for telephony to get lock state of sim card."
+        },
+        {
+            "name" : "ohos.permission.CONNECT_CELLULAR_CALL_SERVICE",
+            "said" : "4005",
+            "description" : "Permission required for telephony to connect cellular call service."
+        },
+        {
+            "name" : "ohos.permission.SEND_MESSAGES",
+            "said" : "4005",
+            "description" : "Permission required for telephony to send reject call sms."
+        },
+        {
+            "name" : "ohos.permission.SET_TELEPHONY_STATE",
+            "said" : "4005",
+            "description" : "Permission required for telephony to update call state."
+        },
+        {
+            "name" : "ohos.permission.VIBRATE",
+            "said" : "4005",
+            "description" : "Permission required for telephony to vibrate."
+        },
+        {
+            "name" : "ohos.permission.UPDATE_CONFIGURATION",
+            "said" : "501",
+            "description" : "Permission required for APPMS to update configuration when pointer device status change."
+        },
+        {
+            "name" : "ohos.permission.REPORT_RESOURCE_SCHEDULE_EVENT",
+            "said" : "1901",
+            "description" : "Permission required for AMS to report resource schedule event to RSS."
+        },
+        {
+            "name" : "ohos.permission.START_INVISIBLE_ABILITY",
+            "said" : "180",
+            "description" : "Permission required for AMS to start LAUNCHER."
+        },
+        {
+            "name" : "ohos.permission.GET_BUNDLE_INFO",
+            "said" : "3203",
+            "description" : "Permission required for ReminderRequest to update the database."
+        },
+        {
+            "name" : "ohos.permission.GET_SUSPEND_STATE",
+            "said" : "1910",
+            "description" : "Permission required for AMS to register suspend state observer."
+        },
+        {
+            "name" : "ohos.permission.PUBLISH_SYSTEM_COMMON_EVENT",
+            "said" : "3704",
+            "description" : "Permission required for ScreenLock to publish a common event."
+        },
+        {
+            "name" : "ohos.permission.GET_BUNDLE_INFO_PRIVILEGED",
+            "said" : "401",
+            "description" : "Permission required for BMS to get bundle info privileged."
+        },
+        {
+            "name" : "ohos.permission.CLEAN_APPLICATION_DATA",
+            "said" : "401",
+            "description" : "Permission required for BMS to clean application data."
+        },
+        {
+            "name" : "ohos.permission.REMOVE_CACHE_FILES",
+            "said" : "401",
+            "description" : "Permission required for BMS to remove cache files."
+        },
+        {
+            "name" : "ohos.permission.USE_BLUETOOTH",
+            "said" : "4005",
+            "description" : "Permission required for telephony to use bluetooth."
+        },
+        {
+            "name" : "ohos.permission.CONNECTIVITY_INTERNAL",
+            "said" : "1151",
+            "description" : "Permission required for connectivity to netconnectmgr."
+        },
+        {
+            "name" : "ohos.permission.GET_RUNNING_INFO",
+            "said" : "180",
+            "description" : "Permission required for BMS to get running info."
+        },
+        {
+            "name" : "ohos.permission.INTERACT_ACROSS_LOCAL_ACCOUNTS",
+            "said" : "180",
+            "description" : "Permission required for foundation to interact across local accounts."
+        },
+        {
+            "name" : "ohos.permission.RUNNING_STATE_OBSERVER",
+            "said" : "180",
+            "description" : "Permission required for AMS to register application state observer."
+        },
+        {
+            "name" : "ohos.permission.GET_INSTALLED_BUNDLE_LIST",
+            "said" : "6105",
+            "description" : "Permission required for ERMS to query installed bundle list."
+        },
+        {
+            "name" : "ohos.permission.INTERACT_ACROSS_LOCAL_ACCOUNTS_EXTENSION",
+            "said" : "6105",
+            "description" : "Permission required for ERMS to register account observer."
+        },
+        {
+            "name" : "ohos.permission.MANAGE_USER_ACCOUNT_INFO",
+            "said" : "6105",
+            "description" : "Permission required for ERMS to query huawei id state."
+        },
+        {
+            "name" : "ohos.permission.GET_NETWORK_INFO",
+            "said" : "4005",
+            "description" : "Permission required for telephony to get network info."
+        },
+        {
+            "name" : "ohos.permission.MANAGE_BLUETOOTH",
+            "said" : "1130",
+            "description" : "Native uses the Bluetooth interface"
+        },
+        {
+            "name" : "ohos.permission.REQUIRE_FORM",
+            "said" : "403",
+            "description" : "Permission required for FMS to access theme manager service."
+        },
+        {
+            "name" : "ohos.permission.ACCESS_SPAMSHIELD_SERVICE",
+            "said" : "4005",
+            "description" : "Permission required for telephony to access spamshield service."
+        },
+        {
+            "name" : "ohos.permission.APPROXIMATELY_LOCATION",
+            "said" : "4005",
+            "description" : "Permission required for location earthquake alarm."
+        },
+        {
+            "name" : "ohos.permission.LOCATION",
+            "said" : "4005",
+            "description" : "Permission required for location earthquake alarm."
+        },
+        {
+            "name" : "ohos.permission.LOCATION_IN_BACKGROUND",
+            "said" : "4005",
+            "description" : "Permission required for location earthquake alarm."
+        },
+        {
+            "name" : "ohos.permission.hsdr.HSDR_ACCESS",
+            "said" : "4005",
+            "description" : "Permission required for telephony to access hsdr service."
+        },
+        {
+            "name" : "ohos.permission.ACCESS_CAR_DISTRIBUTED_ENGINE",
+            "said" : "4005",
+            "description" : "Permission required for telephony to access car distributed engine."
+        },
+        {
+            "name" : "ohos.permission.START_RESTORE_NOTIFICATION",
+            "said" : "3203",
+            "description" : "Permission required for ans to access backup service."
+        },
+        {
+            "name" : "ohos.permission.CAPTURE_SCREEN",
+            "said" : "4607",
+            "description" : "Permission required for DMS to access render service TakeSurfaceCapture."
+        },
+        {
+            "name" : "ohos.permission.MANAGE_MISSIONS",
+            "said" : "180",
+            "description" : "Permission required for ams to move scene_board to foreground or background."
+        },
+        {
+            "name" : "ohos.permission.CONNECT_FORM_EXTENSION",
+            "said" : "180",
+            "description" : "Permission required for FMS to connect form extension."
+        },
+        {
+            "name" : "ohos.permission.CONNECT_STATIC_SUBSCRIBER_EXTENSION",
+            "said" : "180",
+            "description" : "Permission required for CES to connect static subscriber extension."
+        },
+        {
+            "name" : "ohos.permission.ACCESS_USER_AUTH_INTERNAL",
+            "said" : "3704",
+            "description" : "Permission required for ScreenLock to observer user auth state."
+        },
+        {
+            "name" : "ohos.permission.RECEIVE_UPDATE_MESSAGE",
+            "said" : "403",
+            "description" : "Permission required for FMS to reveive DUE update message."
+        },
+        {
+            "name" : "ohos.permission.NFC_CARD_EMULATION",
+            "said" : "403",
+            "description" : "Permission required for ScreenLock to register application status listener."
+        },
+        {
+            "name" : "ohos.permission.RUNNING_STATE_OBSERVER",
+            "said" : "403",
+            "description" : "Permission required for ScreenLock to get the bundle names of all payment services‌."
+        }
+    ],
+    "restart" : [
+        {
+            "name" : "unset_bootevent bootevent.appfwk.ready",
+            "said" : "180",
+            "description" : "before restart foundation process, unset bootevent.appfwk.ready"
+        },
+        {
+            "name" : "unset_bootevent bootevent.lockscreen.ready",
+            "said" : "180",
+            "description" : "before restart foundation process, unset bootevent.lockscreen.ready"
+        },
+        {
+            "name" : "reset accountmgr",
+            "said" : "180",
+            "description" : "AMS requires accountmgr to restart"
+        },
+        {
+            "name" : "reset appspawn",
+            "said" : "180",
+            "description" : "AMS requires all application to restart"
+        },
+        {
+            "name" : "reset bgtaskmgr_service",
+            "said" : "180",
+            "description" : "bgtaskmgr_service rely on AMS, need to restart"
+        },
+        {
+            "name" : "reset inputmethod_service",
+            "said" : "3703",
+            "description" : "inputmethod_service rely on WMS, need to restart"
+        },
+        {
+            "name" : "reset resource_schedule_service",
+            "said" : "180",
+            "description" : "resource_schedule_service rely on AMS, need to restart"
+        },
+        {
+            "name" : "reset device_usage_stats_service",
+            "said" : "180",
+            "description" : "device_usage_stats_service rely on AMS, need to restart"
+        }
+    ],
+    "mkdir" : [
+        {
+            "name" : "mkdir notification",
+            "said" : "3203",
+            "description" : "Move notification db from /data/system_ce/ans_standard to /data/service/el1/public/notification/."
+        },
+        {
+            "name" : "mkdir window",
+            "said" : "4606",
+            "description" : "Create window directory for window_manager to save window params at /data/service/el1/public/window/"
+        },
+        {
+            "name" : "mkdir common_event_service",
+            "said" : "3299",
+            "description" : "Create common_event_service directory for common_event_service to save data file at /data/service/el1/public/database/common_event_service"
+        },
+        {
+            "name" : "mkdir auto_startup_service",
+            "said" : "180",
+            "description" : "Create auto_start_up_service directory for auto_startup_service to save data file at /data/service/el1/public/database/auto_startup_service"
+        },
+        {
+            "name" : "mkdir app_config_data",
+            "said" : "501",
+            "description" : "Create app_config_data directory for app_manager_service to save data file at /data/service/el1/public/database/app_config_data"
+        },
+        {
+            "name" : "mkdir app_exit_reason",
+            "said" : "180",
+            "description" : "Create app_exit_reason directory for ability_manager_service to save data file at /data/service/el1/public/database/app_exit_reason"
+        },
+        {
+            "name" : "mkdir ability_manager_service",
+            "said" : "180",
+            "description" : "Create ability_manager_service directory for ability_manager_service to save data file at /data/service/el1/public/database/ability_manager_service"
+        },
+        {
+            "name" : "mkdir keep_alive_service",
+            "said" : "180",
+            "description" : "Create auto_start_up_service directory for keep_alive_service to save data file at /data/service/el1/public/database/keep_alive_service"
+        },
+        {
+            "name" : "mkdir insight_intent",
+            "said" : "180",
+            "description" : "Create insight_intent directory for insight_intent to save data file at /data/service/el1/public/database/insight_intent"
+        },
+        {
+            "name" : "mkdir modular_object_extension",
+            "said" : "180",
+            "description" : "Create modular_object_extension directory for modular_object_extension to save data file at /data/service/el1/public/database/modular_object_extension"
+        }
+    ],
+    "bootevents" : [
+        {
+            "name" : "bootevent.wms.fullscreen.ready",
+            "said" : "4606",
+            "description" : "WMS define fullscreen ready event"
+        }
+    ]
+}

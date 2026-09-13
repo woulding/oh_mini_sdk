@@ -1,0 +1,4612 @@
+/*
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#define private public
+
+#include <fstream>
+#include <future>
+#include <gtest/gtest.h>
+
+#include "bundle_mgr_host.h"
+#include "get_largest_items_callback_interface.h"
+
+using namespace testing::ext;
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+const std::string TEST_EMPTY_BUNDLE_NAME = "";
+const std::string TEST_BUNDLE_NAME = "com.example.testbundle";
+const std::string TEST_NETWORK_ID = "testnetworkid";
+constexpr int32_t TEST_BUNDLE_NAME_COUNT = 1;
+constexpr int32_t TEST_UID = 12345;
+constexpr int32_t TEST_WANT_COUNT = 1;
+constexpr int32_t UNKNOWN_ERROR = -31;
+}
+
+class BmsBundleMgrHostUnitTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp();
+    void TearDown();
+};
+
+void BmsBundleMgrHostUnitTest::SetUpTestCase() {}
+
+void BmsBundleMgrHostUnitTest::TearDownTestCase() {}
+
+void BmsBundleMgrHostUnitTest::SetUp() {}
+
+void BmsBundleMgrHostUnitTest::TearDown() {}
+
+class MockGetLargestItemsCallback : public IGetLargestItemsCallback {
+public:
+    MockGetLargestItemsCallback() : resultErrCode(ERR_OK) {}
+    ~MockGetLargestItemsCallback() override = default;
+    void OnGetLargestItemsFinished(ErrCode errCode, const std::string &largestItems) override
+    {
+        resultErrCode = errCode;
+        resultData = largestItems;
+    }
+    sptr<IRemoteObject> AsObject() override
+    {
+        return nullptr;
+    }
+    ErrCode resultErrCode;
+    std::string resultData;
+};
+/**
+ * @tc.number: OnRemoteRequest_0010
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0010, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPLICATION_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0020
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0020, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPLICATION_INFO_WITH_INT_FLAGS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0030
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0030, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPLICATION_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0040
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0040, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPLICATION_INFO_WITH_INT_FLAGS_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0050
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0050, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPLICATION_INFOS_WITH_INT_FLAGS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0060
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0060, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPLICATION_INFOS_WITH_INT_FLAGS_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0070
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0070, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0080
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0080, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFO_WITH_INT_FLAGS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0090
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0090, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFO_WITH_INT_FLAGS_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0100
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::BATCH_GET_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0110
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0110, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_PACK_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0120
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0120, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_PACK_INFO_WITH_INT_FLAGS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0130
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0130, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0140
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0140, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFOS_WITH_INT_FLAGS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0150
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0150, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFOS_WITH_INT_FLAGS_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0160
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0160, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_NAME_FOR_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0170
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0170, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLES_FOR_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0180
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0180, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_NAME_FOR_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0190
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0190, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_NAME_AND_APPINDEX_FOR_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0200
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0200, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_GIDS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0210
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0210, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_GIDS_BY_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0220
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0220, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFOS_BY_METADATA);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0230
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0230, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0240
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0240, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFO_MUTI_PARAM);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0250
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0250, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0260
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0260, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFOS_MUTI_PARAM);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0270
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0270, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFOS_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0280
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0280, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::BATCH_QUERY_ABILITY_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0290
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0290, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_LAUNCHER_ABILITY_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0300
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0300, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ALL_ABILITY_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0310
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0310, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFO_BY_URI);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0320
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0320, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFOS_BY_URI);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0330
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0330, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFO_BY_URI_FOR_USERID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0340
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0340, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_KEEPALIVE_BUNDLE_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0350
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0350, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ABILITY_LABEL);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0360
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0360, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ABILITY_LABEL_WITH_MODULE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0370
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0370, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CHECK_IS_SYSTEM_APP_BY_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0380
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0380, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_ARCHIVE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0390
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0390, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_ARCHIVE_INFO_WITH_INT_FLAGS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0400
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0400, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_ARCHIVE_INFO_WITH_INT_FLAGS_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0410
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0410, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_HAP_MODULE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0420
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0420, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_LAUNCH_WANT_FOR_BUNDLE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0430
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0430, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PERMISSION_DEF);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0440
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0440, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::AUTO_CLEAN_CACHE_BY_SIZE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0450
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0450, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CLEAN_BUNDLE_CACHE_FILES);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0460
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0460, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CREATE_BUNDLE_DATA_DIR);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0470
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0470, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CLEAN_BUNDLE_DATA_FILES);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0480
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0480, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::REGISTER_BUNDLE_STATUS_CALLBACK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0490
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0490, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::REGISTER_BUNDLE_EVENT_CALLBACK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0500
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0500, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::UNREGISTER_BUNDLE_EVENT_CALLBACK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0510
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0510, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CLEAR_BUNDLE_STATUS_CALLBACK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0520
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0520, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::UNREGISTER_BUNDLE_STATUS_CALLBACK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0530
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0530, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IS_APPLICATION_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0540
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0540, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_APPLICATION_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0550
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0550, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IS_ABILITY_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0560
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0560, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_ABILITY_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0570
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0570, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ABILITY_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0580
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0580, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ABILITY_INFO_WITH_MODULE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0590
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0590, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::DUMP_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0600
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0600, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INSTALLER);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0610
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0610, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_FORMS_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0620
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0620, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_FORMS_INFO_BY_APP);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0630
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0630, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_FORMS_INFO_BY_MODULE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0640
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0640, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0650
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0650, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0660
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0660, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_COMMON_EVENT_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0670
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0670, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_USER_MGR);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0680
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0680, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_DISTRIBUTE_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0690
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0690, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPLICATION_PRIVILEGE_LEVEL);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0700
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0700, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_EXTENSION_INFO_WITHOUT_TYPE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0710
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0710, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_EXTENSION_INFO_WITHOUT_TYPE_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0720
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0720, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_EXTENSION_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0730
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0730, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_EXTENSION_INFO_V9);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0740
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0740, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_EXTENSION_INFO_BY_TYPE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0750
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0750, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::VERIFY_CALLING_PERMISSION);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0760
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0760, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_EXTENSION_ABILITY_INFO_BY_URI);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0770
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0770, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPID_BY_BUNDLE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0780
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0780, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APP_TYPE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0790
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0790, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_UID_BY_BUNDLE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0800
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0800, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IS_MODULE_REMOVABLE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0810
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0810, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_MODULE_REMOVABLE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0820
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0820, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFO_WITH_CALLBACK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0830
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0830, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::UPGRADE_ATOMIC_SERVICE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0840
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0840, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IS_MODULE_NEED_UPDATE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0850
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0850, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_MODULE_NEED_UPDATE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0860
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0860, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_HAP_MODULE_INFO_WITH_USERID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0870
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0870, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IMPLICIT_QUERY_INFO_BY_PRIORITY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0880
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0880, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IMPLICIT_QUERY_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0890
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0890, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_DEPENDENT_MODULE_NAMES);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0900
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0900, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SANDBOX_APP_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0910
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0910, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_CALLING_BUNDLE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0920
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0920, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_STATS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0930
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0930, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_BUNDLE_STATS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0940
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0940, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CHECK_ABILITY_ENABLE_INSTALL);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0950
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0950, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_STRING_BY_ID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0960
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0960, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ICON_BY_ID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_0970
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0970, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SANDBOX_APP_ABILITY_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+#ifdef BUNDLE_FRAMEWORK_DEFAULT_APP
+/**
+ * @tc.number: OnRemoteRequest_0980
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0980, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_DEFAULT_APP_PROXY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+#endif
+
+/**
+ * @tc.number: OnRemoteRequest_0990
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_0990, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SANDBOX_APP_EXTENSION_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1000
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1000, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SANDBOX_MODULE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1010
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1010, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_MEDIA_DATA);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1020
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1020, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_QUICK_FIX_MANAGER_PROXY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+#ifdef BUNDLE_FRAMEWORK_APP_CONTROL
+/**
+ * @tc.number: OnRemoteRequest_1030
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1030, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APP_CONTROL_PROXY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+#endif
+
+/**
+ * @tc.number: OnRemoteRequest_1040
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1040, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SANDBOX_APP_ABILITY_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1050
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1050, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SANDBOX_APP_EXTENSION_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1060
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1060, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SANDBOX_MODULE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1070
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1070, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_MEDIA_DATA);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1080
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1080, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_QUICK_FIX_MANAGER_PROXY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+#ifdef BUNDLE_FRAMEWORK_APP_CONTROL
+/**
+ * @tc.number: OnRemoteRequest_1090
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1090, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APP_CONTROL_PROXY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+#endif
+
+/**
+ * @tc.number: OnRemoteRequest_1100
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_DEBUG_MODE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1110
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1110, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFO_FOR_SELF);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1120
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1120, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::VERIFY_SYSTEM_API);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1130
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1130, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_OVERLAY_MANAGER_PROXY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1140
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1140, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SILENT_INSTALL);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1150
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1150, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::PROCESS_PRELOAD);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1160
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1160, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BASE_SHARED_BUNDLE_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1170
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1170, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_SHARED_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1180
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1180, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHARED_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1190
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1190, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHARED_BUNDLE_INFO_BY_SELF);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1200
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1200, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHARED_DEPENDENCIES);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1210
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1210, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_DEPENDENT_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1220
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1220, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_UID_BY_DEBUG_BUNDLE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1230
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1230, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PROXY_DATA_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1240
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1240, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_PROXY_DATA_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1250
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1250, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SPECIFIED_DISTRIBUTED_TYPE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1260
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1260, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ADDITIONAL_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1270
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1270, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_EXT_NAME_OR_MIME_TO_APP);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1280
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1280, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::DEL_EXT_NAME_OR_MIME_TO_APP);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1290
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1290, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_DATA_GROUP_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1300
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1300, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PREFERENCE_DIR_BY_GROUP_ID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1310
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1310, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_APPGALLERY_BUNDLE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1320
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1320, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_EXTENSION_ABILITY_INFO_WITH_TYPE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1330
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1330, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_EXTENSION_ABILITY_INFO_ONLY_WITH_TYPE_NAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1340
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1340, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::RESET_AOT_COMPILE_STATUS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1350
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1350, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_JSON_PROFILE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1360
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1360, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_RESOURCE_PROXY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1370
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1370, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_VERIFY_MANAGER);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1380
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1380, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_RECOVERABLE_APPLICATION_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1390
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1390, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_UNINSTALLED_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1400
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1400, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_ADDITIONAL_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1410
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1410, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::COMPILE_PROCESSAOT);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1420
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1420, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::COMPILE_RESET);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1430
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1430, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CAN_OPEN_LINK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1440
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1440, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ODID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1450
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1450, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_EXTEND_RESOURCE_MANAGER);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1460
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1460, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_BUNDLE_INFO_BY_DEVELOPER_ID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1470
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1470, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_DEVELOPER_IDS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1480
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1480, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SWITCH_UNINSTALL_STATE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1490
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1490, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_ABILITY_INFO_BY_CONTINUE_TYPE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1500
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1500, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_CLONE_ABILITY_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1510
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1510, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_CLONE_BUNDLE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1520
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1520, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::COPY_AP);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1530
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1530, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_CLONE_APP_INDEXES);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1540
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1540, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::QUERY_CLONE_EXTENSION_ABILITY_INFO_WITH_APP_INDEX);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1550
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1550, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_CLONE_APPLICATION_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1560
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1560, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IS_CLONE_APPLICATION_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1570
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1570, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_CLONE_ABILITY_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1580
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1580, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IS_CLONE_ABILITY_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1590
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1590, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::ADD_DESKTOP_SHORTCUT_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1600
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1600, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::DELETE_DESKTOP_SHORTCUT_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1610
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1610, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_DESKTOP_SHORTCUT_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1620
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1620, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APP_PROVISION_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1630
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1630, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PROVISION_METADATA);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1640
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1640, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PREINSTALLED_APPLICATION_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1641
+ * @tc.name: test the OnRemoteRequest GET_ALL_NEW_PREINSTALLED_APPLICATION_INFOS
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1641, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_NEW_PREINSTALLED_APPLICATION_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1650
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1650, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_LAUNCH_WANT);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1660
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1660, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ABILITY_RESOURCE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1670
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1670, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::RECOVER_BACKUP_BUNDLE_DATA);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1680
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1680, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::REMOVE_BACKUP_BUNDLE_DATA);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1690
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1690, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFO_FOR_EXCEPTION);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1700
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1700, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::ADD_DYNAMIC_SHORTCUT_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1710
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1710, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::DELETE_DYNAMIC_SHORTCUT_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1720
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1720, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ASSET_GROUPS_INFOS_BY_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1730
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1730, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_SHORTCUTS_ENABLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1740
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1740, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_APPIDENTIFIER_AND_APPINDEX);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1750
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1750, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SIMPLE_APP_INFO_FOR_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1760
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1760, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ABILITY_INFOS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1770
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1770, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_LAUNCHER_ABILITY_INFO_SYNC);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1780
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1780, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CREATE_BUNDLE_DATA_DIR_WITH_EL);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1790
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1790, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO_BY_APPINDEX);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1800
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1800, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::BATCH_GET_BUNDLE_STATS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1810
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1810, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_MGR_EXT_PROXY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1820
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1820, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_APP_PROVISION_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1830
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1830, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::BATCH_GET_ADDITIONAL_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1840
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1840, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ADDITIONAL_INFO_FOR_ALL_USER);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1850
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1850, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SWITCH_UNINSTALL_STATE_BY_USER_ID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1860
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1860, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SIGNATURE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1870
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1870, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SIGNATURE_INFO_BY_UID);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1880
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1880, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ODID_BY_BUNDLENAME);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1890
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1890, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INFOS_FOR_CONTINUATION);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1900
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1900, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_CONTINUE_BUNDLE_NAMES);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1910
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1910, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::UPDATE_APP_ENCRYPTED_KEY_STATUS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1920
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1920, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IS_BUNDLE_INSTALLED);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1930
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1930, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_COMPATIBLED_DEVICE_TYPE_NATIVE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1940
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1940, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_COMPATIBLED_DEVICE_TYPE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1950
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1950, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_NAME_BY_APP_ID_OR_APP_IDENTIFIER);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1960
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1960, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_PLUGIN_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1970
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1970, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PLUGIN_INFOS_FOR_SELF);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1980
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1980, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_DIR_BY_BUNDLENAME_AND_APPINDEX);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_1990
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_1990, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_BUNDLE_DIRS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2000
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2000, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_BUNDLE_CACHE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2010
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2010, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CLEAN_ALL_BUNDLE_CACHE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2020
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2020, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_APP_DISTRIBUTION_TYPES);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2030
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2030, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::MIGRATE_DATA);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2040
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2040, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PLUGIN_ABILITY_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2050
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2050, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PLUGIN_HAP_MODULE_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2060
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2060, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::REGISTER_PLUGIN_EVENT_CALLBACK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2070
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2070, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::UNREGISTER_PLUGIN_EVENT_CALLBACK);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2080
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2080, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::BATCH_GET_SPECIFIED_DISTRIBUTED_TYPE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2090
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2090, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_CLONE_BUNDLE_INFO_EXT);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2100
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SANDBOX_DATA_DIR);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2110
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2110, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_SHORTCUT_VISIBLE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2120
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2120, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GREAT_OR_EQUAL_API_TARGET_VERSION);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2130
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2130, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_SHORTCUT_INFO_FOR_SELF);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2140
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2140, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PLUGIN_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2150
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2150, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::RESET_ALL_AOT);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2160
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2160, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_TEST_RUNNER);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2170
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2170, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CLEAN_BUNDLE_CACHE_FILES_FOR_SELF);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2180
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2180, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::IS_DEBUGGABLE_APPLICATION);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2190
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2190, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_BUNDLE_NAMES);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2200
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2200, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::SET_ABILITY_FILE_TYPES_FOR_SELF);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2210
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2210, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PLUGIN_BUNDLE_PATH_FOR_SELF);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2220
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2220, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::CREATE_NEW_BUNDLE_DIR);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2230
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2230, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INSTALL_STATUS);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2240
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2240, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ALL_JSON_PROFILE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2250
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2250, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::BATCH_GET_COMPATIBLED_DEVICE_TYPE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: OnRemoteRequest_2260
+ * @tc.name: test the OnRemoteRequest
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, OnRemoteRequest_2260, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_PLUGIN_EXTENSION_INFO);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: HandleGetBundleInfoWithIntFlagsV9_0100
+ * @tc.name: test the HandleGetBundleInfoWithIntFlagsV9
+ * @tc.desc: 1. system running normally
+ *           2. test HandleGetBundleInfoWithIntFlagsV9 when bundleName is not empty
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetBundleInfoWithIntFlagsV9_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteString(TEST_BUNDLE_NAME);
+    ErrCode res = bundleMgrHost.HandleGetBundleInfoWithIntFlagsV9(data, reply);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleGetBundleInfoForException_0100
+ * @tc.name: test the HandleGetBundleInfoForException
+ * @tc.desc: 1. system running normally
+ *           2. test HandleGetBundleInfoForException when bundleName is not empty
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetBundleInfoForException_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteString(TEST_BUNDLE_NAME);
+    ErrCode res = bundleMgrHost.HandleGetBundleInfoForException(data, reply);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleBatchGetBundleInfo_0100
+ * @tc.name: test the HandleBatchGetBundleInfo
+ * @tc.desc: 1. system running normally
+ *           2. test HandleBatchGetBundleInfo when bundleNames is empty and bundleNameCount is not zero
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleBatchGetBundleInfo_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteInt32(TEST_BUNDLE_NAME_COUNT);
+    data.WriteString(TEST_EMPTY_BUNDLE_NAME);
+    ErrCode res = bundleMgrHost.HandleBatchGetBundleInfo(data, reply);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_INTERNAL_ERROR);
+}
+
+/**
+ * @tc.number: HandleBatchGetBundleInfo_0200
+ * @tc.name: test the HandleBatchGetBundleInfo
+ * @tc.desc: 1. system running normally
+ *           2. test HandleBatchGetBundleInfo when bundleNames is not empty and bundleNameCount is not zero
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleBatchGetBundleInfo_0200, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteInt32(TEST_BUNDLE_NAME_COUNT);
+    data.WriteString(TEST_BUNDLE_NAME);
+    ErrCode res = bundleMgrHost.HandleBatchGetBundleInfo(data, reply);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleGetSimpleAppInfoForUid_0100
+ * @tc.name: test the HandleGetSimpleAppInfoForUid
+ * @tc.desc: 1. system running normally
+ *           2. test HandleGetSimpleAppInfoForUid when uidList is not empty
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetSimpleAppInfoForUid_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    std::vector<std::int32_t> uidList = { TEST_UID };
+    data.WriteInt32Vector(uidList);
+    ErrCode res = bundleMgrHost.HandleGetSimpleAppInfoForUid(data, reply);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleBatchQueryAbilityInfos_0100
+ * @tc.name: test the HandleBatchQueryAbilityInfos
+ * @tc.desc: 1. system running normally
+ *           2. test HandleBatchQueryAbilityInfos when wantCount is valid but no wants
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleBatchQueryAbilityInfos_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteInt32(TEST_WANT_COUNT);
+    ErrCode res = bundleMgrHost.HandleBatchQueryAbilityInfos(data, reply);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: HandleGetBundleInodeCount_0100
+ * @tc.name: test the HandleGetBundleInodeCount
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetBundleInodeCount_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_BUNDLE_INODE_COUNT);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleGetShortcutInfoByAbility_0100
+ * @tc.name: test the HandleGetShortcutInfoByAbility
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetShortcutInfoByAbility_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO_BY_ABILITY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: HandleGetShortcutInfoByAbility_0200
+ * @tc.name: test the HandleGetShortcutInfoByAbility
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetShortcutInfoByAbility_0200, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO_BY_ABILITY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    data.WriteString("bundleName");
+    data.WriteString("");
+    data.WriteString("abilityName");
+    data.WriteInt32(100);
+    data.WriteInt32(0);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: HandleGetShortcutInfoByAbility_0300
+ * @tc.name: test the HandleGetShortcutInfoByAbility
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetShortcutInfoByAbility_0300, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO_BY_ABILITY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    data.WriteString("bundleName");
+    data.WriteString("moduleName");
+    data.WriteString("");
+    data.WriteInt32(100);
+    data.WriteInt32(0);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: HandleGetShortcutInfoByAbility_0400
+ * @tc.name: test the HandleGetShortcutInfoByAbility
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetShortcutInfoByAbility_0400, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO_BY_ABILITY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    data.WriteString("bundleName");
+    data.WriteString("moduleName");
+    data.WriteString("abilityName");
+    data.WriteInt32(100);
+    data.WriteInt32(-1);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: HandleGetShortcutInfoByAbility_0500
+ * @tc.name: test the HandleGetShortcutInfoByAbility
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetShortcutInfoByAbility_0500, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO_BY_ABILITY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    data.WriteString("bundleName");
+    data.WriteString("moduleName");
+    data.WriteString("abilityName");
+    data.WriteInt32(100);
+    data.WriteInt32(100);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: HandleGetShortcutInfoByAbility_0600
+ * @tc.name: test the HandleGetShortcutInfoByAbility
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetShortcutInfoByAbility_0600, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_SHORTCUT_INFO_BY_ABILITY);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    data.WriteString("bundleName");
+    data.WriteString("moduleName");
+    data.WriteString("abilityName");
+    data.WriteInt32(100);
+    data.WriteInt32(0);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleGetDistributedBundleInfo_0100
+ * @tc.name: test the HandleGetDistributedBundleInfo
+ * @tc.desc: 1. system running normally
+ *           2. test HandleGetDistributedBundleInfo when networkId and bundleName are not empty
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetDistributedBundleInfo_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteString(TEST_NETWORK_ID);
+    data.WriteString(TEST_BUNDLE_NAME);
+    ErrCode res = bundleMgrHost.HandleGetDistributedBundleInfo(data, reply);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleGetOdidResetCount_0100
+ * @tc.name: test the HandleGetOdidResetCount
+ * @tc.desc: 1. system running normally
+ *           2. test HandleGetOdidResetCount with valid bundleName
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetOdidResetCount_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ODID_RESET_COUNT);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    data.WriteString(TEST_BUNDLE_NAME);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleGetOdidResetCount_0200
+ * @tc.name: test the HandleGetOdidResetCount
+ * @tc.desc: 1. system running normally
+ *           2. test HandleGetOdidResetCount with empty bundleName
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetOdidResetCount_0200, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_ODID_RESET_COUNT);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    data.WriteString(TEST_EMPTY_BUNDLE_NAME);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleGetOdidResetCount_0300
+ * @tc.name: test the HandleGetOdidResetCount directly
+ * @tc.desc: 1. system running normally
+ *           2. test HandleGetOdidResetCount method directly
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetOdidResetCount_0300, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteString(TEST_BUNDLE_NAME);
+    ErrCode res = bundleMgrHost.HandleGetOdidResetCount(data, reply);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleGetTopNLargestItemsInAppDataDir_0100
+ * @tc.name: test GetTopNLargestItemsInAppDataDir via OnRemoteRequest
+ * @tc.desc: 1. test GetTopNLargestItemsInAppDataDir interface through OnRemoteRequest
+ *           2. verify the interface can be called normally
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetTopNLargestItemsInAppDataDir_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::GET_TOP_N_LARGEST_ITEMS_IN_APP_DATA_DIR);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    data.WriteString(TEST_BUNDLE_NAME);
+    int32_t appIndex = 0;
+    data.WriteInt32(appIndex);
+    int32_t userId = 100;
+    data.WriteInt32(userId);
+    sptr<MockGetLargestItemsCallback> callback = new (std::nothrow) MockGetLargestItemsCallback();
+    ASSERT_NE(callback, nullptr);
+    data.WriteRemoteObject(callback->AsObject()); // nullptr
+
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, UNKNOWN_ERROR);
+}
+
+/**
+ * @tc.number: HandleCleanBundlePartialCacheAutomatic_0100
+ * @tc.name: test the HandleCleanBundlePartialCacheAutomatic
+ * @tc.desc: 1. system running normally
+ *           2. test HandleCleanBundlePartialCacheAutomatic with empty cacheInfo
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleCleanBundlePartialCacheAutomatic_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    uint32_t code = static_cast<uint32_t>(BundleMgrInterfaceCode::AUTO_CLEAN_PARTIAL_CACHE);
+    MessageParcel data;
+    std::u16string descriptor = BundleMgrHost::GetDescriptor();
+    data.WriteInterfaceToken(descriptor);
+    CleanCacheInfo cacheInfo;
+    data.WriteParcelable(&cacheInfo);
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode res = bundleMgrHost.OnRemoteRequest(code, data, reply, option);
+    EXPECT_EQ(res, ERR_OK);
+}
+
+/**
+ * @tc.number: HandleQuerySandboxCloneAbilityInfo_0100
+ * @tc.name: test the HandleQuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. creatorBundleName is empty
+ *           2. test HandleQuerySandboxCloneAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleQuerySandboxCloneAbilityInfo_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteString(""); // creatorBundleName empty
+    data.WriteParcelable(new ElementName());
+    data.WriteString(""); // moduleName
+    data.WriteInt32(1); // flags
+    data.WriteInt32(2000); // appIndex in valid range
+    data.WriteInt32(100); // userId
+    ErrCode res = bundleMgrHost.HandleQuerySandboxCloneAbilityInfo(data, reply);
+    EXPECT_EQ(res, ERR_APPEXECFWK_CLI_SANDBOX_INSTALL_INVALID_CREATOR_BUNDLE_NAME);
+}
+
+/**
+ * @tc.number: HandleQuerySandboxCloneAbilityInfo_0200
+ * @tc.name: test the HandleQuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. appIndex out of cli sandbox range
+ *           2. test HandleQuerySandboxCloneAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleQuerySandboxCloneAbilityInfo_0200, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteString(TEST_BUNDLE_NAME); // creatorBundleName
+    data.WriteParcelable(new ElementName());
+    data.WriteString(""); // moduleName
+    data.WriteInt32(1); // flags
+    data.WriteInt32(100); // appIndex below CLI_SANDBOX_APP_INDEX_MIN
+    data.WriteInt32(100); // userId
+    ErrCode res = bundleMgrHost.HandleQuerySandboxCloneAbilityInfo(data, reply);
+    EXPECT_EQ(res, ERR_APPEXECFWK_CLI_SANDBOX_INSTALL_INVALID_APP_INDEX);
+}
+
+/**
+ * @tc.number: HandleQuerySandboxCloneAbilityInfo_0300
+ * @tc.name: test the HandleQuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. parcel has no ElementName (read fails)
+ *           2. test HandleQuerySandboxCloneAbilityInfo returns parcel error
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleQuerySandboxCloneAbilityInfo_0300, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    // write only creatorBundleName, no ElementName parcelable follows
+    data.WriteString(TEST_BUNDLE_NAME);
+    ErrCode res = bundleMgrHost.HandleQuerySandboxCloneAbilityInfo(data, reply);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: HandleGetCliSandboxAppIndexes_0100
+ * @tc.name: test the HandleGetCliSandboxAppIndexes
+ * @tc.desc: 1. valid parcel layout, GetCliSandboxAppIndexes returns error (permission/dataMgr)
+ *           2. test HandleGetCliSandboxAppIndexes writes errCode to reply
+ */
+HWTEST_F(BmsBundleMgrHostUnitTest, HandleGetCliSandboxAppIndexes_0100, Function | SmallTest | Level0)
+{
+    BundleMgrHost bundleMgrHost;
+    MessageParcel data;
+    MessageParcel reply;
+    data.WriteString(TEST_BUNDLE_NAME);
+    data.WriteInt32(100); // userId
+    ErrCode res = bundleMgrHost.HandleGetCliSandboxAppIndexes(data, reply);
+    EXPECT_EQ(res, ERR_OK);
+    ErrCode retCode = reply.ReadInt32();
+    EXPECT_NE(retCode, ERR_OK);
+}
+} // namespace AppExecFwk
+} // namespace OHOS

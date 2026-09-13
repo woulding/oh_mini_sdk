@@ -1,0 +1,113 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/config/components/idl_tool/idl.gni")
+import("//build/ohos.gni")
+
+config("sys_event_service_ohos_public_config") {
+  include_dirs = [
+    "include",
+    "${target_gen_dir}",
+  ]
+}
+
+idl_gen_interface("sys_event_service_interface") {
+  sources = [
+    "ISysEventCallback.idl",
+    "ISysEventService.idl",
+  ]
+
+  log_domainid = "0xD002D10"
+  log_tag = "HIVIEW"
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_source_set("sys_event_service_ohos") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  include_dirs = [
+    "$hiview_plugin/eventservice/include",
+    "$hiview_base/event_store/include",
+    "$hiview_base/running_status_logger/include",
+    "dfx/include",
+  ]
+
+  sources = [
+    "dfx/src/listener_status_monitor.cpp",
+    "dfx/src/listener_status_util.cpp",
+    "src/ash_mem_utils.cpp",
+    "src/compliant_event_checker.cpp",
+    "src/data_publisher.cpp",
+    "src/data_publisher_sys_event_callback.cpp",
+    "src/data_share_dao.cpp",
+    "src/data_share_store.cpp",
+    "src/data_share_util.cpp",
+    "src/event_query_wrapper_builder.cpp",
+    "src/event_service_base_util.cpp",
+    "src/query_argument.cpp",
+    "src/query_sys_event_callback_proxy.cpp",
+    "src/running_status_log_util.cpp",
+    "src/sys_event_query_rule.cpp",
+    "src/sys_event_rule.cpp",
+    "src/sys_event_service_ohos.cpp",
+  ]
+
+  defines = []
+  if (hiview_support_local_read_diagnostic_logs) {
+    defines += [ "SUPPORT_LOCAL_READ_DIAGNOSTIC_LOGS" ]
+  }
+
+  public_configs = [ ":sys_event_service_ohos_public_config" ]
+
+  output_values = get_target_outputs(":sys_event_service_interface")
+  sources += filter_include(output_values,
+                            [
+                              "${target_gen_dir}/sys_event_callback_proxy.cpp",
+                              "${target_gen_dir}/sys_event_service_stub.cpp",
+                            ])
+
+  deps = [
+    ":sys_event_service_interface",
+    "$hiview_base:hiviewbase",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libtokenid_sdk",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}

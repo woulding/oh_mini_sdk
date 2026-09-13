@@ -1,0 +1,64 @@
+# Copyright (c) 2020 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/lite/config/component/lite_component.gni")
+
+declare_args() {
+  enable_timertask = false
+  safwk_lite_feature_enable_abilityms = true
+  safwk_lite_feature_enable_bundlems = true
+  safwk_lite_feature_enable_dtbschedmgr = true
+}
+
+if (ohos_kernel_type == "liteos_a" || ohos_kernel_type == "linux") {
+  lite_component("safwk_lite") {
+    features = [ ":foundation" ]
+  }
+
+  # feature: foundation
+  executable("foundation") {
+    cflags = [ "-Wall" ]
+    cflags_cc = cflags
+
+    sources = [ "src/main.c" ]
+
+    include_dirs = [
+      "//commonlibrary/utils_lite/include",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/kits/samgr",
+    ]
+
+    ldflags = [
+      "-lstdc++",
+      "-Wl,-Map=foundation.map",
+    ]
+
+    deps = [
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//base/security/permission_lite/services/ipc_auth:ipc_auth_target",
+      "//base/security/permission_lite/services/pms:pms_target",
+      "//foundation/systemabilitymgr/samgr_lite/samgr_server:server",
+    ]
+    if (enable_timertask == true) {
+      deps += [ "//base/update/dupdate/services/timertask_lite:timertask" ]
+    }
+    if (safwk_lite_feature_enable_abilityms == true) {
+      deps += [ "${aafwk_lite_path}/services/abilitymgr_lite:abilityms" ]
+    }
+    if (safwk_lite_feature_enable_bundlems == true) {
+      deps += [ "${appexecfwk_lite_path}/services/bundlemgr_lite:bundlems" ]
+    }
+    if (safwk_lite_feature_enable_dtbschedmgr == true) {
+      deps += [ "//foundation/ability/dmsfwk_lite:dtbschedmgr" ]
+    }
+  }
+}

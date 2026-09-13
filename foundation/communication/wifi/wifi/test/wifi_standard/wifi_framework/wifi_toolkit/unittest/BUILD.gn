@@ -1,0 +1,172 @@
+# Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/communication/wifi/wifi/wifi.gni")
+module_output_path = "wifi/wifi/toolkit_test"
+
+config("module_private_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_toolkit/unittest",
+  ]
+}
+
+ohos_unittest("toolkit_unittest") {
+  module_out_path = module_output_path
+  sources = [
+    "$WIFI_ROOT_DIR/base/utils/wifi_app_parser.cpp",
+    "$WIFI_ROOT_DIR/base/utils/xml_parser.cpp",
+    "$WIFI_ROOT_DIR/frameworks/native/src/wifi_p2p_msg.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config/wifi_backup_config.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config/wifi_config_center.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config/wifi_config_file_spec.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config/wifi_scan_config.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config/wifi_settings.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/arp_checker.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/base_address.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/dhcpd_interface.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/if_config.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/ip_tools.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/ipv4_address.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/ipv6_address.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/mac_address.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/network_interface.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/network_parser.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/package_parser.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/softap_parser.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/wifi_cert_utils.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/wifi_code_convert.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/wifi_encryption_util.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/wifi_global_func.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/wifi_randommac_helper.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/wifi_asset/wifi_asset_manager.cpp",
+    "../../wifi_manage/wifi_sta/Mock/mock_dhcp_service.cpp",
+    "arp_checker_test.cpp",
+    "base_address_test.cpp",
+    "dhcpd_interface_test.cpp",
+    "if_config_test.cpp",
+    "ipv4_address_test.cpp",
+    "mac_address_test.cpp",
+    "network_interface_test.cpp",
+    "network_parser_test.cpp",
+    "softap_parser_test.cpp",
+    "wifi_app_parser_test.cpp",
+    "wifi_asset_manager_test.cpp",
+    "wifi_code_convert_test.cpp",
+    "wifi_config_center_test.cpp",
+    "wifi_config_file_test.cpp",
+    "wifi_encryption_util_test.cpp",
+    "wifi_global_func_test.cpp",
+    "wifi_ip_tools_test.cpp",
+    "wifi_randommac_helper_test.cpp",
+    "wifi_settings_test.cpp",
+    "xml_parser_test.cpp",
+  ]
+
+  include_dirs = [
+    "$WIFI_ROOT_DIR/base/utils",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/network_select",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/network_status_history",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/wifi_asset",
+    "$WIFI_ROOT_DIR/interfaces/inner_api",
+    "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+    "$WIFI_ROOT_DIR/services/wifi_standard/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_country_code",
+    "$WIFI_ROOT_DIR/utils/inc",
+    "$WIFI_ROOT_DIR/base/cRPC/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/hal_device_manager",
+  ]
+
+  ldflags = [
+    "-fPIC",
+    "--coverage",
+    "-Wl,-E",
+    "-Wl,-rpath=/system/lib/platformsdk",
+    "-Wl,--wrap=RegisterDhcpClientCallBack",
+    "-Wl,--wrap=StartDhcpClient",
+    "-Wl,--wrap=StopDhcpClient",
+    "-Wl,--wrap=RegisterDhcpServerCallBack",
+    "-Wl,--wrap=StartDhcpServer",
+    "-Wl,--wrap=StopDhcpServer",
+    "-Wl,--wrap=PutDhcpRange",
+    "-Wl,--wrap=RemoveDhcpRange",
+    "-Wl,--wrap=RemoveAllDhcpRange",
+    "-Wl,--wrap=SetDhcpRange",
+    "-Wl,--wrap=SetDhcpName",
+    "-Wl,--wrap=GetDhcpClientInfos",
+  ]
+
+  deps = [
+    "$WIFI_ROOT_DIR/base:wifi_base",
+    "$WIFI_ROOT_DIR/utils:wifi_utils",
+  ]
+  defines = [
+    "private = public",
+    "protected = public",
+    "AP_INSTANCE_MAX_NUM=$wifi_feature_with_ap_num",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "cJSON:cjson",
+    "certificate_manager:cert_manager_sdk",
+    "dhcp:dhcp_sdk",
+    "dhcp:dhcp_utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "icu:shared_icuuc",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "libxml2:libxml2",
+    "netstack:http_client",
+    "samgr:samgr_proxy",
+    "window_manager:libdm_lite",
+  ]
+  if (wifi_feature_with_sta_asset) {
+    defines += [ "SUPPORT_ClOUD_WIFI_ASSET" ]
+    external_deps += [ "asset:asset_sdk" ]
+  }
+  if (wifi_feature_with_encryption || wifi_feature_with_local_random_mac) {
+    external_deps += [ "huks:libhukssdk" ]
+  }
+  if (wifi_feature_with_encryption) {
+    defines += [ "FEATURE_ENCRYPTION_SUPPORT" ]
+  }
+  if (wifi_feature_with_local_random_mac) {
+    defines += [ "SUPPORT_LOCAL_RANDOM_MAC" ]
+  }
+  if (wifi_feature_mdm_restricted_enable) {
+    defines += [ "FEATURE_WIFI_MDM_RESTRICTED_SUPPORT" ]
+  }
+  if (wifi_feature_car_cockpit_supported) {
+    defines += [ "WIFI_FEATURE_CAR_COCKPIT_SUPPORTED" ]
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.account_os_account)) {
+    external_deps += [ "os_account:os_account_innerkits" ]
+    defines += [ "HAS_ACCOUNT_PART" ]
+  }
+  defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+  configs = [ ":module_private_config" ]
+
+  part_name = "wifi"
+  subsystem_name = "communication"
+  testonly = true
+}

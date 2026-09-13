@@ -1,0 +1,640 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "thread_sampler_test.h"
+
+#include <dlfcn.h>
+#include <uv.h>
+#include <csignal>
+#include <fstream>
+#include <sstream>
+
+#include "async_stack.h"
+#include "watchdog.h"
+
+using namespace testing::ext;
+namespace OHOS {
+namespace HiviewDFX {
+const char* LIB_THREAD_SAMPLER_PATH = "libthread_sampler.z.so";
+
+constexpr size_t SAMPLE_CNT = 10;
+constexpr int INTERVAL = 100;
+constexpr size_t STACK_LENGTH = 32 * 1024;
+constexpr int MILLSEC_TO_MICROSEC = 1000;
+
+static std::mutex threadSamplerSignalMutex_;
+SigActionType ThreadSamplerTest::threadSamplerSigHandler_ = nullptr;
+
+void ThreadSamplerTest::SetUpTestCase(void)
+{
+    printf("SetUpTestCase.\n");
+}
+
+void ThreadSamplerTest::TearDownTestCase(void)
+{
+    printf("TearDownTestCase.\n");
+    Watchdog::GetInstance().StopWatchdog();
+}
+
+void ThreadSamplerTest::SetUp(void)
+{
+    printf("SetUp.\n");
+}
+
+void ThreadSamplerTest::TearDown(void)
+{
+    printf("TearDown.\n");
+}
+
+void WaitSomeTime()
+{
+    int waitDelay = 3;
+    int32_t left = (INTERVAL * SAMPLE_CNT + INTERVAL) / MILLSEC_TO_MICROSEC + waitDelay;
+    int32_t end = time(nullptr) + left;
+    while (left > 0) {
+        left = end - time(nullptr);
+    }
+    sleep((INTERVAL * SAMPLE_CNT + INTERVAL) / MILLSEC_TO_MICROSEC + waitDelay);
+}
+
+void WorkCbTest(uv_work_s* work)
+{
+    GTEST_LOG_(INFO) << "WorkCbTest: pid = " << getpid() << "tid = " << gettid() << "\n";
+}
+
+void AfterWorkCbTest(uv_work_s* work, int status)
+{
+    GTEST_LOG_(INFO) << "AfterWorkCbTest: pid = " << getpid() << "tid = " << gettid() << "\n";
+    WaitSomeTime();
+    delete work;
+}
+
+uint32_t GetMMapSizeAndName(const std::string& checkName, std::string& mmapName)
+{
+    uint64_t size = 0;
+    mmapName = "";
+    std::ifstream mapsFile("/proc/self/maps");
+    std::string line;
+    int base = 16;
+    while (getline(mapsFile, line)) {
+        std::istringstream iss(line);
+        std::string addrs;
+        std::string permissions;
+        std::string offset;
+        std::string devices;
+        std::string inode;
+        std::string pathname;
+        iss >> addrs >> permissions >> offset >> devices >> inode >> pathname;
+        if (pathname.find(checkName) != std::string::npos) {
+            std::string start = addrs.substr(0, addrs.find('-'));
+            std::string end = addrs.substr(addrs.find('-') + 1);
+            size = std::stoul(end, nullptr, base) - std::stoul(start, nullptr, base);
+            mmapName = pathname;
+        }
+    }
+    return static_cast<uint32_t>(size);
+}
+
+void* TestFunctionOpen(void* funcHandler, const char* funcName)
+{
+    dlerror();
+    char* err = nullptr;
+    void* func = dlsym(funcHandler, funcName);
+    err = dlerror();
+    if (err != nullptr) {
+        return nullptr;
+    }
+    return func;
+}
+
+void ThreadSamplerTest::ThreadSamplerSigHandler(int sig, siginfo_t* si, void* context)
+{
+    std::lock_guard<std::mutex> lock(threadSamplerSignalMutex_);
+    if (ThreadSamplerTest::threadSamplerSigHandler_ == nullptr) {
+        return;
+    }
+    ThreadSamplerTest::threadSamplerSigHandler_(sig, si, context);
+}
+
+bool ThreadSamplerTest::TestInstallThreadSamplerSignal()
+{
+    struct sigaction action {};
+    sigfillset(&action.sa_mask);
+    action.sa_sigaction = ThreadSamplerTest::ThreadSamplerSigHandler;
+    action.sa_flags = SA_RESTART | SA_SIGINFO;
+    if (sigaction(MUSL_SIGNAL_SAMPLE_STACK, &action, nullptr) != 0) {
+        return false;
+    }
+    return true;
+}
+
+void ThreadSamplerTest::TestUninstallThreadSamplerSignal()
+{
+    std::lock_guard<std::mutex> lock(threadSamplerSignalMutex_);
+    threadSamplerSigHandler_ = nullptr;
+}
+
+bool ThreadSamplerTest::TestInitThreadSamplerFuncs()
+{
+    threadSamplerFuncHandler_ = dlopen(LIB_THREAD_SAMPLER_PATH, RTLD_LAZY);
+    if (threadSamplerFuncHandler_ == nullptr) {
+        return false;
+    }
+
+    threadSamplerInitFunc_ =
+        reinterpret_cast<ThreadSamplerInitFunc>(TestFunctionOpen(threadSamplerFuncHandler_, "ThreadSamplerInit"));
+    threadSamplerSampleFunc_ =
+        reinterpret_cast<ThreadSamplerSampleFunc>(TestFunctionOpen(threadSamplerFuncHandler_, "ThreadSamplerSample"));
+    threadSamplerCollectFunc_ =
+        reinterpret_cast<ThreadSamplerCollectFunc>(TestFunctionOpen(threadSamplerFuncHandler_, "ThreadSamplerCollect"));
+    threadSamplerDeinitFunc_ =
+        reinterpret_cast<ThreadSamplerDeinitFunc>(TestFunctionOpen(threadSamplerFuncHandler_, "ThreadSamplerDeinit"));
+    threadSamplerSigHandler_ =
+        reinterpret_cast<SigActionType>(TestFunctionOpen(threadSamplerFuncHandler_, "ThreadSamplerSigHandler"));
+    if (threadSamplerInitFunc_ == nullptr || threadSamplerSampleFunc_ == nullptr ||
+        threadSamplerCollectFunc_ == nullptr || threadSamplerDeinitFunc_ == nullptr ||
+        threadSamplerSigHandler_ == nullptr) {
+        threadSamplerInitFunc_ = nullptr;
+        threadSamplerSampleFunc_ = nullptr;
+        threadSamplerCollectFunc_ = nullptr;
+        threadSamplerDeinitFunc_ = nullptr;
+        threadSamplerSigHandler_ = nullptr;
+        dlclose(threadSamplerFuncHandler_);
+        threadSamplerFuncHandler_ = nullptr;
+        return false;
+    }
+    return true;
+}
+
+bool ThreadSamplerTest::TestInitThreadSampler()
+{
+    if (!TestInitThreadSamplerFuncs()) {
+        return false;
+    }
+
+    if (!TestInstallThreadSamplerSignal()) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @tc.name: ThreadSamplerTest_001
+ * @tc.desc: sample thread SAMPLE_CNT times and check the stacktrace
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_001, TestSize.Level0)
+{
+    printf("ThreadSamplerTest_001\n");
+    printf("Total:%dMS Sample:%dMS \n", static_cast<int>(INTERVAL * SAMPLE_CNT + INTERVAL), INTERVAL);
+
+    bool flag = TestInitThreadSampler();
+    ASSERT_TRUE(flag);
+
+    threadSamplerInitFunc_(SAMPLE_CNT, 0);
+    auto sampleHandler = [this]() {
+        threadSamplerSampleFunc_();
+    };
+
+    char* stk = new char[STACK_LENGTH];
+    char* heaviestStk = new char[STACK_LENGTH];
+    auto collectHandler = [this, &stk, &heaviestStk]() {
+        int treeFormat = 0;
+        threadSamplerCollectFunc_(stk, heaviestStk, STACK_LENGTH, STACK_LENGTH, treeFormat);
+    };
+
+    for (int i = 0; i < SAMPLE_CNT; i++) {
+        uint64_t delay = INTERVAL * i + INTERVAL;
+        Watchdog::GetInstance().RunOneShotTask("ThreadSamplerTest", sampleHandler, delay);
+    }
+    Watchdog::GetInstance().RunOneShotTask("CollectStackTest", collectHandler, INTERVAL * SAMPLE_CNT + INTERVAL);
+
+    WaitSomeTime();
+
+    std::string stack = stk;
+    std::string heaviestStack = heaviestStk;
+    ASSERT_NE(stack, "");
+    ASSERT_TRUE(stack.find("SnapshotTime:") != std::string::npos);
+    printf("stack:\n%s\nheaviestStack:\n%s", stack.c_str(), heaviestStack.c_str());
+    delete[] stk;
+    delete[] heaviestStk;
+    TestUninstallThreadSamplerSignal();
+    threadSamplerDeinitFunc_();
+    dlclose(threadSamplerFuncHandler_);
+}
+
+/**
+ * @tc.name: ThreadSamplerTest_002
+ * @tc.desc: sample thread SAMPLE_CNT times and check the stacktrace in tree format
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_002, TestSize.Level3)
+{
+    printf("ThreadSamplerTest_002\n");
+    printf("Total:%dMS Sample:%dMS \n", static_cast<int>(INTERVAL * SAMPLE_CNT + INTERVAL), INTERVAL);
+
+    bool flag = TestInitThreadSampler();
+    ASSERT_TRUE(flag);
+
+    threadSamplerInitFunc_(SAMPLE_CNT, 0);
+    auto sampleHandler = [this]() {
+        threadSamplerSampleFunc_();
+    };
+
+    char* stk = new char[STACK_LENGTH];
+    char* heaviestStk = new char[STACK_LENGTH];
+    auto collectHandler = [this, &stk, &heaviestStk]() {
+        int treeFormat = 1;
+        threadSamplerCollectFunc_(stk, heaviestStk, STACK_LENGTH, STACK_LENGTH, treeFormat);
+    };
+
+    for (int i = 0; i < SAMPLE_CNT; i++) {
+        uint64_t delay = INTERVAL * i + INTERVAL;
+        Watchdog::GetInstance().RunOneShotTask("ThreadSamplerTest", sampleHandler, delay);
+    }
+    Watchdog::GetInstance().RunOneShotTask("CollectStackTest", collectHandler, INTERVAL * SAMPLE_CNT + INTERVAL);
+
+    WaitSomeTime();
+
+    std::string stack = stk;
+    std::string heaviestStack = heaviestStk;
+    ASSERT_NE(stack, "");
+    printf("stack:\n%s\nheaviestStack:\n%s", stack.c_str(), heaviestStack.c_str());
+    delete[] stk;
+    delete[] heaviestStk;
+    TestUninstallThreadSamplerSignal();
+    threadSamplerDeinitFunc_();
+    dlclose(threadSamplerFuncHandler_);
+}
+
+/**
+ * @tc.name: ThreadSamplerTest_003
+ * @tc.desc: sample thread SAMPLE_CNT times and deinit sampler send SAMPLE_CNT sample requestion and restart sampler.
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_003, TestSize.Level3)
+{
+    printf("ThreadSamplerTest_003\n");
+    printf("Total:%dMS Sample:%dMS \n", static_cast<int>(INTERVAL * SAMPLE_CNT + INTERVAL), INTERVAL);
+
+    TestInitThreadSampler();
+
+    threadSamplerInitFunc_(SAMPLE_CNT, 0);
+    auto sampleHandler = [this]() {
+        threadSamplerSampleFunc_();
+    };
+
+    char* stk = new char[STACK_LENGTH];
+    char* heaviestStk = new char[STACK_LENGTH];
+    auto collectHandler = [this, &stk, &heaviestStk]() {
+        int treeFormat = 1;
+        threadSamplerCollectFunc_(stk, heaviestStk, STACK_LENGTH, STACK_LENGTH, treeFormat);
+    };
+
+    for (int i = 0; i < SAMPLE_CNT; i++) {
+        Watchdog::GetInstance().RunOneShotTask("ThreadSamplerTest", sampleHandler, INTERVAL * i + INTERVAL);
+    }
+    Watchdog::GetInstance().RunOneShotTask("CollectStackTest", collectHandler, INTERVAL * SAMPLE_CNT + INTERVAL);
+
+    WaitSomeTime();
+
+    std::string stack = stk;
+    std::string heaviestStack = heaviestStk;
+    ASSERT_NE(stack, "");
+    printf("stack:\n%s\nheaviestStack:\n%s", stack.c_str(), heaviestStack.c_str());
+    threadSamplerDeinitFunc_();
+
+    for (int i = 0; i < SAMPLE_CNT; i++) {
+        Watchdog::GetInstance().RunOneShotTask("ThreadSamplerTest", sampleHandler, INTERVAL * i + INTERVAL);
+    }
+    Watchdog::GetInstance().RunOneShotTask("CollectStackTest", collectHandler, INTERVAL * SAMPLE_CNT + INTERVAL);
+
+    WaitSomeTime();
+    stack = stk;
+    heaviestStack = heaviestStk;
+    ASSERT_NE(stack, "");
+    printf("stack:\n%s\nheaviestStack:\n%s", stack.c_str(), heaviestStack.c_str());
+
+    threadSamplerInitFunc_(SAMPLE_CNT, 0);
+
+    for (int i = 0; i < SAMPLE_CNT; i++) {
+        Watchdog::GetInstance().RunOneShotTask("ThreadSamplerTest", sampleHandler, INTERVAL * i + INTERVAL);
+    }
+    Watchdog::GetInstance().RunOneShotTask("CollectStackTest", collectHandler, INTERVAL * SAMPLE_CNT + INTERVAL);
+
+    WaitSomeTime();
+    stack = stk;
+    heaviestStack = heaviestStk;
+    ASSERT_NE(stack, "");
+    printf("stack:\n%s\nheaviestStack:\n%s", stack.c_str(), heaviestStack.c_str());
+    delete[] stk;
+    delete[] heaviestStk;
+    TestUninstallThreadSamplerSignal();
+    threadSamplerDeinitFunc_();
+    dlclose(threadSamplerFuncHandler_);
+}
+
+/**
+ * @tc.name: ThreadSamplerTest_004
+ * @tc.desc: sample thread several times but signal is blocked.
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_004, TestSize.Level3)
+{
+    printf("ThreadSamplerTest_004\n");
+    printf("Total:%dMS Sample:%dMS \n", static_cast<int>(INTERVAL * SAMPLE_CNT + INTERVAL), INTERVAL);
+
+    bool flag = TestInitThreadSampler();
+    ASSERT_TRUE(flag);
+
+    threadSamplerInitFunc_(SAMPLE_CNT, 0);
+    auto sampleHandler = [this]() {
+        threadSamplerSampleFunc_();
+    };
+
+    char* stk = new char[STACK_LENGTH];
+    char* heaviestStk = new char[STACK_LENGTH];
+    auto collectHandler = [this, &stk, &heaviestStk]() {
+        int treeFormat = 1;
+        threadSamplerCollectFunc_(stk, heaviestStk, STACK_LENGTH, STACK_LENGTH, treeFormat);
+    };
+
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, MUSL_SIGNAL_SAMPLE_STACK);
+    sigprocmask(SIG_BLOCK, &sigset, nullptr);
+
+    for (int i = 0; i < SAMPLE_CNT; i++) {
+        uint64_t delay = INTERVAL * i + INTERVAL;
+        Watchdog::GetInstance().RunOneShotTask("ThreadSamplerTest", sampleHandler, delay);
+    }
+    Watchdog::GetInstance().RunOneShotTask("CollectStackTest", collectHandler, INTERVAL * SAMPLE_CNT + INTERVAL);
+
+    WaitSomeTime();
+
+    std::string stack = stk;
+    std::string heaviestStack = heaviestStk;
+    ASSERT_NE(stack, "");
+    printf("stack:\n%s\nheaviestStack:\n%s", stack.c_str(), heaviestStack.c_str());
+    delete[] stk;
+    delete[] heaviestStk;
+    TestUninstallThreadSamplerSignal();
+    sigprocmask(SIG_UNBLOCK, &sigset, nullptr);
+    sigdelset(&sigset, MUSL_SIGNAL_SAMPLE_STACK);
+    WaitSomeTime();
+    threadSamplerDeinitFunc_();
+    dlclose(threadSamplerFuncHandler_);
+}
+
+/**
+ * @tc.name: ThreadSamplerTest_005
+ * @tc.desc: Check the size and name of uniqueStackTable mmap.
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_005, TestSize.Level3)
+{
+    printf("ThreadSamplerTest_005\n");
+
+    auto isSubStr = [](const std::string& str, const std::string& sub) {
+        return str.find(sub) != std::string::npos;
+    };
+
+    uint32_t uniTableSize = 0;
+    std::string uniStackTableMMapName = "";
+
+    bool flag = TestInitThreadSamplerFuncs();
+    ASSERT_TRUE(flag);
+
+    threadSamplerInitFunc_(SAMPLE_CNT, 0);
+    uniTableSize = GetMMapSizeAndName("hicollie_buf", uniStackTableMMapName);
+
+    uint32_t bufSize = 128 * 1024;
+    printf("mmap name: %s, size: %u KB\n", uniStackTableMMapName.c_str(), uniTableSize);
+
+    threadSamplerDeinitFunc_();
+    dlclose(threadSamplerFuncHandler_);
+}
+
+/**
+ * @tc.name: ThreadSamplerTest_006
+ * @tc.desc: sample thread SAMPLE_CNT times and check the stacktrace with submitter stack.
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_006, TestSize.Level0)
+{
+    printf("ThreadSamplerTest_006\n");
+    printf("Total:%dMS Sample:%dMS \n", static_cast<int>(INTERVAL * SAMPLE_CNT + INTERVAL), INTERVAL);
+
+    DfxInitAsyncStack();
+
+    uv_loop_t* loop = uv_default_loop();
+    uv_work_t* workReq = new uv_work_t();
+    uv_queue_work(loop, workReq, WorkCbTest, AfterWorkCbTest);
+    uv_run(loop, UV_RUN_DEFAULT);
+
+    bool flag = TestInitThreadSampler();
+    ASSERT_TRUE(flag);
+
+    threadSamplerInitFunc_(SAMPLE_CNT, 1);
+    auto sampleHandler = [this]() {
+        threadSamplerSampleFunc_();
+    };
+
+    char* stk = new char[STACK_LENGTH];
+    char* heaviestStk = new char[STACK_LENGTH];
+    auto collectHandler = [this, &stk, &heaviestStk]() {
+        int treeFormat = 0;
+        threadSamplerCollectFunc_(stk, heaviestStk, STACK_LENGTH, STACK_LENGTH, treeFormat);
+    };
+
+    for (int i = 0; i < SAMPLE_CNT; i++) {
+        uint64_t delay = INTERVAL * i + INTERVAL;
+        Watchdog::GetInstance().RunOneShotTask("ThreadSamplerTest", sampleHandler, delay);
+    }
+    Watchdog::GetInstance().RunOneShotTask("CollectStackTest", collectHandler, INTERVAL * SAMPLE_CNT + INTERVAL);
+
+    WaitSomeTime();
+
+    std::string stack = stk;
+    std::string heaviestStack = heaviestStk;
+    ASSERT_NE(stack, "");
+    printf("stack:\n%s\nheaviestStack:\n%s", stack.c_str(), heaviestStack.c_str());
+    delete[] stk;
+    delete[] heaviestStk;
+    TestUninstallThreadSamplerSignal();
+    threadSamplerDeinitFunc_();
+    dlclose(threadSamplerFuncHandler_);
+}
+}  // end of namespace HiviewDFX
+}  // end of namespace OHOS
+
+#define private public
+#define protected public
+#include "thread_sampler.h"
+#undef private
+#undef protected
+#include "thread_sampler_utils.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+void WaitFewSec(int waitSec)
+{
+    int left = waitSec;
+    int end = time(nullptr) + left;
+    while (left > 0) {
+        left = end - time(nullptr);
+    }
+}
+
+bool ThreadSamplerTest::InstallThreadSamplerTestSignal()
+{
+    struct sigaction action {};
+    sigfillset(&action.sa_mask);
+    action.sa_sigaction = ThreadSampler::ThreadSamplerSignalHandler;
+    action.sa_flags = SA_RESTART | SA_SIGINFO;
+    if (sigaction(MUSL_SIGNAL_SAMPLE_STACK, &action, nullptr) != 0) {
+        return false;
+    }
+    return true;
+}
+/**
+ * @tc.name: ThreadSamplerTest_007
+ * @tc.desc: Check write context function.
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_007, TestSize.Level3)
+{
+    printf("ThreadSamplerTest_007\n");
+    InstallThreadSamplerTestSignal();
+
+    size_t sampleCnt = 0;
+    bool flag = ThreadSampler::GetInstance().Init(sampleCnt, false);
+    ASSERT_FALSE(flag);
+    sampleCnt = 1;
+    flag = ThreadSampler::GetInstance().Init(sampleCnt, false);
+    ASSERT_TRUE(flag);
+    ASSERT_TRUE(ThreadSampler::GetInstance().init_);
+    ASSERT_NE(ThreadSampler::GetInstance().mmapStart_, MAP_FAILED);
+
+    void* ctx = nullptr;
+    ThreadSampler::GetInstance().init_ = false;
+    // should return before read ctx.
+    ThreadSampler::GetInstance().WriteContext(ctx);
+    ASSERT_EQ(ThreadSampler::GetInstance().GetReadContext(), nullptr);
+
+    ThreadSampler::GetInstance().init_ = true;
+    ThreadSampler::GetInstance().mmapStart_ = MAP_FAILED;
+    // should return before read ctx.
+    ThreadSampler::GetInstance().WriteContext(ctx);
+    ASSERT_EQ(ThreadSampler::GetInstance().GetReadContext(), nullptr);
+    ThreadSampler::GetInstance().Deinit();
+
+    ThreadSampler::GetInstance().Init(sampleCnt, true);
+    ThreadSampler::GetInstance().submitterStackIdIndex_ = 1;
+
+    int waitSec = 5;
+    ThreadSampler::GetInstance().Sample();
+    WaitFewSec(waitSec);
+    ASSERT_EQ(ThreadSampler::GetInstance().submitterStackIds_[0], 0);
+    ThreadSampler::GetInstance().Deinit();
+}
+
+/**
+ * @tc.name: ThreadSamplerTest_008
+ * @tc.desc: Check collect stack function.
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_008, TestSize.Level3)
+{
+    printf("ThreadSamplerTest_008\n");
+    InstallThreadSamplerTestSignal();
+
+    size_t sampleCnt = 1;
+    bool flag = ThreadSampler::GetInstance().Init(sampleCnt, true);
+    ASSERT_TRUE(flag);
+
+    int waitSec = 5;
+    ThreadSampler::GetInstance().Sample();
+    WaitFewSec(waitSec);
+    ThreadSampler::GetInstance().ProcessStackBuffer();
+
+    std::string stack;
+    ThreadSampler::GetInstance().submitterStackIdsMaxSize_ = 0;
+    ThreadSampler::GetInstance().CollectStack(stack, false);
+    ASSERT_NE(stack, "");
+    ASSERT_TRUE(stack.find("========SubmitterStacktrace========") == std::string::npos);
+
+    ThreadSampler::GetInstance().recordSubmitterStack_ = false;
+    ThreadSampler::GetInstance().CollectStack(stack, false);
+    ASSERT_NE(stack, "");
+    ASSERT_TRUE(stack.find("========SubmitterStacktrace========") == std::string::npos);
+
+    ThreadSampler::GetInstance().submitterStackIdsMaxSize_ = 1;
+    ThreadSampler::GetInstance().CollectStack(stack, false);
+    ASSERT_NE(stack, "");
+    ASSERT_TRUE(stack.find("========SubmitterStacktrace========") == std::string::npos);
+
+    ThreadSampler::GetInstance().recordSubmitterStack_ = true;
+    ThreadSampler::GetInstance().submitterStackIds_[0] = 0;
+    ThreadSampler::GetInstance().CollectStack(stack, false);
+    ASSERT_NE(stack, "");
+    ASSERT_TRUE(stack.find("========SubmitterStacktrace========") == std::string::npos);
+
+    ThreadSampler::GetInstance().submitterStackIdsMaxSize_ = 0;
+    ThreadSampler::GetInstance().CollectStack(stack, false);
+    ASSERT_NE(stack, "");
+    ASSERT_TRUE(stack.find("========SubmitterStacktrace========") == std::string::npos);
+
+    ThreadSampler::GetInstance().recordSubmitterStack_ = false;
+    ThreadSampler::GetInstance().CollectStack(stack, false);
+    ASSERT_NE(stack, "");
+    ASSERT_TRUE(stack.find("========SubmitterStacktrace========") == std::string::npos);
+
+    ThreadSampler::GetInstance().maps_ = nullptr;
+    ThreadSampler::GetInstance().CollectStack(stack, false);
+    ASSERT_EQ(stack, "\n");
+
+    ThreadSampler::GetInstance().maps_ = DfxMaps::Create();
+    ThreadSampler::GetInstance().unwinder_ = nullptr;
+    ThreadSampler::GetInstance().CollectStack(stack, false);
+    ASSERT_TRUE(!stack.empty());
+
+    ThreadSampler::GetInstance().Deinit();
+}
+
+/**
+ * @tc.name: ThreadSamplerTest_009
+ * @tc.desc: Check time format util function.
+ * @tc.type: FUNC
+ * @tc.require
+ */
+HWTEST_F(ThreadSamplerTest, ThreadSamplerTest_009, TestSize.Level3)
+{
+    printf("ThreadSamplerTest_009\n");
+
+    uint64_t testTime = 1716282756003107563;
+    std::string timeStr = TimeFormat(testTime);
+    ASSERT_EQ(timeStr, "2024-05-21-17-12-36.003107");
+}
+}  // end of namespace HiviewDFX
+}  // end of namespace OHOS

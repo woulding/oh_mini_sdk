@@ -1,0 +1,498 @@
+/*
+ * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <vector>
+#include "properties.h"
+#include "hilog_common.h"
+#include "hilog/log.h"
+#include "hilog/log_c.h"
+#include "hilog_napi_base.h"
+#include "napi/native_api.h"
+#include "napi/native_node_api.h"
+#include "n_func_arg.h"
+#include "n_class.h"
+#include "securec.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+namespace OHOS {
+namespace HiviewDFX {
+using namespace std;
+const HiLogLabel LABEL = { LOG_CORE, 0xD002D00, "Hilog_JS" };
+static constexpr int MIN_NUMBER = 3;
+static constexpr int MAX_NUMBER = 100;
+static constexpr int PUBLIC_LEN = 6;
+static constexpr int PRIVATE_LEN = 7;
+static constexpr int PROPERTY_POS = 2;
+static const string PRIV_STR = "<private>";
+static constexpr unsigned SANDBOX_NAPI_OUTPUT_DIR_SIZE = 128;
+static constexpr unsigned SANDBOX_NAPI_LOG_FILE_SIZE = 4096;
+
+void ParseLogContent(string& formatStr, vector<napiParam>& params, string& logContent)
+{
+    if (params.empty()) {
+        logContent += formatStr;
+        return;
+    }
+    auto size = params.size();
+    auto len = formatStr.size();
+    uint32_t pos = 0;
+    uint32_t count = 0;
+    bool isPrivateEnable = true;
+#if not (defined(__WINDOWS__) || defined(__MAC__) || defined(__LINUX__))
+    isPrivateEnable = IsPrivateModeEnable();
+#endif
+    for (; pos < len; ++pos) {
+        bool showPriv = true;
+        if (count >= size) {
+            break;
+        }
+        if (formatStr[pos] != '%') {
+            logContent += formatStr[pos];
+            continue;
+        }
+
+        if (((pos + PUBLIC_LEN + PROPERTY_POS) < len) &&
+            formatStr.substr(pos + PROPERTY_POS, PUBLIC_LEN) == "public") {
+            pos += (PUBLIC_LEN + PROPERTY_POS);
+            showPriv = false;
+        } else if (((pos + PRIVATE_LEN + PROPERTY_POS) < len) &&
+            formatStr.substr(pos + PROPERTY_POS, PRIVATE_LEN) == "private") {
+            pos += (PRIVATE_LEN + PROPERTY_POS);
+        }
+
+        if (pos + 1 >= len) {
+            break;
+        }
+        switch (formatStr[pos + 1]) {
+            case 'd':
+            case 'i':
+                if (params[count].type == napi_number || params[count].type == napi_bigint) {
+                    logContent += (isPrivateEnable && showPriv) ? PRIV_STR : params[count].val;
+                }
+                ++count;
+                ++pos;
+                break;
+            case 's':
+                if (params[count].type == napi_string || params[count].type == napi_undefined ||
+                    params[count].type == napi_boolean || params[count].type == napi_null) {
+                    logContent += (isPrivateEnable && showPriv) ? PRIV_STR : params[count].val;
+                }
+                ++count;
+                ++pos;
+                break;
+            case 'O':
+            case 'o':
+                if (params[count].type == napi_object || params[count].type == napi_function ||
+                    params[count].type == napi_undefined || params[count].type == napi_null) {
+                    logContent += (isPrivateEnable && showPriv) ? PRIV_STR : params[count].val;
+                }
+                ++count;
+                ++pos;
+                break;
+            case '%':
+                logContent += formatStr[pos];
+                ++pos;
+                break;
+            default:
+                logContent += formatStr[pos];
+                break;
+        }
+    }
+    if (pos < len) {
+        logContent += formatStr.substr(pos, len - pos);
+    }
+}
+
+napi_value HilogNapiBase::IsLoggable(napi_env env, napi_callback_info info)
+{
+    NFuncArg funcArg(env, info);
+
+    if (!funcArg.InitArgs(NARG_CNT::THREE)) {
+        return nullptr;
+    }
+    bool succ = false;
+    int32_t domain;
+    tie(succ, domain) = NVal(env, funcArg[NARG_POS::FIRST]).ToInt32();
+    if (!succ) {
+        return nullptr;
+    }
+    if ((domain < static_cast<int32_t>(DOMAIN_APP_MIN)) || (domain > static_cast<int32_t>(DOMAIN_APP_MAX))) {
+        return NVal::CreateBool(env, false).val_;
+    }
+    int32_t level;
+    tie(succ, level) = NVal(env, funcArg[NARG_POS::THIRD]).ToInt32();
+    if (!succ) {
+        return nullptr;
+    }
+    unique_ptr<char[]> tag;
+    tie(succ, tag, ignore) = NVal(env, funcArg[NARG_POS::SECOND]).ToUTF8String();
+    if (!succ) {
+        return nullptr;
+    }
+    bool res = HiLogIsLoggable(domain, tag.get(), static_cast<LogLevel>(level));
+    return NVal::CreateBool(env, res).val_;
+}
+
+napi_value HilogNapiBase::SetMinLogLevel(napi_env env, napi_callback_info info)
+{
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs(NARG_CNT::ONE)) {
+        return nullptr;
+    }
+    bool succ = false;
+    int32_t level = LOG_LEVEL_MIN;
+    tie(succ, level) = NVal(env, funcArg[NARG_POS::FIRST]).ToInt32();
+    if (!succ) {
+        return nullptr;
+    }
+    HiLogSetAppMinLogLevel(static_cast<LogLevel>(level));
+    return nullptr;
+}
+
+napi_value HilogNapiBase::SetLogLevel(napi_env env, napi_callback_info info)
+{
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs(NARG_CNT::TWO)) {
+        return nullptr;
+    }
+    bool succ = false;
+    int32_t level = LOG_LEVEL_MIN;
+    tie(succ, level) = NVal(env, funcArg[NARG_POS::FIRST]).ToInt32();
+    if (!succ) {
+        return nullptr;
+    }
+    int32_t prefer = UNSET_LOGLEVEL;
+    tie(succ, prefer) = NVal(env, funcArg[NARG_POS::SECOND]).ToInt32();
+    if (!succ) {
+        return nullptr;
+    }
+
+    HiLogSetAppLogLevel(static_cast<LogLevel>(level), static_cast<PreferStrategy>(prefer));
+    return nullptr;
+}
+
+napi_value HilogNapiBase::Debug(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_DEBUG, true);
+}
+
+napi_value HilogNapiBase::Info(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_INFO, true);
+}
+
+napi_value HilogNapiBase::Warn(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_WARN, true);
+}
+
+napi_value HilogNapiBase::Error(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_ERROR, true);
+}
+
+napi_value HilogNapiBase::Fatal(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_FATAL, true);
+}
+
+napi_value HilogNapiBase::SysLogDebug(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_DEBUG, false);
+}
+
+napi_value HilogNapiBase::SysLogInfo(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_INFO, false);
+}
+
+napi_value HilogNapiBase::SysLogWarn(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_WARN, false);
+}
+
+napi_value HilogNapiBase::SysLogError(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_ERROR, false);
+}
+
+napi_value HilogNapiBase::SysLogFatal(napi_env env, napi_callback_info info)
+{
+    return HilogImpl(env, info, LOG_FATAL, false);
+}
+
+napi_value HilogNapiBase::ParseNapiValue(napi_env env, napi_callback_info info,
+    napi_value element, vector<napiParam>& params)
+{
+    bool succ = false;
+    napi_valuetype type;
+    napiParam res = {napi_null, ""};
+    napi_status typeStatus = napi_typeof(env, element, &type);
+    unique_ptr<char[]> name;
+    if (typeStatus != napi_ok) {
+        return nullptr;
+    }
+    if (type == napi_number || type == napi_bigint || type == napi_undefined ||
+        type == napi_boolean || type == napi_null) {
+        napi_value elmString;
+        napi_status objectStatus = napi_coerce_to_string(env, element, &elmString);
+        if (objectStatus != napi_ok) {
+            return nullptr;
+        }
+        tie(succ, name, ignore) = NVal(env, elmString).ToUTF8String();
+        if (!succ) {
+            return nullptr;
+        }
+    } else if (type == napi_object || type == napi_function) {
+        tie(succ, res.val) = NVal(env, element).GetValObjectAsStr();
+    } else if (type == napi_string) {
+        tie(succ, name, ignore) = NVal(env, element).ToUTF8String();
+        if (!succ) {
+            return nullptr;
+        }
+    } else {
+        HiLog::Info(LABEL, "%{public}s", "type mismatch");
+    }
+    res.type = type;
+    if (name != nullptr) {
+        res.val = name.get();
+    }
+    params.emplace_back(res);
+    return nullptr;
+}
+
+napi_value HilogNapiBase::HilogImpl(napi_env env, napi_callback_info info, int level, bool isAppLog)
+{
+    NFuncArg funcArg(env, info);
+    funcArg.InitArgs(MIN_NUMBER, MAX_NUMBER);
+    bool succ = false;
+    int32_t domain;
+    tie(succ, domain) = NVal(env, funcArg[NARG_POS::FIRST]).ToInt32();
+    if (!succ) {
+        HiLog::Info(LABEL, "%{public}s", "domain mismatch");
+        return nullptr;
+    }
+    unique_ptr<char[]> tag;
+    tie(succ, tag, ignore) = NVal(env, funcArg[NARG_POS::SECOND]).ToUTF8String();
+    if (!succ) {
+        HiLog::Info(LABEL, "%{public}s", "tag mismatch");
+        return nullptr;
+    }
+    unique_ptr<char[]> fmt;
+    tie(succ, fmt, ignore) = NVal(env, funcArg[NARG_POS::THIRD]).ToUTF8String();
+    if (!succ) {
+        HiLog::Info(LABEL, "%{public}s", "Format mismatch");
+        return nullptr;
+    }
+    string fmtString = fmt.get();
+    bool res = false;
+    napi_value array = funcArg[NARG_POS::FOURTH];
+    napi_is_array(env, array, &res);
+    string logContent;
+    vector<napiParam> params;
+    if (!res) {
+        for (size_t i = MIN_NUMBER; i < funcArg.GetArgc(); i++) {
+            napi_value argsVal = funcArg[i];
+            (void)ParseNapiValue(env, info, argsVal, params);
+        }
+    } else {
+        if (funcArg.GetArgc() != MIN_NUMBER + 1) {
+            NAPI_ASSERT(env, false, "Argc mismatch");
+            HiLog::Info(LABEL, "%{public}s", "Argc mismatch");
+            return nullptr;
+        }
+        uint32_t length;
+        napi_status lengthStatus = napi_get_array_length(env, array, &length);
+        if (lengthStatus != napi_ok) {
+            return nullptr;
+        }
+        uint32_t i;
+        for (i = 0; i < length; i++) {
+            napi_value element;
+            napi_status eleStatus = napi_get_element(env, array, i, &element);
+            if (eleStatus != napi_ok) {
+                return nullptr;
+            }
+            (void)ParseNapiValue(env, info, element, params);
+        }
+    }
+    ParseLogContent(fmtString, params, logContent);
+    HiLogPrint((isAppLog ? LOG_APP : LOG_CORE),
+        static_cast<LogLevel>(level), domain, tag.get(), "%{public}s", logContent.c_str());
+    return nullptr;
+}
+
+napi_value HilogNapiBase::SetOutputType(napi_env env, napi_callback_info info)
+{
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs(NARG_CNT::ONE)) {
+        return nullptr;
+    }
+    bool succ = false;
+    int type = OutputType::SANDBOXLOG_DEFAULT;
+    std::tie(succ, type) = NVal(env, funcArg[NARG_POS::FIRST]).ToInt32();
+    if (!succ) {
+        return nullptr;
+    }
+#ifdef __OHOS__
+    OutputType lastType = HiLogSetOutputType(static_cast<OutputType>(type));
+#else
+    OutputType lastType = OutputType::SANDBOXLOG_DEFAULT;
+#endif
+    return NVal::CreateInt32(env, static_cast<int32_t>(lastType)).val_;
+}
+
+napi_value HilogNapiBase::SetOutputTypeByDomainID(napi_env env, napi_callback_info info)
+{
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs(NARG_CNT::THREE)) {
+        return nullptr;
+    }
+    bool succ = false;
+    int type = OutputType::SANDBOXLOG_DEFAULT;
+    std::tie(succ, type) = NVal(env, funcArg[NARG_POS::FIRST]).ToInt32();
+    if (!succ) {
+        return nullptr;
+    }
+    std::vector<int> domains;
+    napi_value array = funcArg[NARG_POS::SECOND];
+    uint32_t length;
+    napi_status lengthStatus = napi_get_array_length(env, array, &length);
+    if (lengthStatus != napi_ok) {
+        return nullptr;
+    }
+    for (uint32_t i = 0; i < length; ++i) {
+        napi_value element;
+        napi_status eleStatus = napi_get_element(env, array, i, &element);
+        if (eleStatus != napi_ok) {
+            return nullptr;
+        }
+        int32_t item = 0;
+        napi_status status = napi_get_value_int32(env, element, &item);
+        if (status != napi_ok) {
+            return nullptr;
+        }
+        domains.push_back(item);
+    }
+    succ = false;
+    bool isExclude = false;
+    std::tie(succ, isExclude) = NVal(env, funcArg[NARG_POS::THIRD]).ToBool();
+    if (!succ) {
+        return nullptr;
+    }
+    int* domainBuffer = new int[domains.size()]();
+    for (size_t i = 0; i < domains.size(); ++i) {
+        domainBuffer[i] = domains[i];
+    }
+#ifdef __OHOS__
+    OutputType lastType = HiLogSetOutputTypeByDomainId(static_cast<OutputType>(type),
+        domainBuffer, domains.size(), isExclude);
+#else
+    OutputType lastType = OutputType::SANDBOXLOG_DEFAULT;
+#endif
+    delete[] domainBuffer;
+    return NVal::CreateInt32(env, lastType).val_;
+}
+
+napi_value HilogNapiBase::GetOutputType(napi_env env, napi_callback_info info)
+{
+#ifdef __OHOS__
+    OutputType type = HiLogGetOutputType();
+#else
+    OutputType type = OutputType::SANDBOXLOG_DEFAULT;
+#endif
+    return NVal::CreateInt32(env, static_cast<int32_t>(type)).val_;
+}
+napi_value HilogNapiBase::GetOutputDir(napi_env env, napi_callback_info info)
+{
+    char buffer[SANDBOX_NAPI_OUTPUT_DIR_SIZE] = {0};
+#ifdef __OHOS__
+    HiLogGetOutputDir(buffer, SANDBOX_NAPI_OUTPUT_DIR_SIZE);
+#endif
+    std::string dir(buffer);
+    return NVal::CreateUTF8String(env, dir).val_;
+}
+napi_value HilogNapiBase::Clean(napi_env env, napi_callback_info info)
+{
+#ifdef __OHOS__
+    HiLogCleanAppLog();
+#endif
+    return nullptr;
+}
+napi_value HilogNapiBase::Flush(napi_env env, napi_callback_info info)
+{
+#ifdef __OHOS__
+    HiLogFlushAppLog();
+#endif
+    return nullptr;
+}
+
+static std::vector<std::string> SpiltString(const std::string& str, char delimiter)
+{
+    if (str.empty()) {
+        return std::vector<std::string>();
+    }
+    std::vector<std::string> tokens;
+    size_t start = 0;
+    size_t end = str.find(delimiter);
+
+    while (end != std::string::npos) {
+        tokens.push_back(str.substr(start, end - start));
+        start = end + 1;
+        end = str.find(delimiter, start);
+    }
+
+    tokens.push_back(str.substr(start));
+    return tokens;
+}
+
+napi_value HilogNapiBase::GetLogFile(napi_env env, napi_callback_info info)
+{
+    NFuncArg funcArg(env, info);
+    if (!funcArg.InitArgs(NARG_CNT::ONE)) {
+        return nullptr;
+    }
+    bool succ = false;
+    int seconds = 0;
+    std::tie(succ, seconds) = NVal(env, funcArg[NARG_POS::FIRST]).ToInt32();
+    if (!succ) {
+        return nullptr;
+    }
+    char fileStr[SANDBOX_NAPI_LOG_FILE_SIZE] = {0};
+#ifdef __OHOS__
+    HiLogGetAppLogFile(seconds, fileStr, SANDBOX_NAPI_LOG_FILE_SIZE);
+#endif
+    std::string files(fileStr);
+    std::vector<std::string> fileList = SpiltString(files, ',');
+    napi_value arrayResult;
+    napi_create_array_with_length(env, fileList.size(), &arrayResult);
+    for (size_t i = 0; i != fileList.size(); ++i) {
+        napi_value item = nullptr;
+        napi_create_string_utf8(env, fileList[i].c_str(), fileList[i].length(), &item);
+        napi_status status = napi_set_element(env, arrayResult, i, item);
+        if (status != napi_ok) {
+            return nullptr;
+        }
+    }
+    return arrayResult;
+}
+}  // namespace HiviewDFX
+}  // namespace OHOS
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,0 +1,10 @@
+{
+  "devices": {
+    "general": ["default", "tablet"]
+  },
+  "production": {
+    "removedSysCaps": [
+      "SystemCapability.Window.SessionManager"
+    ]
+  }
+}

@@ -1,0 +1,110 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/faultloggerd/faultloggerd.gni")
+
+if (defined(ohos_lite)) {
+  shared_library("libdfx_procinfo") {
+    visibility = [ "*:*" ]
+
+    include_dirs = [
+      ".",
+      "include",
+      "$c_utils_include_path",
+      "$faultloggerd_interfaces_path/common",
+      "$faultloggerd_path/common/dfxutil",
+      "$hilog_lite_include_path",
+    ]
+
+    sources = [ "procinfo.cpp" ]
+    sources += [ "$c_utils_src_path/directory_ex.cpp" ]
+
+    deps = [
+      "$faultloggerd_path/common/dfxutil:dfx_util",
+      "$hilog_lite_deps_path",
+    ]
+
+    external_deps = [ "bounds_checking_function:libsec_shared" ]
+  }
+} else {
+  config("dfx_procinfo_config") {
+    visibility = [ "*:*" ]
+
+    include_dirs = [ "include" ]
+  }
+
+  ohos_shared_library("libdfx_procinfo") {
+    branch_protector_ret = "pac_ret"
+    public_configs = [
+      ":dfx_procinfo_config",
+      "$faultloggerd_path/common/build:coverage_flags",
+    ]
+    sources = [ "procinfo.cpp" ]
+
+    deps = [ "$faultloggerd_path/common/dfxutil:dfx_util_cfi" ]
+    version_script = "libprocinfo.map"
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+    install_images = [
+      "system",
+      "updater",
+    ]
+    innerapi_tags = [
+      "chipsetsdk_sp_indirect",
+      "platformsdk_indirect",
+    ]
+    part_name = "faultloggerd"
+    subsystem_name = "hiviewdfx"
+
+    cflags = [
+      "-Os",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-fno-asynchronous-unwind-tables",
+      "-fno-unwind-tables",
+      "-fno-omit-frame-pointer",
+      "-fno-rtti",
+      "-fno-exceptions",
+    ]
+    cflags_cc = [
+      "-Os",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-fno-asynchronous-unwind-tables",
+      "-fno-unwind-tables",
+      "-fno-omit-frame-pointer",
+      "-fno-rtti",
+      "-fno-exceptions",
+    ]
+  }
+
+  ohos_static_library("dfx_procinfo_static") {
+    branch_protector_ret = "pac_ret"
+    public_configs = [ ":dfx_procinfo_config" ]
+
+    sources = [ "procinfo.cpp" ]
+
+    deps = [ "$faultloggerd_path/common/dfxutil:dfx_util_static" ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_static",
+      "c_utils:utilsbase",
+    ]
+
+    part_name = "faultloggerd"
+    subsystem_name = "hiviewdfx"
+  }
+}

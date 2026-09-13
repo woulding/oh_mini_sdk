@@ -1,0 +1,14 @@
+{
+  "description": "Process Delay Exit Function Verification",
+  "environment": [
+    {
+      "type": "device"
+    }
+  ],
+  "driver": {
+    "type": "DeviceTest",
+    "py_file": [
+      "testcases/level0/case12_delay_time001.py"
+    ]
+  }
+}

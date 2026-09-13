@@ -1,0 +1,34 @@
+#===============================================================================
+# @brief    Kconfig file.
+# Copyright (c) @CompanyNameMagicTag 2023-2023. All rights reserved.
+#===============================================================================
+config SDIO_MEM_CARD_MODE
+    bool
+    prompt "MEM_CARD_MODE"
+    default n
+    depends on DRIVER_SUPPORT_SDIO
+
+config SDIO_TURNING_SUPPORT
+    bool
+    prompt "SDIO TURNING SUPPORT"
+    default n
+    depends on DRIVER_SUPPORT_SDIO
+
+config SDIO_WAIT
+    hex
+    prompt "SDIO WAIT CARD READY"
+    range 0x0 0xFFFFFFFF
+    default 0xFFFFFFFF
+    depends on DRIVER_SUPPORT_SDIO
+
+config SDIO_USING_V120
+    bool
+    prompt "Using the SDIO V120"
+    default n
+    depends on DRIVER_SUPPORT_SDIO
+
+config SDIO_USING_V151
+    bool
+    prompt "Using the SDIO V151"
+    default n
+    depends on DRIVER_SUPPORT_SDIO

@@ -1,0 +1,32 @@
+{
+  "eval_dir": "eval-2-decode-adv-bytes",
+  "config": "with_skill",
+  "summary": {
+    "passed": 4,
+    "failed": 0,
+    "total": 4,
+    "pass_rate": 1.0
+  },
+  "expectations": [
+    {
+      "text": "flags TX power length=2 as invalid (should be 1)",
+      "passed": true,
+      "evidence": "0x0c (TX_POWER_LEVEL(发送功率)) length=2 value=06 0b       WARNING: type 0x0c must have length"
+    },
+    {
+      "text": "identifies the device name as sle_server",
+      "passed": true,
+      "evidence": "sle_server"
+    },
+    {
+      "text": "gives corrected bytes 0c 01 06 0b 0a ...",
+      "passed": true,
+      "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"
+    },
+    {
+      "text": "states the name length should be 10 / 0x0A",
+      "passed": true,
+      "evidence": "0B 0A"
+    }
+  ]
+}

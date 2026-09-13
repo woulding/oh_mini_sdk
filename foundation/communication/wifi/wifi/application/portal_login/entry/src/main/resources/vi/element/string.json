@@ -1,0 +1,130 @@
+{
+    "string":[
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"Trang web dành cho máy tính để bàn",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"actions_menu_user_agent",
+            "value":"UA Trình duyệt",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"Hủy",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"Mở trong Trình duyệt",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"Trang web dành cho thiết bị di động",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"Chứng chỉ SSL của trang này đã hết hạn hoặc không đáng tin cậy. Có thể xảy ra rủi ro bảo mật nếu bạn tiếp tục.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"Tiếp tục",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"continue_visit",
+            "value":"Tiếp tục đến trang web này?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"Cài đặt %s",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"HarmonyOS",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"Từ chối",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"Trang web sắp truy cập có thể chứa nội dung không phù hợp hoặc bị cấm. Hãy thận trọng.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"Trang web chứa nội dung có hại",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"Cho phép %s sử dụng máy ảnh?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"Quyền này được dùng để chụp ảnh và quay video.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"Cho phép",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ok",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"Tin nhắn từ %s:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

@@ -1,0 +1,92 @@
+# Copyright (C) 2022-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/huks/build/config.gni")
+import("//base/security/huks/huks.gni")
+import("//build/ohos.gni")
+
+config("huks_config") {
+  include_dirs = [ "./" ]
+}
+
+if (os_level == "standard") {
+  ohos_static_library("libhuks_utils_file_operator_static") {
+    subsystem_name = "security"
+    part_name = "huks"
+    public_configs = [ ":huks_config" ]
+    include_dirs = [
+      "//base/security/huks/frameworks/huks_standard/main/common/include",
+      "//base/security/huks/interfaces/inner_api/huks_standard/main/include",
+    ]
+
+    sources = []
+
+    deps = [ "//base/security/huks/frameworks/huks_standard/main/os_dependency:libhuks_mem_standard_static" ]
+
+    complete_static_lib = true
+
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      integer_overflow = true
+      cfi = true
+      debug = false
+      cfi_cross_dso = true
+      boundary_sanitize = true
+      ubsan = true
+    }
+    sources += [ "hks_file_operator.c" ]
+
+    configs = [
+      "//base/security/huks/frameworks/config/build:l2_standard_common_config",
+    ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+  }
+} else {
+  ohos_static_library("libhuks_utils_file_operator_static") {
+    public_configs = [ ":huks_config" ]
+    configs = [
+      "//base/security/huks/frameworks/config/build:l1_small_common_config",
+    ]
+
+    include_dirs = [
+      "//base/security/huks/frameworks/huks_standard/main/common/include",
+      "//base/security/huks/interfaces/inner_api/huks_standard/main/include",
+    ]
+
+    sources = []
+    cflags = []
+
+    if (huks_use_lite_storage == true) {
+      cflags += [ "-D_STORAGE_LITE_" ]
+    } else {
+      if (ohos_kernel_type == "liteos_a") {
+        cflags += [ "-D_BSD_SOURCE" ]
+      } else {
+        cflags += [ "-D_DEFAULT_SOURCE" ]
+      }
+    }
+
+    deps = [ "//base/security/huks/frameworks/huks_standard/main/os_dependency:libhuks_os_dependency_small_static" ]
+
+    complete_static_lib = true
+
+    external_deps = [ "hilog_lite:hilog_shared" ]
+    sources += [ "hks_file_operator_lite.c" ]
+  }
+}

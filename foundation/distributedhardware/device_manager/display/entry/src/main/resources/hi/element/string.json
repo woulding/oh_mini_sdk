@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"कनेक्शन कोड",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"%2$s पर %1$s इस डिवाइस तक पहुँच प्राप्त करना चाहता है। इस ऐप पर भरोसा करें?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"रद्द करें",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"कनेक्शन कोड दर्ज करें",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"यह क्रॉस-डिवाइस डेटा सिंकिंग और सहयोग के लिए आवश्यक है।",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"इस बार भरोसा करें",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"हमेशा भरोसा करें",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"केवल इस बार भरोसा करें",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s आपके डिवाइस पर %2$s सेवा तक पहुँच प्राप्त करना चाहता है। इस डिवाइस पर विश्वास करें?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"%1$s पर %2$s ऐप आपके डिवाइस पर %3$s सेवाओं तक पहुँच प्राप्त करना चाहता है। इस ऐप पर विश्वास करें?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s आपके डिवाइस पर सेवाओं से कनेक्ट होना चाहता है। अधिकृत करने के लिए सेवाएँ चुनें:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

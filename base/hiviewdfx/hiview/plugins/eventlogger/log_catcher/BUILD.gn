@@ -1,0 +1,123 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("log_catcher_config") {
+  visibility = [ "*:*" ]
+  include_dirs = [
+    "include",
+    "$hiview_adapter/plugins/eventlogger/log_catcher/include",
+    "$hiview_plugin/freeze_detector",
+    "$hiview_eventlogger/manager/include",
+  ]
+
+  cflags_cc = [ "-DDUMP_STACK_IN_PROCESS" ]
+}
+
+ohos_source_set("log_catcher") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+
+  cflags_cc = [  "-Os" ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  public_configs = [ ":log_catcher_config" ]
+
+  sources = [
+    "event_log_catcher.cpp",
+    "event_log_task.cpp",
+    "shell_catcher.cpp",
+    "thermal_info_catcher.cpp",
+    "summary_log_info_catcher.cpp"
+  ]
+
+  deps = [
+    "$hiview_adapter/plugins/eventlogger/log_catcher:eventlogger_adapter_logcatcher",
+    "$hiview_base:hiviewbase",
+    "$hiview_interfaces/inner_api/unified_collection/utility:libucollection_utility",
+    "$hiview_eventlogger/manager:eventlogger_manager",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "libxml2:libxml2",
+    "thermal_manager:thermalsrv_client",
+  ]
+
+  if (has_hiperf) {
+    cflags = [ "-DHAS_HIPERF" ]
+  }
+
+  defines = []
+
+  if (hiview_eventlogger_stacktrace_catcher_enable) {
+    sources += [ "open_stacktrace_catcher.cpp" ]
+    defines += [ "STACKTRACE_CATCHER_ENABLE" ]
+  }
+
+  if (hiview_eventlogger_binder_catcher_enable) {
+    sources += [
+      "binder_catcher.cpp",
+      "peer_binder_catcher.cpp",
+    ]
+    defines += [ "BINDER_CATCHER_ENABLE" ]
+  }
+
+  if (hiview_eventlogger_dmesg_catcher_enable) {
+    sources += [ "dmesg_catcher.cpp" ]
+    defines += [ "DMESG_CATCHER_ENABLE" ]
+  }
+
+  if (hiview_eventlogger_hilog_catcher_enable) {
+    sources += [ "light_hilog_catcher.cpp" ]
+    defines += [ "HILOG_CATCHER_ENABLE" ]
+  }
+
+  if (hiview_eventlogger_hitrace_catcher_enable) {
+    defines += [ "HITRACE_CATCHER_ENABLE" ]
+  }
+
+  if (hiview_eventlogger_usage_catcher_enable) {
+    sources += [
+      "cpu_core_info_catcher.cpp",
+      "memory_catcher.cpp",
+    ]
+    defines += [ "USAGE_CATCHER_ENABLE" ]
+  }
+
+  if (hiview_eventlogger_scb_catcher_enable) {
+    defines += [ "SCB_CATCHER_ENABLE" ]
+  }
+
+  if (hiview_eventlogger_other_catcher_enable) {
+    sources += [ "ffrt_catcher.cpp" ]
+    defines += [ "OTHER_CATCHER_ENABLE" ]
+  }
+
+  if (hiview_eventlogger_kernel_catcher_enable) {
+    defines += [ "KERNELSTACK_CATCHER_ENABLE" ]
+    external_deps += [ "faultloggerd:libbacktrace_local" ]
+  }
+}

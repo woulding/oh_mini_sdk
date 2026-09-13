@@ -1,0 +1,179 @@
+/*
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "auth_channel.h"
+#include "auth_log.h"
+#include "auth_tcp_connection.h"
+#include "softbus_def.h"
+#include "softbus_error_code.h"
+
+int32_t RegAuthChannelListener(int32_t module, const AuthChannelListener *listener)
+{
+    (void)module;
+    (void)listener;
+    AUTH_LOGW(AUTH_CONN, "not implement.");
+    return SOFTBUS_OK;
+}
+
+void UnregAuthChannelListener(int32_t module)
+{
+    (void)module;
+}
+
+int32_t AuthOpenChannel(const char *ip, int32_t port, int32_t ifnameIdx)
+{
+    (void)ip;
+    (void)port;
+    (void)ifnameIdx;
+    AUTH_LOGW(AUTH_CONN, "not implement.");
+    return INVALID_CHANNEL_ID;
+}
+
+void AuthCloseChannel(int32_t channelId, int32_t moduleId)
+{
+    (void)channelId;
+    (void)moduleId;
+}
+
+int32_t AuthPostChannelData(int32_t channelId, const AuthChannelData *data)
+{
+    (void)channelId;
+    (void)data;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+int32_t SetSocketCallback(const SocketCallback *cb)
+{
+    (void)cb;
+    return SOFTBUS_OK;
+}
+
+void UnsetSocketCallback(void) { }
+
+int32_t SocketConnectDevice(const char *ip, int32_t port, bool isBlockMode, int32_t ifnameIdx)
+{
+    (void)ip;
+    (void)port;
+    (void)isBlockMode;
+    (void)ifnameIdx;
+    AUTH_LOGW(AUTH_CONN, "not implement.");
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+void SocketDisconnectDevice(ListenerModule module, int32_t fd)
+{
+    (void)module;
+    (void)fd;
+}
+
+int32_t SocketPostBytes(int32_t fd, const AuthDataHead *head, const uint8_t *data)
+{
+    (void)fd;
+    (void)head;
+    (void)data;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+int32_t SocketGetConnInfo(int32_t fd, AuthConnInfo *connInfo, bool *isServer, int32_t ifnameIdx)
+{
+    (void)fd;
+    (void)connInfo;
+    (void)isServer;
+    (void)ifnameIdx;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+int32_t StartSocketListening(ListenerModule module, const LocalListenerInfo *info)
+{
+    (void)module;
+    (void)info;
+    AUTH_LOGW(AUTH_CONN, "not implement.");
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+void StopSocketListening(ListenerModule moduleId)
+{
+    (void)moduleId;
+}
+
+int32_t AuthSetTcpKeepaliveOption(int32_t fd, ModeCycle cycle)
+{
+    (void)fd;
+    (void)cycle;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+void AuthTcpConnFdLockDeinit(void) { }
+
+int32_t AuthTcpConnFdLockInit(void)
+{
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+void DeleteAuthTcpConnFdItemByConnId(int32_t fd)
+{
+    (void)fd;
+    return;
+}
+
+bool IsExistAuthTcpConnFdItemByConnId(int32_t fd)
+{
+    (void)fd;
+    return false;
+}
+
+int32_t NipSocketConnectDevice(ListenerModule module, const char *addr, int32_t port, bool isBlockMode)
+{
+    (void)module;
+    (void)addr;
+    (void)port;
+    (void)isBlockMode;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+void ReleaseAuthTcpConnFdListLock(void) { }
+
+bool RequireAuthTcpConnFdListLock(void)
+{
+    return false;
+}
+
+int32_t SocketConnectDeviceWithAllIp(const char *localIp, const char *remoteIp, int32_t port, bool isBlockMode)
+{
+    (void)localIp;
+    (void)remoteIp;
+    (void)port;
+    (void)isBlockMode;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+int32_t SocketSetDevice(int32_t fd, bool isBlockMode)
+{
+    (void)fd;
+    (void)isBlockMode;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+void StopSessionKeyListening(int32_t fd)
+{
+    (void)fd;
+}
+
+int32_t TryDeleteAuthTcpConnFdItemByConnId(int32_t fd)
+{
+    (void)fd;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+

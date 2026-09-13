@@ -1,0 +1,440 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <gtest/gtest.h>
+#include <securec.h>
+
+#include "bus_center_server_proxy.h"
+#include "softbus_access_token_test.h"
+#include "softbus_bus_center.h"
+#include "softbus_common.h"
+#include "softbus_error_code.h"
+#include "softbus_utils.h"
+
+namespace OHOS {
+using namespace testing::ext;
+
+class BusCenterServerProxyTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp();
+    void TearDown();
+};
+
+void BusCenterServerProxyTest::SetUpTestCase() { }
+
+void BusCenterServerProxyTest::TearDownTestCase() { }
+
+void BusCenterServerProxyTest::SetUp() { }
+
+void BusCenterServerProxyTest::TearDown() { }
+
+/*
+ * @tc.name: ServerIpcGetAllOnlineNodeInfo_TEST_001
+ * @tc.desc: test ServerIpcGetAllOnlineNodeInfo
+ *           ServerIpcGetAllOnlineNodeInfo return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcGetAllOnlineNodeInfo_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    void **info = nullptr;
+    uint32_t infoTypeLen = 0;
+    int32_t *infoNum = nullptr;
+    int32_t ret = ServerIpcGetAllOnlineNodeInfo(pkgName, info, infoTypeLen, infoNum);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcGetLocalDeviceInfo_TEST_001
+ * @tc.desc: test ServerIpcGetLocalDeviceInfo
+ *           ServerIpcGetLocalDeviceInfo return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcGetLocalDeviceInfo_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    void *info = nullptr;
+    uint32_t infoTypeLen = 0;
+    int32_t ret = ServerIpcGetLocalDeviceInfo(pkgName, info, infoTypeLen);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcGetNodeKeyInfo_TEST_001
+ * @tc.desc: test ServerIpcGetNodeKeyInfo
+ *           ServerIpcGetNodeKeyInfo return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcGetNodeKeyInfo_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *networkId = "123";
+    int32_t key = 1;
+    unsigned char array[10] = { 0 };
+    unsigned char *buf = array;
+    uint32_t len = 0;
+    int32_t ret = ServerIpcGetNodeKeyInfo(pkgName, networkId, key, buf, len);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcSetNodeKeyInfo_TEST_001
+ * @tc.desc: test ServerIpcSetNodeKeyInfo
+ *           ServerIpcSetNodeKeyInfo return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcSetNodeKeyInfo_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *networkId = "123";
+    int32_t key = 1;
+    unsigned char array[10] = "123456789";
+    unsigned char *buf = array;
+    uint32_t len = 0;
+    int32_t ret = ServerIpcSetNodeKeyInfo(pkgName, networkId, key, buf, len);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcSetNodeDataChangeFlag_TEST_001
+ * @tc.desc: test ServerIpcSetNodeDataChangeFlag
+ *           ServerIpcSetNodeDataChangeFlag return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcSetNodeDataChangeFlag_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *networkId = "123";
+    uint16_t dataChangeFlag = 0;
+    int32_t ret = ServerIpcSetNodeDataChangeFlag(pkgName, networkId, dataChangeFlag);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcRegDataLevelChangeCb_TEST_001
+ * @tc.desc: test ServerIpcRegDataLevelChangeCb
+ *           ServerIpcRegDataLevelChangeCb return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcRegDataLevelChangeCb_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    int32_t ret = ServerIpcRegDataLevelChangeCb(pkgName);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcUnregDataLevelChangeCb_TEST_001
+ * @tc.desc: test ServerIpcUnregDataLevelChangeCb
+ *           ServerIpcUnregDataLevelChangeCb return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcUnregDataLevelChangeCb_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    int32_t ret = ServerIpcUnregDataLevelChangeCb(pkgName);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcJoinLNN_TEST_001
+ * @tc.desc: test ServerIpcJoinLNN
+ *           ServerIpcJoinLNN return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcJoinLNN_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    void *addr = nullptr;
+    uint32_t addrTypeLen = 0;
+    int32_t ret = ServerIpcJoinLNN(pkgName, addr, addrTypeLen, false);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcLeaveLNN_TEST_001
+ * @tc.desc: test ServerIpcLeaveLNN
+ *           ServerIpcLeaveLNN return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcLeaveLNN_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *networkId = "123";
+    int32_t ret = ServerIpcLeaveLNN(pkgName, networkId);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcStartTimeSync_TEST_001
+ * @tc.desc: test ServerIpcStartTimeSync
+ *           ServerIpcStartTimeSync return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcStartTimeSync_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *targetNetworkId = "111";
+    int32_t accuracy = 1;
+    int32_t period = 1;
+    int32_t ret = ServerIpcStartTimeSync(pkgName, targetNetworkId, accuracy, period);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcStopTimeSync_TEST_001
+ * @tc.desc: test ServerIpcStopTimeSync
+ *           ServerIpcStopTimeSync return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcStopTimeSync_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *targetNetworkId = "1234";
+    int32_t ret = ServerIpcStopTimeSync(pkgName, targetNetworkId);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcPublishLNN_TEST_001
+ * @tc.desc: test ServerIpcPublishLNN
+ *           ServerIpcPublishLNN return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcPublishLNN_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const PublishInfo *info = nullptr;
+    int32_t ret = ServerIpcPublishLNN(pkgName, info);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcStopPublishLNN_TEST_001
+ * @tc.desc: test ServerIpcStopPublishLNN
+ *           ServerIpcStopPublishLNN return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcStopPublishLNN_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    int32_t publishId = 123;
+    int32_t ret = ServerIpcStopPublishLNN(pkgName, publishId);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcRefreshLNN_TEST_001
+ * @tc.desc: test ServerIpcRefreshLNN
+ *           ServerIpcRefreshLNN return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcRefreshLNN_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const SubscribeInfo *info = nullptr;
+    int32_t ret = ServerIpcRefreshLNN(pkgName, info);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcStopRefreshLNN_TEST_001
+ * @tc.desc: test ServerIpcStopRefreshLNN
+ *           ServerIpcStopRefreshLNN return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcStopRefreshLNN_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    int32_t refreshId = 123;
+    int32_t ret = ServerIpcStopRefreshLNN(pkgName, refreshId);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcActiveMetaNode_TEST_001
+ * @tc.desc: test ServerIpcActiveMetaNode
+ *           ServerIpcActiveMetaNode return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcActiveMetaNode_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const MetaNodeConfigInfo *info = nullptr;
+    char testtId = 'a';
+    char *metaNodeId = &testtId;
+    int32_t ret = ServerIpcActiveMetaNode(pkgName, info, metaNodeId);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcDeactiveMetaNode_TEST_001
+ * @tc.desc: test ServerIpcDeactiveMetaNode
+ *           ServerIpcDeactiveMetaNode return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcDeactiveMetaNode_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *metaNodeId = "123";
+    int32_t ret = ServerIpcDeactiveMetaNode(pkgName, metaNodeId);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcGetAllMetaNodeInfo_TEST_001
+ * @tc.desc: test ServerIpcGetAllMetaNodeInfo
+ *           ServerIpcGetAllMetaNodeInfo return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcGetAllMetaNodeInfo_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    MetaNodeInfo *infos = nullptr;
+    int32_t testNum = 123;
+    int32_t *infoNum = &testNum;
+    int32_t ret = ServerIpcGetAllMetaNodeInfo(pkgName, infos, infoNum);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcShiftLNNGear_TEST_001
+ * @tc.desc: test ServerIpcShiftLNNGear
+ *           ServerIpcShiftLNNGear return value is equal to SOFTBUS_SERVER_NOT_INIT
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcShiftLNNGear_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *callerId = "123";
+    const char *targetNetworkId = "111";
+    const GearMode *mode = nullptr;
+    int32_t ret = ServerIpcShiftLNNGear(pkgName, callerId, targetNetworkId, mode);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcSyncTrustedRelationShip_TEST_001
+ * @tc.desc: test ServerIpcSyncTrustedRelationShip
+ *           ServerIpcSyncTrustedRelationShip return value is equal to SOFTBUS_TRANS_PROXY_REMOTE_NULL
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcSyncTrustedRelationShip_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *msg = "123";
+    uint32_t msgLen = 123;
+    int32_t ret = ServerIpcSyncTrustedRelationShip(pkgName, msg, msgLen);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcProcessPushMsg_TEST_001
+ * @tc.desc: test ServerIpcProcessPushMsg
+ *           ServerIpcProcessPushMsg return value is not equal to SOFTBUS_OK
+ * @tc.type: FUNC
+ * @tc.level: Level1
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcProcessPushMsg_TEST_001, TestSize.Level1)
+{
+    uint8_t data[] = {1, 2, 3};
+    uint32_t len = sizeof(data);
+    int32_t ret = ServerIpcProcessPushMsg(data, len);
+    EXPECT_NE(ret, SOFTBUS_OK);
+}
+
+/*
+ * @tc.name: ServerIpcStartAccountAuth_TEST_001
+ * @tc.desc: ServerIpcStartAccountAuth test
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcStartAccountAuth_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *msg = "123";
+    int32_t ret = ServerIpcStartAccountAuth(nullptr, 0, nullptr);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+    ret = ServerIpcStartAccountAuth(pkgName, 0, nullptr);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+    ret = ServerIpcStartAccountAuth(nullptr, 0, msg);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+    ret = ServerIpcStartAccountAuth(pkgName, 0, msg);
+    EXPECT_EQ(ret, SOFTBUS_IPC_ERR);
+}
+
+/*
+ * @tc.name: ServerIpcProcessAccountAuth_TEST_001
+ * @tc.desc: ServerIpcProcessAccountAuth test
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(BusCenterServerProxyTest, ServerIpcProcessAccountAuth_TEST_001, TestSize.Level1)
+{
+    const char *pkgName = "001";
+    const char *msg = "123";
+    uint32_t msgLen = 123;
+    int32_t ret = ServerIpcProcessAccountAuth(nullptr, 0, nullptr, 0);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+    ret = ServerIpcProcessAccountAuth(pkgName, 0, nullptr, 0);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+    ret = ServerIpcProcessAccountAuth(nullptr, 0, (uint8_t*)msg, msgLen);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+    ret = ServerIpcProcessAccountAuth(pkgName, 0, (uint8_t*)msg, msgLen);
+    EXPECT_EQ(ret, SOFTBUS_IPC_ERR);
+}
+} // namespace OHOS

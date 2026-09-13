@@ -1,0 +1,71 @@
+# Copyright (c) 2020-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+group("startup_init") {
+  deps = []
+
+  # for liteos
+  if (defined(ohos_lite) && ohos_kernel_type != "liteos_m") {
+    deps = [
+      "etc:etc_files",
+      "init/lite:init",
+    ]
+
+    # for unittest
+    if (ohos_build_type == "debug") {
+      deps += [ "//base/startup/init/test/unittest/lite:init_test" ]
+    }
+  }
+
+  # for standard
+  if (!defined(ohos_lite)) {
+    deps = [
+      "etc:etc_files",
+      "init/standard:init",
+    ]
+    data_deps = [ "init/standard:init_early" ]
+    deps += [ "//base/startup/init/services/etc:watchdog.cfg" ]
+    deps += [ "//base/startup/init/services/etc:ueventd.cfg" ]
+    deps += [ "//base/startup/init/services/etc:init_prelinker_dso_list" ]
+    external_deps = [
+      "e2fsprogs:blkid",
+      "e2fsprogs:e2fsck",
+      "e2fsprogs:e2fsdroid",
+      "e2fsprogs:libext2_blkid",
+      "e2fsprogs:libext2_com_err",
+      "e2fsprogs:libext2_e2p",
+      "e2fsprogs:libext2_misc",
+      "e2fsprogs:libext2_quota",
+      "e2fsprogs:libext2_uuid",
+      "e2fsprogs:libext2fs",
+      "e2fsprogs:mke2fs",
+      "e2fsprogs:resize2fs",
+    ]
+
+    if (use_musl) {
+      external_deps += [
+        "f2fs-tools:fsck.f2fs",
+        "f2fs-tools:libf2fs",
+        "f2fs-tools:mkfs.f2fs",
+      ]
+    }
+
+    if (enable_ohos_startup_init_feature_watcher) {
+      deps += [
+        "//base/startup/init/services/param/watcher:param_watcher",
+        "//base/startup/init/services/param/watcher:param_watcher.rc",
+        "//base/startup/init/services/param/watcher/sa_profile:param_watcher_profile",
+      ]
+    }
+  }
+}

@@ -1,0 +1,104 @@
+[
+    {
+        "name": "hdf:libmapper_service_1.0",
+        "so_file_name": "libmapper_service_1.0.z.so",
+        "path": "//drivers/peripheral/display/buffer/hdi_service:libmapper_service_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libmetadata_service_1.1",
+        "so_file_name": "libmetadata_service_1.1.z.so",
+        "path": "//drivers/peripheral/display/buffer/hdi_service:libmetadata_service_1.1",
+        "headers": []
+    },
+    {
+        "name": "hdf:libmemory_tracker_interface_service_1.0",
+        "so_file_name": "libmemory_tracker_interface_service_1.0.z.so",
+        "path": "//drivers/peripheral/memorytracker/hdi_service:libmemory_tracker_interface_service_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libinput_interfaces_service_1.0",
+        "so_file_name": "libinput_interfaces_service_1.0.z.so",
+        "path": "//drivers/peripheral/input/hdi_service:libinput_interfaces_service_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:audio_bluetooth_hdi_proxy_server",
+        "so_file_name": "libaudio_bluetooth_hdi_proxy_server.z.so",
+        "path": "//drivers/peripheral/bluetooth/audio/hal/hdi_binder/proxy:audio_bluetooth_hdi_proxy_server",
+        "headers": []
+    },
+    {
+        "name": "hdf:libmapper_service_1.3",
+        "so_file_name": "libmapper_service_1.3.z.so",
+        "path": "//drivers/peripheral/display/buffer/hdi_service:libmapper_service_1.3",
+        "headers": []
+    },
+    {
+        "name": "hdf:libmapper_service_1.2",
+        "so_file_name": "libmapper_service_1.2.z.so",
+        "path": "//drivers/peripheral/display/buffer/hdi_service:libmapper_service_1.2",
+        "headers": []
+    },
+    {
+        "name": "hdf:libdisplay_buffer_vendor",
+        "so_file_name": "libdisplay_buffer_vendor.z.so",
+        "path": "//device/soc/rockchip/rk3568/hardware/display:libdisplay_buffer_vendor",
+        "headers": []
+    },
+    {
+        "name": "hdf:libcodec_component_manager_service_4.0",
+        "so_file_name": "libcodec_component_manager_service_4.0.z.so",
+        "path": "//drivers/peripheral/codec/hal/idl_service:libcodec_component_manager_service_4.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libdisplay_buffer_vdi_impl",
+        "so_file_name": "libdisplay_buffer_vdi_impl.z.so",
+        "path": "//device/soc/rockchip/rk3568/hardware/display:libdisplay_buffer_vdi_impl",
+        "headers": []
+    },
+    {
+        "name": "hdf:libusb_host_interface_service_2.0",
+        "so_file_name": "libusb_host_interface_service_2.0.z.so",
+        "path": "//drivers/peripheral/usb/hdi_service:libusb_host_interface_service_2.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libusbfn_mtp_interface_service_1.0",
+        "so_file_name": "libusbfn_mtp_interface_service_1.0.z.so",
+        "path": "//drivers/peripheral/usb/ddk:libusbfn_mtp_interface_service_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libcamera_vendor_tag_service_1.0",
+        "so_file_name": "libcamera_vendor_tag_service_1.0.z.so",
+        "path": "//drivers/peripheral/camera/vdi_base/common/metadata_manager:libcamera_vendor_tag_service_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libsensor_convert_interfaces_service_1.0",
+        "so_file_name": "libsensor_convert_interfaces_service_1.0.z.so",
+        "path": "//drivers/peripheral/sensor/hdi_service_3.0/convert_sensor:libsensor_convert_interfaces_service_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libmidi_interface_service_1.0",
+        "so_file_name": "libmidi_interface_service_1.0.z.so",
+        "path": "//drivers/peripheral/midi/hdi_service:midi_interface_service_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libserials_service_1.0",
+        "so_file_name": "libserials_service_1.0.z.so",
+        "path": "//drivers/peripheral/serials:libserials_service_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libhuks_hdi_service_1.2",
+        "so_file_name": "libhuks_hdi_service_1.2.z.so",
+        "path": "//drivers/peripheral/huks/hdi_service:libhuks_hdi_service_1.2",
+        "headers": []
+    }
+]

@@ -1,0 +1,71 @@
+/*
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef FOUNDATION_BUNDLE_FRAMEWORK_AOT_AOT_EXECUTOR
+#define FOUNDATION_BUNDLE_FRAMEWORK_AOT_AOT_EXECUTOR
+
+#include <filesystem>
+#include <mutex>
+
+#include "aot/aot_args.h"
+#include "appexecfwk_errors.h"
+#if defined(CODE_SIGNATURE_ENABLE)
+#include "aot_compiler_args.h"
+#endif
+#include "nocopyable.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+struct AOTState {
+    bool running = false;
+    std::string outputPath;
+};
+
+class AOTExecutor final {
+public:
+    static AOTExecutor& GetInstance();
+    void ExecuteAOT(const AOTArgs &aotArgs, ErrCode &ret, std::vector<uint8_t> &pendSignData);
+    ErrCode PendSignAOT(const std::string &anFileName, const std::vector<uint8_t> &signData) const;
+    ErrCode StopAOT();
+private:
+    AOTExecutor() = default;
+    ~AOTExecutor() = default;
+    DISALLOW_COPY_AND_MOVE(AOTExecutor);
+
+    bool CheckArgs(const AOTArgs &aotArgs) const;
+    std::string GetAbcRelativePath(const std::string &moduleArkTSMode) const;
+    bool GetAbcFileInfo(const std::string &hapPath, const std::string &moduleArkTSMode,
+        uint32_t &offset, uint32_t &length) const;
+    ErrCode PrepareArgs(const AOTArgs &aotArgs, AOTArgs &completeArgs) const;
+    ErrCode EnforceCodeSign(const std::string &anFileName, const std::vector<uint8_t> &signData) const;
+    bool MkdirWithAuth(const std::filesystem::path &basePath, const std::filesystem::path &targetPath,
+        uid_t uid, gid_t gid, mode_t mode) const;
+    bool MkAOTOutputDir(const AOTArgs &aotArgs) const;
+#if defined(CODE_SIGNATURE_ENABLE)
+    ErrCode MapSysCompArgs(const AOTArgs &aotArgs, ArkCompiler::AotCompilerArgs &args) const;
+    ErrCode MapBundleArgs(const AOTArgs &aotArgs, ArkCompiler::AotCompilerArgs &args) const;
+#endif
+    ErrCode HandleCompilerResult(ErrCode ret, const std::vector<uint8_t> &fileData,
+        std::vector<uint8_t> &signData) const;
+    ErrCode StartAOTCompiler(const AOTArgs &aotArgs, std::vector<uint8_t> &signData);
+    void InitState(const AOTArgs &aotArgs);
+    void ResetState();
+private:
+    mutable std::mutex stateMutex_;
+    AOTState state_;
+};
+}  // namespace AppExecFwk
+}  // namespace OHOS
+#endif  // FOUNDATION_BUNDLE_FRAMEWORK_AOT_AOT_EXECUTOR

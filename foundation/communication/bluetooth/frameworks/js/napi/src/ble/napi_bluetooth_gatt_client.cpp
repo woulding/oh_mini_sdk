@@ -1,0 +1,1272 @@
+/*
+ * Copyright (C) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#ifndef LOG_TAG
+#define LOG_TAG "bt_napi_gatt_client"
+#endif
+
+#include "napi_bluetooth_gatt_client.h"
+#include <unistd.h>
+#include "bluetooth_def.h"
+#include "bluetooth_errorcode.h"
+#include "bluetooth_host.h"
+#include "bluetooth_log.h"
+#include "napi_async_callback.h"
+#include "napi_bluetooth_ble_utils.h"
+#include "napi_bluetooth_error.h"
+#include "napi_bluetooth_event.h"
+#include "napi_bluetooth_host.h"
+#include "napi_bluetooth_utils.h"
+#include "napi_ha_event_utils.h"
+#include "napi_event_subscribe_module.h"
+#include "parser/napi_parser_utils.h"
+
+#ifndef GATT_MAX_MTU_SIZE
+#define GATT_MAX_MTU_SIZE 517
+#define GATT_DEF_BLE_MTU_SIZE 23
+#endif
+
+namespace OHOS {
+namespace Bluetooth {
+using namespace std;
+
+constexpr int TRANSPORT_BR_EDR = 0;
+constexpr int TRANSPORT_LE = 1;
+constexpr int TRANSPORT_DUAL = 2;
+
+constexpr int32_t TRANSPORT_MIN = GATT_TRANSPORT_TYPE_AUTO;
+constexpr int32_t TRANSPORT_MAX = GATT_TRANSPORT_TYPE_CLASSIC;
+
+static int32_t ConverToGattTransportType(int transport)
+{
+    switch (transport) {
+        case TRANSPORT_BR_EDR:
+            return GATT_TRANSPORT_TYPE_CLASSIC;
+        case TRANSPORT_LE:
+            return GATT_TRANSPORT_TYPE_LE;
+        case TRANSPORT_DUAL:
+            return GATT_TRANSPORT_TYPE_AUTO;
+        default:
+            return GATT_TRANSPORT_TYPE_INVALID;
+    }
+}
+
+thread_local napi_ref NapiGattClient::consRef_ = nullptr;
+
+const std::vector<std::pair<int, int>> NapiGattClient::g_gattStatusSrvToNapi = {
+    { Bluetooth::BT_NO_ERROR,                                 GATT_SUCCESS },
+    { Bluetooth::BT_ERR_GATT_WRITE_NOT_PERMITTED,             WRITE_NOT_PERMITTED },
+    { Bluetooth::BT_ERR_GATT_READ_NOT_PERMITTED,              READ_NOT_PERMITTED },
+    { Bluetooth::BT_ERR_GATT_CONNECTION_CONGESTED,            GATT_CONGESTION },
+    { Bluetooth::BT_ERR_GATT_CONNECTION_NOT_ENCRYPTED,        INSUFFICIENT_ENCRYPTION },
+    { Bluetooth::BT_ERR_GATT_CONNECTION_NOT_AUTHENTICATED,    AUTHENTICATION_FAILED },
+    { Bluetooth::BT_ERR_GATT_CONNECTION_NOT_AUTHORIZED,       INSUFFICIENT_AUTHORIZATION },
+};
+
+static napi_status ParseGattClientOptions(napi_env env, napi_value optionsArg, bool &autoConnect, int32_t &transport)
+{
+    NAPI_BT_CALL_RETURN(NapiIsObject(env, optionsArg));
+
+    bool isExist = false;
+    NAPI_BT_CALL_RETURN(NapiParseObjectBooleanOptional(env, optionsArg, "autoConnect", autoConnect, isExist));
+
+    int32_t transportVal = BT_TRANSPORT_BLE;
+    isExist = false;
+    NAPI_BT_CALL_RETURN(NapiParseObjectInt32Optional(env, optionsArg, "transport", transportVal, isExist));
+    if (isExist) {
+        if (transportVal < TRANSPORT_MIN || transportVal > TRANSPORT_MAX) {
+            HILOGE("invalid transport value");
+            return napi_invalid_arg;
+        }
+        transport = ConverToGattTransportType(transportVal);
+    }
+    return napi_ok;
+}
+
+static napi_status CheckCreateGattClientDeviceParams(napi_env env, napi_callback_info info, napi_value &outResult)
+{
+    size_t argc = ARGS_SIZE_THREE;
+    napi_value argv[ARGS_SIZE_THREE] = {0};
+
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_ONE && argc != ARGS_SIZE_TWO, "expect 1 or 2 args", napi_invalid_arg);
+
+    std::string deviceId {};
+    if (!ParseString(env, deviceId, argv[PARAM0])) {
+        HILOGE("expect string");
+        return napi_string_expected;
+    }
+    if (!IsValidAddress(deviceId)) {
+        HILOGE("Invalid deviceId");
+        return napi_invalid_arg;
+    }
+
+    bool autoConnect = false;
+    int32_t transport = BT_TRANSPORT_BLE;
+    if (argc == ARGS_SIZE_TWO) {
+        auto status = ParseGattClientOptions(env, argv[PARAM1], autoConnect, transport);
+        if (status != napi_ok) {
+            return status;
+        }
+    }
+
+    napi_value argvNew[ARGS_SIZE_THREE] = {0};
+    napi_create_string_utf8(env, deviceId.c_str(), deviceId.length(), &argvNew[PARAM0]);
+    napi_get_boolean(env, autoConnect, &argvNew[PARAM1]);
+    napi_create_int32(env, transport, &argvNew[PARAM2]);
+
+    napi_value constructor = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_reference_value(env, NapiGattClient::consRef_, &constructor));
+    NAPI_BT_CALL_RETURN(napi_new_instance(env, constructor, ARGS_SIZE_THREE, argvNew, &outResult));
+    return napi_ok;
+}
+
+napi_value NapiGattClient::CreateGattClientDevice(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    napi_value result;
+    auto status = CheckCreateGattClientDeviceParams(env, info, result);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+    return result;
+}
+
+void NapiGattClient::DefineGattClientJSClass(napi_env env)
+{
+    napi_property_descriptor properties[] = {
+        DECLARE_NAPI_FUNCTION("connect", Connect),
+        DECLARE_NAPI_FUNCTION("disconnect", Disconnect),
+        DECLARE_NAPI_FUNCTION("close", Close),
+        DECLARE_NAPI_FUNCTION("getDeviceName", GetDeviceName),
+        DECLARE_NAPI_FUNCTION("getServices", GetServices),
+        DECLARE_NAPI_FUNCTION("readCharacteristicValue", ReadCharacteristicValue),
+        DECLARE_NAPI_FUNCTION("readDescriptorValue", ReadDescriptorValue),
+        DECLARE_NAPI_FUNCTION("getRssiValue", GetRssiValue),
+        DECLARE_NAPI_FUNCTION("setBLEMtuSize", SetBLEMtuSize),
+        DECLARE_NAPI_FUNCTION("setBLEMtu", SetBLEMtu),
+        DECLARE_NAPI_FUNCTION("on", On),
+        DECLARE_NAPI_FUNCTION("off", Off),
+        DECLARE_NAPI_FUNCTION("onBlePhyUpdate", OnBlePhyUpdate),
+        DECLARE_NAPI_FUNCTION("offBlePhyUpdate", OffBlePhyUpdate),
+        DECLARE_NAPI_FUNCTION("getConnectedState", GetConnectedState),
+        DECLARE_NAPI_FUNCTION("updateConnectionParam", UpdateConnectionParam),
+#ifdef BLUETOOTH_API_SINCE_10
+        DECLARE_NAPI_FUNCTION("writeCharacteristicValue", WriteCharacteristicValueEx),
+        DECLARE_NAPI_FUNCTION("writeCharacteristicValueWithContext", WriteCharacteristicValueWithContext),
+        DECLARE_NAPI_FUNCTION("writeDescriptorValue", WriteDescriptorValueEx),
+        DECLARE_NAPI_FUNCTION("setCharacteristicChangeNotification", setCharacteristicChangeNotification),
+        DECLARE_NAPI_FUNCTION("setCharacteristicChangeIndication", setCharacteristicChangeIndication),
+        DECLARE_NAPI_FUNCTION("setPhy", SetPhy),
+        DECLARE_NAPI_FUNCTION("readPhy", ReadPhy),
+#else
+        DECLARE_NAPI_FUNCTION("writeCharacteristicValue", WriteCharacteristicValue),
+        DECLARE_NAPI_FUNCTION("writeDescriptorValue", WriteDescriptorValue),
+        DECLARE_NAPI_FUNCTION("setNotifyCharacteristicChanged", SetNotifyCharacteristicChanged),
+#endif
+    };
+
+    napi_value constructor = nullptr;
+    napi_define_class(env, "GattClientDevice", NAPI_AUTO_LENGTH, GattClientConstructor, nullptr,
+        sizeof(properties) / sizeof(properties[0]), properties, &constructor);
+    napi_create_reference(env, constructor, 1, &consRef_);
+}
+
+napi_value NapiGattClient::GattClientConstructor(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    napi_value thisVar = nullptr;
+
+    size_t expectedArgsCount = ARGS_SIZE_THREE;
+    size_t argc = expectedArgsCount;
+    napi_value argv[ARGS_SIZE_THREE] = {0};
+
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+
+    string deviceId;
+    bool autoConnect = false;
+    int32_t transport = BT_TRANSPORT_BLE;
+    ParseString(env, deviceId, argv[PARAM0]);
+    ParseBool(env, autoConnect, argv[PARAM1]);
+    ParseInt32(env, transport, argv[PARAM2]);
+    SetGattClientDeviceId(deviceId);
+
+    NapiGattClient *gattClient = new NapiGattClient(deviceId, autoConnect, transport);
+
+    auto status = napi_wrap(
+        env, thisVar, gattClient,
+        [](napi_env env, void* data, void* hint) {
+            NapiGattClient* client = static_cast<NapiGattClient*>(data);
+            if (client) {
+                delete client;
+                client = nullptr;
+            }
+        },
+        nullptr,
+        nullptr);
+    if (status != napi_ok) {
+        HILOGE("napi_wrap failed");
+        delete gattClient;
+        gattClient = nullptr;
+    }
+
+    return thisVar;
+}
+
+static NapiGattClient *NapiGetGattClient(napi_env env, napi_value thisVar)
+{
+    NapiGattClient *gattClient = nullptr;
+    auto status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&gattClient));
+    if (status != napi_ok) {
+        return nullptr;
+    }
+    return gattClient;
+}
+
+static NapiGattClient *NapiGetGattClient(napi_env env, napi_callback_info info)
+{
+    size_t argc = 0;
+    napi_value thisVar = nullptr;
+    if (napi_get_cb_info(env, info, &argc, nullptr, &thisVar, nullptr) != napi_ok) {
+        return nullptr;
+    }
+    return NapiGetGattClient(env, thisVar);
+}
+
+static GattCharacteristic *GetCharacteristic(const std::shared_ptr<GattClient> &client,
+    const UUID &serviceUuid, const UUID &characterUuid)
+{
+    GattCharacteristic *character = nullptr;
+    if (client) {
+        auto service = client->GetService(serviceUuid);
+        if (service.has_value()) {
+            character = service->get().GetCharacteristic(characterUuid);
+        }
+    }
+    return character;
+}
+
+static GattCharacteristic *FindCharacteristic(std::vector<GattService> &service,
+    const NapiBleCharacteristic &napiCharacter)
+{
+    GattCharacteristic *character = nullptr;
+    for (auto &svc : service) {
+        if (svc.GetUuid().Equals(napiCharacter.serviceUuid)) {
+            character = svc.GetCharacteristic(napiCharacter.characteristicValueHandle);
+            if (character && character->GetUuid().Equals(napiCharacter.characteristicUuid)) {
+                return character;
+            }
+        }
+    }
+    return nullptr;
+}
+
+static GattCharacteristic *GetCharacteristic(const std::shared_ptr<GattClient> &client,
+    const NapiBleCharacteristic &napiCharacter)
+{
+    if (client) {
+        if (napiCharacter.characteristicValueHandle > 0) {
+            std::vector<GattService> &services = client->GetService();
+            return FindCharacteristic(services, napiCharacter);
+        } else {
+            GattCharacteristic *character = GetCharacteristic(client, napiCharacter.serviceUuid,
+                napiCharacter.characteristicUuid);
+            return character;
+        }
+    }
+    return nullptr;
+}
+
+static GattCharacteristic *GetGattcCharacteristic(const std::shared_ptr<GattClient> &client,
+    const NapiBleCharacteristic &napiCharacter)
+{
+    GattCharacteristic *character = GetCharacteristic(client, napiCharacter);
+    if (character) {
+        character->SetValue(napiCharacter.characteristicValue.data(), napiCharacter.characteristicValue.size());
+    }
+    return character;
+}
+
+static GattDescriptor *GetGattcDescriptor(const std::shared_ptr<GattClient> &client,
+    const NapiBleDescriptor &napiDescriptor)
+{
+    GattDescriptor *descriptor = nullptr;
+    if (client) {
+        auto *character = GetCharacteristic(client, napiDescriptor.serviceUuid, napiDescriptor.characteristicUuid);
+        if (character == nullptr) {
+            HILOGE("character is nullptr");
+            return nullptr;
+        }
+        descriptor = character->GetDescriptor(napiDescriptor.descriptorUuid);
+        if (descriptor) {
+            descriptor->SetValue(napiDescriptor.descriptorValue.data(), napiDescriptor.descriptorValue.size());
+        }
+    }
+    return descriptor;
+}
+
+napi_value NapiGattClient::On(napi_env env, napi_callback_info info)
+{
+    NapiGattClient *napiGattClient = NapiGetGattClient(env, info);
+    if (napiGattClient && napiGattClient->GetCallback()) {
+        auto status = napiGattClient->GetCallback()->eventSubscribe_.Register(env, info);
+        NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+napi_value NapiGattClient::Off(napi_env env, napi_callback_info info)
+{
+    NapiGattClient *napiGattClient = NapiGetGattClient(env, info);
+    if (napiGattClient && napiGattClient->GetCallback()) {
+        auto status = napiGattClient->GetCallback()->eventSubscribe_.Deregister(env, info);
+        NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+napi_value NapiGattClient::OnBlePhyUpdate(napi_env env, napi_callback_info info)
+{
+    NapiGattClient *napiGattClient = NapiGetGattClient(env, info);
+    if (napiGattClient && napiGattClient->GetCallback()) {
+        auto status = napiGattClient->GetCallback()->eventSubscribe_.RegisterWithName(env, info,
+            STR_BT_GATT_CLIENT_CALLBACK_BLE_PHY_UPDATE);
+        NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+napi_value NapiGattClient::OffBlePhyUpdate(napi_env env, napi_callback_info info)
+{
+    NapiGattClient *napiGattClient = NapiGetGattClient(env, info);
+    if (napiGattClient && napiGattClient->GetCallback()) {
+        auto status = napiGattClient->GetCallback()->eventSubscribe_.DeregisterWithName(env, info,
+            STR_BT_GATT_CLIENT_CALLBACK_BLE_PHY_UPDATE);
+        NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+static napi_status CheckGattClientNoArgc(napi_env env, napi_callback_info info, NapiGattClient **outGattClient)
+{
+    size_t argc = 0;
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, nullptr, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != 0, "No need arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    *outGattClient = gattClient;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::Connect(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiHaEventUtils haUtils(env, "ble.GattClientDevice.Connect");
+    NapiGattClient *gattClient = nullptr;
+    auto status = CheckGattClientNoArgc(env, info, &gattClient);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, gattClient->GetCallback() != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    std::shared_ptr<GattClient> client = gattClient->GetClient();
+    NAPI_BT_ASSERT_RETURN_FALSE(env, client != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    int ret = client->Connect(gattClient->GetCallback(), gattClient->GetAutoConnect(), gattClient->GetTransport());
+    HILOGI("ret: %{public}d", ret);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, ret == BT_NO_ERROR, ret);
+    return NapiGetBooleanTrue(env);
+}
+
+napi_value NapiGattClient::Disconnect(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiHaEventUtils haUtils(env, "ble.GattClientDevice.Disconnect");
+    NapiGattClient* gattClient = nullptr;
+    auto status = CheckGattClientNoArgc(env, info, &gattClient);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    std::shared_ptr<GattClient> client = gattClient->GetClient();
+    NAPI_BT_ASSERT_RETURN_FALSE(env, client != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    int ret = client->Disconnect();
+    HILOGI("ret: %{public}d", ret);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, ret == BT_NO_ERROR, ret);
+    return NapiGetBooleanTrue(env);
+}
+
+static napi_status ParseGattClientReadCharacteristicValue(napi_env env, napi_callback_info info,
+    NapiGattClient **outGattClient, GattCharacteristic **outCharacter)
+{
+    size_t expectedArgsCount = ARGS_SIZE_TWO;
+    size_t argc = expectedArgsCount;
+    napi_value argv[ARGS_SIZE_TWO] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != expectedArgsCount && argc != expectedArgsCount - CALLBACK_SIZE,
+        "Requires 1 or 2 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NapiBleCharacteristic napiCharacter;
+    NAPI_BT_CALL_RETURN(NapiParseGattCharacteristic(env, argv[PARAM0], napiCharacter));
+    GattCharacteristic *character = GetGattcCharacteristic(gattClient->GetClient(), napiCharacter);
+    NAPI_BT_RETURN_IF(character == nullptr || outCharacter == nullptr, "Not found character", napi_invalid_arg);
+
+    *outGattClient = gattClient;
+    *outCharacter = character;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::ReadCharacteristicValue(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiGattClient *client = nullptr;
+    GattCharacteristic *character = nullptr;
+    auto status = ParseGattClientReadCharacteristicValue(env, info, &client, &character);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok && client && character, BT_ERR_INVALID_PARAM);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, client->GetCallback() != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    auto func = [gattClient = client->GetClient(), character]() {
+        if (character == nullptr) {
+            HILOGE("character is nullptr");
+            return NapiAsyncWorkRet(BT_ERR_INTERNAL_ERROR);
+        }
+        int ret = BT_ERR_INTERNAL_ERROR;
+        if (gattClient) {
+            ret = gattClient->ReadCharacteristic(*character);
+            ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret)); // Adaptation for old sdk
+        }
+        return NapiAsyncWorkRet(ret);
+    };
+    auto asyncWork = NapiAsyncWorkFactory::CreateAsyncWork(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = client->GetCallback()->asyncWorkMap_.TryPush(NapiAsyncType::GATT_CLIENT_READ_CHARACTER, asyncWork);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, success, BT_ERR_INTERNAL_ERROR);
+
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+static napi_status ParseGattClientReadDescriptorValue(napi_env env, napi_callback_info info,
+    NapiGattClient **outGattClient, GattDescriptor **outDescriptor)
+{
+    size_t expectedArgsCount = ARGS_SIZE_TWO;
+    size_t argc = expectedArgsCount;
+    napi_value argv[ARGS_SIZE_TWO] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != expectedArgsCount && argc != expectedArgsCount - CALLBACK_SIZE,
+        "Requires 1 or 2 arguments.", napi_invalid_arg);
+
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(outGattClient == nullptr || gattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NapiBleDescriptor napiDescriptor;
+    NAPI_BT_CALL_RETURN(NapiParseGattDescriptor(env, argv[PARAM0], napiDescriptor));
+    GattDescriptor *descriptor = GetGattcDescriptor(gattClient->GetClient(), napiDescriptor);
+    NAPI_BT_RETURN_IF(outDescriptor == nullptr || descriptor == nullptr, "Not found Descriptor", napi_invalid_arg);
+
+    *outGattClient = gattClient;
+    *outDescriptor = descriptor;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::ReadDescriptorValue(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiGattClient *client = nullptr;
+    GattDescriptor *descriptor = nullptr;
+    auto status = ParseGattClientReadDescriptorValue(env, info, &client, &descriptor);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok && client && descriptor, BT_ERR_INVALID_PARAM);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, client->GetCallback() != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    auto func = [gattClient = client->GetClient(), descriptor]() {
+        if (descriptor == nullptr) {
+            HILOGE("descriptor is nullptr");
+            return NapiAsyncWorkRet(BT_ERR_INTERNAL_ERROR);
+        }
+        int ret = BT_ERR_INTERNAL_ERROR;
+        if (gattClient) {
+            ret = gattClient->ReadDescriptor(*descriptor);
+            ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret)); // Adaptation for old sdk
+        }
+        return NapiAsyncWorkRet(ret);
+    };
+    auto asyncWork = NapiAsyncWorkFactory::CreateAsyncWork(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = client->GetCallback()->asyncWorkMap_.TryPush(NapiAsyncType::GATT_CLIENT_READ_DESCRIPTOR, asyncWork);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, success, BT_ERR_INTERNAL_ERROR);
+
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+static napi_status ParseGattClientGetConnectState(
+    napi_env env, napi_callback_info info, NapiGattClient **outGattClient)
+{
+    size_t argc = ARGS_SIZE_ZERO;
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, nullptr, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_ZERO, "Requires 0 argument.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+    *outGattClient = gattClient;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::GetConnectedState(napi_env env, napi_callback_info info)
+{
+    NapiGattClient *client = nullptr;
+    auto status = ParseGattClientGetConnectState(env, info, &client);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    std::shared_ptr<GattClient> gattClient = client->GetClient();
+    int state = INVALID_STATE;
+    auto checkStatus = gattClient->GetConnectedState(state);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, checkStatus == BT_NO_ERROR, checkStatus);
+    int profileState = GetProfileConnectionState(state);
+    napi_value result = nullptr;
+    napi_create_int32(env, profileState, &result);
+    return result;
+}
+
+static napi_status ParseGattClientUpdateConnectionState(
+    napi_env env, napi_callback_info info, int &connectionParam, NapiGattClient **outGattClient)
+{
+    size_t argc = ARGS_SIZE_ONE;
+    napi_value argv[ARGS_SIZE_ONE] = {nullptr};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_ONE, "Requires 1 argument.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NAPI_BT_CALL_RETURN(NapiParseInt32(env, argv[PARAM0], connectionParam));
+    if (connectionParam != static_cast<int>(NapiGattPriority::LOW_POWER) &&
+        connectionParam != static_cast<int>(NapiGattPriority::BALANCED) &&
+        connectionParam != static_cast<int>(NapiGattPriority::HIGH)) {
+        return napi_invalid_arg;
+    }
+    *outGattClient = gattClient;
+    return napi_ok;
+}
+
+int ConvertToPrior(int connectionParam)
+{
+    int res = INVALID_STATE;
+    switch (connectionParam) {
+        case static_cast<int>(NapiGattPriority::LOW_POWER):
+            res = static_cast<int>(GattConnectionPriority::LOW_POWER);
+            break;
+        case static_cast<int>(NapiGattPriority::BALANCED):
+            res = static_cast<int>(GattConnectionPriority::BALANCED);
+            break;
+        case static_cast<int>(NapiGattPriority::HIGH):
+            res = static_cast<int>(GattConnectionPriority::HIGH);
+            break;
+        default:
+            break;
+    }
+    return res;
+}
+
+napi_value NapiGattClient::UpdateConnectionParam(napi_env env, napi_callback_info info)
+{
+    HILOGD("enter");
+    int connectionParam = -1;
+    NapiGattClient *client = nullptr;
+
+    auto status = ParseGattClientUpdateConnectionState(env, info, connectionParam, &client);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    auto func = [client, connectionParam]() {
+        std::shared_ptr<GattClient> gattClient = client->GetClient();
+        int ret = gattClient->RequestConnectionPriority(ConvertToPrior(connectionParam));
+        return NapiAsyncWorkRet(ret);
+    };
+
+    auto asyncWork = NapiAsyncWorkFactory::CreateAsyncWork(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = client->GetCallback()->asyncWorkMap_.TryPush(
+        NapiAsyncType::GATT_CLIENT_UPDATE_CONNECTION_PRIORITY, asyncWork);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, success, BT_ERR_INTERNAL_ERROR);
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+static napi_status ParseGattClientGetServices(napi_env env, napi_callback_info info, NapiGattClient **outGattClient)
+{
+    size_t argc = ARGS_SIZE_ONE;
+    napi_value argv[ARGS_SIZE_ONE] = {nullptr};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_ZERO && argc != ARGS_SIZE_ONE, "Requires 0 or 1 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    *outGattClient = gattClient;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::GetServices(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    std::vector<int32_t> validErrCodes = {
+        BT_ERR_PERMISSION_FAILED, BT_ERR_INVALID_PARAM, BT_ERR_API_NOT_SUPPORT,
+        BT_ERR_SERVICE_DISCONNECTED, BT_ERR_INTERNAL_ERROR,
+    };
+    NAPI_BT_CONTEXT(env, "ble.GattClientDevice.GetServices", validErrCodes);
+    NapiGattClient *client = nullptr;
+    auto status = ParseGattClientGetServices(env, info, &client);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok && client, BT_ERR_INVALID_PARAM);
+
+    auto func = [gattClient = client->GetClient()]() {
+        if (gattClient == nullptr) {
+            return NapiAsyncWorkRet(BT_ERR_INTERNAL_ERROR);
+        }
+
+        HILOGI("start discover services");
+        std::shared_ptr<NapiNativeObject> object {nullptr};
+        int ret = gattClient->DiscoverServices();
+        if (ret == BT_NO_ERROR) {
+            HILOGI("start get services");
+            object = std::make_shared<NapiNativeGattServiceArray>(gattClient->GetService());
+        }
+        return NapiAsyncWorkRet(ret, object);
+    };
+
+    auto asyncWork = CREATE_ASYNC_WORK_WITH_CONTEXT(env, info, func, ASYNC_WORK_NO_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+napi_value NapiGattClient::Close(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiGattClient* gattClient = nullptr;
+    auto status = CheckGattClientNoArgc(env, info, &gattClient);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    std::shared_ptr<GattClient> client = gattClient->GetClient();
+    NAPI_BT_ASSERT_RETURN_FALSE(env, client != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    int ret = client->Close();
+    HILOGI("ret: %{public}d", ret);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, ret == BT_NO_ERROR, ret);
+    return NapiGetBooleanTrue(env);
+}
+
+static napi_status CheckSetBLEMtuSize(napi_env env, napi_callback_info info,
+    int32_t &mtuSize, NapiGattClient **outGattClient)
+{
+    size_t expectedArgsCount = ARGS_SIZE_ONE;
+    size_t argc = expectedArgsCount;
+    napi_value argv[ARGS_SIZE_ONE] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != expectedArgsCount, "Requires 1 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NAPI_BT_CALL_RETURN(NapiParseInt32(env, argv[PARAM0], mtuSize));
+    *outGattClient = gattClient;
+
+    return napi_ok;
+}
+
+napi_value NapiGattClient::SetBLEMtuSize(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiGattClient* gattClient = nullptr;
+    int32_t mtuSize = 0;
+
+    auto status = CheckSetBLEMtuSize(env, info, mtuSize, &gattClient);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    std::shared_ptr<GattClient> client = gattClient->GetClient();
+    NAPI_BT_ASSERT_RETURN_FALSE(env, client != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    int ret = client->RequestBleMtuSize(mtuSize);
+    HILOGI("ret: %{public}d", ret);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, ret == BT_NO_ERROR, ret);
+    return NapiGetBooleanTrue(env);
+}
+
+napi_value NapiGattClient::SetBLEMtu(napi_env env, napi_callback_info info)
+{
+    std::vector<int32_t> validErrCodes = {
+        BT_ERR_PERMISSION_FAILED, BT_ERR_INVALID_PARAM, BT_ERR_API_NOT_SUPPORT,
+        BT_ERR_OPERATION_BUSY, BT_ERR_INTERNAL_ERROR, BT_ERR_GATT_CONNECTION_NOT_ESTABILISHED,
+    };
+    NAPI_BT_CONTEXT(env, "ble.GattClientDevice.SetBLEMtu", validErrCodes);
+
+    NapiGattClient* gattClient = nullptr;
+    int32_t mtuSize = 0;
+
+    auto status = CheckSetBLEMtuSize(env, info, mtuSize, &gattClient);
+    NAPI_BT_ASSERT_ERR_NUM_RETURN_VERIFY(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    std::shared_ptr<GattClient> client = gattClient->GetClient();
+    NAPI_BT_ASSERT_ERR_NUM_RETURN_VERIFY(env, client != nullptr, BT_ERR_INTERNAL_ERROR);
+    NAPI_BT_ASSERT_ERR_NUM_RETURN_VERIFY(env,
+        ((mtuSize >= GATT_DEF_BLE_MTU_SIZE) && (mtuSize <= GATT_MAX_MTU_SIZE)), BT_ERR_INVALID_PARAM);
+
+    NapiAsyncType asyncType = GATT_CLIENT_MTU_CHANGED;
+    auto func = [client, mtuSize] {
+        int ret = client->RequestBleMtuSize(mtuSize);
+        HILOGI("ret: %{public}d", ret);
+        ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret));
+        return NapiAsyncWorkRet(ret);
+    };
+    auto asyncWork = CREATE_ASYNC_WORK_WITH_CONTEXT(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_ERR_NUM_RETURN_VERIFY(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = gattClient->GetCallback()->asyncWorkMap_.TryPush(asyncType, asyncWork);
+    NAPI_BT_ASSERT_ERR_NUM_RETURN_VERIFY(env, success, BT_ERR_INTERNAL_ERROR);
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+static napi_status ParseGattClientReadRssiValue(napi_env env, napi_callback_info info, NapiGattClient **outGattClient)
+{
+    size_t expectedArgsCount = ARGS_SIZE_ONE;
+    size_t argc = expectedArgsCount;
+    napi_value argv[ARGS_SIZE_ONE] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != expectedArgsCount && argc != expectedArgsCount - CALLBACK_SIZE,
+        "Requires 0 or 1 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(outGattClient == nullptr || gattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+    *outGattClient = gattClient;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::GetRssiValue(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiGattClient *napiGattClient = nullptr;
+    auto status = ParseGattClientReadRssiValue(env, info, &napiGattClient);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok && napiGattClient, BT_ERR_INVALID_PARAM);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, napiGattClient->GetCallback() != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    auto func = [gattClient = napiGattClient->GetClient()] {
+        int ret = BT_ERR_INTERNAL_ERROR;
+        if (gattClient) {
+            ret = gattClient->ReadRemoteRssiValue();
+            ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret)); // Adaptation for old sdk
+        }
+        return NapiAsyncWorkRet(ret);
+    };
+    auto asyncWork = NapiAsyncWorkFactory::CreateAsyncWork(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = napiGattClient->GetCallback()->asyncWorkMap_.TryPush(GATT_CLIENT_READ_REMOTE_RSSI_VALUE, asyncWork);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, success, BT_ERR_INTERNAL_ERROR);
+
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+static napi_status CheckGattClientGetDeviceName(napi_env env, napi_callback_info info)
+{
+    size_t argc = ARGS_SIZE_ONE;
+    napi_value argv[ARGS_SIZE_ONE] = {nullptr};
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, nullptr, NULL));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_ZERO && argc != ARGS_SIZE_ONE, "Requires 0 or 1 arguments.", napi_invalid_arg);
+    return napi_ok;
+}
+
+napi_value NapiGattClient::GetDeviceName(napi_env env, napi_callback_info info)
+{
+    HILOGD("start");
+
+    auto status = CheckGattClientGetDeviceName(env, info);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+    NapiGattClient *napiGattClient = NapiGetGattClient(env, info);
+    std::string deviceAddr = "";
+    if (napiGattClient && napiGattClient->GetDevice()) {
+        deviceAddr = napiGattClient->GetDevice()->GetDeviceAddr();
+    }
+    auto func = [deviceAddr]() {
+        std::string deviceName = "";
+        int32_t err = BluetoothHost::GetDefaultHost().GetRemoteDevice(
+            deviceAddr, BT_TRANSPORT_BLE).GetDeviceName(deviceName);
+
+        HILOGI("err: %{public}d, deviceName: %{private}s", err, deviceName.c_str());
+        auto object = std::make_shared<NapiNativeString>(deviceName);
+        return NapiAsyncWorkRet(err, object);
+    };
+    auto asyncWork = NapiAsyncWorkFactory::CreateAsyncWork(env, info, func, ASYNC_WORK_NO_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+int NapiGattClient::GattStatusFromService(int status)
+{
+    // if status is from napi, do not deal with.
+    if (status > 0) {
+        return status;
+    }
+    int ret = BT_ERR_INTERNAL_ERROR;
+    // statusCode srv -> napi
+    auto iter = g_gattStatusSrvToNapi.begin();
+    for (; iter != g_gattStatusSrvToNapi.end(); iter++) {
+        if (iter->second == status) {
+            ret = iter->first; // transfer to napi errorCode.
+            break;
+        }
+    }
+    if (iter == g_gattStatusSrvToNapi.end()) {
+        HILOGW("Unsupported error code conversion, status: %{public}d", status);
+    }
+    return ret;
+}
+
+#ifdef BLUETOOTH_API_SINCE_10
+
+static napi_status CheckWriteCharacteristicValueEx(napi_env env, napi_callback_info info,
+    GattCharacteristic **outCharacteristic, NapiGattClient **outGattClient, std::vector<uint8_t> &outValue)
+{
+    size_t argc = ARGS_SIZE_THREE;
+    napi_value argv[ARGS_SIZE_THREE] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_TWO && argc != ARGS_SIZE_THREE, "Requires 2 or 3 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NapiBleCharacteristic napiCharacter;
+    NAPI_BT_CALL_RETURN(NapiParseGattCharacteristic(env, argv[PARAM0], napiCharacter));
+    GattCharacteristic *character = GetGattcCharacteristic(gattClient->GetClient(), napiCharacter);
+    NAPI_BT_RETURN_IF(character == nullptr || outCharacteristic == nullptr, "Not found character", napi_invalid_arg);
+
+    int writeType = GattCharacteristic::WriteType::DEFAULT;
+    NAPI_BT_CALL_RETURN(NapiParseGattWriteType(env, argv[PARAM1], writeType));
+    character->SetWriteType(writeType);
+
+    outValue = std::move(napiCharacter.characteristicValue);
+    *outGattClient = gattClient;
+    *outCharacteristic = character;
+
+    return napi_ok;
+}
+
+napi_value NapiGattClient::WriteCharacteristicValueCommon(napi_env env, napi_callback_info info,
+    bool isWithContext, const std::string& apiName, const std::vector<int32_t> &validErrCodes)
+{
+    NAPI_BT_CONTEXT(env, apiName, validErrCodes);
+    GattCharacteristic* character = nullptr;
+    NapiGattClient* client = nullptr;
+    NapiAsyncType asyncType = GATT_CLIENT_WRITE_CHARACTER;
+
+    std::vector<uint8_t> value {};
+    auto status = CheckWriteCharacteristicValueEx(env, info, &character, &client, value);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok && character && client, BT_ERR_INVALID_PARAM);
+    if (isWithContext) {
+        NAPI_BT_ASSERT_RETURN_UNDEF(env, character->GetWriteType() == GattCharacteristic::WriteType::DEFAULT,
+            BT_ERR_INVALID_PARAM);
+        asyncType = GATT_CLIENT_WRITE_CHARACTER_WITH_CONTEXT;
+    }
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, client->GetCallback() != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    auto func = [gattClient = client->GetClient(), character, isWithContext]() {
+        if (character == nullptr) {
+            HILOGE("character is nullptr");
+            return NapiAsyncWorkRet(BT_ERR_GATT_CHARACTER_ERROR);
+        }
+        int ret = BT_ERR_INTERNAL_ERROR;
+        if (gattClient) {
+            ret = gattClient->WriteCharacteristic(*character, isWithContext);
+            ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret)); // Adaptation for old sdk
+        }
+        return NapiAsyncWorkRet(ret);
+    };
+
+    bool isNeedCallback = character->GetWriteType() == GattCharacteristic::WriteType::DEFAULT;
+    auto asyncWork = CREATE_ASYNC_WORK_WITH_CONTEXT(env, info, func,
+        isNeedCallback ? ASYNC_WORK_NEED_CALLBACK : ASYNC_WORK_NO_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    // GattCharacteristic write need callback, write no response is not needed.
+    if (isNeedCallback) {
+        bool success = client->GetCallback()->asyncWorkMap_.TryPush(asyncType, asyncWork);
+        NAPI_BT_ASSERT_ERR_RETURN_VERIFY(env, success, BT_ERR_ASYNCWORK_EXIST);
+    }
+
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+napi_value NapiGattClient::WriteCharacteristicValueEx(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    std::vector<int32_t> validErrCodes = {
+        BT_ERR_PERMISSION_FAILED, BT_ERR_INVALID_PARAM, BT_ERR_API_NOT_SUPPORT,
+        BT_ERR_SERVICE_DISCONNECTED, BT_ERR_OPERATION_BUSY, BT_ERR_INTERNAL_ERROR, BT_ERR_GATT_WRITE_NOT_PERMITTED,
+        BT_ERR_GATT_CONNECTION_NOT_ESTABILISHED, BT_ERR_GATT_CONNECTION_CONGESTED,
+        BT_ERR_GATT_CONNECTION_NOT_ENCRYPTED, BT_ERR_GATT_CONNECTION_NOT_AUTHENTICATED,
+        BT_ERR_GATT_CONNECTION_NOT_AUTHORIZED
+    };
+    std::string apiName = "ble.GattClientDevice.WriteCharacteristicValueEx";
+    return WriteCharacteristicValueCommon(env, info, false, apiName, validErrCodes);
+}
+
+napi_value NapiGattClient::WriteCharacteristicValueWithContext(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    std::vector<int32_t> validErrCodes = {
+        BT_ERR_PERMISSION_FAILED, BT_ERR_SYSTEM_PERMISSION_FAILED, BT_ERR_INVALID_PARAM, BT_ERR_API_NOT_SUPPORT,
+        BT_ERR_OPERATION_BUSY, BT_ERR_INTERNAL_ERROR, BT_ERR_GATT_WRITE_NOT_PERMITTED,
+        BT_ERR_GATT_CONNECTION_NOT_ESTABILISHED, BT_ERR_GATT_CONNECTION_CONGESTED,
+        BT_ERR_GATT_CONNECTION_NOT_ENCRYPTED, BT_ERR_GATT_CONNECTION_NOT_AUTHENTICATED,
+        BT_ERR_GATT_CONNECTION_NOT_AUTHORIZED
+    };
+    std::string apiName = "ble.GattClientDevice.WriteCharacteristicValueWithContext";
+    return WriteCharacteristicValueCommon(env, info, true, apiName, validErrCodes);
+}
+
+static napi_status CheckWriteDescriptorValueEx(napi_env env, napi_callback_info info,
+    GattDescriptor **outDescriptor, NapiGattClient **outGattClient)
+{
+    size_t argc = ARGS_SIZE_TWO;
+    napi_value argv[ARGS_SIZE_TWO] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_ONE && argc != ARGS_SIZE_TWO, "Requires 1 or 2 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NapiBleDescriptor napiDescriptor;
+    NAPI_BT_CALL_RETURN(NapiParseGattDescriptor(env, argv[PARAM0], napiDescriptor));
+    GattDescriptor *descriptor = GetGattcDescriptor(gattClient->GetClient(), napiDescriptor);
+    NAPI_BT_RETURN_IF(descriptor == nullptr, "Not found Descriptor", napi_invalid_arg);
+
+    *outGattClient = gattClient;
+    *outDescriptor = descriptor;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::WriteDescriptorValueEx(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiGattClient* client = nullptr;
+    GattDescriptor* descriptor = nullptr;
+    auto status = CheckWriteDescriptorValueEx(env, info, &descriptor, &client);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok && client && descriptor, BT_ERR_INVALID_PARAM);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, client->GetCallback() != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    auto func = [gattClient = client->GetClient(), descriptor]() {
+        if (descriptor == nullptr) {
+            HILOGE("descriptor is nullptr");
+            return NapiAsyncWorkRet(BT_ERR_INTERNAL_ERROR);
+        }
+        int ret = BT_ERR_INTERNAL_ERROR;
+        if (gattClient) {
+            ret = gattClient->WriteDescriptor(*descriptor);
+            ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret)); // Adaptation for old sdk
+        }
+        return NapiAsyncWorkRet(ret);
+    };
+    auto asyncWork = NapiAsyncWorkFactory::CreateAsyncWork(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = client->GetCallback()->asyncWorkMap_.TryPush(GATT_CLIENT_WRITE_DESCRIPTOR, asyncWork);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, success, BT_ERR_INTERNAL_ERROR);
+
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+static napi_status CheckSetCharacteristicChange(napi_env env, napi_callback_info info,
+    GattCharacteristic **outCharacteristic, bool &enable, NapiGattClient **outGattClient)
+{
+    size_t argc = ARGS_SIZE_THREE;
+    napi_value argv[ARGS_SIZE_THREE] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_TWO && argc != ARGS_SIZE_THREE, "Requires 2 or 3 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NapiBleCharacteristic napiCharacter;
+    NAPI_BT_CALL_RETURN(NapiParseGattCharacteristic(env, argv[PARAM0], napiCharacter));
+    GattCharacteristic *character = GetGattcCharacteristic(gattClient->GetClient(), napiCharacter);
+    NAPI_BT_RETURN_IF(character == nullptr || outCharacteristic == nullptr, "Not found character", napi_invalid_arg);
+
+    NAPI_BT_CALL_RETURN(NapiParseBoolean(env, argv[PARAM1], enable));
+    *outGattClient = gattClient;
+    *outCharacteristic = character;
+    return napi_ok;
+}
+
+static napi_value setCharacteristicChangeInner(napi_env env, napi_callback_info info, bool isNotify,
+    const std::string& apiName)
+{
+    std::vector<int32_t> validErrCodes = {
+        BT_ERR_PERMISSION_FAILED, BT_ERR_INVALID_PARAM, BT_ERR_API_NOT_SUPPORT,
+        BT_ERR_SERVICE_DISCONNECTED, BT_ERR_OPERATION_BUSY, BT_ERR_INTERNAL_ERROR,
+        BT_ERR_GATT_CONNECTION_NOT_ESTABILISHED
+    };
+    NAPI_BT_CONTEXT(env, apiName, validErrCodes);
+    GattCharacteristic *character = nullptr;
+    bool enable = false;
+    NapiGattClient *client = nullptr;
+
+    auto status = CheckSetCharacteristicChange(env, info, &character, enable, &client);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok && client && character, BT_ERR_INVALID_PARAM);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, client->GetCallback() != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    auto func = [gattClient = client->GetClient(), character, enable, isNotify]() {
+        if (character == nullptr) {
+            HILOGE("character is nullptr");
+            return NapiAsyncWorkRet(BT_ERR_GATT_CHARACTER_ERROR);
+        }
+        int ret = BT_ERR_INTERNAL_ERROR;
+        if (gattClient) {
+            if (isNotify) {
+                ret = gattClient->SetNotifyCharacteristic(*character, enable);
+            } else {
+                ret = gattClient->SetIndicateCharacteristic(*character, enable);
+            }
+            ret = GetSDKAdaptedStatusCode(NapiGattClient::GattStatusFromService(ret)); // Adaptation for old sdk
+        }
+        return NapiAsyncWorkRet(ret);
+    };
+    auto asyncWork = CREATE_ASYNC_WORK_WITH_CONTEXT(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = client->GetCallback()->asyncWorkMap_.TryPush(GATT_CLIENT_ENABLE_CHARACTER_CHANGED, asyncWork);
+    NAPI_BT_ASSERT_ERR_RETURN_VERIFY(env, success, BT_ERR_ASYNCWORK_EXIST);
+
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+napi_value NapiGattClient::setCharacteristicChangeNotification(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    std::string apiName = "ble.GattClientDevice.setCharacteristicChangeNotification";
+    return setCharacteristicChangeInner(env, info, true, apiName);
+}
+
+napi_value NapiGattClient::setCharacteristicChangeIndication(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    std::string apiName = "ble.GattClientDevice.setCharacteristicChangeIndication";
+    return setCharacteristicChangeInner(env, info, false, apiName);
+}
+
+static napi_status ParseSetPhyValue(napi_env env, napi_callback_info info,
+    BlePhyInfo &outPhyValue, NapiGattClient **outGattClient)
+{
+    size_t argc = ARGS_SIZE_ONE;
+    napi_value argv[ARGS_SIZE_ONE] = {nullptr};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != ARGS_SIZE_ONE, "Requires 1 argument.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NAPI_BT_CALL_RETURN(NapiParseSetPhyValue(env, argv[PARAM0], outPhyValue));
+
+    *outGattClient = gattClient;
+    return napi_ok;
+}
+
+
+napi_value NapiGattClient::SetPhy(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    BlePhyInfo phyValue(static_cast<int32_t>(BLE_PHY_1M), static_cast<int32_t>(BLE_PHY_1M),
+        BLE_PHY_CODED_NO_PREFERRED);
+    NapiGattClient *client = nullptr;
+
+    auto status = ParseSetPhyValue(env, info, phyValue, &client);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    auto func = [gattClient = client->GetClient(), phyValue]() {
+        int ret = BT_ERR_INTERNAL_ERROR;
+        if (gattClient) {
+            ret = gattClient->SetPhy(phyValue.txPhy, phyValue.rxPhy, phyValue.phyOptions);
+        }
+        return NapiAsyncWorkRet(ret);
+    };
+
+    auto asyncWork = NapiAsyncWorkFactory::CreateAsyncWork(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = client->GetCallback()->asyncWorkMap_.TryPush(
+        NapiAsyncType::GATT_CLIENT_SET_PHY, asyncWork);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, success, BT_ERR_INTERNAL_ERROR);
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+napi_value NapiGattClient::ReadPhy(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    NapiGattClient *client = nullptr;
+    auto status = CheckGattClientNoArgc(env, info, &client);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    auto func = [gattClient = client->GetClient()]() {
+        int ret = BT_ERR_INTERNAL_ERROR;
+        if (gattClient) {
+            ret = gattClient->ReadPhy();
+        }
+        return NapiAsyncWorkRet(ret);
+    };
+
+    auto asyncWork = NapiAsyncWorkFactory::CreateAsyncWork(env, info, func, ASYNC_WORK_NEED_CALLBACK);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, asyncWork, BT_ERR_INTERNAL_ERROR);
+    bool success = client->GetCallback()->asyncWorkMap_.TryPush(
+        NapiAsyncType::GATT_CLIENT_READ_PHY, asyncWork);
+    NAPI_BT_ASSERT_RETURN_UNDEF(env, success, BT_ERR_INTERNAL_ERROR);
+    asyncWork->Run();
+    return asyncWork->GetRet();
+}
+
+#else  // ! BLUETOOTH_API_SINCE_10
+
+static napi_status CheckWriteCharacteristicValue(napi_env env, napi_callback_info info,
+    GattCharacteristic **outCharacteristic, NapiGattClient **outGattClient, std::vector<uint8_t> &outValue)
+{
+    size_t expectedArgsCount = ARGS_SIZE_ONE;
+    size_t argc = expectedArgsCount;
+    napi_value argv[ARGS_SIZE_ONE] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != expectedArgsCount, "Requires 1 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NapiBleCharacteristic napiCharacter;
+    NAPI_BT_CALL_RETURN(NapiParseGattCharacteristic(env, argv[PARAM0], napiCharacter));
+    GattCharacteristic *character = GetGattcCharacteristic(gattClient->GetClient(), napiCharacter);
+    NAPI_BT_RETURN_IF(character == nullptr, "Not found character", napi_invalid_arg);
+
+    outValue = std::move(napiCharacter.characteristicValue);
+    *outGattClient = gattClient;
+    *outCharacteristic = character;
+
+    return napi_ok;
+}
+
+napi_value NapiGattClient::WriteCharacteristicValue(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    std::vector<int32_t> validErrCodes = {
+        BT_ERR_PERMISSION_FAILED, BT_ERR_INVALID_PARAM, BT_ERR_API_NOT_SUPPORT,
+        BT_ERR_SERVICE_DISCONNECTED, BT_ERR_GATT_WRITE_NOT_PERMITTED, BT_ERR_INTERNAL_ERROR,
+    };
+    NAPI_BT_CONTEXT(env, "bluetoothmanager.GattClientDevice.WriteCharacteristicValue", validErrCodes);
+    GattCharacteristic* characteristic = nullptr;
+    NapiGattClient* gattClient = nullptr;
+
+    std::vector<uint8_t> value {};
+    auto status = CheckWriteCharacteristicValue(env, info, &characteristic, &gattClient, value);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+    std::shared_ptr<GattClient> client = gattClient->GetClient();
+    NAPI_BT_ASSERT_RETURN_FALSE(env, client != nullptr, BT_ERR_INTERNAL_ERROR);
+    int ret = client->WriteCharacteristic(*characteristic, std::move(value));
+    ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret)); // Adaptation for old sdk
+    HILOGI("ret: %{public}d", ret);
+    NAPI_BT_ASSERT_RETURN_FALSE_VERIFY(env, ret == BT_NO_ERROR, ret);
+    return NapiGetBooleanTrue(env);
+}
+
+static napi_status CheckWriteDescriptorValue(napi_env env, napi_callback_info info,
+    GattDescriptor **outDescriptor, NapiGattClient **outGattClient)
+{
+    size_t expectedArgsCount = ARGS_SIZE_ONE;
+    size_t argc = expectedArgsCount;
+    napi_value argv[ARGS_SIZE_ONE] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != expectedArgsCount, "Requires 1 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NapiBleDescriptor napiDescriptor;
+    NAPI_BT_CALL_RETURN(NapiParseGattDescriptor(env, argv[PARAM0], napiDescriptor));
+    GattDescriptor *descriptor = GetGattcDescriptor(gattClient->GetClient(), napiDescriptor);
+    NAPI_BT_RETURN_IF(descriptor == nullptr, "Not found Descriptor", napi_invalid_arg);
+
+    *outGattClient = gattClient;
+    *outDescriptor = descriptor;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::WriteDescriptorValue(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    GattDescriptor* descriptor = nullptr;
+    NapiGattClient* gattClient = nullptr;
+
+    auto status = CheckWriteDescriptorValue(env, info, &descriptor, &gattClient);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    std::shared_ptr<GattClient> client = gattClient->GetClient();
+    NAPI_BT_ASSERT_RETURN_FALSE(env, client != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    int ret = client->WriteDescriptor(*descriptor);
+    ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret)); // Adaptation for old sdk
+    HILOGI("ret: %{public}d", ret);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, ret == BT_NO_ERROR, ret);
+    return NapiGetBooleanTrue(env);
+}
+
+static napi_status CheckSetNotifyCharacteristicChanged(napi_env env, napi_callback_info info,
+    GattCharacteristic **outCharacteristic, bool &enableNotify, NapiGattClient **outGattClient)
+{
+    size_t expectedArgsCount = ARGS_SIZE_TWO;
+    size_t argc = expectedArgsCount;
+    napi_value argv[ARGS_SIZE_TWO] = {0};
+    napi_value thisVar = nullptr;
+    NAPI_BT_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    NAPI_BT_RETURN_IF(argc != expectedArgsCount, "Requires 2 arguments.", napi_invalid_arg);
+    NapiGattClient *gattClient = NapiGetGattClient(env, thisVar);
+    NAPI_BT_RETURN_IF(gattClient == nullptr || outGattClient == nullptr, "gattClient is nullptr.", napi_invalid_arg);
+
+    NapiBleCharacteristic napiCharacter;
+    NAPI_BT_CALL_RETURN(NapiParseGattCharacteristic(env, argv[PARAM0], napiCharacter));
+    GattCharacteristic *character = GetGattcCharacteristic(gattClient->GetClient(), napiCharacter);
+    NAPI_BT_RETURN_IF(character == nullptr, "Not found character", napi_invalid_arg);
+
+    NAPI_BT_CALL_RETURN(NapiParseBoolean(env, argv[PARAM1], enableNotify));
+    *outGattClient = gattClient;
+    *outCharacteristic = character;
+    return napi_ok;
+}
+
+napi_value NapiGattClient::SetNotifyCharacteristicChanged(napi_env env, napi_callback_info info)
+{
+    HILOGI("enter");
+    GattCharacteristic* characteristic = nullptr;
+    bool enableNotify = false;
+    NapiGattClient* gattClient = nullptr;
+
+    auto status = CheckSetNotifyCharacteristicChanged(env, info, &characteristic, enableNotify, &gattClient);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, status == napi_ok, BT_ERR_INVALID_PARAM);
+
+    std::shared_ptr<GattClient> client = gattClient->GetClient();
+    NAPI_BT_ASSERT_RETURN_FALSE(env, client != nullptr, BT_ERR_INTERNAL_ERROR);
+
+    int ret = client->SetNotifyCharacteristic(*characteristic, enableNotify);
+    ret = GetSDKAdaptedStatusCode(GattStatusFromService(ret)); // Adaptation for old sdk
+    HILOGI("ret: %{public}d", ret);
+    NAPI_BT_ASSERT_RETURN_FALSE(env, ret == BT_NO_ERROR, ret);
+    return NapiGetBooleanTrue(env);
+}
+
+#endif
+
+} // namespace Bluetooth
+} // namespace OHOS

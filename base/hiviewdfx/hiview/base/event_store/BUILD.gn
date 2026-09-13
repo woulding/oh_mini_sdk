@@ -1,0 +1,80 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("event_store_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    "include",
+    "$hiview_base/event_raw/include",
+    "$hiview_base/include",
+    "$hiview_base/running_status_logger/include",
+    "$hiview_root/include",
+  ]
+}
+
+config("event_store_private_config") {
+  include_dirs = [
+    "include",
+    "store/include",
+  ]
+}
+
+ohos_source_set("event_store_source") {
+  cflags_cc = [ "-Os" ]
+  branch_protector_ret = "pac_ret"
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  public_configs = [ ":event_store_config" ]
+
+  configs = [ ":event_store_private_config" ]
+
+  sources = [
+    "dao/doc_query.cpp",
+    "dao/sys_event_dao.cpp",
+    "dao/sys_event_query.cpp",
+    "dao/sys_event_query_wrapper.cpp",
+    "sequence/sys_event_sequence_mgr.cpp",
+    "store/sys_event_backup.cpp",
+    "store/sys_event_database.cpp",
+    "store/sys_event_doc.cpp",
+    "store/sys_event_doc_lru_cache.cpp",
+    "store/sys_event_repeat_db.cpp",
+    "store/sys_event_repeat_guard.cpp",
+  ]
+
+  deps = [
+    "$hiview_base/event_raw:hiview_event_raw_decode",
+    "$hiview_base/running_status_logger:running_status_logger_source",
+    "$hiview_root/utility/common_utils:hiview_reliability_common_utils",
+    "config:event_store_config_source",
+    "utility:event_store_utility_source",
+  ]
+
+  external_deps = [
+    "ability_runtime:dataobs_manager",
+    "c_utils:utils",
+    "data_share:datashare_consumer",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+    "openssl:libcrypto_shared",
+    "relational_store:native_rdb",
+    "zlib:shared_libz",
+  ]
+}

@@ -1,0 +1,90 @@
+# Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+group("test_bundle") {
+  testonly = true
+  deps = []
+
+  deps += [
+    # deps file
+    "backupTest:backupTest",
+    "bmsAccessTokentest1:bmsAccessTokentest1",
+    "bmsAccessTokentest2:bmsAccessTokentest2",
+    "bmsAccessTokentest3:bmsAccessTokentest3",
+    "bmsThirdBundle1:bmsThirdBundle1",
+    "bmsThirdBundle2:bmsThirdBundle2",
+    "defaultAppTest:defaultAppTest",
+    "eighth_right:eighth_right",
+    "eleventh_right:eleventh_right",
+    "fifteenth_right:fifteenth_right",
+    "fifth_right:fifth_right",
+    "first_diff_minCompCode:first_diff_minCompCode",
+    "first_diff_release_type:first_diff_release_type",
+    "first_right:first_right",
+    "first_right_compCode:first_right_compCode",
+    "first_right_with_diff_moduleType:first_right_with_diff_moduleType",
+    "fourteenth_right:fourteenth_right",
+    "fourth_right:fourth_right",
+    "moduleJsonTest:moduleJsonTest",
+    "ninth_right:ninth_right",
+    "otaUpdateTestAplDown:otaUpdateTestAplDown",
+    "otaUpdateTestAplUp:otaUpdateTestAplUp",
+    "otaUpdateTestAppField:otaUpdateTestAppField",
+    "otaUpdateTestAppField2:otaUpdateTestAppField2",
+    "otaUpdateTestAppFieldUBSan:otaUpdateTestAppFieldUBSan",
+    "otaUpdateTestBasis:otaUpdateTestBasis",
+    "otaUpdateTestBasis/feature1:otaUpdateTestBasisFeature1",
+    "otaUpdateTestBasis/feature2:otaUpdateTestBasisFeature2",
+    "otaUpdateTestBasis2:otaUpdateTestBasis2",
+    "otaUpdateTestBasisUBSan:otaUpdateTestBasisUBSan",
+    "otaUpdateTestModuleField:otaUpdateTestModuleField",
+    "otaUpdateTestSignaIcon:otaUpdateTestSignaIcon",
+    "otaUpdateTestSoChanged:otaUpdateTestSoChanged",
+    "otaUpdateTestSoChanged/feature1:otaUpdateTestSoChangedFeature1",
+    "otaUpdateTestSoChanged/feature2:otaUpdateTestSoChangedFeature2",
+    "previewTest:previewTest",
+    "resourceManagerTest:resourceManagerTest",
+    "rightTest:rightTest",
+    "rightTest1:rightTest1",
+    "sandboxTest:sandboxTest",
+    "second_backup_right:second_backup_right",
+    "second_right:second_right",
+    "seventh_right:seventh_right",
+    "signatureTest:signatureTest",
+    "sixteenth_right:sixteenth_right",
+    "sixth_right:sixth_right",
+    "system_module:system_module",
+    "tenth_right:tenth_right",
+    "testhapdemo:testhapdemo",
+    "testhapdemo2:testhapdemo2",
+    "testhapdemo3:testhapdemo3",
+    "third_right:third_right",
+    "thirteenth_right:thirteenth_right",
+    "thumbnailTest:thumbnailTest",
+    "thumbnailTest2:thumbnailTest2",
+    "twelfth_right:twelfth_right",
+    "versionNormalHapTest1:versionNormalHapTest1",
+    "versionNormalHapTest2:versionNormalHapTest2",
+    "versionTest1:versionTest1",
+    "versionTest2:versionTest2",
+    "versionTest3:versionTest3",
+    "versionUpdateTest1:versionUpdateTest1",
+    "versionUpdateTest2:versionUpdateTest2",
+    "versionUpdateTest3:versionUpdateTest3",
+    "versionUpdateTest4:versionUpdateTest4",
+    "versionUpdateTest5:versionUpdateTest5",
+    "versionUpdateTest6:versionUpdateTest6",
+    "versionUpdateTest7:versionUpdateTest7",
+    "wrong_bundle_name:wrong_bundle_name",
+  ]
+}

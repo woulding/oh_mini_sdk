@@ -1,0 +1,59 @@
+{
+    "name": "@ohos/samgr_lite",
+    "description": "system ability manager",
+    "homePage": "https://gitee.com/openharmony",
+    "version": "4.0.2",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/systemabilitymgr_samgr_lite",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/systemabilitymgr/samgr_lite"
+    },
+    "supplier":"Organization:OpenHarmony",
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "samgr_lite",
+        "subsystem": "systemabilitymgr",
+        "adapted_system_type": [
+            "mini","small"
+        ],
+        "adapted_kernel": [
+            "liteos_a",
+            "liteos_m",
+            "uniproton",
+            "linux"
+        ],
+        "rom": "100KB",
+        "ram": "2048KB",
+        "deps": {
+            "components": [
+                "hilog_lite",
+                "ipc",
+                "liteos_m",
+                "mksh",
+                "permission_lite",
+                "toybox",
+                "utils_lite"
+            ],
+            "third_party": [
+                "bounds_checking_function",
+                "cJSON"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//foundation/systemabilitymgr/samgr_lite:samgr"
+            ],
+            "inner_kits": [
+                {
+                    "name": "//foundation/systemabilitymgr/samgr_lite/samgr:samgr",
+                    "header": {
+                        "header_files": [],
+                        "header_base": "//foundation/systemabilitymgr/samgr_lite/samgr/source"
+                    }
+                }
+            ]
+        }
+    }
+}

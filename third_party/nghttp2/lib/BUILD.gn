@@ -1,0 +1,190 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+#    conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list
+#    of conditions and the following disclaimer in the documentation and/or other materials
+#    provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used
+#    to endorse or promote products derived from this software without specific prior written
+#    permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+nghttp2_lib_sources = [
+  "nghttp2_alpn.c",
+  "nghttp2_buf.c",
+  "nghttp2_callbacks.c",
+  "nghttp2_debug.c",
+  "nghttp2_extpri.c",
+  "nghttp2_frame.c",
+  "nghttp2_hd.c",
+  "nghttp2_hd_huffman.c",
+  "nghttp2_hd_huffman_data.c",
+  "nghttp2_helper.c",
+  "nghttp2_http.c",
+  "nghttp2_map.c",
+  "nghttp2_mem.c",
+  "nghttp2_option.c",
+  "nghttp2_outbound_item.c",
+  "nghttp2_pq.c",
+  "nghttp2_priority_spec.c",
+  "nghttp2_queue.c",
+  "nghttp2_ratelim.c",
+  "nghttp2_rcbuf.c",
+  "nghttp2_session.c",
+  "nghttp2_stream.c",
+  "nghttp2_submit.c",
+  "nghttp2_time.c",
+  "nghttp2_version.c",
+  "sfparse.c",
+]
+
+llhttp_sources = [
+  "../third-party/llhttp/src/api.c",
+  "../third-party/llhttp/src/http.c",
+  "../third-party/llhttp/src/llhttp.c",
+]
+
+config("nghttp2_lib_config") {
+  include_dirs = [
+    ".",
+    "./includes",
+  ]
+  defines = [ "HAVE_ARPA_INET_H=1" ]
+}
+
+config("llhttp_public_config") {
+  include_dirs = [ "../third-party/llhttp/include" ]
+}
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  import("//build/lite/ndk/ndk.gni")
+
+  lite_library("nghttp2_lib_static") {
+    target_type = "static_library"
+    sources = nghttp2_lib_sources
+    public_configs = [ ":nghttp2_lib_config" ]
+    output_name = "nghttp2"
+  }
+
+  lite_library("llhttp_lib_static") {
+    target_type = "static_library"
+    sources = llhttp_sources
+  }
+
+  lite_library("nghttp2_lib_shared") {
+    target_type = "shared_library"
+    sources = nghttp2_lib_sources
+    public_configs = [ ":nghttp2_lib_config" ]
+    output_name = "nghttp2"
+  }
+
+  ndk_lib("nghttp2_lib_ndk") {
+    if (ohos_kernel_type == "liteos_m") {
+      lib_extension = ".a"
+      deps = [ ":nghttp2_lib_static" ]
+    } else {
+      lib_extension = ".so"
+      deps = [ ":nghttp2_lib_shared" ]
+    }
+    head_files = [
+      "//third_party/nghttp2/lib",
+      "//third_party/nghttp2/lib/includes",
+    ]
+  }
+} else {
+  import("//build/config/config.gni")
+  import("//build/ohos.gni")
+
+  ohos_static_library("nghttp2") {
+    branch_protector_ret = "pac_ret"
+    include_dirs = [ "includes" ]
+    license_file = "//third_party/nghttp2/COPYING"
+    defines = []
+    if (is_linux || is_mac || is_ohos) {
+      defines += [
+        "HAVE_ARPA_INET_H=1",
+        "HAVE_NETINET_IN_H=1",
+      ]
+    }
+    sources = nghttp2_lib_sources
+  }
+
+  ohos_static_library("libllhttp") {
+    branch_protector_ret = "pac_ret"
+    sources = llhttp_sources
+    public_configs = [ ":llhttp_public_config" ]
+  }
+
+  config("libnghttp2_shared_config_public") {
+    include_dirs = [
+      "//third_party/nghttp2/lib/includes",
+      "//third_party/nghttp2/lib/includes/nghttp2",
+    ]
+
+    cflags = [ "-Wno-deprecated-declarations" ]
+  }
+
+  ohos_shared_library("libnghttp2_shared") {
+    include_dirs = [ "includes" ]
+    license_file = "//third_party/nghttp2/COPYING"
+    public_configs = [ ":libnghttp2_shared_config_public" ]
+    defines = [ "HAVE_TIME_H=1" ]
+    if (is_linux || is_mac || is_ohos) {
+      defines += [
+        "HAVE_ARPA_INET_H=1",
+        "HAVE_NETINET_IN_H=1",
+      ]
+    }
+    if (current_os == "ios") {
+      ldflags = [
+        "-Wl",
+        "-install_name",
+        "@rpath/libnghttp2.framework/libnghttp2",
+      ]
+      output_name = "nghttp2"
+    }
+    branch_protector_ret = "pac_ret"
+    sources = nghttp2_lib_sources
+    if (target_os != "ios") {
+      if (product_name != "ohos-sdk") {
+        version_script = "libnghttp2_shared.map"
+      }
+      install_images = [
+        "system",
+        "updater",
+      ]
+    }
+    subsystem_name = "thirdparty"
+    innerapi_tags = [
+      "chipsetsdk_indirect",
+      "platformsdk",
+    ]
+    part_name = "nghttp2"
+  }
+
+  if (current_os == "ios") {
+    ohos_combine_darwin_framework("libnghttp2") {
+      deps = [ ":libnghttp2_shared" ]
+      subsystem_name = "thirdparty"
+      part_name = "nghttp2"
+    }
+  }
+}

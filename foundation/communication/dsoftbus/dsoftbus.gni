@@ -1,0 +1,206 @@
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+kernel_path = "//kernel/liteos_m/components/net/lwip-2.1/porting/include"
+third_party_path = "//third_party/lwip/src/include"
+build_lite_path = "//build/lite/config/component/cJSON:cjson_static"
+btframework_path = "//foundation/communication/bluetooth/frameworks/inner:btframework"
+inner_api_path = "//foundation/communication/bluetooth/interfaces/inner_api/include"
+commonlibrary_path = "//commonlibrary/utils_lite/include"
+cjson_shared_path = "//build/lite/config/component/cJSON:cjson_shared"
+ipc_single_path = "//foundation/communication/ipc/interfaces/innerkits/c/ipc:ipc_single"
+samgr_path = "//foundation/systemabilitymgr/samgr_lite/samgr:samgr"
+btframework_path = "//foundation/communication/bluetooth/frameworks/inner:btframework"
+
+dsoftbus_root_path = rebase_path(".")
+dsoftbus_sdk_path = "${dsoftbus_root_path}/sdk"
+dsoftbus_core_path = "${dsoftbus_root_path}/core"
+dsoftbus_dfx_path = "${dsoftbus_root_path}/dfx"
+dsoftbus_test_path = "${dsoftbus_root_path}/tests"
+dsoftbus_test_dfx_path = "${dsoftbus_test_path}/dfx"
+dsoftbus_fuzz_out_path = "dsoftbus/soft_bus"
+
+dsoftbus_log_label_deps = [ "$dsoftbus_dfx_path:softbus_dfx" ]
+
+import("adapter/feature_config/external_deps_feature/external_deps_feature.gni")
+import("adapter/feature_config/inner_feature/conn_inner_feature.gni")
+import("adapter/feature_config/inner_feature/disc_inner_feature.gni")
+import("adapter/feature_config/inner_feature/lnn_inner_feature.gni")
+import("adapter/feature_config/inner_feature/softbus_common_feature.gni")
+import("adapter/feature_config/inner_feature/t2stack_inner_feature.gni")
+import("adapter/feature_config/inner_feature/trans_inner_feature.gni")
+import("adapter/feature_config/public_feature/public_feature.gni")
+
+declare_args() {
+  softbus_adapter_common = "${dsoftbus_root_path}/adapter/common"
+  softbus_adapter_config = "${dsoftbus_root_path}/adapter/default_config"
+  dsoftbus_feature_product_config_path =
+      "${dsoftbus_root_path}/adapter/default_config"
+}
+
+declare_args() {
+  softbus_communication_wifi_feature = true
+  softbus_os_account = true
+  dsoftbus_build_eng = false
+  dsoftbus_access_token_feature = true
+  dsoftbus_ipc_feature = true
+  softbus_config_enhance = false
+
+  if (product_name != "qemu-arm-linux-min") {
+    qemu_arm_disable = true
+  } else {
+    qemu_arm_disable = false
+  }
+}
+
+dsoftbus_feature_lnn_frame = true
+
+if (defined(global_parts_info) &&
+    !defined(global_parts_info.communication_wifi)) {
+  softbus_communication_wifi_feature = false
+}
+
+if (defined(global_parts_info) &&
+    !defined(global_parts_info.account_os_account)) {
+  softbus_os_account = false
+}
+
+if (defined(global_parts_info) &&
+    !defined(global_parts_info.communication_bluetooth)) {
+  support_bluetooth = false
+} else {
+  support_bluetooth = true
+}
+
+if (defined(global_parts_info) &&
+    !defined(global_parts_info.security_access_token)) {
+  dsoftbus_access_token_feature = false
+}
+
+if (defined(global_parts_info) &&
+    !defined(global_parts_info.communication_ipc)) {
+  dsoftbus_ipc_feature = false
+}
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  if (ohos_kernel_type == "liteos_m") {
+    defines = [ "SOFTBUS_LITEOS_M" ]
+    import("$softbus_adapter_config/feature_config/mini/config.gni")
+  } else {
+    defines = [ "SOFTBUS_LITEOS_A" ]
+    import("$softbus_adapter_config/feature_config/small/config.gni")
+  }
+} else {
+  if (defined(os_win)) {
+    os_type = "windows"
+  } else {
+    os_type = "standard"
+  }
+  defines = [ "SOFTBUS_LINUX" ]
+  if (is_standard_system) {
+    defines += [ "SOFTBUS_STANDARD_OS" ]
+  }
+  import("//build/ohos.gni")
+  import(
+      "$dsoftbus_feature_product_config_path/feature_config/standard/config.gni")
+
+  if (build_variant == "root") {
+    defines += [ "BUILD_VARIANT_ENG" ]
+    dsoftbus_build_eng = true
+  } else {
+    dsoftbus_build_eng = false
+  }
+}
+
+defines += [ "OPENSSL_NO_FILENAMES" ]
+
+if (dsoftbus_feature_disc_coap && dsoftbus_feature_inner_disc_coap) {
+  defines += [ "DSOFTBUS_FEATURE_DISC_COAP" ]
+}
+
+if (dsoftbus_feature_disc_lnn_coap && dsoftbus_feature_inner_disc_coap) {
+  defines += [ "DSOFTBUS_FEATURE_DISC_LNN_COAP" ]
+}
+
+if (dsoftbus_feature_disc_share_coap && dsoftbus_feature_inner_disc_coap) {
+  defines += [ "DSOFTBUS_FEATURE_DISC_SHARE_COAP" ]
+}
+
+if (defined(global_parts_info) &&
+    !defined(global_parts_info.distributeddatamgr_kv_store)) {
+  dsoftbus_feature_lnn_cloud_sync = false
+} else {
+  dsoftbus_feature_lnn_cloud_sync = true
+}
+
+if (softbus_config_enhance) {
+  defines += [ "DSOFTBUS_CONFIG_ENHANCE" ]
+}
+
+import("$dsoftbus_dfx_path/dsoftbus_dfx.gni")
+if (defined(global_parts_info) &&
+    !defined(global_parts_info.notification_common_event_service)) {
+  has_ces_part = false
+} else {
+  has_ces_part = true
+}
+
+if (dsoftbus_feature_lnn_wifi) {
+  defines += [ "ENABLE_FEATURE_LNN_WIFI" ]
+}
+
+if (dsoftbus_feature_lnn_ble) {
+  defines += [ "ENABLE_FEATURE_LNN_BLE" ]
+}
+
+if (dsoftbus_feature_deps_data_share && dsoftbus_feature_deps_datamgr_service) {
+  defines += [ "ENABLE_FEATURE_DATAMGR_SERVICE" ]
+}
+
+if (dsoftbus_feature_conn_pv1 && softbus_communication_wifi_feature &&
+    dsoftbus_feature_conn_tcp_comm) {
+  defines += [ "DSOFTBUS_FEATURE_CONN_PV1" ]
+  if (dsoftbus_feature_conn_pv2 && dsoftbus_feature_conn_pv1) {
+    defines += [ "DSOFTBUS_FEATURE_CONN_PV2" ]
+  }
+  if (dsoftbus_feature_conn_action) {
+    if (dsoftbus_feature_conn_hv2) {
+      defines += [ "DSOFTBUS_FEATURE_CONN_HV2" ]
+      if (dsoftbus_feature_conn_hv1 && dsoftbus_feature_conn_pv2 &&
+          dsoftbus_feature_conn_pv1) {
+        defines += [ "DSOFTBUS_FEATURE_CONN_HV1" ]
+      }
+    }
+  }
+}
+
+if (dsoftbus_feature_deps_sle) {
+  defines += [ "DSOFTBUS_FEATURE_SLE" ]
+}
+
+if (dsoftbus_feature_deps_remoteP2p_service) {
+  defines += [ "DSOFTBUS_DEVICE_CLOUD_CONVERGENCE" ]
+}
+
+if (dsoftbus_feature_lnn_push) {
+  defines += [ "DSOFTBUS_FEATURE_SUPPORT_PUSH" ]
+}
+
+if (dsoftbus_feature_trans_mintp) {
+  defines += [ "DSOFTBUS_FEATURE_TRANS_MINTP" ]
+}
+
+if (dsoftbus_feature_multi_foreground_user) {
+  defines += [ "DSOFTBUS_FEATURE_MULTI_FOREGROUND_USER" ]
+}

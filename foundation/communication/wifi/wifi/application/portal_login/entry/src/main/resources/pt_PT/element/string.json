@@ -1,0 +1,130 @@
+{
+    "string":[
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"Página para computador",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"actions_menu_user_agent",
+            "value":"Agente de utilizador do navegador",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"Cancelar",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"Abrir no Navegador",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"Página para telemóvel",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"O certificado SSL da página de Internet expirou ou não é de confiança. Poderá apresentar riscos de segurança se continuar.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"continue_visit",
+            "value":"Continuar nesta página de Internet?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"Definições de %s",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"Continuar",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"HarmonyOS",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"Negar",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"A página de Internet a seguir pode conter conteúdo impróprio ou proibido. Proceda com cuidado.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"Conteúdo prejudicial à frente",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"Permitir a %s utilizar a câmara?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"Para capturar fotografias e vídeos.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"Permitir",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ok",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"Mensagem de %s:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

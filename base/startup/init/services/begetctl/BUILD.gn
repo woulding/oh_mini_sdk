@@ -1,0 +1,287 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+
+common_include_dirs = [
+  "//base/startup/init/services/begetctl",
+  "//base/startup/init/services/begetctl/shell",
+  "//base/startup/init/services/param/include",
+  "//base/startup/init/services/param/adapter",
+  "//base/startup/init/services/param/linux",
+  "//base/startup/init/services/param/base",
+  "//base/startup/init/interfaces/innerkits/include/param",
+  "//base/startup/init/interfaces/innerkits/include",
+  "//base/startup/init/services/loopevent/include",
+  "//base/startup/init/services/init/include",
+  "//base/startup/init/services/log",
+  "//base/startup/init/interfaces/innerkits/include",
+  "//base/startup/init/interfaces/innerkits/include/syspara",
+]
+
+if (defined(ohos_lite)) {
+  executable("begetctl") {
+    output_name = "begetctl"
+    sources = [
+      "main.c",
+      "param_cmd.c",
+      "shell/shell_bas.c",
+    ]
+    defines = [
+      "_GNU_SOURCE",  #syscall function need this macro definition
+      "__MUSL__",
+      "OHOS_LITE",
+    ]
+    if (param_test) {
+      sources += [ "//base/startup/init/test/moduletest/syspara.cpp" ]
+    }
+
+    include_dirs = common_include_dirs
+    include_dirs +=
+        [ "//base/security/selinux_adapter/interfaces/policycoreutils/include" ]
+    deps = [
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//base/startup/init/interfaces/innerkits:libbegetutil",
+      "//base/startup/init/services/utils:libinit_utils",
+      "//build/lite/config/component/cJSON:cjson_static",
+    ]
+    external_deps = [ "bounds_checking_function:libsec_static" ]
+
+    if (ohos_kernel_type == "linux") {
+      deps += [ "//base/startup/init/services/param/linux:param_client" ]
+    } else {
+      deps += [ "//base/startup/init/services/param/liteos:param_client_lite" ]
+    }
+  }
+} else {
+  import("//build/ohos.gni")
+
+  ohos_executable("begetctl") {
+    sources = [
+      "appspawntime_cmd.c",
+      "begetctl_cmd.c",
+      "bootchart_cmd.c",
+      "dump_service.c",
+      "init_cmd_reboot.c",
+      "main.c",
+      "misc_daemon.cpp",
+      "modulectl.c",
+      "param_cmd.c",
+      "sandbox.cpp",
+      "service_control.c",
+      "setloglevel.c",
+      "shell/shell_bas.c",
+    ]
+
+    defines = [ "_GNU_SOURCE" ]
+
+    include_dirs = common_include_dirs
+    deps = [
+      "//base/startup/init/interfaces/innerkits:libbegetutil",
+      "//base/startup/init/interfaces/innerkits/control_fd:libcontrolfd",
+      "//base/startup/init/services/log:agent_log",
+      "//base/startup/init/services/param/linux:param_client",
+      "//base/startup/init/services/sandbox:sandbox",
+      "//base/startup/init/services/utils:libinit_utils",
+    ]
+
+    deps += [ "//base/startup/init/services/param/base:param_base" ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "cJSON:cjson",
+      "c_utils:utils",
+    ]
+    if (init_appspawn_client_module && defined(global_parts_info) &&
+        defined(global_parts_info.startup_appspawn)) {
+      defines += [ "ENABLE_ENTER_APPSPAWN_SANDBOX" ]
+      external_deps += [ "appspawn:appspawn_client" ]
+    }
+    if (param_test) {
+      sources += [
+        "//base/startup/init/test/moduletest/param_test_cmds.c",
+        "//base/startup/init/test/moduletest/syspara.cpp",
+      ]
+      deps += [ "//base/startup/init/interfaces/innerkits:libbeget_proxy" ]
+      defines += [
+        "OHOS_SERVICE_DUMP",
+        "INIT_TEST",
+      ]
+    }
+
+    if (build_selinux) {
+      external_deps += [
+        "selinux:libselinux",
+        "selinux_adapter:libselinux_parameter_static",
+      ]
+      defines += [ "PARAM_SUPPORT_SELINUX" ]
+    }
+
+    if (init_extra_static_modules == "") {
+      defines += [ "SUPPORT_REBOOT_CHARGE" ]
+    }
+
+    symlink_target_name = [
+      "reboot",
+      "service_control",
+    ]
+
+    if (init_feature_ab_partition) {
+      sources += [ "partitionslot.cpp" ]
+      external_deps += [
+        "drivers_interface_partitionslot:libpartitionslot_proxy_1.0",
+        "hdf_core:libhdi",
+        "hdf_core:libpub_utils",
+      ]
+    }
+
+    install_images = [ "system" ]
+    install_enable = true
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_executable("reboot") {
+    sources = [
+      "init_cmd_reboot.c",
+      "main.c",
+      "param_cmd.c",
+      "shell/shell_bas.c",
+    ]
+
+    defines = [ "_GNU_SOURCE" ]
+
+    include_dirs = common_include_dirs
+    deps = [
+      "//base/startup/init/interfaces/innerkits:libbegetutil",
+      "//base/startup/init/services/log:agent_log",
+      "//base/startup/init/services/param/linux:param_client",
+      "//base/startup/init/services/utils:libinit_utils",
+    ]
+
+    deps += [ "//base/startup/init/services/param/base:param_base" ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "cJSON:cjson",
+      "c_utils:utils",
+      "selinux:libselinux",
+      "selinux_adapter:libselinux_parameter_static",
+    ]
+
+    if (init_extra_static_modules == "") {
+      defines += [ "SUPPORT_REBOOT_CHARGE" ]
+    }
+
+    install_images = [ "updater" ]
+    install_enable = true
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_executable("paramshell") {
+    sources = [
+      "param_cmd.c",
+      "shell/shell_bas.c",
+      "shell/shell_main.c",
+    ]
+
+    defines = [ "_GNU_SOURCE" ]
+    include_dirs = common_include_dirs
+    deps = [
+      "//base/startup/init/interfaces/innerkits:libbegetutil",
+      "//base/startup/init/services/log:agent_log",
+      "//base/startup/init/services/param/linux:param_client",
+      "//base/startup/init/services/utils:libinit_utils",
+    ]
+    external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+    if (build_selinux) {
+      external_deps += [
+        "selinux:libselinux",
+        "selinux_adapter:libselinux_parameter_static",
+      ]
+      defines += [ "PARAM_SUPPORT_SELINUX" ]
+    }
+
+    if (param_test) {
+      sources += [
+        "//base/startup/init/test/moduletest/param_test_cmds.c",
+        "//base/startup/init/test/moduletest/syspara.cpp",
+      ]
+      deps += [ "//base/startup/init/interfaces/innerkits:libbeget_proxy" ]
+      defines += [
+        "OHOS_SERVICE_DUMP",
+        "INIT_TEST",
+      ]
+    }
+
+    install_images = [ "system" ]
+    install_enable = true
+
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_executable("param") {
+    sources = [
+      "main.c",
+      "param_cmd.c",
+      "shell/shell_bas.c",
+    ]
+
+    defines = [
+      "INIT_AGENT",
+      "_GNU_SOURCE",
+    ]
+
+    include_dirs = common_include_dirs
+    deps = [
+      "//base/startup/init/services/log:agent_log",
+      "//base/startup/init/services/loopevent:loopevent",
+      "//base/startup/init/services/param/linux:param_client",
+      "//base/startup/init/services/utils:libinit_utils",
+    ]
+    deps += [ "//base/startup/init/services/param/base:param_base" ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+    ]
+    if (build_selinux) {
+      defines += [ "PARAM_SUPPORT_SELINUX" ]
+      external_deps += [
+        "selinux:libselinux",
+        "selinux_adapter:libselinux_parameter_static",
+      ]
+    }
+    install_images = [
+      "system",
+      "updater",
+    ]
+    install_enable = true
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+}
+
+group("begetctl_cmd") {
+  if (defined(ohos_lite)) {
+    if (init_feature_begetctl_liteos && ohos_kernel_type != "liteos_m") {
+      deps = [ ":begetctl" ]
+    }
+  } else {
+    deps = [
+      ":begetctl",
+      ":param",
+      ":paramshell",
+      ":reboot",
+    ]
+  }
+}

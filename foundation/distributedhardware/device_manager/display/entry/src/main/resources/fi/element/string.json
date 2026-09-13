@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"Yhteyskoodi",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"Sovellus %1$s laitteessa %2$s haluaa käyttää tätä laitetta. Luotetaanko tähän sovellukseen?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Peruuta",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Anna yhteyskoodi",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Tämä tarvitaan laitteiden väliseen tietojen synkronointiin ja yhteistyöhön.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Luota tällä kertaa",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Luota aina",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"Luota vain tämän kerran",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s haluaa käyttää laitteen %2$s palvelua. Luotetaanko tähän laitteeseen?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"Sovellus %2$s haluaa käyttää laitteen %1$s palvelua %3$s. Luotetaanko tähän sovellukseen?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s haluaa yhdistää laitteen palveluihin. Valitse valtuutettavat palvelut:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

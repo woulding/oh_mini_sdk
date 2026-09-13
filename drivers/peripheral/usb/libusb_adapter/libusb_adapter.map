@@ -1,0 +1,69 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{
+  global:
+    extern "C++" {
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetInstance()";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::LibusbAdapter()";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::~LibusbAdapter()";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::ManageInterface(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char, bool)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::OpenDevice(OHOS::HDI::Usb::V1_0::UsbDev const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::CloseDevice(OHOS::HDI::Usb::V1_0::UsbDev const&, bool)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetDeviceDescriptor(OHOS::HDI::Usb::V1_0::UsbDev const&, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetStringDescriptor(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetConfigDescriptor(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::SetConfig(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetConfig(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::ClaimInterface(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char, unsigned char)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::ReleaseInterface(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::BulkTransferRead(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, int, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::BulkTransferWrite(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, int, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>> const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::ControlTransferRead(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbCtrlTransfer const&, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::ControlTransferWrite(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbCtrlTransfer const&, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>> const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::InterruptTransferRead(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, int, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::InterruptTransferWrite(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, int, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>> const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::IsoTransferRead(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, int, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::IsoTransferWrite(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, int, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>> const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetDeviceFileDescriptor(OHOS::HDI::Usb::V1_0::UsbDev const&, int&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::BulkTransferReadwithLength(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, int, int, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::ClearHalt(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::ResetDevice(OHOS::HDI::Usb::V1_0::UsbDev const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::ControlTransferReadwithLength(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_1::UsbCtrlTransferParams const&, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::SetInterface(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char, unsigned char)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetFileDescriptor(OHOS::HDI::Usb::V1_0::UsbDev const&, int&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetInterfaceActiveStatus(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char, bool&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetDeviceSpeed(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetCurrentInterfaceSetting(OHOS::HDI::Usb::V1_0::UsbDev const&, unsigned char&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::SendPipeRequest(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, unsigned int, unsigned int&, unsigned int)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::SendPipeRequestWithAshmem(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, OHOS::HDI::Usb::V1_2::SendRequestAshmemParameter, unsigned int&, unsigned int)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetRawDescriptor(OHOS::HDI::Usb::V1_0::UsbDev const&, std::__h::vector<unsigned char, std::__h::allocator<unsigned char>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::AllocateUsbDescriptorsMemory(unsigned int)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::FreeUsbDescriptorsMemory(void*)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::AdapterRealloc(void*, unsigned int, unsigned int)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetDeviceMemMapFd(OHOS::HDI::Usb::V1_0::UsbDev const&, int&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::AsyncSubmitTransfer(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_2::USBTransferInfo const&, OHOS::sptr<OHOS::HDI::Usb::V1_2::IUsbdTransferCallback> const&, OHOS::sptr<OHOS::Ashmem> const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::AsyncCancelTransfer(OHOS::HDI::Usb::V1_0::UsbDev const&, int)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::GetDevices(std::__h::vector<OHOS::HDI::Usb::V1_2::DeviceInfo, std::__h::allocator<OHOS::HDI::Usb::V1_2::DeviceInfo>>&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::BulkRead(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, OHOS::sptr<OHOS::Ashmem> const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::BulkWrite(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, OHOS::sptr<OHOS::Ashmem> const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::BulkCancel(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::RegBulkCallback(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&, OHOS::sptr<OHOS::HDI::Usb::V2_0::IUsbdBulkCallback> const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::UnRegBulkCallback(OHOS::HDI::Usb::V1_0::UsbDev const&, OHOS::HDI::Usb::V1_0::UsbPipe const&)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::SetSubscriber(OHOS::sptr<OHOS::HDI::Usb::V2_0::IUsbdSubscriber>)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::RemoveSubscriber(OHOS::sptr<OHOS::HDI::Usb::V2_0::IUsbdSubscriber>)";
+        "OHOS::HDI::Usb::V1_2::LibusbAdapter::SetLoadUsbSaSubscriber(OHOS::sptr<OHOS::HDI::Usb::V1_2::LibUsbSaSubscriber>)";
+    };
+  local:
+    *;
+};

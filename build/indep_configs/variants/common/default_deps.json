@@ -1,0 +1,12 @@
+[
+  "musl",
+  "linux",
+  "googletest",
+  "benchmark",
+  "ets_frontend",
+  "libxml2",
+  "idl_tool",
+  "sdk",
+  "ace_ets2bundle",
+  "taihe_ffi_gen"
+]

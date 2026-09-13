@@ -1,0 +1,167 @@
+/*
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "event_export_task.h"
+
+#include "event_export_util.h"
+#include "event_json_parser.h"
+#include "export_db_manager.h"
+#include "file_util.h"
+#include "hisysevent.h"
+#include "hiview_logger.h"
+#include "setting_observer_manager.h"
+#include "sys_event_sequence_mgr.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+DEFINE_LOG_TAG("HiView-EventExportFlow");
+using  ExportEventListParsers = std::map<std::string, std::shared_ptr<ExportEventListParser>>;
+namespace {
+constexpr int64_t BYTE_TO_MB = 1024 * 1024;
+constexpr int64_t EXPORT_MAX_CNT = 1000000; // the maximum count for event export in one export period
+
+std::shared_ptr<ExportEventListParser> GetParser(ExportEventListParsers& parsers,
+    const std::string& path)
+{
+    auto iter = parsers.find(path);
+    if (iter == parsers.end()) {
+        parsers.emplace(path, std::make_shared<ExportEventListParser>(path));
+        return parsers[path];
+    }
+    return iter->second;
+}
+
+inline void WriteExportRangeEvent(int64_t beginSeq, int64_t endSeq, int64_t maxSeq)
+{
+    int ret = HiSysEventWrite(HiSysEvent::Domain::HIVIEWDFX, "EXPORT_RANGE_DETAIL", HiSysEvent::EventType::STATISTIC,
+        "BEGIN_SEQ", beginSeq, "END_SEQ", endSeq, "MAX_SEQ", maxSeq);
+    if (ret != SUCCESS) {
+        HIVIEW_LOGW("failed to write EXPORT_RANGE_DETAIL event, ret is %{public}d", ret);
+    }
+}
+}
+
+void EventExportTask::OnTaskRun()
+{
+    if (config_ == nullptr) {
+        HIVIEW_LOGE("export config is invalid");
+        return;
+    }
+    bool isSwitchOff = (SettingObserverManager::GetInstance()->GetStringValue(config_->exportSwitchParam.name)
+        != config_->exportSwitchParam.enabledVal);
+    EventExportUtil::SyncDbByExportSwitchStatus(config_, isSwitchOff);
+    if (isSwitchOff) {
+        HIVIEW_LOGI("export switch is off, no need to export");
+        return;
+    }
+    if (FileUtil::GetFolderSize(config_->exportDir) >= static_cast<uint64_t>(config_->maxCapcity * BYTE_TO_MB)) {
+        HIVIEW_LOGE("event export directory is full");
+        return;
+    }
+    // init handler request
+    auto readReq = std::make_shared<EventReadRequest>();
+    if (!InitReadRequest(readReq)) {
+        HIVIEW_LOGE("failed to init read request");
+        return;
+    }
+    // init write handler
+    auto writeHandler = std::make_shared<EventWriteHandler>();
+    // init read handler
+    auto readHandler = std::make_shared<EventReadHandler>();
+    readHandler->SetEventExportedListener([this] (int64_t beginSeq, int64_t endSeq) {
+        HIVIEW_LOGI("finished exporting events in range [%{public}" PRId64 ", %{public}" PRId64 ")",
+            beginSeq, endSeq);
+        // sync export progress to db
+        ExportDbManager::GetInstance().HandleExportTaskFinished(config_->moduleName, endSeq);
+    });
+    // init handler chain
+    readHandler->SetNextHandler(writeHandler);
+    // start handler chain
+    if (!readHandler->HandleRequest(readReq)) {
+        HIVIEW_LOGE("failed to export all events in range [%{public}" PRId64 ",%{public}" PRId64 ")",
+            readReq->beginSeq, readReq->endSeq);
+        return;
+    }
+    // record export progress
+    HIVIEW_LOGI("succeed to export all events in range [%{public}" PRId64 ",%{public}" PRId64 ") for module: "
+        "%{public}s", readReq->beginSeq, readReq->endSeq, config_->moduleName.c_str());
+}
+
+bool EventExportTask::ParseExportEventList(ExportEventList& list)
+{
+    if (config_->eventsConfigFiles.empty()) {
+        // if export event list file isn't configured, use export info configured in hisysevent.def
+        EventJsonParser::GetInstance()->GetAllCollectEvents(list, config_->taskType);
+        return true;
+    }
+    ExportEventListParsers parsers;
+    auto iter = std::max_element(config_->eventsConfigFiles.begin(), config_->eventsConfigFiles.end(),
+        [&parsers] (const std::string& path1, const std::string& path2) {
+            auto parser1 = GetParser(parsers, path1);
+            auto parser2 = GetParser(parsers, path2);
+            return parser1->GetConfigurationVersion() < parser2->GetConfigurationVersion();
+        });
+    if (iter == config_->eventsConfigFiles.end()) {
+        HIVIEW_LOGE("no event list file path is configured.");
+        return false;
+    }
+    HIVIEW_LOGD("event list file path is %{public}s", (*iter).c_str());
+    auto parser = GetParser(parsers, *iter);
+    parser->GetExportEventList(list);
+    return true;
+}
+
+int64_t EventExportTask::GetExportRangeEndSeq()
+{
+    return EventStore::SysEventSequenceManager::GetInstance().GetSequence();
+}
+
+bool EventExportTask::InitReadRequest(std::shared_ptr<EventReadRequest> readReq)
+{
+    if (readReq == nullptr) {
+        return false;
+    }
+    readReq->beginSeq = ExportDbManager::GetInstance().GetExportBeginSeq(config_->moduleName);
+    if (readReq->beginSeq == INVALID_SEQ_VAL) {
+        HIVIEW_LOGE("invalid export: begin sequence:%{public}" PRId64, readReq->beginSeq);
+        return false;
+    }
+    int64_t maxSeq = GetExportRangeEndSeq();
+    if (maxSeq < readReq->beginSeq) {
+        HIVIEW_LOGE("invalid export range: [%{public}" PRId64 ",%{public}" PRId64 ")",
+            readReq->beginSeq, maxSeq);
+        return false;
+    }
+    if (maxSeq - readReq->beginSeq > EXPORT_MAX_CNT) {
+        HIVIEW_LOGW("export range exceed limit");
+        readReq->endSeq = readReq->beginSeq + EXPORT_MAX_CNT;
+    } else {
+        readReq->endSeq = maxSeq;
+    }
+    if (!ParseExportEventList(readReq->eventList) || readReq->eventList.empty()) {
+        HIVIEW_LOGE("failed to get a valid event export list");
+        return false;
+    }
+    WriteExportRangeEvent(readReq->beginSeq, readReq->endSeq, maxSeq);
+    HIVIEW_LOGI("export range: [%{public}" PRId64 ",%{public}" PRId64 ") for module: %{public}s",
+        readReq->beginSeq, readReq->endSeq, config_->moduleName.c_str());
+    readReq->moduleName = config_->moduleName;
+    readReq->maxSize = config_->maxSize;
+    readReq->exportDir = config_->exportDir;
+    readReq->taskType = config_->taskType;
+    return true;
+}
+} // HiviewDFX
+} // OHOS

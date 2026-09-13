@@ -1,0 +1,169 @@
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("../../../appexecfwk.gni")
+
+config("appexecfwk_base_sdk_config") {
+  include_dirs = [
+    "include",
+    "include/bundle_resource",
+    "include/cli_sandbox",
+    "include/clone",
+    "include/distributed_manager",
+    "include/free_install",
+    "include/overlay",
+    "include/plugin",
+    "include/quick_fix",
+    "include/shared",
+  ]
+}
+
+ohos_shared_library("appexecfwk_base") {
+  branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    boundary_sanitize = true
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    integer_overflow = true
+    ubsan = true
+  }
+
+  sources = [
+    "src/ability_info.cpp",
+    "src/alternate_icon_info.cpp",
+    "src/app_install_extended_info.cpp",
+    "src/app_jump_control_rule.cpp",
+    "src/app_provision_info.cpp",
+    "src/app_running_control_rule.cpp",
+    "src/app_running_control_rule_result.cpp",
+    "src/application_info.cpp",
+    "src/bms_json_util.cpp",
+    "src/bundle_additional_info.cpp",
+    "src/bundle_compatible_device_type.cpp",
+    "src/bundle_dir.cpp",
+    "src/bundle_distribution_type.cpp",
+    "src/bundle_info.cpp",
+    "src/bundle_option.cpp",
+    "src/bundle_pack_info.cpp",
+    "src/bundle_resource/bundle_resource_info.cpp",
+    "src/bundle_resource/bundle_system_state.cpp",
+    "src/bundle_resource/launcher_ability_resource_info.cpp",
+    "src/bundle_skill/skill_info.cpp",
+    "src/bundle_storage_stats.cpp",
+    "src/bundle_user_info.cpp",
+    "src/clean_cache_info.cpp",
+    "src/clone/clone_param.cpp",
+    "src/code_protect_bundle_info.cpp",
+    "src/common_event_info.cpp",
+    "src/compatible_ability_info.cpp",
+    "src/compatible_application_info.cpp",
+    "src/data_group_info.cpp",
+    "src/disposed_rule.cpp",
+    "src/distributed_ability_info.cpp",
+    "src/distributed_bundle_info.cpp",
+    "src/distributed_manager/rpc_id_result.cpp",
+    "src/distributed_module_info.cpp",
+    "src/dynamic_icon_info.cpp",
+    "src/extension_ability_info.cpp",
+    "src/extension_form_info.cpp",
+    "src/extension_form_profile.cpp",
+    "src/form_info.cpp",
+    "src/free_install/dispatch_info.cpp",
+    "src/free_install/install_result.cpp",
+    "src/free_install/target_ability_info.cpp",
+    "src/hap_module_info.cpp",
+    "src/install_param.cpp",
+    "src/mime_type_mgr.cpp",
+    "src/module_info.cpp",
+    "src/module_test_runner.cpp",
+    "src/overlay/overlay_bundle_info.cpp",
+    "src/overlay/overlay_module_info.cpp",
+    "src/perf_profile.cpp",
+    "src/permission_define.cpp",
+    "src/plugin/install_plugin_param.cpp",
+    "src/plugin/plugin_bundle_info.cpp",
+    "src/plugin/plugin_module_info.cpp",
+    "src/preinstalled_application_info.cpp",
+    "src/quick_fix/app_quick_fix.cpp",
+    "src/quick_fix/appqf_info.cpp",
+    "src/quick_fix/hqf_info.cpp",
+    "src/recoverable_application_info.cpp",
+    "src/remote_ability_info.cpp",
+    "src/shared/base_shared_bundle_info.cpp",
+    "src/shared/shared_bundle_info.cpp",
+    "src/shared/shared_module_info.cpp",
+    "src/shortcut_info.cpp",
+    "src/skill.cpp",
+  ]
+
+  public_configs = [
+    ":appexecfwk_base_sdk_config",
+    "${common_path}:appexecfwk_common_config",
+  ]
+
+  defines = [
+    "APP_LOG_TAG = \"BMS\"",
+    "LOG_DOMAIN = 0xD001120",
+  ]
+
+  cflags = [
+    "-Os",
+    "-fstack-protector-strong",
+  ]
+
+  cflags_cc = [
+    "-Os",
+    "-fstack-protector-strong",
+  ]
+
+  use_exceptions = true
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+  deps = [ "${common_path}:libappexecfwk_common" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  if (udmf_enabled) {
+    defines += [ "BUNDLE_FRAMEWORK_UDMF_ENABLED" ]
+    external_deps += [ "udmf:utd_client" ]
+  }
+
+  if (bundle_framework_form_dimension_2_3) {
+    defines += [ "FORM_DIMENSION_2_3" ]
+  }
+  if (bundle_framework_form_dimension_3_3) {
+    defines += [ "FORM_DIMENSION_3_3" ]
+  }
+
+  public_external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "json:nlohmann_json_static",
+  ]
+
+  subsystem_name = "bundlemanager"
+  innerapi_tags = [
+    "platformsdk",
+    "sasdk",
+  ]
+  part_name = "bundle_framework"
+}

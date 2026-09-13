@@ -1,0 +1,1856 @@
+[
+    {
+        "install_dir": "cangjie/api",
+        "module_label": "//interface/sdk_cangjie:sdk_api",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "cangjie/build-tools",
+        "copy_with_symlinks": true,
+        "module_label": "//interface/sdk_cangjie:sdk_compiler",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "cangjie/build-tools/modules",
+        "module_label": "//interface/sdk_cangjie:sdk_compiler_modules",
+        "target_os": [
+            "windows",
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//developtools/syscap_codec:syscap_tool_bin",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//developtools/hdc:hdc",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//base/startup/appspawn/service/hnp:hnpcli",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//third_party/glslang:glslang_validator",
+        "target_os": [
+            "linux",
+            "windows",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//third_party/glslang:spirv-remap",
+        "target_os": [
+            "linux",
+            "windows",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//base/update/updater/services/diffpatch:diff",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//third_party/libusb:libusb",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//third_party/selinux:libselinux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//third_party/selinux:libsepol",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//third_party/pcre2:libpcre2",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//developtools/hapsigner:lib",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//developtools/global_resource_tool:restool_systemres",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/rescheck",
+        "module_label": "//developtools/global_resource_tool:restool_ids_schema",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//developtools/global_resource_tool:restool_faq",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//developtools/global_resource_tool:restool",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/api",
+        "module_label": "//interface/sdk-js:ohos_declaration_common",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/api/config",
+        "module_label": "//interface/sdk-js:config",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/form",
+        "module_label": "//interface/sdk-js:form_declaration",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/",
+        "module_label": "//third_party/jerryscript:jerry",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/",
+        "module_label": "//third_party/jerryscript:jerry-snapshot",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader",
+        "module_label": "//developtools/ace_js2bundle:ace_loader",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/lib/",
+        "module_label": "//developtools/ace_js2bundle:ace_loader_library",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/lib/",
+        "module_label": "//third_party/weex-loader:weex_loader",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/lib/",
+        "module_label": "//third_party/weex-loader:scripter",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/lib/",
+        "module_label": "//third_party/weex-loader:styler",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/lib/",
+        "module_label": "//third_party/parse5:parse5",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/bin",
+        "module_label": "//arkcompiler/ets_frontend/ets2panda/aot:ets2panda",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/bin",
+        "module_label": "//arkcompiler/runtime_core/static_core/static_linker:ark_link",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/bin",
+        "module_label": "//arkcompiler/runtime_core/ark_guard:ark_guard",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//third_party/zlib:shared_libz",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/runtime_core/assembler:libarkassembler",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/runtime_core/static_core/assembler:libarktsassembler",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/runtime_core/static_core/compiler:libarktscompiler",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/runtime_core/static_core/abc2program:arkts_abc2program",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/runtime_core/static_core/bytecode_optimizer:libarktsbytecodeopt",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/runtime_core/static_core/libarkfile:libarktsfile",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/runtime_core/static_core/libziparchive:libarktsziparchive",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/runtime_core/static_core/libarkbase:libarktsbase",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:panda_es2abc",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:panda_es2abc_ets",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets-loader/bin/ark/",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:panda_es2abc_ets",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib",
+        "module_label": "//arkcompiler/ets_frontend/ets2panda:libes2panda_public",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build/bin",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:es2abc_build",
+        "target_os": [
+            "linux",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-win/bin",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:es2abc_build_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-mac/bin",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:es2abc_build_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/bin",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:es2abc_build_ets",
+        "target_os": [
+            "linux",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/bin",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:es2abc_build_win_ets",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/bin",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:es2abc_build_mac_ets",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets-loader/bin/ark/build-mac/bin",
+        "module_label": "//arkcompiler/ets_frontend/es2panda:es2abc_build_mac_ets",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/bin",
+        "module_label": "//arkcompiler/runtime_core/panda_guard:panda_guard_build_ets",
+        "target_os": [
+            "linux",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/bin",
+        "module_label": "//arkcompiler/runtime_core/panda_guard:panda_guard_build_win_ets",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/bin",
+        "module_label": "//arkcompiler/runtime_core/panda_guard:panda_guard_build_mac_ets",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib/stdlib",
+        "module_label": "//arkcompiler/runtime_core/static_core/plugins/ets/stdlib:stdlib_build_win_ets",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib/stdlib",
+        "module_label": "//arkcompiler/runtime_core/static_core/plugins/ets/stdlib:stdlib_build_ets",
+        "target_os": [
+            "linux",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib/stdlib",
+        "module_label": "//arkcompiler/runtime_core/static_core/plugins/ets/stdlib:stdlib_build_mac_ets",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/lib/",
+        "module_label": "//arkcompiler/runtime_core/static_core/plugins/ets:etsstdlib_abc",
+        "target_os": [
+            "windows",
+            "linux",
+            "ohos",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build/legacy_api8/bin",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_js2abc_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-win/legacy_api8/bin",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_js2abc_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-mac/legacy_api8/bin",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_js2abc_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build/legacy_api8/src",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_ts2abc_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-win/legacy_api8/src",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_ts2abc_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-mac/legacy_api8/src",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_ts2abc_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_package_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-win/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_package_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-mac/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_package_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_package-lock_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-win/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_package-lock_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-mac/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_package-lock_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_node_modules_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-win/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_node_modules_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-mac/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:js_node_modules_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/legacy_api8/bin",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_js2abc_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/legacy_api8/bin",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_js2abc_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/legacy_api8/bin",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_js2abc_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/legacy_api8/src",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_ts2abc_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/legacy_api8/src",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_ts2abc_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/legacy_api8/src",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_ts2abc_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_package_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_package_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_package_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_package-lock_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_package-lock_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_package-lock_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_node_modules_api8_linux",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_node_modules_api8_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/legacy_api8",
+        "module_label": "//arkcompiler/ets_frontend/legacy_bin:ets_node_modules_api8_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build/bin",
+        "module_label": "//arkcompiler/ets_frontend/merge_abc:merge_abc_build",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-win/bin",
+        "module_label": "//arkcompiler/ets_frontend/merge_abc:merge_abc_build_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/ace-loader/bin/ark/build-mac/bin",
+        "module_label": "//arkcompiler/ets_frontend/merge_abc:merge_abc_build_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/bin",
+        "module_label": "//arkcompiler/ets_frontend/merge_abc:merge_abc_build_ets",
+        "target_os": [
+            "linux",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/bin",
+        "module_label": "//arkcompiler/ets_frontend/merge_abc:merge_abc_build_win_ets",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/bin",
+        "module_label": "//arkcompiler/ets_frontend/merge_abc:merge_abc_build_mac_ets",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/interop",
+        "module_label": "//interface/sdk-js:build_dynamic_sdk_interop",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/interop/api",
+        "module_label": "//interface/sdk-js:build_dynamic_sdk_predefined_interop",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/interop/declaration/api",
+        "module_label": "//interface/sdk-js:build_static_predefined_declaration_sdk_interop",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/interop/bridge/api",
+        "module_label": "//interface/sdk-js:build_static_predefined_bridge_sdk_interop",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/interop/declaration",
+        "module_label": "//interface/sdk-js:build_static_declaration_sdk_interop",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/interop/bridge",
+        "module_label": "//interface/sdk-js:build_static_bridge_sdk_interop",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/api",
+        "module_label": "//interface/sdk-js:ohos_build_dynamic_sdk_api",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/api",
+        "module_label": "//interface/sdk-js:ohos_build_static_sdk_api",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/component",
+        "module_label": "//interface/sdk-js:ohos_build_dynamic_sdk_component",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/kits",
+        "module_label": "//interface/sdk-js:ohos_build_dynamic_sdk_kits",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/kits",
+        "module_label": "//interface/sdk-js:ohos_build_static_sdk_kits",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/arkts",
+        "module_label": "//interface/sdk-js:ohos_build_dynamic_sdk_arkts",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/arkts",
+        "module_label": "//interface/sdk-js:ohos_build_static_sdk_arkts",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/api/@internal/full",
+        "module_label": "//interface/sdk-js:internal_full",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/api/@internal/lite",
+        "module_label": "//interface/sdk-js:internal_lite",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/syscapcheck",
+        "module_label": "//interface/sdk-js:syscap_check",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/component",
+        "module_label": "//developtools/ace_ets2bundle:ets_loader_component_config",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/component",
+        "module_label": "//developtools/ace_ets2bundle:ets_loader_form_config",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/form_components",
+        "module_label": "//developtools/ace_ets2bundle:form_components",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/insight_intents",
+        "module_label": "//developtools/ace_ets2bundle:insight_intents",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader",
+        "module_label": "//developtools/ace_ets2bundle:ets_loader",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/lib",
+        "module_label": "//developtools/ace_ets2bundle:ets_loader_library",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/kit_configs",
+        "module_label": "//developtools/ace_ets2bundle:ets_loader_kit_configs",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/components",
+        "module_label": "//developtools/ace_ets2bundle:components",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/server",
+        "module_label": "//developtools/ace_ets2bundle:server",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/codegen",
+        "module_label": "//developtools/ace_ets2bundle:codegen",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/declarations",
+        "module_label": "//developtools/ace_ets2bundle:ets_loader_declaration",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/declarations",
+        "module_label": "//interface/sdk-js:bundle_api",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//arkcompiler/runtime_core/disassembler:ark_disasm",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//arkcompiler/runtime_core/static_core/disassembler:arkts_disasm",
+        "target_os": [
+            "windows",
+            "linux",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/rawheap_translate:rawheap_translator",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/lib",
+        "module_label": "//developtools/packing_tool:app_packing_tool",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/lib",
+        "module_label": "//developtools/packing_tool/packing_tool/frameworks:ohos_packing_tool",
+        "target_os": [
+            "ohos"
+        ]
+    },
+    {
+        "install_dir": "toolchains/lib",
+        "module_label": "//developtools/packing_tool:app_unpacking_tool",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/lib",
+        "module_label": "//developtools/packing_tool:app_check_tool",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/lib",
+        "module_label": "//base/security/access_token/frameworks/common:permission_definitions_in_sdk",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/bin",
+        "module_label": "//arkcompiler/ets_frontend/ets2panda/driver/dependency_analyzer:dependency_analyzer",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin",
+        "module_label": "//ide/tools/previewer:rich_previewer",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/liteWearable/bin",
+        "module_label": "//ide/tools/previewer:lite_previewer",
+        "target_os": [
+            "windows",
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin",
+        "module_label": "//ide/tools/previewer:copy_ide_library",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/liteWearable/config",
+        "module_label": "//foundation/arkui/ui_lite/ext/ide:copy_previewer_fonts_lite_full",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin/",
+        "module_label": "//foundation/window/window_manager/previewer:copy_previewer_library",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin/",
+        "module_label": "//foundation/ability/ability_runtime/frameworks/simulator:copy_ability_simulator",
+        "target_os": [
+            "windows",
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin",
+        "module_label": "//foundation/arkui/ace_engine/adapter/preview/sdk:copy_preview_shared_library",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin/",
+        "module_label": "//arkcompiler/toolchain/adapter:copy_simulator_debug",
+        "target_os": [
+            "windows",
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin",
+        "module_label": "//arkcompiler/toolchain/adapter:copy_previewer_debug",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin",
+        "module_label": "//base/global/system_resources:copy_preview_fonts",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin",
+        "module_label": "//third_party/noto-cjk:copy_preview_fonts_notocjk",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin",
+        "module_label": "//third_party/notofonts:copy_preview_fonts_notofonts",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common",
+        "module_label": "//foundation/arkui/ace_engine/adapter/preview/sdk:copy_system_resource_standard",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin/module/arkui",
+        "module_label": "//foundation/arkui/ace_engine/adapter/preview/sdk:copy_abc_library",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/resources",
+        "module_label": "//foundation/arkui/ace_engine/adapter/preview/sdk:copy_preview_curl_cacert",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/binary-tools",
+        "module_label": "//developtools/packing_tool:fastjson-2.0.57",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/binary-tools",
+        "module_label": "//developtools/packing_tool:fastjson2-2.0.57",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/binary-tools",
+        "module_label": "//developtools/packing_tool:fastjson2-extension-2.0.57",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "js/build-tools/binary-tools",
+        "module_label": "//developtools/packing_tool:haptobin_tool",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/configcheck",
+        "module_label": "//developtools/packing_tool/configcheck:configSchema_lite_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/configcheck",
+        "module_label": "//developtools/packing_tool/configcheck:configSchema_rich_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:appSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:commonEventSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:distroFilterSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:formsSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:agentCardSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:moduleSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:pageSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:shortcutsSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:routerMapSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:menuSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:insightIntentSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:insightIntentInnerSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:themeConfigSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:customUtdSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:appStartupSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:appStartupInnerSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:configurationSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:startWindowSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:crossAppSharedConfigSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains/modulecheck",
+        "module_label": "//developtools/packing_tool/modulecheck:arkDataSchema_json",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//foundation/ability/idl_tool:idl",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/bin",
+        "module_label": "//arkcompiler/ets_runtime/ecmascript/sdk:copy_ark_aot_compiler_library_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/bin",
+        "module_label": "//arkcompiler/ets_runtime/ecmascript/sdk:copy_ark_aot_compiler_library",
+        "target_os": [
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/bin",
+        "module_label": "//arkcompiler/ets_runtime/ecmascript/sdk:copy_ark_aot_compiler_library_darwin",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-win/aot/src",
+        "module_label": "//arkcompiler/ets_runtime/ecmascript/sdk:copy_ark_aot_builtins_win",
+        "target_os": [
+            "windows"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build/aot/src",
+        "module_label": "//arkcompiler/ets_runtime/ecmascript/sdk:copy_ark_aot_builtins",
+        "target_os": [
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "ets/dynamic/build-tools/ets-loader/bin/ark/build-mac/aot/src",
+        "module_label": "//arkcompiler/ets_runtime/ecmascript/sdk:copy_ark_aot_builtins_mac",
+        "target_os": [
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "toolchains/lib",
+        "module_label": "//developtools/hapsigner/hapsigntool_cpp:hap-sign-tool",
+        "target_os": [
+            "ohos"
+        ]
+    },
+    {
+        "install_dir": "toolchains/lib",
+        "module_label": "//developtools/hapsigner/hapsigntool_cpp:copy_signature_tools_resource",
+        "target_os": [
+            "ohos"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin",
+        "module_label": "//commonlibrary/c_utils/base:utils",
+        "target_os": [
+            "windows",
+            "darwin"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin/module/util",
+        "module_label": "//commonlibrary/ets_utils/base_sdk:copy_previewer_debug_util",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin/module/arkts",
+        "module_label": "//commonlibrary/ets_utils/base_sdk:copy_previewer_debug_arkts",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "toolchains/lib",
+        "module_label": "//developtools/hapsigner/binary_sign_tool:binary-sign-tool",
+        "target_os": [
+            "linux",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/driver/build-system",
+        "module_label": "//arkcompiler/ets_frontend/ets2panda/driver/build_system:ets2panda_build_system",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/libarkts/",
+        "module_label": "//developtools/ace_ets2bundle/ets1.2:ets2panda_libarkts",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ui-plugins/lib",
+        "module_label": "//interface/sdk-js:api_check_plugin",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/easytrans",
+        "module_label": "//arkcompiler/ets_frontend/ets2panda/linter:ets2panda_build_linter",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/bindings",
+        "module_label": "//arkcompiler/ets_frontend/ets2panda/bindings:ets2panda_build_bindings",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/koala-wrapper/",
+        "module_label": "//developtools/ace_ets2bundle/koala-wrapper:ets2panda_koala_wrapper",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ui-plugins/",
+        "module_label": "//developtools/ace_ets2bundle/arkui-plugins:ui_plugin",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//arkcompiler/taihe_ffi_gen:copy_taihe_tools",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "ets/static/build-tools/ets2panda/bin",
+        "module_label": "//arkcompiler/runtime_core/static_core/plugins/ets:gen_arktsconfig",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "previewer/common/bin/module/arkts/math",
+        "module_label": "//third_party/decimal.js:copy_previewer_debug_arkts",
+        "target_os": [
+            "windows",
+            "darwin",
+            "linux"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//arkcompiler/jsvm:js_rawheap_translator",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//arkcompiler/jsvm:t1",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    },
+    {
+        "install_dir": "toolchains",
+        "module_label": "//arkcompiler/jsvm:t2",
+        "target_os": [
+            "linux",
+            "windows",
+            "darwin",
+            "ohos",
+            "linux_arm64"
+        ]
+    }
+]

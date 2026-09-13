@@ -1,0 +1,112 @@
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+
+config("hisyseventmanager_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    "//base/hiviewdfx/hisysevent/interfaces/native/innerkits/hisysevent_manager/include",
+    "//base/hiviewdfx/hisysevent/interfaces/native/innerkits/hisysevent/include",
+    "//base/hiviewdfx/hisysevent/interfaces/native/innerkits/hisysevent/encode/include",
+    "include",
+  ]
+}
+
+ohos_shared_library("libhisyseventmanager") {
+  branch_protector_ret = "pac_ret"
+
+  cflags_cc = [ "-Os" ]
+
+  sources = [
+    "hisysevent_base_manager.cpp",
+    "hisysevent_listener_c.cpp",
+    "hisysevent_manager.cpp",
+    "hisysevent_manager_c.cpp",
+    "hisysevent_query_callback_c.cpp",
+    "hisysevent_record.cpp",
+    "hisysevent_record_c.cpp",
+    "hisysevent_record_convertor.cpp",
+  ]
+
+  output_name = "libhisyseventmanager"
+
+  install_enable = true
+
+  innerapi_tags = [ "platformsdk" ]
+
+  part_name = "hisysevent"
+
+  subsystem_name = "hiviewdfx"
+
+  public_configs = [
+    "//base/hiviewdfx/hisysevent/adapter/native/idl:sys_event_impl_config",
+    ":hisyseventmanager_config",
+  ]
+
+  deps = [
+    "../../../../adapter/native/idl:sys_event_impl_client",
+    "../../../../frameworks/native/util:hisysevent_util",
+    "../hisysevent:libhisysevent",
+  ]
+
+  version_script = "libhisyseventmanager.map"
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+    "samgr:samgr_proxy",
+  ]
+}
+
+ohos_static_library("hisyseventmanager_static_lib_for_tdd") {
+  sources = [
+    "hisysevent_base_manager.cpp",
+    "hisysevent_listener_c.cpp",
+    "hisysevent_manager.cpp",
+    "hisysevent_manager_c.cpp",
+    "hisysevent_query_callback_c.cpp",
+    "hisysevent_record.cpp",
+    "hisysevent_record_c.cpp",
+    "hisysevent_record_convertor.cpp",
+  ]
+
+  output_name = "hisyseventmanager_static_lib_for_tdd"
+
+  part_name = "hisysevent"
+
+  subsystem_name = "hiviewdfx"
+
+  public_configs = [
+    "//base/hiviewdfx/hisysevent/adapter/native/idl:sys_event_impl_config",
+    ":hisyseventmanager_config",
+  ]
+
+  deps = [
+    "../../../../adapter/native/idl:sys_event_impl_client",
+    "../../../../frameworks/native/util:hisysevent_util",
+    "../hisysevent:hisysevent_static_lib_for_tdd",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+    "samgr:samgr_proxy",
+  ]
+}

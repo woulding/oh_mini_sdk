@@ -1,0 +1,50 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+declare_args() {
+  hicollie_able = true
+  preferences_enable = true
+  ressched_able = true
+  support_device_manager = false
+  support_common_event = false
+  support_softbus = false
+  samgr_support_access_token = true
+  support_penglai_mode = false
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.hiviewdfx_hicollie)) {
+    hicollie_able = false
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.distributedhardware_device_manager)) {
+    support_device_manager = true
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.notification_common_event_service)) {
+    support_common_event = true
+  }
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.distributeddatamgr_preferences)) {
+    preferences_enable = false
+  }
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.communication_dsoftbus)) {
+    support_softbus = false
+  }
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_access_token)) {
+    samgr_support_access_token = false
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.penglai_PenglaiModeService)) {
+    support_penglai_mode = true
+  }
+}

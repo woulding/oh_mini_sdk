@@ -1,0 +1,467 @@
+/*
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "base_utility_unit_test.h"
+
+#include <cmath>
+#include <limits>
+#include <vector>
+#include <string>
+
+#include "ffrt.h"
+#include "ffrt_util.h"
+#include "file_util.h"
+#include "rdb_predicates.h"
+#include "restorable_db_store.h"
+#include "string_util.h"
+#include "sql_util.h"
+#include "time_util.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+namespace {
+constexpr char TEST_DB_DIR[] = "/data/test/";
+constexpr char TEST_DB_NAME[] = "test.db";
+constexpr char TEST_TABLE_NAME[] = "test_table";
+constexpr char TEST_COLUMN_KEY_1[] = "test_column_1";
+constexpr char TEST_COLUMN_KEY_2[] = "test_column_2";
+constexpr char COLUMN_1_INIT_VAL[] = "test_value";
+constexpr int64_t COLUMN_2_INIT_VAL = 666;
+
+void InsertTableValue(std::shared_ptr<RestorableDbStore> dbStore, const std::string& column1Val, int64_t column2Val)
+{
+    ASSERT_NE(dbStore, nullptr);
+    NativeRdb::ValuesBucket bucket;
+    bucket.PutString(TEST_COLUMN_KEY_1, column1Val);
+    bucket.PutLong(TEST_COLUMN_KEY_2, column2Val);
+    int64_t id = 0;
+    ASSERT_EQ(dbStore->Insert(id, TEST_TABLE_NAME, bucket), NativeRdb::E_OK);
+}
+
+void UpdateTable(std::shared_ptr<RestorableDbStore> dbStore, int64_t column2Val)
+{
+    ASSERT_NE(dbStore, nullptr);
+    NativeRdb::ValuesBucket bucket;
+    bucket.PutLong(TEST_COLUMN_KEY_2, column2Val);
+    int changeRow = 0;
+    std::string condition(TEST_COLUMN_KEY_1);
+    condition.append(" = ?");
+    ASSERT_EQ(dbStore->Update(changeRow, TEST_TABLE_NAME, bucket, condition,
+        std::vector<std::string> { COLUMN_1_INIT_VAL }), NativeRdb::E_OK);
+}
+
+void QueryColumn2Val(std::shared_ptr<RestorableDbStore> dbStore, int64_t& val)
+{
+    ASSERT_NE(dbStore, nullptr);
+    NativeRdb::RdbPredicates predicates(TEST_TABLE_NAME);
+    predicates.EqualTo(TEST_COLUMN_KEY_1, COLUMN_1_INIT_VAL);
+    std::vector<std::string> columns;
+    columns.emplace_back(TEST_COLUMN_KEY_2);
+    std::shared_ptr<NativeRdb::ResultSet> records = dbStore->Query(predicates, columns);
+    ASSERT_NE(records, nullptr);
+    ASSERT_EQ(records->GoToFirstRow(), NativeRdb::E_OK);
+    NativeRdb::RowEntity entity;
+    ASSERT_EQ(records->GetRow(entity), NativeRdb::E_OK);
+    ASSERT_EQ(entity.Get(TEST_COLUMN_KEY_2).GetLong(val), NativeRdb::E_OK);
+    records->Close();
+}
+
+void ExecuteSql(std::shared_ptr<RestorableDbStore> dbStore)
+{
+    ASSERT_NE(dbStore, nullptr);
+    const std::vector<std::pair<std::string, std::string>> fields {
+        { TEST_COLUMN_KEY_1, SqlUtil::COLUMN_TYPE_STR },
+    };
+    ASSERT_EQ(dbStore->ExecuteSql(SqlUtil::GenerateCreateSql(std::string("test_table_2"), fields)), NativeRdb::E_OK);
+}
+
+void InitRestorableDbStore(std::shared_ptr<RestorableDbStore>& dbStore)
+{
+    std::string dbDir(TEST_DB_DIR);
+    std::string dbName(TEST_DB_NAME);
+    dbStore = std::make_shared<RestorableDbStore>(dbDir, dbName, 1); // 1 is a test version
+    ASSERT_NE(dbStore, nullptr);
+    dbStore->Initialize(
+        [] (NativeRdb::RdbStore& rdbStore) {
+            const std::vector<std::pair<std::string, std::string>> fields = {
+                {TEST_COLUMN_KEY_1, SqlUtil::COLUMN_TYPE_STR},
+                {TEST_COLUMN_KEY_2, SqlUtil::COLUMN_TYPE_INT},
+            };
+            std::string sql = SqlUtil::GenerateCreateSql(TEST_TABLE_NAME, fields);
+            return rdbStore.ExecuteSql(sql);
+        },
+        [] (NativeRdb::RdbStore& rdbStore, int oldVersion, int newVersion) {
+            return NativeRdb::E_OK;
+        },
+        [] (std::shared_ptr<NativeRdb::RdbStore> rdbStore) {
+            NativeRdb::ValuesBucket bucket;
+            bucket.PutString(TEST_COLUMN_KEY_1, COLUMN_1_INIT_VAL);
+            bucket.PutLong(TEST_COLUMN_KEY_2, COLUMN_2_INIT_VAL);
+            int64_t id = 0;
+            return rdbStore->Insert(id, TEST_TABLE_NAME, bucket);
+        });
+    ASSERT_TRUE(FileUtil::FileExists(dbDir + dbName));
+}
+}
+void BaseUtilityUnitTest::SetUpTestCase()
+{
+}
+
+void BaseUtilityUnitTest::TearDownTestCase()
+{
+}
+
+void BaseUtilityUnitTest::SetUp()
+{
+}
+
+void BaseUtilityUnitTest::TearDown()
+{
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest001
+ * @tc.desc: Test ConvertVectorToStr defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest001, testing::ext::TestSize.Level3)
+{
+    std::vector<std::string> origins;
+    origins.emplace_back("1");
+    origins.emplace_back("2");
+    origins.emplace_back("3");
+    std::string split = ":";
+    auto ret = StringUtil::ConvertVectorToStr(origins, split);
+    ASSERT_EQ("1:2:3", ret);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest002
+ * @tc.desc: Test ReplaceStr defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest002, testing::ext::TestSize.Level3)
+{
+    std::string str = "src123src";
+    std::string emptySrc;
+    std::string src = "src";
+    std::string src1 = "src9";
+    std::string dest = "dest";
+    auto ret = StringUtil::ReplaceStr(str, emptySrc, dest);
+    ASSERT_EQ(ret, str);
+    ret = StringUtil::ReplaceStr(str, src, dest);
+    ASSERT_EQ(ret, "dest123dest");
+    ret = StringUtil::ReplaceStr(str, src1, dest);
+    ASSERT_EQ(ret, "src123src");
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest003
+ * @tc.desc: Test StrToInt defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest003, testing::ext::TestSize.Level3)
+{
+    auto intVal1 = -1;
+    auto intVal2 = 234;
+    auto ret = StringUtil::StrToInt(std::to_string(intVal1));
+    ASSERT_EQ(intVal1, ret);
+    ret = StringUtil::StrToInt(std::to_string(intVal2));
+    ASSERT_EQ(intVal2, ret);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest004
+ * @tc.desc: Test StrToInt64 defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest004, testing::ext::TestSize.Level3)
+{
+    auto int64Val1 = static_cast<int64_t>(-1);
+    auto int64Val2 = static_cast<int64_t>(234);
+    int64_t value = 0;
+
+    auto ret = StringUtil::StrToInt64(std::to_string(int64Val1), value);
+    ASSERT_EQ(ret, true);
+    ASSERT_EQ(int64Val1, value);
+
+    value = 0;
+    ret = StringUtil::StrToInt64(std::to_string(int64Val2), value);
+    ASSERT_EQ(ret, true);
+    ASSERT_EQ(int64Val2, value);
+
+    value = 0;
+    ret = StringUtil::StrToInt64("a66", value);
+    ASSERT_EQ(ret, false);
+    ASSERT_EQ(0, value);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest007
+ * @tc.desc: Test GetLeft/RightSubstr defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest007, testing::ext::TestSize.Level3)
+{
+    std::string origin = "left:right";
+    auto ret = StringUtil::GetLeftSubstr(origin, ":");
+    ASSERT_EQ("left", ret);
+    ret = StringUtil::GetLeftSubstr(origin, "v");
+    ASSERT_EQ("left:right", ret);
+    ret = StringUtil::GetRightSubstr(origin, ":");
+    ASSERT_EQ("right", ret);
+    StringUtil::GetRightSubstr(origin, "v");
+    ASSERT_EQ("right", ret);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest008
+ * @tc.desc: Test GetRleft/RrightSubstr defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest008, testing::ext::TestSize.Level3)
+{
+    std::string origin = "left:right";
+    auto ret = StringUtil::GetRleftSubstr(origin, ":");
+    ASSERT_EQ("left", ret);
+    ret = StringUtil::GetRleftSubstr(origin, "v");
+    ASSERT_EQ("left:right", ret);
+    ret = StringUtil::GetRrightSubstr(origin, ":");
+    ASSERT_EQ("right", ret);
+    StringUtil::GetRrightSubstr(origin, "v");
+    ASSERT_EQ("right", ret);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest009
+ * @tc.desc: Test EraseString defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest009, testing::ext::TestSize.Level3)
+{
+    std::string input = "123abc123def123g";
+    std::string toErase = "123";
+    auto ret = StringUtil::EraseString(input, toErase);
+    ASSERT_EQ("abcdefg", ret);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest010
+ * @tc.desc: Test GetMidSubstr defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest010, testing::ext::TestSize.Level3)
+{
+    std::string input = "123abc678";
+    std::string begin1 = "1234";
+    std::string begin2 = "123";
+    std::string end1 = "5678";
+    std::string end2 = "678";
+    auto ret = StringUtil::GetMidSubstr(input, begin1, end1);
+    ASSERT_EQ("", ret);
+    ret = StringUtil::GetMidSubstr(input, begin2, end1);
+    ASSERT_EQ("", ret);
+    ret = StringUtil::GetMidSubstr(input, begin2, end2);
+    ASSERT_EQ("abc", ret);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest011
+ * @tc.desc: Test VectorToString defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest011, testing::ext::TestSize.Level3)
+{
+    std::vector<std::string> origin = {
+        "123", "", "456"
+    };
+    auto ret = StringUtil::VectorToString(origin, true, ":");
+    ASSERT_EQ("456:123:", ret);
+    ret = StringUtil::VectorToString(origin, false, ":");
+    ASSERT_EQ("123:456:", ret);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest012
+ * @tc.desc: Test StringToUl/Double defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest012, testing::ext::TestSize.Level3)
+{
+    auto ret1 = StringUtil::StringToUl(std::to_string(ULONG_MAX));
+    ASSERT_EQ(0, ret1);
+    auto ulVal1 = 123;
+    ret1 = StringUtil::StringToUl(std::to_string(ulVal1));
+    ASSERT_EQ(ulVal1, ret1);
+    double standard = 0;
+    auto ret2 = StringUtil::StringToDouble("");
+    ASSERT_TRUE(fabs(ret2 - standard) < std::numeric_limits<double>::epsilon());
+    ret2 = StringUtil::StringToDouble("abc");
+    ASSERT_TRUE(fabs(ret2 - standard) < std::numeric_limits<double>::epsilon());
+    double origin = 3.3;
+    ret2 = StringUtil::StringToDouble(std::to_string(origin));
+    ASSERT_TRUE(fabs(ret2 - origin) < std::numeric_limits<double>::epsilon());
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest014
+ * @tc.desc: Test Escape/UnescapeJsonStringValue defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest014, testing::ext::TestSize.Level3)
+{
+    std::string origin1 = "abcd1234456\\\"\b\f\n\r\t";
+    auto escapedStr = StringUtil::EscapeJsonStringValue(origin1);
+    ASSERT_EQ("abcd1234456\\\\\\\"\\b\\f\\n\\r\\t", escapedStr);
+    std::string origin2 = "/abcd1234456\\\"\b\f\n\r\t";
+    auto unescapedStr = StringUtil::UnescapeJsonStringValue(origin2);
+    ASSERT_EQ("/abcd1234456\"\b\f\n\r\t", unescapedStr);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest015
+ * @tc.desc: Test SplitStr defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueI651IG
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest015, testing::ext::TestSize.Level3)
+{
+    std::string origin = "1234:5678:abcd";
+    auto ret1 = StringUtil::SplitStr(origin, ':');
+    size_t expectSize = 3;
+    ASSERT_TRUE(ret1.size() == expectSize);
+    auto element = ret1.front();
+    ASSERT_EQ("1234", element);
+    ret1.pop_front();
+    element = ret1.front();
+    ASSERT_EQ("5678", element);
+    ret1.pop_front();
+    element = ret1.front();
+    ASSERT_EQ("abcd", element);
+    ret1.pop_front();
+    std::vector<std::string> ret2;
+    StringUtil::SplitStr(origin, ":", ret2);
+    ASSERT_TRUE(ret2.size() == expectSize);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest016
+ * @tc.desc: Test HideDeviceId defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueIAR8QU
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest016, testing::ext::TestSize.Level3)
+{
+    std::string originStr1 = "TEST_VAL_ABBBBB123BBBDASDDASDASDASDASDASDASDSADASDSDSADSASAD333444422_V";
+    auto ret = StringUtil::HideDeviceIdInfo(originStr1);
+    ASSERT_EQ(ret, "TEST_VAL_******_V");
+    originStr1 = "TEST_VAL_ABBBBB123BBBDASDDASDASDASDASDASDASDSADASDSDSADSASAD333444422ABCDE_V";
+    ret = StringUtil::HideDeviceIdInfo(originStr1);
+    ASSERT_EQ(ret, "TEST_VAL_******_V");
+    originStr1 = "TEST_VAL_ABBBBB123BBBDASDDASDASDASDASDASDASDSADASDSDSADSASAD33344442_V";
+    ret = StringUtil::HideDeviceIdInfo(originStr1);
+    ASSERT_EQ(ret, "TEST_VAL_ABBBBB123BBBDASDDASDASDASDASDASDASDSADASDSDSADSASAD33344442_V");
+    originStr1 = "TEST_VAL_ABBBBB123BBBDASDDASDASDASDASDASDASDSADASDSDSADSASAD333444422ABCDEF_V";
+    ret = StringUtil::HideDeviceIdInfo(originStr1);
+    ASSERT_EQ(ret, "TEST_VAL_ABBBBB123BBBDASDDASDASDASDASDASDASDSADASDSDSADSASAD333444422ABCDEF_V");
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest017
+ * @tc.desc: Test IsValidRegex defined in namespace StringUtil
+ * @tc.type: FUNC
+ * @tc.require: issueIAWMX3
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest017, testing::ext::TestSize.Level3)
+{
+    ASSERT_TRUE(!StringUtil::IsValidRegex("[a-z]+("));
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest021
+ * @tc.desc: Test GetDeviceValidSize defined in namespace FileUtil
+ * @tc.type: FUNC
+ * @tc.require: issueIC8IZD
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest021, testing::ext::TestSize.Level3)
+{
+    double size = FileUtil::GetDeviceValidSize("/data");
+    ASSERT_TRUE(size > 0);
+    size = FileUtil::GetDeviceValidSize("/test");
+    ASSERT_EQ(size, 0);
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest022
+ * @tc.desc: Test Sleep defined in namespace FileUtil
+ * @tc.type: FUNC
+ * @tc.require: issueICIL48
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest022, testing::ext::TestSize.Level3)
+{
+    ffrt::submit([] () {
+        uint64_t ts1 = TimeUtil::GetSteadyClockTimeMs();
+        uint32_t waitTime = 11; // 11 seconds is a test duration to sleep
+        FfrtUtil::Sleep(11); // sleep 11 seconds
+        uint64_t ts2 = TimeUtil::GetSteadyClockTimeMs();
+        ASSERT_GE(ts2, ts1 + static_cast<uint64_t>(waitTime * TimeUtil::SEC_TO_MILLISEC));
+    }, {}, {}, ffrt::task_attr().name("base_util_ut_022").qos(ffrt::qos_default));
+}
+
+/**
+ * @tc.name: BaseUtilityUnitTest023
+ * @tc.desc: Test public apis of class RestorableDbStore
+ * @tc.type: FUNC
+ * @tc.require: issue#3057
+ */
+HWTEST_F(BaseUtilityUnitTest, BaseUtilityUnitTest023, testing::ext::TestSize.Level3)
+{
+    std::string dbDir(TEST_DB_DIR);
+    std::string dbName(TEST_DB_NAME);
+    (void)NativeRdb::RdbHelper::DeleteRdbStore(dbDir + dbName);
+
+    std::shared_ptr<RestorableDbStore> dbStore;
+    InitRestorableDbStore(dbStore);
+    ASSERT_NE(dbStore, nullptr);
+
+    InsertTableValue(dbStore, std::string(COLUMN_1_INIT_VAL), COLUMN_2_INIT_VAL);
+    int64_t val = 0;
+    QueryColumn2Val(dbStore, val);
+    ASSERT_EQ(val, COLUMN_2_INIT_VAL);
+
+    ASSERT_EQ(dbStore->Restore(), NativeRdb::E_OK);
+    QueryColumn2Val(dbStore, val);
+    ASSERT_EQ(val, COLUMN_2_INIT_VAL);
+
+    int64_t testUpdateVal = 999; // 999 is a test value
+    UpdateTable(dbStore, testUpdateVal);
+    QueryColumn2Val(dbStore, val);
+    ASSERT_EQ(val, testUpdateVal);
+
+    ExecuteSql(dbStore);
+}
+} // namespace HiviewDFX
+} // namespace OHOS

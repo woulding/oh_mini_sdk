@@ -1,0 +1,60 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+import("//build/ohos.gni")
+
+group("static_modules") {
+  if (!defined(ohos_lite)) {
+    deps = [
+      "bootchart:libbootchart_static",
+      "bootevent:libbootevent_static",
+      "init_context:initcontext_static",
+      "init_eng:libiniteng_static",
+      "init_hook:inithook",
+      "reboot:libreboot_static",
+      "trace:inittrace_static",
+      "udid:libudid_static",
+    ]
+    if (build_seccomp) {
+      deps += [ "seccomp:libseccomp_static" ]
+    }
+    if (build_selinux) {
+      deps += [ "selinux:libselinuxadp_static" ]
+    }
+    if (init_use_encaps) {
+      deps += [ "encaps:libencaps_static" ]
+    }
+    deps += [ "trace:inittrace_cfg" ]
+  }
+}
+
+group("modulesgroup") {
+  if (!defined(ohos_lite)) {
+    deps = [
+      "bootchart:bootchart",
+      "init_context:init_context",
+      "init_eng:init_eng",
+      "module_update:module_update_init",
+      "reboot:rebootmodule",
+      "sysevent:eventmodule",
+      "trace:inittrace",
+      "udid:udidmodule",
+    ]
+    if (build_seccomp) {
+      deps += [ "seccomp:seccomp_filter" ]
+    }
+    if (build_selinux) {
+      deps += [ "selinux:selinuxadp" ]
+    }
+  }
+}

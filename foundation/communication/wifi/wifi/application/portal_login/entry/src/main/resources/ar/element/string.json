@@ -1,0 +1,130 @@
+{
+    "string":[
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"إصدار الموقع للحاسوب",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"actions_menu_user_agent",
+            "value":"برنامج وكيل المستخدم للمتصفح",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"إلغاء",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"فتح في المتصفح",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"إصدار الموقع للجوال",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"شهادة SSL لهذا الموقع منتهية أو غير موثوقة، ومتابعة التصفح ينطوي على مخاطر أمنية. هل حقًا تريد المتابعة؟",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"متابعة",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"HarmonyOS",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"continue_visit",
+            "value":"هل تريد المتابعة إلى هذا الموقع؟",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"إعدادات %s",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"رفض",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"قد يحتوي الموقع الذي تريد زيارته على محتوى غير لائق أو محظور. يُرجى المتابعة بحذر.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"ربما تحتوي هذه الصفحة على محتوى ضار",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"هل تسمح لموقع \u202a%s\u202c بالوصول إلى الكاميرا؟",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"يُستخدم هذا الإذن لالتقاط الصور وتصوير الفيديوهات.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"سماح",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ok",
+            "value":"موافق",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"رسالة من \"%s\":",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

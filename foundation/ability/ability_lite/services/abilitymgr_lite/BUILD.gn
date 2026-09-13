@@ -1,0 +1,217 @@
+# Copyright (c) 2020 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//build/lite/config/component/lite_component.gni")
+import("//build/lite/config/subsystem/aafwk/config.gni")
+import("//foundation/ability/ability_lite/ability_lite.gni")
+import(
+    "//foundation/bundlemanager/bundle_framework_lite/bundle_framework_lite.gni")
+
+lite_library("abilityms") {
+  if (ohos_kernel_type == "liteos_m") {
+    target_type = "static_library"
+
+    sources = [
+      "src/slite/ability_list.cpp",
+      "src/slite/ability_mgr_service_slite.cpp",
+      "src/slite/ability_record.cpp",
+      "src/slite/ability_record_manager.cpp",
+      "src/slite/ability_record_observer_manager.cpp",
+      "src/slite/ability_thread.cpp",
+      "src/slite/ability_thread_loader.cpp",
+      "src/slite/bms_helper.cpp",
+      "src/slite/js_ability_thread.cpp",
+      "src/slite/native_ability_thread.cpp",
+      "src/slite/slite_ability_loader.cpp",
+    ]
+
+    if (defined(ability_lite_config_ohos_aafwk_ams_task_size) &&
+        ability_lite_config_ohos_aafwk_ams_task_size > 0) {
+      defines = [
+        "AMS_TASK_STACK_SIZE=$ability_lite_config_ohos_aafwk_ams_task_size",
+      ]
+    }
+
+    if (defined(ability_lite_config_ohos_aafwk_ability_list_capacity) &&
+        ability_lite_config_ohos_aafwk_ability_list_capacity > 0) {
+      defines += [ "ABILITY_LIST_CAPACITY=$ability_lite_config_ohos_aafwk_ability_list_capacity" ]
+    }
+
+    if (defined(ability_lite_config_ohos_aafwk_aafwk_lite_task_stack_size) &&
+        ability_lite_config_ohos_aafwk_aafwk_lite_task_stack_size > 0) {
+      defines += [
+        "TASK_STACK_SIZE=$ability_lite_config_ohos_aafwk_aafwk_lite_task_stack_size",
+        "NATIVE_TASK_STACK_SIZE=$ability_lite_config_ohos_aafwk_ams_task_size",
+      ]
+    }
+
+    if (ability_lite_enable_ohos_aafwk_multi_tasks_feature == true) {
+      defines += [ "_MINI_MULTI_TASKS_" ]
+    }
+
+    if (defined(bundle_framework_lite_enable_ohos_bundle_manager_service) &&
+        bundle_framework_lite_enable_ohos_bundle_manager_service == true) {
+      defines += [ "_MINI_BMS_" ]
+    }
+
+    deps = [
+      "${ability_lite_samgr_lite_path}/samgr:samgr",
+      "${ace_engine_lite_path}/frameworks:ace_lite",
+      "${hilog_lite_path}/frameworks/featured:hilog_static",
+    ]
+
+    include_dirs = [
+      "${aafwk_lite_path}/interfaces/inner_api/abilitymgr_lite",
+      "${aafwk_lite_path}/interfaces/inner_api/abilitymgr_lite/slite",
+      "${aafwk_lite_path}/interfaces/kits/ability_lite/slite",
+      "${aafwk_lite_path}/interfaces/kits/want_lite",
+      "${aafwk_lite_path}/frameworks/abilitymgr_lite/include/slite",
+      "${appexecfwk_lite_path}/interfaces/inner_api/bundlemgr_lite",
+      "${appexecfwk_lite_path}/interfaces/kits/bundle_lite",
+      "${appexecfwk_lite_path}/utils/bundle_lite",
+      "${utils_lite_path}/include",
+      "${utils_lite_path}/memory/include",
+      "${dmsfwk_lite_path}/interfaces/innerkits",
+      "${ability_lite_samgr_lite_path}/interfaces/kits/registry",
+      "${ability_lite_samgr_lite_path}/interfaces/kits/samgr",
+      "//third_party/bounds_checking_function/include",
+      "./include/slite",
+      "./include/util",
+    ]
+  } else {
+    target_type = "shared_library"
+
+    sources = [
+      "src/ability_connect_mission.cpp",
+      "src/ability_inner_feature.cpp",
+      "src/ability_mgr_context.cpp",
+      "src/ability_mgr_feature.cpp",
+      "src/ability_mgr_handler.cpp",
+      "src/ability_mgr_service.cpp",
+      "src/ability_mission_record.cpp",
+      "src/ability_mission_stack.cpp",
+      "src/ability_stack_manager.cpp",
+      "src/ability_worker.cpp",
+      "src/app_manager.cpp",
+      "src/app_record.cpp",
+      "src/client/ability_dump_client.cpp",
+      "src/client/ability_thread_client.cpp",
+      "src/client/app_spawn_client.cpp",
+      "src/client/bundlems_client.cpp",
+      "src/client/wms_client.cpp",
+      "src/page_ability_record.cpp",
+      "src/task/ability_activate_task.cpp",
+      "src/task/ability_attach_task.cpp",
+      "src/task/ability_background_task.cpp",
+      "src/task/ability_connect_done_task.cpp",
+      "src/task/ability_connect_task.cpp",
+      "src/task/ability_disconnect_done_task.cpp",
+      "src/task/ability_disconnect_task.cpp",
+      "src/task/ability_dump_task.cpp",
+      "src/task/ability_inactivate_task.cpp",
+      "src/task/ability_start_task.cpp",
+      "src/task/ability_stop_task.cpp",
+      "src/task/ability_terminate_service_task.cpp",
+      "src/task/ability_terminate_task.cpp",
+      "src/task/app_restart_task.cpp",
+      "src/task/app_terminate_task.cpp",
+      "src/util/abilityms_helper.cpp",
+      "src/util/abilityms_status.cpp",
+    ]
+
+    deps = [
+      "${ability_lite_samgr_lite_path}/samgr:samgr",
+      "${appexecfwk_lite_path}/frameworks/bundle_lite:bundle",
+      "${communication_path}/ipc/interfaces/innerkits/c/ipc:ipc_single",
+      "${hilog_lite_path}/frameworks/featured:hilog_shared",
+    ]
+
+    defines = [ "OHOS_APPEXECFWK_BMS_BUNDLEMANAGER" ]
+
+    if (defined(ability_lite_config_ohos_aafwk_ams_task_size) &&
+        ability_lite_config_ohos_aafwk_ams_task_size > 0) {
+      defines += [
+        "AMS_TASK_STACK_SIZE=$ability_lite_config_ohos_aafwk_ams_task_size",
+      ]
+    }
+
+    if (ability_lite_enable_ohos_appexecfwk_feature_ability == true) {
+      deps += [ "${graphic_path}/surface_lite" ]
+      defines += [ "ABILITY_WINDOW_SUPPORT" ]
+    }
+
+    include_dirs = [
+      "${aafwk_lite_path}/interfaces/kits/ability_lite",
+      "${aafwk_lite_path}/interfaces/kits/want_lite",
+      "${aafwk_lite_path}/frameworks/want_lite/include",
+      "${aafwk_lite_path}/interfaces/inner_api/abilitymgr_lite",
+      "${aafwk_lite_path}/frameworks/abilitymgr_lite/include",
+      "${aafwk_lite_path}/services/abilitymgr_lite/include/util",
+      "${appexecfwk_lite_path}/interfaces/kits/bundle_lite",
+      "${appexecfwk_lite_path}/utils/bundle_lite",
+      "${appexecfwk_lite_path}/interfaces/inner_api/bundlemgr_lite",
+      "${appexecfwk_lite_path}/frameworks/bundle_lite/include",
+      "${permission_lite_path}/interfaces/kits",
+      "${permission_lite_path}/services/pms/include",
+      "${appapawn_lite_path}",
+      "${utils_lite_path}/include",
+      "${utils_lite_path}/memory/include",
+      "${dmsfwk_lite_path}/interfaces/innerkits",
+      "${communication_path}/ipc/interfaces/innerkits/c/ipc/include",
+      "${graphic_path}/../window/window_manager_lite/interfaces/innerkits",
+      "${ability_lite_samgr_lite_path}/interfaces/kits/registry",
+      "${ability_lite_samgr_lite_path}/interfaces/kits/samgr",
+      "//third_party/bounds_checking_function/include",
+      "//third_party/cJSON",
+      "include",
+      "include/task",
+    ]
+  }
+
+  cflags = []
+  if (board_toolchain_type != "iccarm") {
+    cflags += [
+      "-Wall",
+      "-Wno-format",
+      "-Wno-format-extra-args",
+    ]
+  }
+  cflags_cc = cflags
+
+  ldflags = [
+    "-lstdc++",
+    "-lpthread",
+    "-ldl",
+  ]
+
+  if (ohos_kernel_type == "liteos_m") {
+    include_dirs += [ "${hilog_lite_path}/interfaces/native/kits/hilog_lite" ]
+  }
+}
+
+generate_notice_file("abilityms_notice_file") {
+  module_name = "abilityms"
+  module_source_dir_list = [
+    "//third_party/bounds_checking_function",
+    "//third_party/cJSON",
+  ]
+}
+
+lite_component("aafwk_services_lite") {
+  features = [ ":abilityms" ]
+  if (ohos_kernel_type != "liteos_m") {
+    features += [
+      "tools:aa",
+      "unittest:ability_test",
+    ]
+  }
+}

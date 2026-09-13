@@ -1,0 +1,61 @@
+{
+  "name": "@ohos/t2stack",
+  "version": "4.0.2",
+  "description": "t2stack",
+  "publishAs": "code-segment",
+  "segment": {
+    "destPath": "foundation/communication/t2stack"
+  },
+  "dirs": {},
+  "scripts": {},
+  "author": {},
+  "supplier":"Organization: OpenHarmony",
+  "license": "Apache License 2.0",
+  "component": {
+    "name": "t2stack",
+    "subsystem": "communication",
+    "adapted_system_type": [
+      "mini",
+      "small",
+      "standard"
+    ],
+    "features": [
+      "t2stack_feature_vtp",
+      "t2stack_feature_dfile",
+      "t2stack_feature_coap"
+    ],
+    "rom": "3000KB",
+    "ram": "40MB",
+    "deps": {
+      "components": [
+        "bounds_checking_function",
+        "c_utils",
+        "cJSON",
+        "dsoftbus",
+        "hilog",
+        "libcoap",
+        "mbedtls",
+        "openssl"
+      ],
+      "third_party": [
+        "cJSON",
+        "json",
+        "mbedtls",
+        "openssl",
+        "bounds_checking_function",
+        "sqlite",
+        "zlib",
+        "libnl"
+      ]
+    },
+    "build": {
+      "modules" : [
+        "//foundation/communication/t2stack:nstackx"
+      ],
+      "inner_kits": [
+      ],
+      "test": [
+      ]
+    }
+  }
+}

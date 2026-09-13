@@ -1,0 +1,73 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+declare_args() {
+  dsoftbus_feature_disc_ble = true
+  dsoftbus_feature_disc_coap = true
+  dsoftbus_feature_disc_lnn_coap = true
+  dsoftbus_feature_disc_share_coap = false
+
+  dsoftbus_feature_conn_tcp_proxy = true
+  dsoftbus_feature_conn_tcp_comm = true
+  dsoftbus_feature_conn_pv1 = false
+
+  dsoftbus_feature_conn_br = true
+  dsoftbus_feature_conn_ble = true
+  dsoftbus_feature_conn_coc = false
+
+  dsoftbus_feature_conn_ble_direct = false
+  dsoftbus_feature_conn_pv2 = false
+  dsoftbus_feature_conn_hv1 = false
+  dsoftbus_feature_conn_hv2 = false
+  dsoftbus_feature_conn_hv2c = false
+  dsoftbus_feature_conn_action = false
+  dsoftbus_feature_conn_general = true
+  dsoftbus_feature_conn_legacy_im = false
+  dsoftbus_feature_conn_legacy_data = false
+
+  dsoftbus_feature_trans_udp_file = true
+  dsoftbus_feature_trans_udp_stream = false
+  dsoftbus_feature_trans_udp = true
+  dsoftbus_feature_trans_proxy_file = true
+  dsoftbus_feature_trans_qos = false
+  dsoftbus_feature_trans_htp = false
+  dsoftbus_feature_trans_br_proxy = false
+  dsoftbus_feature_compile_guard = false
+  dsoftbus_feature_trans_legacy = false
+  dsoftbus_feature_lnn_ble = true
+  dsoftbus_feature_lnn_wifi = true
+  dsoftbus_feature_lnn_ccmp = true
+
+  dsoftbus_feature_lnn_time_sync = true
+  dsoftbus_feature_lnn_sh = true
+
+  dsoftbus_feature_lnn_cloud_sync = true
+  dsoftbus_feature_lnn_channel_rating = true
+  dsoftbus_feature_lnn_lane_mgr = true
+  dsoftbus_feature_lnn_power_ctrl = true
+  dsoftbus_feature_lnn_lane_qos = true
+
+  dsoftbus_feature_lnn_frame = true
+  dsoftbus_feature_vtp = true
+  dsoftbus_feature_dfile = true
+  dsoftbus_feature_dmsg = true
+  dsoftbus_feature_dnet = false
+  dsoftbus_feature_linkfinder = false
+  dsoftbus_feature_coap = true
+  dsoftbus_feature_lnn_usb_ncm = false
+  dsoftbus_feature_trans_mintp = false
+  dsoftbus_feature_lnn_d2d_auth = true
+  dsoftbus_feature_trans_io_uring = false
+  dsoftbus_feature_lnn_push = false
+  dsoftbus_feature_multi_foreground_user = false
+}

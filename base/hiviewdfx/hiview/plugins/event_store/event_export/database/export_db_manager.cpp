@@ -1,0 +1,157 @@
+/*
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "export_db_manager.h"
+
+#include "file_util.h"
+#include "hiview_global.h"
+#include "hiview_logger.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+DEFINE_LOG_TAG("HiView-EventExportDb");
+namespace {
+ExportDetailRecord GetExportDetailRecord(std::shared_ptr<ExportDbStorage> storage, const std::string& moduleName)
+{
+    ExportDetailRecord record;
+    storage->QueryExportDetailRecord(moduleName, record);
+    return record;
+}
+
+std::string GetExportDbDir()
+{
+    auto& context = HiviewGlobal::GetInstance();
+    if (context == nullptr) {
+        return "";
+    }
+    std::string configDir = context->GetHiViewDirectory(HiviewContext::DirectoryType::WORK_DIRECTORY);
+    return FileUtil::IncludeTrailingPathDelimiter(configDir.append("sys_event_export"));
+}
+}
+
+ExportDbManager& ExportDbManager::GetInstance()
+{
+    static ExportDbManager instance;
+    return instance;
+}
+
+ExportDbManager::ExportDbManager()
+{
+    dbStoreDir_ = GetExportDbDir();
+}
+
+std::string ExportDbManager::GetEventInheritFlagPath(const std::string& moduleName)
+{
+    // create event inherit flag file in same level with db file
+    std::string tagName("event_inherit_flag");
+    tagName.append("_").append(moduleName);
+    return dbStoreDir_ + tagName;
+}
+
+int64_t ExportDbManager::GetExportEnabledSeq(const std::string& moduleName)
+{
+    std::unique_lock<ffrt::mutex> lock(dbMutex_);
+    auto storage = std::make_shared<ExportDbStorage>(dbStoreDir_);
+    ExportDetailRecord record = GetExportDetailRecord(storage, moduleName);
+    if (record.moduleName.empty()) {
+        HIVIEW_LOGW("no export details record found of %{public}s module in db", moduleName.c_str());
+        return INVALID_SEQ_VAL;
+    }
+    HIVIEW_LOGD("export enabled sequence is %{public}" PRId64 "", record.exportEnabledSeq);
+    return record.exportEnabledSeq;
+}
+
+int64_t ExportDbManager::GetExportBeginSeq(const std::string& moduleName)
+{
+    HIVIEW_LOGD("get beginning sequence of event for module %{public}s to export", moduleName.c_str());
+    std::unique_lock<ffrt::mutex> lock(dbMutex_);
+    auto storage = std::make_shared<ExportDbStorage>(dbStoreDir_);
+    ExportDetailRecord record = GetExportDetailRecord(storage, moduleName);
+    if (record.exportEnabledSeq == INVALID_SEQ_VAL) {
+        HIVIEW_LOGI("export end sequence is invalid for module: %{public}s", moduleName.c_str());
+        return INVALID_SEQ_VAL;
+    }
+    return std::max(record.exportEnabledSeq, record.exportedMaxSeq);
+}
+
+int64_t ExportDbManager::GetExportEndSeq(const std::string& moduleName)
+{
+    std::unique_lock<ffrt::mutex> lock(dbMutex_);
+    auto storage = std::make_shared<ExportDbStorage>(dbStoreDir_);
+    ExportDetailRecord record = GetExportDetailRecord(storage, moduleName);
+    if (record.exportedMaxSeq == INVALID_SEQ_VAL) {
+        HIVIEW_LOGI("export switch of %{public}s is off, no need to export event", moduleName.c_str());
+    }
+    return record.exportedMaxSeq;
+}
+
+void ExportDbManager::HandleExportSwitchChanged(const std::string& moduleName, int64_t curSeq)
+{
+    HIVIEW_LOGI("export switch for %{public}s module is changed, current event sequence is %{public}" PRId64 "",
+        moduleName.c_str(), curSeq);
+    std::unique_lock<ffrt::mutex> lock(dbMutex_);
+    auto storage = std::make_shared<ExportDbStorage>(dbStoreDir_);
+    ExportDetailRecord record = GetExportDetailRecord(storage, moduleName);
+    if (record.moduleName.empty()) {
+        HIVIEW_LOGW("no export details record found of %{public}s module in db", moduleName.c_str());
+        ExportDetailRecord record = {
+            .moduleName = moduleName,
+            .exportEnabledSeq = curSeq,
+            .exportedMaxSeq = INVALID_SEQ_VAL,
+        };
+        storage->InsertExportDetailRecord(record);
+        return;
+    }
+    if ((record.exportEnabledSeq != INVALID_SEQ_VAL && curSeq != INVALID_SEQ_VAL) ||
+        (record.exportEnabledSeq == INVALID_SEQ_VAL && curSeq == INVALID_SEQ_VAL)) {
+        HIVIEW_LOGI("avoid the repeat writing with same value for switch key");
+        return;
+    }
+    record.exportEnabledSeq = curSeq;
+    storage->UpdateExportEnabledSeq(record);
+}
+
+void ExportDbManager::HandleExportTaskFinished(const std::string& moduleName, int64_t eventSeq)
+{
+    HIVIEW_LOGI("export task of %{public}s module is finished, maximum event sequence is %{public}" PRId64 "",
+        moduleName.c_str(), eventSeq);
+    std::unique_lock<ffrt::mutex> lock(dbMutex_);
+    auto storage = std::make_shared<ExportDbStorage>(dbStoreDir_);
+    if (GetExportDetailRecord(storage, moduleName).moduleName.empty()) {
+        HIVIEW_LOGW("no export details record found of %{public}s module in db", moduleName.c_str());
+        ExportDetailRecord record = {
+            .moduleName = moduleName,
+            .exportEnabledSeq = INVALID_SEQ_VAL,
+            .exportedMaxSeq = eventSeq,
+        };
+        storage->InsertExportDetailRecord(record);
+        return;
+    }
+    ExportDetailRecord record {
+        .moduleName = moduleName,
+        .exportedMaxSeq = eventSeq,
+    };
+    storage->UpdateExportedMaxSeq(record);
+}
+
+bool ExportDbManager::IsUnrecordedModule(const std::string& moduleName)
+{
+    std::unique_lock<ffrt::mutex> lock(dbMutex_);
+    auto storage = std::make_shared<ExportDbStorage>(dbStoreDir_);
+    ExportDetailRecord record = GetExportDetailRecord(storage, moduleName);
+    return record.moduleName.empty();
+}
+} // HiviewDFX
+} // OHOS

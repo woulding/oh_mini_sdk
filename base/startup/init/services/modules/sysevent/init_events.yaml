@@ -1,0 +1,40 @@
+#  Copyright (c) 2023 Huawei Device Co., Ltd.
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+domain: INIT
+
+STARTUP_TIME:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, tag: PERFORMANCE, desc: Startup Time}
+  TOTAL_TIME: {type: INT64, desc: Total Time Required}
+  DETAILED_TIME: {type: STRING, desc: Time required by each phase}
+  REASON : {type: STRING, desc: Startup Reason}
+  ISFRIST: {type: STRING, desc: use time}
+
+STARTUP_INIT_REPORT:
+  __BASE: {type: STATISTIC, level: CRITICAL, desc: Startup Init Report}
+  NUMBER_CFG: {type: INT64, desc: Number Of Cfg}
+
+PROCESS_START:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: Process Start}
+  SERVICE_NAME: {type: STRING, desc: Service Name}
+  SERVICE_PID: {type: INT64, desc: Service Pid}
+
+STARTUP_REBOOT:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: Startup Reboot}
+  REBOOT_MODE: {type: STRING, desc: Reboot Mode}
+
+CHILD_PROCESS_EXIT:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: Child Process Exit}
+  PROCESS_NAME: {type: STRING, desc: Process Name}
+  PID: {type: INT64, desc: Process ID}
+  EXIT_CODE: {type: INT64, desc: Process Exit Code}

@@ -1,0 +1,84 @@
+diff --git a/include/curl/curl.h b/include/curl/curl.h
+index 4efaa5f11..4198c7a53 100644
+--- a/include/curl/curl.h
++++ b/include/curl/curl.h
+@@ -1129,6 +1129,10 @@ typedef CURLSTScode (*curl_hstswrite_callback)(CURL *easy,
+  */
+ 
+ typedef enum {
++#ifdef USE_ARES
++  CURLOPT(CURLOPT_BALANCED_CONNECTION, CURLOPTTYPE_LONG, 2000),
++#endif
++
+   /* This is the FILE * or void * the regular output should be written to. */
+   CURLOPT(CURLOPT_WRITEDATA, CURLOPTTYPE_CBPOINT, 1),
+ 
+diff --git a/lib/setopt.c b/lib/setopt.c
+index 6a1ef04e9..3b7ad1a53 100644
+--- a/lib/setopt.c
++++ b/lib/setopt.c
+@@ -2924,6 +2924,10 @@ CURLcode Curl_vsetopt(struct Curl_easy *data, CURLoption option, va_list param)
+       return result;
+     result = Curl_set_dns_local_ip6(data, data->set.str[STRING_DNS_LOCAL_IP6]);
+     break;
++  case CURLOPT_BALANCED_CONNECTION:
++    data->set.http_balanced_connection = (0 != va_arg(param, long));
++    break;
++
+ #endif
+   case CURLOPT_TCP_KEEPALIVE:
+     data->set.tcp_keepalive = (0 != va_arg(param, long));
+diff --git a/lib/url.c b/lib/url.c
+index e61348b03..f406decab 100644
+--- a/lib/url.c
++++ b/lib/url.c
+@@ -971,6 +971,9 @@ ConnectionExists(struct Curl_easy *data,
+   bool canmultiplex = FALSE;
+   struct connectbundle *bundle;
+   struct Curl_llist_element *curr;
++#ifdef USE_ARES
++  uint min_inuse = UINT_MAX;
++#endif
+ 
+ #ifdef USE_NTLM
+   bool wantNTLMhttp = ((data->state.authhost.want & CURLAUTH_NTLM) &&
+@@ -1354,9 +1357,22 @@ ConnectionExists(struct Curl_easy *data,
+       continue;
+     }
+ #endif
++
++#ifdef USE_ARES
+     /* We have found a connection. Let's stop searching. */
+-    chosen = check;
+-    break;
++    if(data->set.http_balanced_connection) {
++      if(CONN_INUSE(check) < min_inuse) {
++        chosen = check;
++        min_inuse = CONN_INUSE(check);
++      }
++    } else {
++#endif
++      chosen = check;
++      break;
++#ifdef USE_ARES
++    }
++#endif
++
+   } /* loop over connection bundle */
+ 
+   if(chosen) {
+diff --git a/lib/urldata.h b/lib/urldata.h
+index b6702a585..02216c47f 100644
+--- a/lib/urldata.h
++++ b/lib/urldata.h
+@@ -1894,6 +1894,10 @@ struct UserDefined {
+   int tls_ech;      /* TLS ECH configuration  */
+ #endif
+ 
++#ifdef USE_ARES
++  BIT(http_balanced_connection); /* balanced HTTP connection */
++#endif
++
+   BIT(mms_reserved_default_port);
+ };
+ 

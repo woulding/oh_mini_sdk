@@ -1,0 +1,90 @@
+/*
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { ApplicationInfo } from 'bundleManager.ApplicationInfo';
+import { HapModuleInfo, RouterItem } from 'bundleManager.HapModuleInfo';
+import bundleManager from '@ohos.bundle.bundleManager';
+
+export interface BundleInfo {
+  readonly name: string;
+  readonly vendor: string;
+  readonly versionCode: long;
+  readonly versionName: string;
+  readonly minCompatibleVersionCode: int;
+  readonly targetVersion: int;
+  readonly appInfo: ApplicationInfo | null;
+  readonly hapModulesInfo: Array<HapModuleInfo>;
+  readonly reqPermissionDetails: Array<ReqPermissionDetail>;
+  readonly permissionGrantStates: Array<bundleManager.PermissionGrantState>;
+  readonly signatureInfo: SignatureInfo | null;
+  readonly installTime: long;
+  readonly updateTime: long;
+  readonly routerMap: Array<RouterItem>;
+  readonly appIndex: int;
+  readonly firstInstallTime?: long;
+  readonly buildVersion?: string;
+  readonly sandboxCreatorBundleName?: string;
+}
+
+export interface ReqPermissionDetail {
+  name: string;
+  moduleName: string;
+  reason: string;
+  reasonId: long;
+  usedScene: UsedScene;
+}
+
+export interface UsedScene {
+  abilities: Array<string>;
+  when: string;
+}
+
+export interface SignatureInfo {
+  readonly appId: string;
+  readonly fingerprint: string;
+  readonly appIdentifier: string;
+  readonly certificate?: string;
+}
+
+export interface AppCloneIdentity {
+  readonly bundleName: string;
+  readonly appIndex: int;
+}
+
+export interface AppClonePreference {
+  mode: bundleManager.AppClonePreferenceMode;
+  appIndex?: int;
+}
+
+export interface DynamicIconInfo {
+  readonly bundleName: string;
+  readonly moduleName: string;
+  readonly userId: int;
+  readonly appIndex: int;
+}
+
+export interface AlternateIconInfo {
+  readonly iconName: string;
+  readonly iconId: long;
+  readonly enabled: boolean;
+}
+
+export interface BundleOptions {
+  userId?: int;
+  appIndex?: int;
+  bundleName?: string;
+  moduleName?: string;
+  abilityName?: string;
+}

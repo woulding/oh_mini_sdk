@@ -1,0 +1,32 @@
+{
+  "eval_dir": "eval-2-decode-adv-bytes",
+  "config": "without_skill",
+  "summary": {
+    "passed": 3,
+    "failed": 1,
+    "total": 4,
+    "pass_rate": 0.75
+  },
+  "expectations": [
+    {
+      "text": "flags TX power length=2 as invalid (should be 1)",
+      "passed": true,
+      "evidence": "0x0C`（TX Power Level），Length=`0x02` → Value 取 2 字节：`0x06 0x0B`。   - 但 TX Power Level 的 Val"
+    },
+    {
+      "text": "identifies the device name as sle_server",
+      "passed": true,
+      "evidence": "sle_server"
+    },
+    {
+      "text": "gives corrected bytes 0c 01 06 0b 0a ...",
+      "passed": false,
+      "evidence": "not found"
+    },
+    {
+      "text": "states the name length should be 10 / 0x0A",
+      "passed": true,
+      "evidence": "0x0B 0x0A"
+    }
+  ]
+}

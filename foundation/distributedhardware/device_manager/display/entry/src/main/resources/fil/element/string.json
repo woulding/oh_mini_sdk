@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"Code ng pagkonekta",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"Gustong i-access ng %1$s sa %2$s ang device na ito. Pagkatiwalaan ang app na ito?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Kanselahin",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Ilagay ang code ng pagkonekta",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Kinakailangan ito para sa cross-device na pag-sync ng data at collaboration.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Pagkatiwalaan sa oras na ito",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Laging pagkatiwalaan",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"Pagkatiwalaan sa oras na ito lamang",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"Gustong i-access ng %1$s ang serbisyo ng %2$s sa iyong device. Pagkatiwalaan ang device na ito?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"Gusto ng %2$s app sa %1$s na i-access ang serbisyo ng %3$s sa device mo. Pagkatiwalaan ang app na ito?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"Gusto ng %s na kumonekta sa mga serbisyo sa device mo. Pumili ng mga serbisyong papahintulutan:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

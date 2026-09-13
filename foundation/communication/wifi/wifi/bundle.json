@@ -1,0 +1,208 @@
+{
+    "name": "@ohos/wifi",
+    "version": "3.1.0",
+    "description": "The WLAN module provides basic WLAN functions, peer-to-peer (P2P) connection, and WLAN notification, enabling your application to communicate with other devices through a WLAN.",
+    "homePage": "https://gitee.com/openharmony",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/communication_wifi",
+    "domain": "os",
+    "language": "",
+    "publishAs": "code-segment",
+    "private": false,
+    "scripts": {},
+    "tags": [
+        "foundation"
+    ],
+    "keywords": [
+        "communication",
+        "wifi"
+    ],
+    "envs": [],
+    "dirs": [],
+    "author": {
+        "name": "",
+        "email": "",
+        "url": ""
+    },
+    "contributors": [
+        {
+            "name": "",
+            "email": "",
+            "url": ""
+        }
+    ],
+    "segment": {
+        "destPath": "foundation/communication/wifi"
+    },
+    "component": {
+        "name": "wifi",
+        "subsystem": "communication",
+        "syscap": [
+            "SystemCapability.Communication.WiFi.STA",
+            "SystemCapability.Communication.WiFi.AP.Core",
+            "SystemCapability.Communication.WiFi.P2P",
+            "SystemCapability.Communication.WiFi.Core",
+            "SystemCapability.Communication.WiFi.AP.Extension = false"
+        ],
+        "features": [
+            "wifi_feature_dynamic_unload_sa",
+            "wifi_feature_with_p2p",
+            "wifi_feature_with_ap_intf",
+            "wifi_feature_with_ap_num",
+            "wifi_feature_with_sta_num",
+            "wifi_feature_with_auth_disable",
+            "wifi_feature_with_dhcp_disable",
+            "wifi_feature_with_encryption",
+            "wifi_feature_with_ap_extension",
+            "wifi_feature_with_app_frozen",
+            "wifi_feature_non_seperate_p2p",
+            "wifi_feature_p2p_random_mac_addr",
+            "wifi_feature_non_hdf_driver",
+            "wifi_feature_with_local_random_mac",
+            "wifi_feature_with_data_report",
+            "wifi_feature_sta_ap_exclusion",
+            "wifi_feature_with_random_mac_addr",
+            "wifi_feature_with_scan_control",
+            "wifi_feature_with_hdi_wpa_supported",
+            "wifi_feature_network_selection",
+            "wifi_feature_with_hdi_chip_supported",
+            "wifi_feature_with_vap_manager",
+            "wifi_feature_with_sta_asset",
+            "wifi_feature_wifi_pro_ctrl",
+            "wifi_feature_with_wifi_oeminfo_mac",
+            "wifi_feature_voicewifi_enable",
+            "wifi_feature_mdm_restricted_enable",
+            "wifi_feature_with_extensible_authentication",
+            "wifi_feature_with_scan_control_action_listen",
+            "wifi_feature_with_portal_login",
+            "wifi_feature_with_security_detect",
+            "wifi_feature_with_local_security_detect",
+            "wifi_feature_auto_enable_support",
+            "wifi_feature_with_ipv6_selfcure",
+            "wifi_feature_with_dynamic_adjust_wifi_power_save",
+            "wifi_feature_pluggable_supported",
+            "wifi_feature_with_p2p_untrust_invitation",
+            "wifi_feature_with_bt_proxy_speed_limit",
+            "wifi_feature_car_cockpit_supported"
+        ],
+        "adapted_system_type": [
+            "small",
+            "standard"
+        ],
+        "rom": "",
+        "ram": "",
+        "deps": {
+            "components": [
+                "ability_base",
+                "ability_runtime",
+                "access_token",
+                "api_metrics",
+                "battery_manager",
+                "bundle_framework",
+                "c_utils",
+                "cellular_data",
+                "certificate_manager",
+                "cJSON",
+                "common_event_service",
+                "core_service",
+                "data_share",
+                "dhcp",
+                "distributed_notification_service",
+                "drivers_interface_wlan",
+                "eventhandler",
+                "ffrt",
+                "hdf_core",
+                "hiappevent",
+                "hicollie",
+                "hilog",
+                "hisysevent",
+                "huks",
+                "i18n",
+                "image_framework",
+                "init",
+                "ipc",
+                "napi",
+                "netmanager_base",
+                "netmanager_ext",
+                "netstack",
+                "os_account",
+                "openssl",
+                "relational_store",
+                "safwk",
+                "samgr",
+                "power_manager",
+                "time_service",
+                "bounds_checking_function",
+                "libxml2",
+                "asset",
+                "runtime_core",
+                "icu",
+                "window_manager",
+                "security_guard",
+                "state_registry"
+            ],
+            "third_party": [
+                "googletest",
+                "wpa_supplicant"
+            ]
+        },
+        "build": {
+            "group_type": {
+                "base_group": [
+                    "//foundation/communication/wifi/wifi/utils/extern_library:wifi_ext_lib"
+                ],
+                "fwk_group": [
+                    "//foundation/communication/wifi/wifi/frameworks:wifi_kits",
+                    "//foundation/communication/wifi/wifi/frameworks/wifi_ndk:wifi_ndk"
+                ],
+                "service_group": [
+                    "//foundation/communication/wifi/wifi/services/wifi_standard/wifi_framework:wifi_manage",
+                    "//foundation/communication/wifi/wifi/services/wifi_standard/wifi_framework:wifi_system_ability",
+                    "//foundation/communication/wifi/wifi/relation_services:relation_services",
+                    "//foundation/communication/wifi/wifi/application/portal_login:portal_login_hap",
+                    "//foundation/communication/wifi/wifi/frameworks/native/tools/ohos-wifiManager:ohos-wifiManager"
+                ]
+            },
+            "inner_api": [
+                {
+                    "header": {
+                        "header_base": "//foundation/communication/wifi/wifi/interfaces/",
+                        "header_files": []
+                    },
+                    "name": "//foundation/communication/wifi/wifi/frameworks/native:wifi_sdk"
+                },
+                {
+                    "header": {
+                        "header_base": "//foundation/communication/wifi/wifi/base/inner_api/",
+                        "header_files": []
+                    },
+                    "name": "//foundation/communication/wifi/wifi/base:wifi_base"
+                },
+                {
+                    "header": {
+                        "header_base": "//foundation/communication/wifi/wifi/utils/inc",
+                        "header_files": []
+                    },
+                    "name": "//foundation/communication/wifi/wifi/utils:wifi_utils"
+                },
+                {
+                    "header": {
+                        "header_base": "//foundation/communication/wifi/wifi/frameworks/cj/include",
+                        "header_files": []
+                    },
+                    "name": "//foundation/communication/wifi/wifi/frameworks/cj:cj_wifi_ffi"
+                },
+                {
+                    "name": "//foundation/communication/wifi/wifi/frameworks/ets/taihe/wifiManager:copy_wifiManager"
+                }
+            ],
+            "test": [
+                "//foundation/communication/wifi/wifi/test/fuzztest/wifi_sta:fuzztest",
+                "//foundation/communication/wifi/wifi/test:unittest"
+            ]
+        },
+        "hisysevent_config": [
+            "//foundation/communication/wifi/wifi/hisysevent.yaml"
+        ]
+    }
+}

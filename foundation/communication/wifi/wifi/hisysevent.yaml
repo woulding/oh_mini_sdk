@@ -1,0 +1,253 @@
+# Copyright (C) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+domain: COMMUNICATION
+
+# Start or stop Wi-Fi switch
+WIFI_STATE:
+  __BASE: {type: STATISTIC, level: MINOR, tag: PowerStats, desc: Wifi enable or disable event}
+  TYPE: {type: STRING, desc: Service type}
+  OPER_TYPE: {type: INT32, desc: 0 is enable and 1 is disable}
+
+# Connect or disconnect Wi-Fi
+WIFI_CONNECTION:
+  __BASE: {type: STATISTIC, level: MINOR, tag: PowerStats, desc: Wifi connection event}
+  TYPE: {type: INT32, desc: 0 is connect and 1 is disconnect}
+  PACKAGE_NAME: {type: STRING, desc: Package name}
+
+# Scans Wi-Fi hotspots
+WIFI_SCAN:
+  __BASE: {type: STATISTIC, level: MINOR, tag: PowerStats, desc: Wifi scan event}
+  EXECUTE_RESULT: {type: INT32, desc: 0 is scan fail and 1 is scan success}
+  PACKAGE_NAME: {type: STRING, desc: Package name}
+  FAIL_REASON: {type: STRING, desc: API called fail reason}
+
+# Wi-Fi event received
+WIFI_EVENT_RECEIVED:
+  __BASE: {type: STATISTIC, level: MINOR, tag: PowerStats, desc: Wifi event}
+  EVENT_TYPE: {type: STRING, desc: Event type}
+  VALUE: {type: INT32, desc: Event value}
+
+# Wi-Fi band event received
+WIFI_BAND:
+  __BASE: {type: STATISTIC, level: MINOR, tag: PowerStats, desc: Wifi band}
+  BAND: {type: INT32, desc: band info} # 1->2.4G, 2->5G, default 0 Auto
+
+# Wi-Fi signal event received
+WIFI_SIGNAL:
+  __BASE: {type: STATISTIC, level: MINOR, tag: PowerStats, desc: Wifi signal event}
+  DIRECTION: {type: INT32, desc: wifi signal data in or data out} # 0->UP,1->DOWN,2->UPDOWN,3->NONE
+  TXPACKETS: {type: INT32, desc: wifi signal tx packets}
+  RXPACKETS: {type: INT32, desc: wifi signal rx packets}
+
+WIFI_ABDISCONNECT:
+  __BASE: {type: FAULT, level: MINOR, desc: Wifi abnormal disconnect}
+  ABNORMAL_DISCONNECT_REASON_CODE: {type: STRING, desc: error code}
+  AP_CONN_INFO: {type: STRING, desc: ap connection info}
+  AP_INFO: {type: STRING, desc: ap info}
+  IS_ACTIVE_DISCONNECT: {type: INT32, desc: is active disconnect}
+  PUBLIC_ESS_COUNT: {type: INT32, desc: public ess count}
+  SUB_ERROR_CODE: {type: STRING, desc: sub error code}
+
+WIFI_OPEN_AND_CLOSE_FAILED:
+  __BASE: {type: FAULT, level: MINOR, desc: Wifi open and close failed event}
+  OPEN_FAIL: {type: STRING, desc: open wifi fail}
+  CLOSE_FAIL: {type: STRING, desc: close wifi fail}
+  FAIL_REASON: {type: STRING, desc: fail reason}
+  IS_AP_OPEN: {type: INT32, desc: is ap open}
+
+SOFTAP_OPEN_AND_CLOSE_FAILED:
+  __BASE: {type: FAULT, level: MINOR, desc: soft ap open and close failed event}
+  OPEN_FAIL: {type: STRING, desc: open soft ap fail}
+  CLOSE_FAIL: {type: STRING, desc: close soft ap fail}
+  FAIL_REASON: {type: STRING, desc: fail reason}
+
+WIFI_ACCESS_INTERNET_FAILED:
+  __BASE: {type: FAULT, level: MINOR, desc: Wifi access internet failed event}
+  ARP_FAIL_CNT: {type: INT32, desc: arp fail cnt}
+  NET_STATE: {type: INT32, desc: http network fail}
+
+BROWSER_FAILED_FOR_PORTAL:
+  __BASE: {type: FAULT, level: MINOR, desc: browser failed for portal}
+  RESP_CODE: {type: INT32, desc: resp code}
+  SERVER: {type: STRING, desc: server}
+
+WIFI_CONNECT_FAILED:
+  __BASE: {type: FAULT, level: MINOR, desc: wifi connect failed event}
+  ASSOC_FAIL_CNT: {type: INT32, desc: assoc fail cnt}
+  DHCP_FAIL_CNT: {type: INT32, desc: dhcp fail cnt}
+
+SOFTAP_ABNORMAL_DISCONNECT:
+  __BASE: {type: FAULT, level: MINOR, desc: soft abnormal disconnect event}
+  ERROR_CODE: {type: INT32, desc: error code}
+
+SOFTAP_CONNECT_FAILED:
+  __BASE: {type: FAULT, level: MINOR, desc: soft ap connect failed event}
+  ERROR_CODE: {type: INT32, desc: error code}
+
+SOFTAP_OPERATE_STATE:
+  __BASE: {type: STATISTIC, level: MINOR, desc: softap chr event}
+  CONNECTED_COUNT: {type: INT32, desc: softap connect success count}
+  CONNECT_TOTAL_COUNT: {type: INT32, desc: softap connect total count}
+  OPEN_COUNT: {type: INT32, desc: softap open count}
+  OPEN_SUCCESS_COUNT: {type: INT32, desc: softap open success count}
+
+WIFI_CHR_EVENT:
+  __BASE: {type: STATISTIC, level: MINOR, desc: Wifi chr event}
+  EVENT_NAME: {type: STRING, desc: event name}
+  EVENT_VALUE: {type: STRING, desc: event value}
+
+WIFI_KPI:
+  __BASE: {type: STATISTIC, level: MINOR, desc: Wifi kpi}
+  ABNORMAL_DISCONNECT_COUNT: {type: INT32, desc: Wifi abnormal disconnect count}
+  CONNECTED_COUNT: {type: INT32, desc: Wifi connect success count}
+  CONNECTED_DURATION: {type: INT32, desc: Wifi connect success duration}
+  CONNECTING_DURATION: {type: INT32, desc: Wifi connecting duration}
+  CONNECT_TOTAL_COUNT: {type: INT32, desc: Wifi connect total count}
+  DISCONNECT_CNT: {type: INT32, desc: Wifi disconnect count}
+  OPEN_COUNT: {type: INT32, desc: Wifi open count}
+  OPEN_SUCCESS_COUNT: {type: INT32, desc: Wifi open success count}
+  PNO_SCAN_COUNT: {type: INT32, desc: pno scan count}
+  INT_ACCESS_FAIL_COUNT: {type: INT32, desc: Number of Internet Access Failures}
+  INT_ACCESS_DURATION: {type: INT32, desc: internet access duration}
+
+WIFI_KPI_SSID:
+  __BASE: {type: STATISTIC, level: MINOR, desc: Wifi KPI SSID}
+  ABNORMAL_DISCONNECT_COUNT: {type: INT32, desc: sum of abnormal disconnection}
+  APSSID: {type: STRING, desc: SSID of an AP}
+  ASSOC_COUNT: {type: INT32, desc: sum of association}
+  ASSOC_DURATION: {type: INT32, desc: duration of association}
+  ASSOC_REJECT_FULL_COUNT: {type: INT32, desc: sum of assoc reject access full}
+  ASSOC_SUCCESS_COUNT: {type: INT32, desc: sum of associated}
+  AUTH_COUNT: {type: INT32, desc: sum of authentication}
+  AUTH_DURATION: {type: INT32, desc: duration of authentication}
+  AUTH_SUCCESS_COUNT: {type: INT32, desc: sum of authenticated}
+  CONNECTED_COUNT: {type: INT32, desc: sum of connection successful}
+  CONNECTED_DURATION: {type: INT32, desc: duration of keep wifi connection}
+  CONNECTING_DURATION: {type: INT32, desc: duration of connecting period}
+  CONNECT_TOTAL_COUNT: {type: INT32, desc: sum of connection}
+  DHCP_DURATION: {type: INT32, desc: duration of dhcp}
+  DHCP_SUCCESS_COUNT: {type: INT32, desc: sum of dhcp successfully}
+  DISCONNECT_COUNT: {type: INT32, desc: sum of disconnection}
+  IP_DHCP_COUNT: {type: INT32, desc: sum of dhcp}
+
+P2P_CHR_EVENT:
+  __BASE: {type: STATISTIC, level: MINOR, desc: P2P chr event}
+  EVENT_NAME: {type: STRING, desc: event name}
+  EVENT_VALUE: {type: STRING, desc: event value}
+
+P2P_CONNECT_STATICS:
+  __BASE: {type: STATISTIC, level: MINOR, desc: P2P KPI}
+  CONN_CNT: {type: INT32, desc: P2P connect count}
+  MAGICLINK_CONNECTED_COUNT: {type: INT32, desc: magiclink connect success count}
+  P2P_SUC_2G4_CNT: {type: INT32, desc: channl is on 2.4GHz channl after P2P connection}
+  P2P_SUC_5G_CNT: {type: INT32, desc: channl is on 5GHz channl after P2P connection}
+  
+P2P_CONNECT_FAIL:
+  __BASE: {type: FAULT, level: MINOR, desc: P2P conect fail}
+  ERR_CODE: {type: INT32, desc: fail error code}
+  SUB_ERR_CODE: {type: INT32, desc: fail reason}
+
+P2P_ABNORMAL_DISCONNECT:
+  __BASE: {type: FAULT, level: MINOR, desc: P2P abnormal disconect}
+  ERR_CODE: {type: INT32, desc: fail error code}
+  SUB_ERR_CODE: {type: INT32, desc: fail reason}
+
+CHIP_CALIBRATION_FAIL:
+  __BASE: {type: FAULT, level: MINOR, desc: calibration Fail Err event}
+  ERROR_CODE: {type: INT32, desc: ERROR_CODE}
+
+DSM_BUCK_PROTECTED:
+  __BASE: {type: FAULT, level: MINOR, desc: DSM_1103_BUCK}
+  CONTENT: {type: STRING, desc: fault message}
+  COUNT: {type: INT32, desc: report counts}
+  DESCRIPTION: {type: STRING, desc: description}
+  DEVICE_NAME: {type: STRING, desc: device name}
+  FAULT_PHENOMENON: {type: STRING, desc: fault_phenomenon}
+  IC_NAME: {type: STRING, desc: IC name}
+  MODUILE_NAME: {type: STRING, desc: module name}
+  NFF_THRESHOLD_DAYNFF: {type: INT32, desc: nff_threshold_day}
+  NFF_THRESHOLD_MONTHNFF: {type: INT32, desc: nff_threshold_month}
+  RUNNING_TEST_SWITCH: {type: INT32, desc: running_test_switch}
+
+DSM_MP_ONE_TWO_HALT:
+  __BASE: {type: FAULT, level: MINOR, desc: DSM_1102A_HALT}
+  CONTENT: {type: STRING, desc: fault message}
+  COUNT: {type: INT32, desc: report counts}
+  DESCRIPTION: {type: STRING, desc: description}
+  DEVICE_NAME: {type: STRING, desc: device name}
+  FAULT_PHENOMENON: {type: STRING, desc: fault_phenomenon}
+  IC_NAME: {type: STRING, desc: IC name}
+  MODUILE_NAME: {type: STRING, desc: module name}
+  NFF_THRESHOLD_DAYNFF: {type: INT32, desc: nff_threshold_day}
+  NFF_THRESHOLD_MONTHNFF: {type: INT32, desc: nff_threshold_month}
+  RUNNING_TEST_SWITCH: {type: INT32, desc: running_test_switch}
+
+DSM_WIFI_FEMERROR:
+  __BASE: {type: FAULT, level: MINOR, desc: DSM_WIFI_FEMERROR}
+  CONTENT: {type: STRING, desc: fault message}
+  COUNT: {type: INT32, desc: report counts}
+  DESCRIPTION: {type: STRING, desc: description}
+  DEVICE_NAME: {type: STRING, desc: device name}
+  FAULT_PHENOMENON: {type: STRING, desc: fault_phenomenon}
+  IC_NAME: {type: STRING, desc: IC name}
+  MODUILE_NAME: {type: STRING, desc: module name}
+  NFF_THRESHOLD_DAYNFF: {type: INT32, desc: nff_threshold_day}
+  NFF_THRESHOLD_MONTHNFF: {type: INT32, desc: nff_threshold_month}
+  RUNNING_TEST_SWITCH: {type: INT32, desc: running_test_switch}
+
+DSM_WIFI_LOAD_FIRMWARE:
+  __BASE: {type: FAULT, level: MINOR, desc: DSM_WIFI_LOAD_FIRMWARE}
+  CONTENT: {type: STRING, desc: fault message}
+  COUNT: {type: INT32, desc: report counts}
+  DESCRIPTION: {type: STRING, desc: description}
+  DEVICE_NAME: {type: STRING, desc: device name}
+  FAULT_PHENOMENON: {type: STRING, desc: fault_phenomenon}
+  IC_NAME: {type: STRING, desc: IC name}
+  MODUILE_NAME: {type: STRING, desc: module name}
+  NFF_THRESHOLD_DAYNFF: {type: INT32, desc: nff_threshold_day}
+  NFF_THRESHOLD_MONTHNFF: {type: INT32, desc: nff_threshold_month}
+  RUNNING_TEST_SWITCH: {type: INT32, desc: running_test_switch}
+
+DSM_WIFI_MODULE_INIT_ERROR:
+  __BASE: {type: FAULT, level: MINOR, desc: DSM_WIFI_MODULE_INIT_ERROR}
+  CONTENT: {type: STRING, desc: fault message}
+  COUNT: {type: INT32, desc: report counts}
+  DESCRIPTION: {type: STRING, desc: description}
+  DEVICE_NAME: {type: STRING, desc: device name}
+  FAULT_PHENOMENON: {type: STRING, desc: fault_phenomenon}
+  IC_NAME: {type: STRING, desc: IC name}
+  MODUILE_NAME: {type: STRING, desc: module name}
+  NFF_THRESHOLD_DAYNFF: {type: INT32, desc: nff_threshold_day}
+  NFF_THRESHOLD_MONTHNFF: {type: INT32, desc: nff_threshold_month}
+  RUNNING_TEST_SWITCH: {type: INT32, desc: running_test_switch}
+
+DSM_WIFI_PCIE_LINKDOWN:
+  __BASE: {type: FAULT, level: MINOR, desc: DSM_WIFI_PCIE_LINKDOWN}
+  CONTENT: {type: STRING, desc: fault message}
+  COUNT: {type: INT32, desc: report counts}
+  DESCRIPTION: {type: STRING, desc: description}
+  DEVICE_NAME: {type: STRING, desc: device name}
+  FAULT_PHENOMENON: {type: STRING, desc: fault_phenomenon}
+  IC_NAME: {type: STRING, desc: IC name}
+  MODUILE_NAME: {type: STRING, desc: module name}
+  NFF_THRESHOLD_DAYNFF: {type: INT32, desc: nff_threshold_day}
+  NFF_THRESHOLD_MONTHNFF: {type: INT32, desc: nff_threshold_month}
+  RUNNING_TEST_SWITCH: {type: INT32, desc: running_test_switch}
+
+WIFIENCRY_OR_DECRY_FAIL:
+  __BASE: {type: FAULT, level: MINOR, desc: WIFIENCRY OR DECRY FAIL, preserve: true}
+  ENCRY_OR_DECRY_EVENT: {type: INT32, desc: ENCRY OR DECRY EVENT}
+  SSID: {type: STRING, desc: network name}
+  ENCRYKEYMANAGEMENT: {type: STRING, desc: ENCRY type}
+  ENCRYEVENTMODULE: {type: INT32, desc: moudle name}

@@ -1,0 +1,104 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../../../../dsoftbus.gni")
+
+core_lane_hub_path = "$dsoftbus_root_path/core/bus_center/lnn/lane_hub"
+
+native_source_path = rebase_path("$dsoftbus_root_path")
+
+bus_center_hub_inc = [
+  "$core_lane_hub_path/common/include",
+  "$core_lane_hub_path/lane_manager/include",
+  "$core_lane_hub_path/time_sync/include",
+  "$core_lane_hub_path/heartbeat/include",
+  "$core_lane_hub_path/lane_qos/include",
+  "$dsoftbus_dfx_path/interface/include",
+  "$dsoftbus_root_path/interfaces/kits/bus_center/enhance",
+]
+bus_center_hub_deps = [ "$dsoftbus_dfx_path:softbus_dfx" ]
+bus_center_hub_src = []
+
+if (dsoftbus_feature_lnn_frame) {
+  bus_center_hub_src +=
+      [ "$dsoftbus_dfx_path/statistics/trans_network_statistics.c" ]
+
+  bus_center_hub_inc += [ "$dsoftbus_core_path/connection/wifi_direct_cpp" ]
+}
+
+if (dsoftbus_feature_lnn_frame && dsoftbus_feature_lnn_lane_mgr) {
+  bus_center_hub_src += [
+    "$core_lane_hub_path/common/src/lnn_lane_hub.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_link.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_link_conflict.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_link_wifi_direct.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_common.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_dfx.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_model.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_select.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_query.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_select_rule.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_trans_free_lane.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_trans_lane.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_reliability.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_listener.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_communication_capability.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_link_ledger.c",
+  ]
+} else {
+  bus_center_hub_src += [
+    "$core_lane_hub_path/common/src/lnn_lane_hub_virtual.c",
+    "$core_lane_hub_path/lane_manager/src/lnn_lane_manager_virtual.c",
+  ]
+}
+
+if (dsoftbus_feature_lnn_frame && dsoftbus_feature_lnn_lane_mgr &&
+    dsoftbus_feature_conn_pv1 && softbus_communication_wifi_feature) {
+  bus_center_hub_src +=
+      [ "$core_lane_hub_path/lane_manager/src/lnn_lane_link_p2p.c" ]
+  bus_center_hub_inc +=
+      [ "$dsoftbus_root_path/interfaces/kits/lnn" ]
+} else {
+  bus_center_hub_src +=
+      [ "$core_lane_hub_path/lane_manager/src/lnn_lane_link_p2p_virtual.c" ]
+}
+
+if (dsoftbus_feature_lnn_frame && dsoftbus_feature_lnn_ble) {
+  bus_center_hub_inc += [
+    "$dsoftbus_root_path/adapter/common/net/bluetooth/include",
+    "$dsoftbus_root_path/adapter/common/net/bluetooth/broadcast/interface",
+    "$dsoftbus_core_path/bus_center/lnn/net_ledger/local_ledger/include",
+    "$dsoftbus_core_path/core/adapter/bus_center/include",
+    "$dsoftbus_core_path/core/authentication/interface",
+    "$dsoftbus_core_path/connection/p2p/interface",
+    "$dsoftbus_core_path/core/common/include",
+  ]
+  bus_center_hub_src += [
+    "$core_lane_hub_path/heartbeat/src/lnn_heartbeat_ctrl.c",
+    "$core_lane_hub_path/heartbeat/src/lnn_heartbeat_fsm.c",
+    "$core_lane_hub_path/heartbeat/src/lnn_heartbeat_medium_mgr.c",
+    "$core_lane_hub_path/heartbeat/src/lnn_heartbeat_strategy.c",
+    "$core_lane_hub_path/heartbeat/src/lnn_heartbeat_utils.c",
+  ]
+} else {
+  bus_center_hub_src += [
+    "$core_lane_hub_path/heartbeat/src/lnn_heartbeat_ctrl_virtual.c",
+    "$core_lane_hub_path/heartbeat/src/lnn_ble_heartbeat_virtual.c",
+    "$core_lane_hub_path/heartbeat/src/lnn_ble_lpdevice_virtual.c",
+    "$core_lane_hub_path/heartbeat/src/lnn_heartbeat_utils_virtual.c",
+    "$core_lane_hub_path/heartbeat/src/lnn_heartbeat_strategy_virtual.c",
+  ]
+}
+
+bus_center_hub_src += [ "$core_lane_hub_path/time_sync/src/lnn_time_sync_manager.c" ]

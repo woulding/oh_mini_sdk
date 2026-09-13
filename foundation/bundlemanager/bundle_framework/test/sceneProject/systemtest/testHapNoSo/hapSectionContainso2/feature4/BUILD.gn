@@ -1,0 +1,50 @@
+# Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("../../../../../../appexecfwk.gni")
+
+ohos_app("hapSectionContainsoFeature4") {
+  certificate_profile = "${bundle_framework_path}/test/sceneProject/signature/com.example.hapSectionContainso2.p7b"
+  hap_name = "hapSectionContainsoFeature4"
+  hap_out_dir = "$root_out_dir/tests/systemtest/bundle_framework/bundle_framework/resource/testHapNoSo"
+
+  subsystem_name = "bundlemanager"
+  part_name = "bundle_framework"
+
+  js_build_mode = "release"
+  sdk_home = "//prebuilts/ohos-sdk/linux"
+  sdk_type_name = [ "sdk.dir" ]
+  assemble_type = "assembleHap"
+  build_level = "module"
+  system_lib_deps = [
+    ":hapSectionContainso5",
+    ":hapSectionContainso6",
+  ]
+  module_libs_dir = "feature4"
+  build_modules = [ "feature4" ]
+}
+
+ohos_shared_library("hapSectionContainso5") {
+  sources = [ "feature4/src/main/cpp/hapSectionContainso5.cpp" ]
+  visibility = [ ":*" ]
+  subsystem_name = "bundlemanager"
+  part_name = "bundle_framework"
+}
+
+ohos_shared_library("hapSectionContainso6") {
+  sources = [ "feature4/src/main/cpp/hapSectionContainso6.cpp" ]
+  visibility = [ ":*" ]
+  subsystem_name = "bundlemanager"
+  part_name = "bundle_framework"
+}

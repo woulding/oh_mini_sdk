@@ -1,0 +1,316 @@
+# Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//base/hiviewdfx/hicollie/hicollie.gni")
+
+module_output_path = "hicollie/hicollie"
+hicollie_part_path = "//base/hiviewdfx/hicollie"
+
+###############################################################################
+config("module_private_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    ".",
+    "${hicollie_part_path}/frameworks/native",
+    "${hicollie_part_path}/frameworks/native/test",
+    "${hicollie_part_path}/interfaces/native/innerkits/include/xcollie",
+    "${hicollie_part_path}/interfaces/ndk/include",
+  ]
+}
+
+##############################unittest##########################################
+ohos_unittest("XCollieUnitTest") {
+  module_out_path = module_output_path
+  sources = [ "xcollie_interface_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+  defines = []
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+}
+
+##############################unittest##########################################
+ohos_unittest("IpcFullUnitTest") {
+  module_out_path = module_output_path
+  sources = [ "ipc_full_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+  defines = []
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+  if (hicollie_asyncbinderspacefull_enable) {
+    defines += [ "ASYNC_BINDER_SPACE_FULL" ]
+  }
+}
+
+ohos_unittest("WatchdogUnitTest") {
+  module_out_path = module_output_path
+  sources = [ "watchdog_interface_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  defines = []
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.notification_eventhandler)) {
+    external_deps += [ "eventhandler:libeventhandler" ]
+  }
+
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+}
+
+ohos_unittest("WatchdogInnerUnitTest") {
+  module_out_path = module_output_path
+  sources = [
+    "watchdog_inner_test.cpp",
+    "watchdog_inner_util_test.cpp",
+  ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+  ]
+
+  defines = []
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.notification_eventhandler)) {
+    external_deps += [ "eventhandler:libeventhandler" ]
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.hiviewdfx_hiview)) {
+    external_deps += [ "hiview:libucollection_client" ]
+    defines += [ "HIVIEW_ENABLE" ]
+  }
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+}
+
+ohos_unittest("WatchdogInnerTaskTest") {
+  module_out_path = module_output_path
+  sources = [
+    "watchdog_inner_task_test.cpp",
+    "watchdog_inner_util_test.cpp",
+  ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+  ]
+
+  defines = []
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.notification_eventhandler)) {
+    external_deps += [ "eventhandler:libeventhandler" ]
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.hiviewdfx_hiview)) {
+    external_deps += [ "hiview:libucollection_client" ]
+    defines += [ "HIVIEW_ENABLE" ]
+  }
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+}
+
+ohos_unittest("HandlerCheckerTest") {
+  module_out_path = module_output_path
+  sources = [ "handler_checker_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  defines = []
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.notification_eventhandler)) {
+    external_deps += [ "eventhandler:libeventhandler" ]
+  }
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+}
+
+ohos_unittest("WatchdogTaskTest") {
+  module_out_path = module_output_path
+  sources = [ "watchdog_task_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  defines = []
+  if (hicollie_suspend_check_enable) {
+    defines += [ "SUSPEND_CHECK_ENABLE" ]
+  }
+  if (hicollie_low_memory_freeze_strategy_enable) {
+    defines += [ "LOW_MEMORY_FREEZE_STRATEGY_ENABLE" ]
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.notification_eventhandler)) {
+    external_deps += [ "eventhandler:libeventhandler" ]
+  }
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+}
+
+ohos_unittest("ThreadSamplerTest") {
+  module_out_path = module_output_path
+  sources = [ "thread_sampler_test.cpp" ]
+  configs = [ ":module_private_config" ]
+  deps = [
+    "${hicollie_libthread_sampler}:libthread_sampler_static",
+    "${hicollie_part_path}/frameworks/native:libhicollie_source",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "faultloggerd:libasync_stack",
+    "faultloggerd:libstack_printer",
+    "faultloggerd:libunwinder",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hicollie:libhicollie",
+    "hilog:libhilog",
+    "libuv:uv",
+  ]
+  defines = []
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+}
+
+ohos_unittest("XCollieFfrtTaskTest") {
+  module_out_path = module_output_path
+  sources = [ "xcollie_ffrt_task_test.cpp" ]
+  configs = [ ":module_private_config" ]
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+  ]
+
+  defines = []
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.notification_eventhandler)) {
+    external_deps += [ "eventhandler:libeventhandler" ]
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.hiviewdfx_hiview)) {
+    external_deps += [ "hiview:libucollection_client" ]
+    defines += [ "HIVIEW_ENABLE" ]
+  }
+}
+
+ohos_unittest("XcollieMgrTest") {
+  module_out_path = module_output_path
+  sources = [ "xcollie_mgr_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [ "//base/hiviewdfx/hicollie/frameworks/native:libhicollie_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+  ]
+}
+
+###############################################################################
+group("unittest") {
+  testonly = true
+  deps = [
+    # deps file
+    ":HandlerCheckerTest",
+    ":ThreadSamplerTest",
+    ":WatchdogInnerTaskTest",
+    ":WatchdogInnerUnitTest",
+    ":WatchdogTaskTest",
+    ":WatchdogUnitTest",
+    ":XCollieFfrtTaskTest",
+    ":XCollieUnitTest",
+    ":IpcFullUnitTest",
+    ":XcollieMgrTest",
+  ]
+}
+###############################################################################

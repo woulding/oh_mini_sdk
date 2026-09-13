@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "clean_cache_callback_host.h"
+
+#include "app_log_wrapper.h"
+#include "bundle_framework_core_ipc_interface_code.h"
+#include "bundle_memory_guard.h"
+#include "ipc_types.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+CleanCacheCallbackHost::CleanCacheCallbackHost()
+{
+    APP_LOGI("create clean cache callback host instance");
+}
+
+CleanCacheCallbackHost::~CleanCacheCallbackHost()
+{
+    APP_LOGI("destroyclean cache callback host instance");
+}
+
+int CleanCacheCallbackHost::OnRemoteRequest(
+    uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option)
+{
+    BundleMemoryGuard memoryGuard;
+    APP_LOGD("clean cache callback host onReceived message, the message code is %{public}u", code);
+    std::u16string descripter = CleanCacheCallbackHost::GetDescriptor();
+    std::u16string remoteDescripter = data.ReadInterfaceToken();
+    if (descripter != remoteDescripter) {
+        APP_LOGE("descripter is not matched");
+        return OBJECT_NULL;
+    }
+
+    switch (code) {
+        case static_cast<uint32_t>(CleanCacheCallbackInterfaceCode::ON_CLEAN_CACHE_CALLBACK): {
+            bool succeed = data.ReadBool();
+            OnCleanCacheFinished(succeed);
+            break;
+        }
+        default:
+            return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
+    }
+    return NO_ERROR;
+}
+}  // namespace AppExecFwk
+}  // namespace OHOS

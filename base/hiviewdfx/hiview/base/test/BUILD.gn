@@ -1,0 +1,221 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+
+module_output_path = hiview_module + "/base"
+
+group("unittest") {
+  testonly = true
+  deps = [
+    ":DispatchRuleParserTest",
+    ":DomainJsonParserTest",
+    ":EventBaseTest",
+    ":EventJsonParserTest",
+    ":EventLoopTest",
+    ":ParseConfigTest",
+    ":PluginFactoryTest",
+    ":PluginPipelineTest",
+    ":PluginTest",
+    ":SysEventTest",
+    "$hiview_base/event_publish/test:unittest",
+    "$hiview_base/event_raw/test:unittest",
+    "$hiview_base/event_report/test:unittest",
+    "$hiview_base/event_store/test:unittest",
+    "$hiview_base/logstore/test:unittest",
+    "$hiview_base/running_status_logger/test:unittest",
+    "$hiview_base/utility/test:unittest",
+  ]
+}
+
+config("unittest_config") {
+  include_dirs = [ "unittest/common" ]
+
+  cflags_cc = [ "-D__UNITTEST__" ]
+}
+
+ohos_unittest("EventLoopTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/event_loop_test.cpp" ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+ohos_unittest("PluginFactoryTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [
+    "unittest/common/plugin_example.cpp",
+    "unittest/common/plugin_factory_test.cpp",
+  ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+ohos_unittest("PluginPipelineTest") {
+  testonly = true
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [
+    "unittest/common/pipeline_test.cpp",
+    "unittest/common/plugin_example.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiview_base",
+    "$hiview_test/plugins/examples/event_processor_example1:event_processor_example1",
+    "$hiview_test/plugins/examples/event_processor_example2:event_processor_example2",
+    "$hiview_test/plugins/examples/event_processor_example3:event_processor_example3",
+    "$hiview_test/plugins/examples/event_processor_example4:event_processor_example4",
+    "$hiview_test/plugins/examples/event_source_example:event_source_example",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+ohos_unittest("SysEventTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/sys_event_test.cpp" ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+ohos_unittest("PluginTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/plugin_test.cpp" ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+ohos_unittest("EventBaseTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/event_base_test.cpp" ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+ohos_unittest("DispatchRuleParserTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/dispatch_rule_parser_test.cpp" ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "jsoncpp:jsoncpp",
+  ]
+}
+
+ohos_unittest("ParseConfigTest") {
+  module_out_path = module_output_path
+
+  include_dirs = [ "unittest/common" ]
+
+  sources = [ "unittest/common/version_config_parser_test.cpp" ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "jsoncpp:jsoncpp",
+  ]
+}
+
+ohos_unittest("EventJsonParserTest") {
+  module_out_path = module_output_path
+
+  include_dirs = [ "unittest/common" ]
+
+  sources = [ "unittest/common/event_json_parser_test.cpp" ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "jsoncpp:jsoncpp",
+  ]
+
+  resource_config_file = "$hiview_base/test/resource/ohos_test.xml"
+}
+
+ohos_unittest("DomainJsonParserTest") {
+  module_out_path = module_output_path
+
+  include_dirs = [ "unittest/common" ]
+
+  sources = [ "unittest/common/domain_json_parser_test.cpp" ]
+
+  deps = [ "$hiview_base:hiview_base" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "jsoncpp:jsoncpp",
+  ]
+
+  resource_config_file = "$hiview_base/test/resource/ohos_test.xml"
+}

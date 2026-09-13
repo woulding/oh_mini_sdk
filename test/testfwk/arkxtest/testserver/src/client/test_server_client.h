@@ -1,0 +1,75 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef TEST_SERVER_CLIENT_H
+#define TEST_SERVER_CLIENT_H
+
+#include "iremote_object.h"
+#include "itest_server_interface.h"
+#include <common_event_manager.h>
+#include <common_event_subscribe_info.h>
+#include "memory.h"
+
+namespace OHOS::testserver {
+
+    class TestServerClient {
+    public:
+        static TestServerClient &GetInstance();
+        sptr<ITestServerInterface> LoadTestServer();
+        int32_t SetPasteData(std::string text);
+        int32_t ChangeWindowMode(int windowId, uint32_t mode);
+        int32_t TerminateWindow(int windowId);
+        int32_t MinimizeWindow(int windowId);
+        bool PublishCommonEvent(const EventFwk::CommonEventData &event);
+        void FrequencyLock();
+        int32_t SpDaemonProcess(int daemonCommand, std::string extraInfo);
+        int32_t CollectProcessMemory(int32_t &pid, ProcessMemoryInfo &processMemoryInfo);
+        int32_t CollectProcessCpu(int32_t &pid, bool isNeedUpdate, ProcessCpuInfo &processCpuInfo);
+        std::string GetValueFromDataShare(const std::string &uri, const std::string &key);
+        int32_t SetTime(int64_t timeMs);
+        int32_t SetTimezone(const std::string& timezoneId);
+        int32_t GetPasteData(std::string& pasteText);
+        int32_t ClearPasteData();
+        int32_t HideKeyboard();
+        int32_t GetUserIdByDisplayId(int32_t displayId);
+        int32_t GetUserCounts();
+        int32_t InstallFont(const std::string& fontPath);
+        int32_t UninstallFont(const std::string& fontName);
+        int32_t SetViewMode(const std::string& mode);
+        std::string GetViewMode();
+        int32_t EnableLocationMock();
+        int32_t DisableLocationMock();
+        int32_t SetMockedLocations(const std::vector<TestServerLocation>& locations,
+                                   int32_t timeInterval);
+    private:
+        TestServerClient();
+        ~TestServerClient() = default;
+        void InitLoadState();
+        bool WaitLoadStateChange(int32_t systemAbilityId);
+
+        sptr<IRemoteObject> remoteObject_ = nullptr;
+        sptr<ITestServerInterface> iTestServerInterface_ = nullptr;
+    };
+} // namespace OHOS::testserver
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+void FrequencyLockPlugin();
+#ifdef __cplusplus
+}
+#endif
+
+#endif // TEST_SERVER_CLIENT_H

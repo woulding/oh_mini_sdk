@@ -1,0 +1,77 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/faultloggerd/faultloggerd.gni")
+
+if (defined(ohos_lite)) {
+  shared_library("libasync_stack") {
+    # current shared library is unuseful in ohos_lite type
+  }
+} else {
+  config("async_stack_config") {
+    visibility = [ "*:*" ]
+
+    include_dirs = [
+      "include",
+      ".",
+      "$faultloggerd_interfaces_path/common",
+      "$faultloggerd_common_path/dfxutil",
+    ]
+  }
+
+  ohos_shared_library("libasync_stack") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+        cfi = true
+        cfi_cross_dso = true
+        cfi_vcall_icall_only = true
+        debug = false
+    }
+    public_configs = [ ":async_stack_config" ]
+    defines = [
+      "is_ohos=${is_ohos}",
+      "ENABLE_PARAMETER",
+      "DFX_LOG_HILOG_BASE",
+    ]
+
+    sources = [
+      "async_stack.cpp",
+      "unique_stack_table.cpp",
+      "async_context_manager.cpp",
+    ]
+    deps = [
+      "$faultloggerd_common_path/dfxlog:dfx_hilog_cfi",
+      "$faultloggerd_common_path/dfxutil:dfx_util_cfi",
+      "$faultloggerd_interfaces_path/innerkits/backtrace:libbacktrace_local",
+      "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder",
+    ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "init:libbegetutil",
+    ]
+    version_script = "libasync_stack.map"
+    install_images = [
+      "system",
+      "updater",
+    ]
+
+    innerapi_tags = [
+      "chipsetsdk_sp_indirect",
+      "platformsdk_indirect",
+    ]
+
+    part_name = "faultloggerd"
+    subsystem_name = "hiviewdfx"
+  }
+}

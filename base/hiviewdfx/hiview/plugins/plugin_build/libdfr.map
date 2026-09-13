@@ -1,0 +1,23 @@
+{
+  global:
+    extern "C++" {
+        OHOS::HiviewDFX::FaultLogExtConnManager*;
+        OHOS::HiviewDFX::FaultLogManager::GetFaultLogContent*;
+        OHOS::HiviewDFX::FaultLogManager::GetFaultLogFileList*;
+        OHOS::HiviewDFX::FaultLogManager::SaveFaultInfoToRawDb*;
+        OHOS::HiviewDFX::FaultLogManager::SaveFaultLogToFile*;
+        OHOS::HiviewDFX::FaultLogger::IsFaultLogLimit*;
+        OHOS::HiviewDFX::IsModuleNameValid*;
+        OHOS::HiviewDFX::PageHistoryManager*;
+        OHOS::HiviewDFX::DynamicLibraryHandle*;
+        "OHOS::HiviewDFX::DynamicLibraryManager::GetDynamicLibrary(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::DynamicLibraryManager::GetInstance()";
+        "OHOS::HiviewDFX::DynamicLibraryManager::~DynamicLibraryManager()";
+        "OHOS::HiviewDFX::BboxEventRecorder::IsExistEvent(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&) const";
+        "OHOS::HiviewDFX::BboxEventRecorder::IsExistEvent(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned long long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&) const";
+        "OHOS::HiviewDFX::BboxEventRecorder::AddEventToMaps(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::BboxEventRecorder::AddEventToMaps(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned long long, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+    };
+  local:
+    *;
+};

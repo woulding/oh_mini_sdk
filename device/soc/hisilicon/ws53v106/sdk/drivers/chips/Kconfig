@@ -1,0 +1,58 @@
+#===============================================================================
+# @brief    Kconfig file.
+# Copyright (c) HiSilicon (Shanghai) Technologies Co., Ltd. 2022-2022. All rights reserved.
+#===============================================================================
+
+choice
+    prompt "Choose Chip"
+    default CHIP_BS2X
+config CHIP_WS53
+    bool "ws53"
+
+config CHIP_WS63
+    bool "ws63"
+
+config CHIP_BS2X
+    bool "bs2x"
+
+config CHIP_SW39
+    bool "sw39"
+
+config CHIP_FHL2
+    bool "fenghuolunv200"
+endchoice
+
+if CHIP_WS53
+menu "Chip Configurations for ws53"
+    comment "Config ws53"
+    osource "drivers/chips/ws53/Kconfig"
+endmenu
+endif
+
+if CHIP_WS63
+menu "Chip Configurations for ws63"
+    comment "Config ws63"
+    osource "drivers/chips/ws63/Kconfig"
+endmenu
+endif
+
+if CHIP_BS2X
+menu "Chip Configurations for bs2x"
+    comment "bs2x chipset resource config"
+    osource "drivers/chips/bs2x/Kconfig"
+endmenu
+endif
+
+if CHIP_SW39
+menu "Chip Configurations for sw39"
+    comment "sw39 chipset resource config"
+    osource "drivers/chips/sw39/Kconfig"
+endmenu
+endif
+
+if CHIP_FHL2
+menu "Chip Configurations for fenghuolunv200"
+    comment "fenghuolunv200 chipset resource config"
+    osource "drivers/chips/fhl2/boot/commonboot/Kconfig"
+endmenu
+endif

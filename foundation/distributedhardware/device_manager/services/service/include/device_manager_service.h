@@ -1,0 +1,569 @@
+/*
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_DM_SERVICE_H
+#define OHOS_DM_SERVICE_H
+
+#include <string>
+#include <memory>
+
+#include <mutex>
+#include <utility>
+
+#include "advertise_manager.h"
+#include "discovery_manager.h"
+#include "pin_holder.h"
+#include "device_manager_service_listener.h"
+#include "dm_credential_manager.h"
+#include "dm_service_hichain_connector.h"
+#include "idevice_manager_service_impl.h"
+#include "hichain_listener.h"
+#include "i_dm_check_api_white_list.h"
+#include "i_dm_service_impl_ext_resident.h"
+#include "i_dm_device_risk_detect.h"
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE))
+#include "dp_inited_callback.h"
+#include "dm_account_common_event.h"
+#include "dm_datashare_common_event.h"
+#include "dm_package_common_event.h"
+#include "dm_screen_common_event.h"
+#include "relationship_sync_mgr.h"
+#include "local_service_info.h"
+#include "service_info.h"
+#if defined(SUPPORT_BLUETOOTH) || defined(SUPPORT_WIFI)
+#include "dm_publish_common_event.h"
+#endif // SUPPORT_BLUETOOTH SUPPORT_WIFI
+#endif
+
+namespace OHOS {
+namespace DistributedHardware {
+class DeviceManagerService {
+DM_DECLARE_SINGLE_INSTANCE_BASE(DeviceManagerService);
+public:
+    DeviceManagerService() {}
+
+    ~DeviceManagerService();
+    int32_t Init();
+
+    int32_t InitSoftbusListener();
+
+    void InitHichainListener();
+
+    void StartDetectDeviceRisk();
+
+    void DelAllRelateShip();
+
+    DM_EXPORT void RegisterCallerAppId(const std::string &pkgName, const int32_t userId);
+
+    DM_EXPORT void UnRegisterCallerAppId(const std::string &pkgName, const int32_t userId);
+
+    void UninitSoftbusListener();
+    int32_t InitDMServiceListener();
+
+    DM_EXPORT void UninitDMServiceListener();
+
+    int32_t GetTrustedDeviceList(const std::string &pkgName, const std::string &extra,
+                                 std::vector<DmDeviceInfo> &deviceList);
+    int32_t GetTrustedDeviceList(const std::string &pkgName, std::vector<DmDeviceInfo> &deviceList);
+
+    int32_t ShiftLNNGear(const std::string &pkgName, const std::string &callerId, bool isRefresh, bool isWakeUp);
+
+    int32_t GetLocalDeviceInfo(DmDeviceInfo &info);
+
+    int32_t GetDeviceInfo(const std::string &networkId, DmDeviceInfo &info);
+
+    int32_t GetUdidByNetworkId(const std::string &pkgName, const std::string &netWorkId, std::string &udid);
+
+    int32_t GetUuidByNetworkId(const std::string &pkgName, const std::string &netWorkId, std::string &uuid);
+
+    int32_t PublishDeviceDiscovery(const std::string &pkgName, const DmPublishInfo &publishInfo);
+
+    int32_t UnPublishDeviceDiscovery(const std::string &pkgName, int32_t publishId);
+
+    int32_t AuthenticateDevice(const std::string &pkgName, int32_t authType, const std::string &deviceId,
+                               const std::string &extra);
+
+    int32_t UnAuthenticateDevice(const std::string &pkgName, const std::string &networkId);
+
+    int32_t StopAuthenticateDevice(const std::string &pkgName);
+
+    int32_t BindDevice(const std::string &pkgName, int32_t authType, const std::string &deviceId,
+        const std::string &bindParam);
+
+    int32_t UnBindDeviceParseExtra(const std::string &pkgName, const std::string &udidHash,
+        const std::string &extra);
+
+    int32_t UnBindDevice(const std::string &pkgName, const std::string &udidHash);
+
+    int32_t UnBindDevice(const std::string &pkgName, const std::string &udidHash, const std::string &extra);
+
+    int32_t ValidateUnBindDeviceParams(const std::string &pkgName, const std::string &udidHash,
+        const std::string &extra);
+
+    int32_t SetUserOperation(std::string &pkgName, int32_t action, const std::string &params);
+    void HandleDeviceStatusChange(DmDeviceState devState, DmDeviceInfo &devInfo, const bool isOnline);
+
+    int OnSessionOpened(int sessionId, int result);
+
+    void OnSessionClosed(int sessionId);
+
+    void OnBytesReceived(int sessionId, const void *data, unsigned int dataLen);
+
+    int OnPinHolderSessionOpened(int sessionId, int result);
+
+    void OnPinHolderSessionClosed(int sessionId);
+
+    void OnPinHolderBytesReceived(int sessionId, const void *data, unsigned int dataLen);
+
+    int32_t DmHiDumper(const std::vector<std::string>& args, std::string &result);
+
+    int32_t RequestCredential(const std::string &reqJsonStr, std::string &returnJsonStr);
+
+    int32_t ImportCredential(const std::string &pkgName, const std::string &credentialInfo);
+
+    int32_t DeleteCredential(const std::string &pkgName, const std::string &deleteInfo);
+
+    int32_t MineRequestCredential(const std::string &pkgName, std::string &returnJsonStr);
+
+    int32_t CheckCredential(const std::string &pkgName, const std::string &reqJsonStr,
+        std::string &returnJsonStr);
+
+    int32_t ImportCredential(const std::string &pkgName, const std::string &reqJsonStr,
+        std::string &returnJsonStr);
+
+    int32_t DeleteCredential(const std::string &pkgName, const std::string &reqJsonStr,
+        std::string &returnJsonStr);
+
+    int32_t RegisterCredentialCallback(const std::string &pkgName);
+
+    int32_t UnRegisterCredentialCallback(const std::string &pkgName);
+
+    int32_t NotifyEvent(const std::string &pkgName, const int32_t eventId, const std::string &event);
+
+    int32_t CheckApiPermission(int32_t permissionLevel);
+
+    int32_t GetEncryptedUuidByNetworkId(const std::string &pkgName, const std::string &networkId, std::string &uuid);
+
+    int32_t GenerateEncryptedUuid(const std::string &pkgName, const std::string &uuid, const std::string &appId,
+        std::string &encryptedUuid);
+
+    int32_t GetNetworkTypeByNetworkId(const std::string &pkgName, const std::string &netWorkId, int32_t &networkType);
+    int32_t RegisterUiStateCallback(const std::string &pkgName);
+    int32_t UnRegisterUiStateCallback(const std::string &pkgName);
+    int32_t ImportAuthCode(const std::string &pkgName, const std::string &authCode);
+    int32_t ExportAuthCode(std::string &authCode);
+
+    int32_t RegisterPinHolderCallback(const std::string &pkgName);
+    int32_t CreatePinHolder(const std::string &pkgName, const PeerTargetId &targetId,
+        DmPinType pinType, const std::string &payload);
+    int32_t DestroyPinHolder(const std::string &pkgName, const PeerTargetId &targetId,
+        DmPinType pinType, const std::string &payload);
+
+    // The following interfaces are provided since OpenHarmony 4.1 Version.
+    int32_t StartDiscovering(const std::string &pkgName, const std::map<std::string, std::string> &discoverParam,
+        const std::map<std::string, std::string> &filterOptions);
+
+    int32_t StopDiscovering(const std::string &pkgName, const std::map<std::string, std::string> &discoverParam);
+
+    int32_t EnableDiscoveryListener(const std::string &pkgName, const std::map<std::string, std::string> &discoverParam,
+        const std::map<std::string, std::string> &filterOptions);
+
+    int32_t DisableDiscoveryListener(const std::string &pkgName, const std::map<std::string, std::string> &extraParam);
+
+    int32_t StartAdvertising(const std::string &pkgName, const std::map<std::string, std::string> &advertiseParam);
+
+    int32_t StopAdvertising(const std::string &pkgName, const std::map<std::string, std::string> &advertiseParam);
+
+    int32_t BindTarget(const std::string &pkgName, const PeerTargetId &targetId,
+        const std::map<std::string, std::string> &bindParam);
+
+    int32_t UnbindTarget(const std::string &pkgName, const PeerTargetId &targetId,
+        const std::map<std::string, std::string> &unbindParam);
+
+    int32_t DpAclAdd(const std::string &udid, int64_t accessControlId);
+
+    int32_t GetDeviceSecurityLevel(const std::string &pkgName, const std::string &networkId, int32_t &networkType);
+    int32_t IsSameAccount(const std::string &networkId);
+    int32_t InitAccountInfo();
+    int32_t InitScreenLockEvent();
+    bool CheckAccessControl(const DmAccessCaller &caller, const DmAccessCallee &callee);
+    bool CheckIsSameAccount(const DmAccessCaller &caller, const DmAccessCallee &callee);
+    void HandleDeviceNotTrust(const std::string &msg);
+    int32_t GetLocalServiceInfoByServiceId(int64_t serviceId, DmRegisterServiceInfo &serviceInfo);
+    int32_t GetTrustServiceInfo(const std::string &pkgName, const std::map<std::string, std::string> &paramMap,
+        std::vector<DmServiceInfo> &serviceList);
+    int32_t GetRegisterServiceInfo(const std::map<std::string, std::string> &param,
+        std::vector<DmRegisterServiceInfo> &regServiceInfos);
+    int32_t GetPeerServiceInfoByServiceId(const std::string &networkId, int64_t serviceId,
+        DmRegisterServiceInfo &serviceInfo);
+    int32_t UpdateServiceInfo(int64_t serviceId, const DmRegisterServiceInfo &regServiceInfo);
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE))
+    void HandleCredentialDeleted(const char *credId, const char *credInfo);
+    void HandleDeviceTrustedChange(const std::string &msg);
+    bool ParseRelationShipChangeType(const RelationShipChangeMsg &relationShipMsg);
+    bool ParseRelationShipChangeTypeTwo(const RelationShipChangeMsg &relationShipMsg);
+    void HandleUserIdCheckSumChange(const std::string &msg);
+    void HandleUserStop(int32_t stopUserId, const std::string &stopEventUdid);
+    void HandleUserStop(int32_t stopUserId, const std::string &stopEventUdid,
+        const std::vector<std::string> &acceptEventUdids);
+    std::set<std::pair<std::string, std::string>> GetProxyInfosByParseExtra(const std::string &pkgName,
+        const std::string &extra, std::vector<std::pair<int64_t, int64_t>> &agentToProxyVec);
+    int32_t BindServiceTarget(const std::string &pkgName, const PeerTargetId &targetId,
+        const std::map<std::string, std::string> &bindParam);
+    int32_t OpenAuthSessionWithPara(int64_t serviceId);
+#endif
+    int32_t SetDnPolicy(const std::string &pkgName, std::map<std::string, std::string> &policy);
+    void ClearDiscoveryCache(const ProcessInfo &processInfo);
+    void HandleDeviceScreenStatusChange(DmDeviceInfo &devInfo);
+    int32_t GetDeviceScreenStatus(const std::string &pkgName, const std::string &networkId,
+        int32_t &screenStatus);
+    void SubscribePackageCommonEvent();
+    int32_t GetNetworkIdByUdid(const std::string &pkgName, const std::string &udid, std::string &networkId);
+    void HandleCredentialAuthStatus(const std::string &deviceList, uint16_t deviceTypeId, int32_t errcode);
+    int32_t SyncLocalAclListProcess(const DevUserInfo &localDevUserInfo,
+        const DevUserInfo &remoteDevUserInfo, std::string remoteAclList, bool isDelImmediately);
+    int32_t GetAclListHash(const DevUserInfo &localDevUserInfo,
+        const DevUserInfo &remoteDevUserInfo, std::string &aclList);
+    void ProcessSyncUserIds(const std::vector<uint32_t> &foregroundUserIds,
+        const std::vector<uint32_t> &backgroundUserIds, const std::string &remoteUdid);
+    void ProcessSyncUserIdsInner(std::vector<DmUserRemovedServiceInfo> &serviceInfos);
+
+    void ProcessUninstApp(int32_t userId, int32_t tokenId);
+    void ProcessUnBindApp(int32_t userId, int32_t tokenId, const std::string &extra, const std::string &udid);
+
+    int32_t SetLocalDisplayNameToSoftbus(const std::string &displayName);
+    void RemoveNotifyRecord(const ProcessInfo &processInfo);
+    int32_t RegDevStateCallbackToService(const std::string &pkgName);
+
+    int32_t RegServiceStateCallback(const std::string &pkgName, int64_t serviceId);
+    int32_t ClearServiceStateCallback(const std::string &pkgName, int32_t userId);
+    int32_t UnRegServiceStateCallback(const std::string &pkgName, int64_t serviceId);
+
+    void HandleDeviceUnBind(const char *peerUdid, const GroupInformation &groupInfo);
+    int32_t GetAnonyLocalUdid(const std::string &pkgName, std::string &anonyUdid);
+    int32_t GetAllTrustedDeviceList(const std::string &pkgName, const std::string &extra,
+        std::vector<DmDeviceInfo> &deviceList);
+    int32_t RegisterAuthenticationType(const std::string &pkgName,
+        const std::map<std::string, std::string> &authParam);
+    int32_t GetDeviceProfileInfoList(const std::string &pkgName, DmDeviceProfileInfoFilterOptions &filterOptions);
+    int32_t GetDeviceIconInfo(const std::string &pkgName, DmDeviceIconInfoFilterOptions &filterOptions);
+    int32_t PutDeviceProfileInfoList(const std::string &pkgName,
+        std::vector<DmDeviceProfileInfo> &deviceProfileInfoList);
+    int32_t GetLocalDisplayDeviceName(const std::string &pkgName, int32_t maxNameLength, std::string &displayName);
+    int32_t SetLocalDeviceName(const std::string &pkgName, const std::string &deviceName);
+    int32_t SetRemoteDeviceName(const std::string &pkgName, const std::string &deviceId, const std::string &deviceName);
+    std::vector<std::string> GetDeviceNamePrefixs();
+    int32_t RestoreLocalDeviceName(const std::string &pkgName);
+    int32_t RegisterLocalServiceInfo(const DMLocalServiceInfo &serviceInfo);
+    int32_t UnRegisterLocalServiceInfo(const std::string &bundleName, int32_t pinExchangeType);
+    int32_t UpdateLocalServiceInfo(const DMLocalServiceInfo &serviceInfo);
+    int32_t GetLocalServiceInfoByBundleNameAndPinExchangeType(const std::string &bundleName, int32_t pinExchangeType,
+        DMLocalServiceInfo &serviceInfo);
+    void ClearPublishIdCache(const ProcessInfo &processInfo);
+    bool IsPC();
+    int32_t GetDeviceNetworkIdList(const std::string &pkgName, const NetworkIdQueryFilter &queryFilter,
+        std::vector<std::string> &networkIds);
+    void ProcessSyncAccountLogout(const std::string &accountId, const std::string &peerUdid, int32_t userId);
+    int32_t OpenAuthSessionWithPara(const std::string &deviceId, int32_t actionId, bool isEnable160m);
+    int32_t UnRegisterPinHolderCallback(const std::string &pkgName);
+    void ProcessReceiveRspAppUninstall(const std::string &remoteUdid);
+    void ProcessReceiveRspAppUnbind(const std::string &remoteUdid);
+    void ProcessCommonUserStatusEvent(const std::vector<uint32_t> &foregroundUserIds,
+        const std::vector<uint32_t> &backgroundUserIds, const std::string &remoteUdid);
+    void ProcessCommonUserStatusEventInner(std::vector<DmUserRemovedServiceInfo> &serviceInfos);
+    int32_t GetLocalDeviceName(std::string &deviceName);
+    int32_t GetLocalDeviceNameOld(std::string &deviceName);
+    bool CheckSrcAccessControl(const DmAccessCaller &caller, const DmAccessCallee &callee);
+    bool CheckSinkAccessControl(const DmAccessCaller &caller, const DmAccessCallee &callee);
+    bool CheckSrcIsSameAccount(const DmAccessCaller &caller, const DmAccessCallee &callee);
+    bool CheckSinkIsSameAccount(const DmAccessCaller &caller, const DmAccessCallee &callee);
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE))
+    int32_t GetIdentificationByDeviceIds(const std::string &pkgName,
+        const std::vector<std::string> deviceIdList,
+        std::map<std::string, std::string> &deviceIdentificationMap);
+#endif
+    int32_t LeaveLNN(const std::string &pkgName, const std::string &networkId);
+    int32_t GetAuthTypeByUdidHash(const std::string &udidHash, const std::string &pkgName,
+        DMLocalServiceInfoAuthType &authType);
+    int32_t ImportAuthInfo(const DmAuthInfo &dmAuthInfo);
+    int32_t ExportAuthInfo(DmAuthInfo &dmAuthInfo, uint32_t pinLength);
+    int32_t RegisterAuthCodeInvalidCallback(const std::string &pkgName);
+    int32_t UnRegisterAuthCodeInvalidCallback(const std::string &pkgName);
+    int32_t HandleProcessRestart();
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE))
+    int32_t RegisterServiceInfo(const DmRegisterServiceInfo &regServiceInfo, int64_t &serviceId);
+    int32_t UnRegisterServiceInfo(int64_t serviceId);
+    int32_t ValidateDmRegisterServiceInfo(const DmRegisterServiceInfo& regServiceInfo);
+    int32_t StartPublishService(const std::string &pkgName, int64_t serviceId,
+        const DmPublishServiceParam &publishServiceParam);
+    int32_t StopPublishService(const std::string &pkgName, int64_t serviceId);
+    int32_t StartDiscoveryService(const std::string &pkgName, const DmDiscoveryServiceParam &disParam);
+    int32_t StopDiscoveryService(const std::string &pkgName, const DmDiscoveryServiceParam &discParam);
+    int32_t SyncServiceInfoByServiceId(const std::string &pkgName, int32_t localUserId,
+        const std::string &networkId, int64_t serviceId);
+    int32_t SyncAllServiceInfo(const std::string &pkgName, int32_t localUserId, const std::string &networkId);
+    int32_t UnbindServiceTarget(const std::string &pkgName,
+        const std::map<std::string, std::string> &unbindParam, const std::string &netWorkId,
+        int64_t serviceId);
+    int32_t BindServiceOnline(const ServiceStateBindParameter &bindParam);
+    int32_t BindServiceOffline(uint64_t tokenId, const std::string &pkgName, int32_t bindType,
+        const std::string &peerUdid, const DistributedDeviceProfile::ServiceInfo &serviceInfo);
+    int32_t HandleRemoteDied(const ProcessInfo &processInfo);
+    int32_t HandleSoftbusRestart();
+    int32_t HandleServiceStatusChange(DmDeviceState devState, const std::string &peerUdid);
+    void ProcessReceiveRspSvcUnbindProxy(const std::string &remoteUdid);
+    void ProcessUnBindServiceProxy(const UnbindServiceProxyParam &param);
+#endif
+private:
+    int32_t ValidateUnBindTokenId(const std::string &pkgName, const std::string &udidHash);
+    bool IsDMServiceImplReady();
+    bool IsDMImplSoLoaded();
+    bool IsDMServiceAdapterSoLoaded();
+    bool IsDMServiceAdapterResidentLoad();
+    std::pair<bool, IDMDeviceRiskDetect*> LoadDMDeviceRiskDetect();
+    bool IsMsgEmptyAndDMServiceImplReady(const std::string &msg);
+    void UnloadDMServiceImplSo();
+    void UnloadDMServiceAdapterResident();
+    void UnloadDMDeviceRiskDetect(IDMDeviceRiskDetect* &riskDetectPtr);
+    void SendUnBindBroadCast(const std::vector<std::string> &peerUdids, int32_t userId, uint64_t tokenId,
+        int32_t bindLevel);
+    void SendUnBindBroadCast(const std::vector<std::string> &peerUdids, int32_t userId, uint64_t tokenId,
+        int32_t bindLevel, uint64_t peerTokenId);
+    void SendDeviceUnBindBroadCast(const std::vector<std::string> &peerUdids, int32_t userId, uint64_t tokenId);
+    void SendAppUnBindBroadCast(const std::vector<std::string> &peerUdids, int32_t userId, uint64_t tokenId);
+    int32_t CalculateBroadCastDelayTime();
+    void SendAppUnBindBroadCast(const std::vector<std::string> &peerUdids, int32_t userId,
+        uint64_t tokenId, uint64_t peerTokenId);
+    void SendAppUnInstallBroadCast(const std::vector<std::string> &peerUdids, int32_t userId,
+        uint64_t tokenId);
+    void SendServiceUnBindBroadCast(const std::vector<std::string> &peerUdids, int32_t userId, uint64_t tokenId);
+    void SendAccountLogoutBroadCast(const std::vector<std::string> &peerUdids, const std::string &accountId,
+        const std::string &accountName, int32_t userId);
+    void SendUnRegServiceBroadCast(const std::vector<std::string> &peerUdids,
+        int32_t localUserId, int64_t peer_serviceId);
+    /**
+     * @brief send local foreground or background userids by broadcast
+     *
+     * @param peerUdids the broadcast target device udid list
+     * @param foregroundUserIds local foreground userids
+     * @param backgroundUserIds local background userids
+     */
+    void SendUserIdsBroadCast(const std::vector<std::string> &peerUdids,
+        const std::vector<int32_t> &foregroundUserIds, const std::vector<int32_t> &backgroundUserIds,
+        bool isNeedResponse);
+    void SendUserRemovedBroadCast(const std::vector<std::string> &peerUdids, int32_t userId);
+    /**
+     * @brief parse dsoftbus checksum msg
+     *
+     * @param msg checksum msg
+     * @param networkId remote device networkid
+     * @param discoveryType remote device link type, wifi or ble/br
+     * @return int32_t 0 for success
+     */
+    int32_t ParseCheckSumMsg(const std::string &msg, std::string &networkId, uint32_t &discoveryType, bool &isChange);
+    void ProcessCheckSumByWifi(std::string networkId, std::vector<int32_t> foregroundUserIds,
+        std::vector<int32_t> backgroundUserIds);
+    void ProcessCheckSumByBT(std::string networkId, std::vector<int32_t> foregroundUserIds,
+        std::vector<int32_t> backgroundUserIds);
+    void AddHmlInfoToBindParam(int32_t actionId, std::string &bindParam);
+
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE))
+    void SubscribeAccountCommonEvent();
+    void SendShareTypeUnBindBroadCast(const char *credId, const int32_t localUserId,
+        const std::vector<std::string> &peerUdids);
+    DM_EXPORT void AccountCommonEventCallback(const std::string commonEventType,
+        int32_t currentUserId, int32_t beforeUserId);
+    void SubscribeScreenLockEvent();
+    void ScreenCommonEventCallback(std::string commonEventType);
+    DM_EXPORT void ConvertUdidHashToAnoyDeviceId(DmDeviceInfo &deviceInfo);
+    DM_EXPORT int32_t ConvertUdidHashToAnoyDeviceId(const std::string &udidHash,
+        std::string &anoyDeviceId);
+    DM_EXPORT int32_t GetUdidHashByAnoyDeviceId(const std::string &anoyDeviceId,
+        std::string &udidHash);
+    void HandleAccountLogout(int32_t userId, const std::string &accountId, const std::string &accountName);
+    void HandleRegularPeerLogout(int32_t userId, const std::string &accountId, const std::string &accountName,
+        const std::vector<std::string>& peerUdids);
+    void ProcessDeviceMapForLogout(int32_t userId, const std::multimap<std::string, int32_t> &deviceMap,
+        const std::string &localUdid, const std::string &accountId);
+    void LogoutProcessServiceInfos(const std::vector<DmUserRemovedServiceInfo> &serviceInfos,
+        const std::string &localUdid);
+    void HandleUserRemoved(int32_t removedUserId);
+    void HandleUserIdsBroadCast(const std::vector<UserIdInfo> &remoteUserIdInfos,
+        const std::string &remoteUdid, bool isNeedResponse);
+    void ProcessReceivedUserIds(const std::vector<UserIdInfo> &remoteUserIdInfos, const std::string &remoteUdid);
+    void ProcessServiceBindings(const std::vector<UserIdInfo> &remoteUserIdInfos, const std::string &remoteUdid);
+    void ProcessActiveServices(const DmUserRemovedServiceInfo &serviceInfo);
+    void ProcessInactiveServices(const DmUserRemovedServiceInfo &serviceInfo);
+    void HandleShareUnbindBroadCast(const int32_t userId, const std::string &credId);
+    void HandleServiceUnRegEvent(const std::string &peerUdid, int32_t userId, int64_t serviceId);
+
+    void NotifyRemoteUninstallApp(int32_t userId, int32_t tokenId);
+    void NotifyRemoteUninstallAppByWifi(int32_t userId, int32_t tokenId,
+        const std::map<std::string, std::string> &wifiDevices);
+    int32_t SendUninstAppByWifi(int32_t userId, int32_t tokenId, const std::string &networkId);
+    void GetNotifyRemoteUnBindAppWay(int32_t userId, int32_t tokenId,
+        std::map<std::string, std::string> &wifiDevices, bool &isBleWay);
+    void NotifyRemoteUnBindAppByWifi(int32_t userId, int32_t tokenId, std::string extra,
+        const std::map<std::string, std::string> &wifiDevices);
+    int32_t SendUnBindAppByWifi(int32_t userId, int32_t tokenId, std::string extra,
+        const std::string &networkId, const std::string &udid);
+
+    void HandleUserSwitchedEvent(int32_t currentUserId, int32_t beforeUserId);
+    void HandleUserStopEvent(int32_t stopUserId);
+    void DivideNotifyMethod(const std::vector<std::string> &peerUdids, std::vector<std::string> &bleUdids,
+        std::map<std::string, std::string> &wifiDevices);
+    void NotifyRemoteLocalUserStop(const std::string &localUdid,
+        const std::vector<std::string> &peerUdids, int32_t stopUserId);
+    void SendUserStopBroadCast(const std::vector<std::string> &peerUdids, int32_t stopUserId);
+    void HandleUserStopBroadCast(int32_t stopUserId, const std::string &remoteUdid);
+    void NotifyRemoteLocalUserStopByWifi(const std::string &localUdid,
+        const std::map<std::string, std::string> &wifiDevices, int32_t stopUserId);
+    bool InitDPLocalServiceInfo(const DMLocalServiceInfo &serviceInfo,
+        DistributedDeviceProfile::LocalServiceInfo &dpLocalServiceItem);
+    void InitServiceInfo(const DistributedDeviceProfile::LocalServiceInfo &dpLocalServiceItem,
+        DMLocalServiceInfo &serviceInfo);
+    void InitServiceInfos(const std::vector<DistributedDeviceProfile::LocalServiceInfo> &dpLocalServiceItems,
+        std::vector<DMLocalServiceInfo> &serviceInfos);
+    void ProcessCommonEventServiceSync(const std::vector<uint32_t> &foregroundUserIds,
+        const std::vector<uint32_t> &backgroundUserIds, const std::string &remoteUdid);
+    void UpdateAclAndDeleteGroup(const std::string &localUdid, const std::vector<std::string> &deviceVec,
+        const std::vector<int32_t> &foregroundUserIds, const std::vector<int32_t> &backgroundUserIds);
+
+    void HandleAccountCommonEvent(const std::string commonEventType);
+    bool IsUserStatusChanged(std::vector<int32_t> foregroundUserVec, std::vector<int32_t> backgroundUserVec);
+    void PushPeerUdids(const std::map<std::string, int32_t> &curUserDeviceMap,
+        const std::map<std::string, int32_t> &perUserDeviceMap, std::vector<std::string> &peerUdids);
+    void NotifyRemoteAccountCommonEvent(const std::string commonEventType, const std::string &localUdid,
+        const std::vector<std::string> &peerUdids, const std::vector<int32_t> &foregroundUserIds,
+        const std::vector<int32_t> &backgroundUserIds);
+    void NotifyRemoteAccountCommonEventByWifi(const std::string &localUdid,
+        const std::map<std::string, std::string> &wifiDevices, const std::vector<int32_t> &foregroundUserIds,
+        const std::vector<int32_t> &backgroundUserIds);
+    int32_t SendAccountCommonEventByWifi(const std::string &networkId,
+        const std::vector<int32_t> &foregroundUserIds, const std::vector<int32_t> &backgroundUserIds);
+    void HandleCommonEventTimeout(const std::string &localUdid, const std::vector<int32_t> &foregroundUserIds,
+        const std::vector<int32_t> &backgroundUserIds, const std::string &udid);
+    void UpdateAcl(const std::string &localUdid, const std::vector<std::string> &peerUdids,
+        const std::vector<int32_t> &foregroundUserIds, const std::vector<int32_t> &backgroundUserIds);
+    void HandleCommonEventBroadCast(const std::vector<UserIdInfo> &remoteUserIdInfos,
+        const std::string &remoteUdid, bool isNeedResponse);
+    void HandleResponseRequiredCase(const std::string &remoteUdid);
+    void ProcessUserIdsAndServiceInfo(const std::vector<UserIdInfo> &remoteUserIdInfos, const std::string &remoteUdid);
+    void ProcessOnlineServices(const DmUserRemovedServiceInfo &item);
+    void ProcessOfflineServices(const DmUserRemovedServiceInfo &item);
+    void SendCommonEventBroadCast(const std::vector<std::string> &peerUdids,
+        const std::vector<int32_t> &foregroundUserIds, const std::vector<int32_t> &backgroundUserIds,
+        bool isNeedResponse);
+    void SendCommonEventBroadCast(const std::string commonEventType, std::vector<std::string> &bleUdids,
+        const std::vector<int32_t> &foregroundUserIds, const std::vector<int32_t> &backgroundUserIds);
+    void HandleUserSwitchEventCallback(const std::string &commonEventType, int32_t currentUserId, int32_t beforeUserId);
+    void HandleRemoteUserRemoved(int32_t userId, const std::string &remoteUdid);
+    void HandleAccountLogoutEvent(int32_t userId, const std::string &accountId,
+        const std::string &peerUdid);
+    void GetHoOsTypeUdids(std::vector<std::string> &peerUdids);
+    void DeleteHoDevice(const std::vector<int32_t> &foreGroundUserIds, const std::vector<int32_t> &backGroundUserIds);
+    void HandleAccountLogoutEventCallback(const std::string &commonEventType, int32_t currentUserId,
+        int32_t beforeUserId);
+    void InitTaskOfDelTimeOutAcl();
+    bool IsExportAuthInfoValid(const DmAuthInfo &dmAuthInfo);
+    bool IsImportAuthInfoValid(const DmAuthInfo &dmAuthInfo);
+    bool IsAclLifeCycleDaysValid(const DmAuthInfo &dmAuthInfo);
+    void NotifyRemoteUnbindService(const std::map<std::string, std::string> &unbindParam,
+        const std::string &netWorkId, int64_t serviceId);
+    void NotifyRemoteUnBindServiceByWifi(int32_t userId, uint64_t localTokenId, uint64_t subjectTokenId,
+        int64_t serviceId, const std::string &netWorkId, bool isProxyUnbind);
+    int32_t GetSubjectTokenId(const std::map<std::string, std::string> &unbindParam, uint64_t &subjectTokenId);
+    void DeleteInvalidSkIdAcl();
+#if defined(SUPPORT_BLUETOOTH) || defined(SUPPORT_WIFI)
+    void SubscribePublishCommonEvent();
+    void QueryDependsSwitchState();
+#endif // SUPPORT_BLUETOOTH  SUPPORT_WIFI
+    DM_EXPORT void SubscribeDataShareCommonEvent();
+#endif
+    void HandleNetworkConnected(int32_t networkStatus);
+    void NotifyRemoteLocalLogout(const std::vector<std::string> &peerUdids,
+        const std::string &accountIdHash, const std::string &accountName, int32_t userId);
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE)) && !defined(DEVICE_MANAGER_COMMON_FLAG)
+    bool IsCallerInWhiteList();
+    void UnloadDmCheckApiWhiteListSo();
+    bool IsDMAdapterCheckApiWhiteListLoaded();
+#endif
+    bool GetAccessUdidByNetworkId(const std::string &srcNetWorkId, std::string &srcUdid,
+        const std::string &sinkNetWorkId, std::string &sinkUdid);
+    void GetLocalUserIdFromDataBase(std::vector<int32_t> &foregroundUsers, std::vector<int32_t> &backgroundUsers);
+    void PutLocalUserIdToDataBase(const std::vector<int32_t> &foregroundUsers,
+        const std::vector<int32_t> &backgroundUsers);
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE))
+    void ParseAppUnBindRelationShip(const RelationShipChangeMsg &relationShipMsg);
+#endif
+    bool CheckConstraintEnabledByNetworkId(const std::string &networkId);
+
+private:
+    bool isImplsoLoaded_ = false;
+    bool isAdapterResidentSoLoaded_ = false;
+    void *residentSoHandle_ = nullptr;
+    void *dmServiceImplSoHandle_ = nullptr;
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE))
+    ffrt::mutex isImplLoadLock_;
+    ffrt::mutex isAdapterResidentLoadLock_;
+    ffrt::mutex deviceRiskDetectSoLoadLock_;
+    ffrt::mutex detectLock_;
+    ffrt::mutex hichainListenerLock_;
+#else
+    std::mutex isImplLoadLock_;
+    std::mutex isAdapterResidentLoadLock_;
+    std::mutex deviceRiskDetectSoLoadLock_;
+    std::mutex hichainListenerLock_;
+#endif
+    std::mutex userVecLock_;
+    std::shared_ptr<DmServiceHiChainConnector> hiChainConnector_;
+    std::shared_ptr<DmCredentialManager> credentialMgr_;
+    std::shared_ptr<AdvertiseManager> advertiseMgr_;
+    std::shared_ptr<DiscoveryManager> discoveryMgr_;
+    std::shared_ptr<SoftbusListener> softbusListener_;
+    std::shared_ptr<HichainListener> hichainListener_;
+    std::shared_ptr<DeviceManagerServiceListener> listener_;
+    std::shared_ptr<IDeviceManagerServiceImpl> dmServiceImpl_;
+    std::shared_ptr<IDMServiceImplExtResident> dmServiceImplExtResident_;
+    std::shared_ptr<IDMDeviceRiskDetect> dmDeviceRiskDetect_;
+    std::string localDeviceId_;
+    std::shared_ptr<PinHolder> pinHolder_;
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE))
+    sptr<DpInitedCallback> dpInitedCallback_ = nullptr;
+    std::shared_ptr<DmAccountCommonEventManager> accountCommonEventManager_;
+    std::shared_ptr<DmPackageCommonEventManager> packageCommonEventManager_;
+    std::shared_ptr<DmScreenCommonEventManager> screenCommonEventManager_;
+    std::mutex broadCastLock_;
+    int64_t SendLastBroadCastTime_ = 0;
+    int64_t lastDelayTime_ = 0;
+#if defined(SUPPORT_BLUETOOTH) || defined(SUPPORT_WIFI)
+    ffrt::mutex eventManagerLock_;
+    std::shared_ptr<DmPublishCommonEventManager> publishCommonEventManager_;
+#endif // SUPPORT_BLUETOOTH  SUPPORT_WIFI
+    DM_EXPORT std::shared_ptr<DmDataShareCommonEventManager> dataShareCommonEventManager_;
+#endif
+    std::string localNetWorkId_ = "";
+    std::mutex timerLocks_;
+    std::shared_ptr<DmTimer> timer_;
+#if !(defined(__LITEOS_M__) || defined(LITE_DEVICE)) && !defined(DEVICE_MANAGER_COMMON_FLAG)
+    bool isAdapterCheckApiWhiteListSoLoaded_ = false;
+    void *checkApiWhiteListSoHandle_ = nullptr;
+    std::mutex isAdapterCheckApiWhiteListLoadedLock_;
+    std::shared_ptr<IDMCheckApiWhiteList> dmCheckApiWhiteList_;
+#endif
+};
+} // namespace DistributedHardware
+} // namespace OHOS
+#endif // OHOS_DM_SERVICE_H

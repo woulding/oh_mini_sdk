@@ -1,0 +1,14 @@
+{
+  "description": "Bluetooth switch plugin is functioning properly",
+  "environment": [
+    {
+      "type": "device"
+    }
+  ],
+  "driver": {
+    "type": "DeviceTest",
+    "py_file": [
+      "testcases/level0/case19_switch002.py"
+    ]
+  }
+}

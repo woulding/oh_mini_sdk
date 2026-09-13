@@ -1,0 +1,55 @@
+# Copyright (c) 2023 Shenzhen Kaihong Digital Industry Development Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/CastEngine/castengine_wifi_display/config.gni")
+
+ohos_executable("sharing_player_demo") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  include_dirs = [
+    "$SHARING_ROOT_DIR/services/sink/mediaplayer/include",
+    "$SHARING_ROOT_DIR/services",
+    "$SHARING_ROOT_DIR/services/utils",
+    "$SHARING_ROOT_DIR/services/common",
+    "$SHARING_ROOT_DIR/services/codec/include",
+    "$SHARING_ROOT_DIR/services/protocol",
+    "$SHARING_ROOT_DIR/services/protocol/frame",
+    "$SHARING_ROOT_DIR/services/protocol/rtp/include",
+    "$SHARING_ROOT_DIR/services/sink/codec/include",
+    "$SHARING_ROOT_DIR/services/sink/protocol/rtp/include",
+    "//utils/native/base/include",
+  ]
+
+  sources = [ "player_demo.cpp" ]
+
+  deps = [
+    "$SHARING_ROOT_DIR/services/codec:sharing_codec",
+    "$SHARING_ROOT_DIR/services/common:sharing_common",
+    "$SHARING_ROOT_DIR/services/sink/mediaplayer:sharing_media_player_srcs",
+    "$SHARING_ROOT_DIR/services/protocol/rtp:sharing_rtp",
+  ]
+
+  external_deps = [
+    "audio_framework:audio_client",
+    "audio_framework:audio_renderer",
+    "graphic_surface:surface",
+    "hilog:libhilog",
+  ]
+  subsystem_name = "castplus"
+  part_name = "sharing_framework"
+}

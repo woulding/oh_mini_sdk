@@ -1,0 +1,130 @@
+{
+    "string":[
+        {
+            "name":"actions_menu_user_agent",
+            "value":"تور كۆرگۈچ UA",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"تور كۆرگۈچتە ئېچىش",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"\u200f%s تەڭشەكلىرى",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"\u200fHarmonyOS",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"يانفون نەشرى",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"كومپيۇتېر نەشرى",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"continue_visit",
+            "value":"داۋاملاشتۇرامسىز؟",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"بۇ تور بېكەتنىڭ بىخەتەرلىك ئىجازەتنامىسىنىڭ ۋاقتى ئۆتكەن ياكى ئىشەنچسىز، خەتەر بولۇشى مۇمكىن. داۋاملىق زىيارەت قىلامسىز؟",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"داۋاملاشتۇرۇش",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"بىكار قىلىش",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"چەكلەش",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"بۇ توربەتتە بولمىغۇر/چەكلەنگەن مەزمۇن بولۇشى مۇمكىن، ئېھتىيات قىلىڭ.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"توربەتتە خەۋپ بار",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"\u200f«%s» كامېرا ئىشلىتىدۇ، رۇخسەتمۇ؟",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"بۇ ئىجازەت رەسىم تارتىش ۋە سىن ئېلىش ئۈچۈن ئىشلىتىلىدۇ.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"رۇخسەت",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ok",
+            "value":"جەزملەش",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"\u200f%s ئەسكەرتمىسى",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

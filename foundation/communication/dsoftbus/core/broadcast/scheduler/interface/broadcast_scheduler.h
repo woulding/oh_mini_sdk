@@ -1,0 +1,238 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef BROADCAST_SCHEDULER_H
+#define BROADCAST_SCHEDULER_H
+
+#include "broadcast_scheduler_type_struct.h"
+#include "softbus_broadcast_manager.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief Init broadcast scheduler.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the broadcast scheduler initialize succ;
+ * returns any other value if initialize failed.
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerInitBroadcast(void);
+
+/**
+ * @brief Deinit broadcast scheduler.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the broadcast scheduler deinitialize succ;
+ * returns any other value if deinitialize failed.
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerDeinitBroadcast(void);
+
+/**
+ * @brief Register the service to the broadcast scheduler.
+ *
+ * @param  protocol Indicates the protocol type {@link BroadcastProtocol}.
+ * @param type Indicates the service type {@link BaseServiceType}.
+ * @param bcId Indicates the service broadcast ID.
+ * @param cb Indicates the service broadcast callback {@link BroadcastCallback}.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service register succ.
+ * returns any other value if the service register failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerRegisterBroadcaster(
+    BroadcastProtocol protocol, BaseServiceType type, int32_t *bcId, const BroadcastCallback *cb);
+
+/**
+ * @brief Unregister the service to the broadcast scheduler.
+ *
+ * @param bcId Indicates the service broadcast ID.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service unregister succ.
+ * returns any other value if the service unregister failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerUnregisterBroadcaster(int32_t bcId);
+
+/**
+ * @brief Register the service listener to the broadcast scheduler.
+ *
+ * @param protocol Indicates the protocol type {@link BroadcastProtocol}.
+ * @param type Indicates the service type {@link BaseServiceType}.
+ * @param listenerId Indicates the service listener ID.
+ * @param cb Indicates the service listener callback {@link ScanCallback}.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service register succ.
+ * returns any other value if the service register failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerRegisterScanListener(
+    BroadcastProtocol protocol, BaseServiceType type, int32_t *listenerId, const ScanCallback *cb);
+
+/**
+ * @brief Unregister the service listener to the broadcast scheduler.
+ *
+ * @param listenerId Indicates the service listener ID.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service unregister succ.
+ * returns any other value if the service unregister failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerUnregisterListener(int32_t listenerId);
+
+/**
+ * @brief The service start send broadcast by scheduler.
+ *
+ * @param bcId Indicates the service broadcast ID.
+ * @param param Indicates the pointer to the service parameter information. For details, see {@link BroadcastParam}.
+ * @param packet Indicates the pointer to the service advertising data. For details, see {@link BroadcastPacket}.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service start send broadcast succ.
+ * returns any other value for failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerStartBroadcast(int32_t bcId, BroadcastContentType contentType, const BroadcastParam *param,
+    const BroadcastPacket *packet);
+
+/**
+ * @brief The service update broadcast data and parameters.
+ * The broadcast will be stopped and then started if the broadcast info is updated.
+ *
+ * @param bcId Indicates the service broadcast ID.
+ * @param param Indicates the pointer to the service parameter info. For details, see {@link BroadcastParam}.
+ * @param bcData Indicates the pointer to the service advertising data. For details, see {@link BroadcastPacket}.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service update broadcast info succ.
+ * returns any other value for failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerUpdateBroadcast(int32_t bcId, const BroadcastParam *param, const BroadcastPacket *packet);
+
+/**
+ * @brief The service set broadcast data. Set broadcast data when broadcast is advertising.
+ *
+ * @param bcId Indicates the service broadcast ID.
+ * @param packet Indicates the pointer to the service advertising data. For details, see {@link BroadcastPacket}.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service starts the broadcast successfully.
+ * returns any other value for failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerSetBroadcastData(int32_t bcId, const BroadcastPacket *packet);
+
+/**
+ * @brief The service set broadcast param. Set broadcast param when broadcast is advertising and disabled.
+ *
+ * @param bcId Indicates the service broadcast ID.
+ * @param packet Indicates the pointer to the service advertising data. For details, see {@link BroadcastPacket}.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service starts the broadcast successfully.
+ * returns any other value for failed.
+ *
+ * @since 5.1
+ * @version 1.0
+ */
+int32_t SchedulerSetBroadcastParam(int32_t bcId, const BroadcastParam *param);
+
+/**
+ * @brief The service stop broadcast.
+ *
+ * @param bcId Indicates the service broadcast ID.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service stop the broadcast successfully.
+ * returns any other value for failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerStopBroadcast(int32_t bcId);
+
+/**
+ * @brief The service enable broadcast scanning
+ *
+ * @param listenerId Indicates the service listener ID.
+ * @param param Indicates the broadcast scan parameter {@link BcScanParams}
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service start to scan succ.
+ * returns any other value for failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerStartScan(int32_t listenerId, const BcScanParams *param);
+
+/**
+ * @brief The service stop broadcast scanning
+ *
+ * @param listenerId Indicates the service listener ID.
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service stop scan succ.
+ * returns any other value for failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerStopScan(int32_t listenerId);
+
+/**
+ * @brief Set the scan filter object
+ *
+ * @param listenerId Indicates the service listener ID.
+ * @param scanFilter Indicates the broadcast scan filter parameter {@link BcScanFilter}
+ * @param filterNum Indicates the number of the filter parameter
+ *
+ * @return Returns <b>SOFTBUS_OK</b> if the service set the scan filter succ.
+ * returns any other value for failed.
+ *
+ * @since 5.0
+ * @version 1.0
+ */
+int32_t SchedulerSetScanFilter(int32_t listenerId, const BcScanFilter *scanFilter, uint8_t filterNum);
+
+
+/**
+ * @brief get adv power parameters.
+ *
+ * @param businessType Indicates business type.
+ *
+ * @return Returns adv power.
+ *
+ * @since 7.0
+ * @version 1.0
+ */
+int8_t SchedulerGetAdvPower(int32_t businessType);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+#endif // BROADCAST_SCHEDULER_H
+

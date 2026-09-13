@@ -1,0 +1,76 @@
+/*
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef SAMGR_SERVICES_DFX_INCLUDE__HISYSEVENT_ADAPTER_H
+#define SAMGR_SERVICES_DFX_INCLUDE__HISYSEVENT_ADAPTER_H
+
+#include <string>
+namespace OHOS {
+struct ProcessStartDurationInfo {
+    std::string calleeProcessName;
+    int32_t calleePid = -1;
+    int32_t calleeUid = -1;
+    int64_t duration = -1;
+    std::string callingProcessName;
+    int32_t callingPid = -1;
+    int32_t callingUid = -1;
+    int32_t calleeSaId = -1;
+};
+
+struct SamgrSaLoadInfo {
+    int32_t said = -1;
+    std::string  callingProcessName;
+    int32_t callingPid = -1;
+    int32_t callingUid = -1;
+    int32_t eventId = -1;
+    std::string calleeProcessName;
+    int32_t calleePid = -1;
+    int32_t calleeUid = -1;
+};
+
+void ReportSaMainExit(const std::string& reason);
+
+void ReportAddSystemAbilityFailed(int32_t said, int32_t pid, int32_t uid, const std::string& filaName);
+
+void ReportGetSAFrequency(uint32_t callerUid, uint32_t said, int32_t count);
+
+void WatchDogSendEvent(int32_t pid, uint32_t uid, const std::string& sendMsg,
+    const std::string& eventName);
+
+void ReportSaCrash(int32_t saId);
+
+void ReportSamgrSaLoadFail(int32_t said, int32_t pid, int32_t uid, const std::string& reason);
+
+void ReportSamgrSaLoad(const SamgrSaLoadInfo& samgrSaLoadInfo);
+
+void ReportSamgrSaUnload(int32_t said, int32_t pid, int32_t uid, int32_t eventId);
+
+void ReportSaUnLoadFail(int32_t saId, int32_t pid, int32_t uid, const std::string& reason);
+
+void ReportSaLoadDuration(int32_t saId, int32_t keyStage, int64_t duration);
+
+void ReportSaUnLoadDuration(int32_t saId, int32_t keyStage, int64_t duration);
+
+void ReportProcessStartFail(const std::string& processName, int32_t pid, int32_t uid, const std::string& reason);
+
+void ReportProcessStopFail(const std::string& processName, int32_t pid, int32_t uid, const std::string& reason);
+
+void ReportProcessStartDuration(const ProcessStartDurationInfo& procStartDurInfo);
+
+void ReportProcessStopDuration(const std::string& processName, int32_t pid, int32_t uid, int64_t duration);
+
+void ReportSaAbnormallyFrozen(int32_t saId, const std::string& processName, const std::string& reason);
+} // OHOS
+#endif // SAMGR_SERVICES_DFX_INCLUDE__HISYSEVENT_ADAPTER_H

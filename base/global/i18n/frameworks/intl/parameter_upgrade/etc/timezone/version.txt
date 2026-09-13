@@ -1,0 +1,6 @@
+version=1.10.26.100
+type=TIMEZONE
+subtype=generic
+compatibleVersion=1
+classify=2
+displayVersion=TZ.GENC.1.10.26.100

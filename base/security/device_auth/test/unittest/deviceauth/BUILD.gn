@@ -1,0 +1,955 @@
+# Copyright (C) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/device_auth/deps_adapter/deviceauth_hals.gni")
+import("//base/security/device_auth/services/deviceauth.gni")
+import("//base/security/device_auth/services/key_agree_sdk/key_agree_sdk.gni")
+import("//build/test.gni")
+
+module_output_path = "device_auth/device_auth"
+
+ohos_unittest("deviceauth_llt") {
+  module_out_path = module_output_path
+
+  include_dirs = inc_path
+  include_dirs += hals_inc_path
+
+  include_dirs += [
+    "./include",
+    "./unit_test/include",
+    "${dev_frameworks_path}/inc/permission_adapter",
+    "${dev_frameworks_path}/inc/hiview_adapter",
+  ]
+
+  include_dirs += []
+
+  sources = hal_common_files
+  sources -= [ "${common_lib_path}/impl/src/json_utils.c" ]
+  sources += [
+    "${key_management_adapter_path}/impl/src/common/mbedtls_ec_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter_utils.c",
+    "${key_management_adapter_path}/impl/src/standard/crypto_hash_to_point.c",
+    "${key_management_adapter_path}/impl/src/standard/huks_adapter_diff_impl.c",
+    "${os_adapter_path}/impl/src/hc_err_trace.c",
+    "${os_adapter_path}/impl/src/hc_log.c",
+    "${os_adapter_path}/impl/src/linux/hc_condition.c",
+    "${os_adapter_path}/impl/src/linux/hc_file.c",
+    "${os_adapter_path}/impl/src/linux/hc_init_protection.c",
+    "${os_adapter_path}/impl/src/linux/hc_thread.c",
+    "source/hc_dev_info_mock.c",
+    "source/json_utils_mock.c",
+  ]
+
+  sources += dev_frameworks_files
+  sources += identity_service_mock_files
+  sources += deviceauth_common_files
+  sources += sa_load_on_demand_mock_files
+  sources += group_database_manager_files
+  sources += operation_database_manager_files
+  sources += ext_plugin_manager_files
+  sources += session_manager_files
+  sources += session_mini_files
+  sources += session_v1_files
+  sources += session_v2_mock_files
+  sources += creds_manager_files
+  sources += broadcast_manager_files
+  sources += soft_bus_channel_mock_files
+
+  sources += group_auth_files
+  sources += group_auth_account_unrelated_files
+
+  sources += group_manager_files
+  sources += group_manager_peer_to_peer_files
+
+  sources += authenticators_p2p_files
+  sources += authenticators_p2p_iso_files
+  sources += authenticators_p2p_pake_files
+  sources += authenticators_standard_exchange_task_files
+
+  sources += account_related_files
+
+  sources += privacy_enhancement_files
+  sources += mk_agree_files
+
+  sources += security_label_adapter_files
+
+  include_dirs += identity_manager_inc
+  sources += identity_manager_files
+
+  sources -= [
+    "${authenticators_path}/src/account_unrelated/iso_task/iso_task_main.c",
+    "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_task_main.c",
+    "${deviceauth_account_group_auth_path}/src/group_auth_manager/account_related_group_auth/account_related_group_auth.c",
+    "${identity_manager_path}/src/identity_cred.c",
+  ]
+
+  sources += [
+    "${dev_frameworks_path}/src/account_task_manager_mock/account_task_manager_mock.c",
+    "${dev_frameworks_path}/src/plugin_adapter_mock/account_auth_plugin_proxy_mock.c",
+    "source/creds_manager_test.cpp",
+    "source/device_auth_ext_mock.c",
+    "source/deviceauth_standard_auth_test.cpp",
+    "source/deviceauth_standard_member_test.cpp",
+    "source/deviceauth_standard_test.cpp",
+    "source/group_operation_common_test.cpp",
+    "source/identity_manager_test.cpp",
+    "source/mk_agree_test.cpp",
+    "source/os_account_adapter_mock.c",
+    "source/privacy_enhancement_test.cpp",
+    "source/protocol_task_main_mock.c",
+    "source/standard_exchange_task_test.cpp",
+    "unit_test/source/account_related_group_auth_dir_test.cpp",
+    "unit_test/source/pake_v2_auth_task_test.cpp",
+  ]
+  defines = [
+    "P2P_PAKE_DL_PRIME_LEN_384",
+    "P2P_PAKE_EC_TYPE",
+    "ENABLE_ACCOUNT_AUTH_ISO",
+    "ENABLE_ACCOUNT_AUTH_EC_SPEKE",
+    "ENABLE_P2P_BIND_ISO",
+    "ENABLE_P2P_BIND_EC_SPEKE",
+    "ENABLE_P2P_AUTH_ISO",
+    "ENABLE_P2P_AUTH_EC_SPEKE",
+    "DEV_AUTH_FUNC_TEST",
+    "ENABLE_PSEUDONYM",
+    "DEFAULT_V2_NOT_SUPPORT",
+  ]
+
+  cflags = [ "-DHILOG_ENABLE" ]
+  cflags += [
+    "-DDEV_AUTH_WORK_THREAD_STACK_SIZE=${device_auth_hichain_thread_stack_size}",
+    "-DMAX_AUTH_SESSION_COUNT=${max_auth_session_count}",
+  ]
+
+  deps = []
+
+  external_deps = [
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "huks:libhukssdk",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_static",
+  ]
+}
+
+ohos_unittest("device_auth_func_test") {
+  module_out_path = module_output_path
+
+  include_dirs = inc_path
+  include_dirs += hals_inc_path
+
+  include_dirs += [
+    "./include",
+    "./unit_test/include",
+    "${dev_frameworks_path}/inc/permission_adapter",
+    "${dev_frameworks_path}/inc/hiview_adapter",
+  ]
+
+  sources = hal_common_files
+  sources -= [ "${common_lib_path}/impl/src/json_utils.c" ]
+  sources += [
+    "${key_management_adapter_path}/impl/src/common/mbedtls_ec_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter_utils.c",
+    "${key_management_adapter_path}/impl/src/standard/crypto_hash_to_point.c",
+    "${key_management_adapter_path}/impl/src/standard/huks_adapter_diff_impl.c",
+    "${os_adapter_path}/impl/src/hc_err_trace.c",
+    "${os_adapter_path}/impl/src/hc_log.c",
+    "${os_adapter_path}/impl/src/linux/hc_condition.c",
+    "${os_adapter_path}/impl/src/linux/hc_file.c",
+    "${os_adapter_path}/impl/src/linux/hc_init_protection.c",
+    "${os_adapter_path}/impl/src/linux/hc_thread.c",
+    "source/hc_dev_info_mock.c",
+    "source/json_utils_mock.c",
+  ]
+
+  sources += dev_frameworks_files
+  sources += identity_service_mock_files
+  sources += deviceauth_common_files
+  sources += sa_load_on_demand_mock_files
+  sources += group_database_manager_files
+  sources += operation_database_manager_files
+  sources += ext_plugin_manager_files
+  sources += session_manager_files
+  sources += session_mini_files
+  sources += session_v1_files
+  sources += session_v2_files
+  sources += iso_protocol_files
+  sources += ec_speke_protocol_files
+  sources += auth_code_import_files
+  sources += pub_key_exchange_files
+  sources += save_trusted_info_files
+  sources += creds_manager_files
+  sources += broadcast_manager_files
+  sources += soft_bus_channel_mock_files
+
+  sources += group_auth_files
+  sources += group_auth_account_unrelated_files
+
+  sources += group_manager_files
+  sources += group_manager_peer_to_peer_files
+
+  sources += authenticators_p2p_files
+  sources += authenticators_p2p_iso_files
+  sources += authenticators_p2p_pake_files
+  sources += authenticators_standard_exchange_task_files
+
+  sources += account_related_files
+
+  sources += privacy_enhancement_files
+  sources += mk_agree_files
+
+  sources += security_label_adapter_files
+
+  sources += hiview_adapter_files
+
+  sources -= [
+    "${authenticators_path}/src/account_unrelated/iso_task/iso_task_main.c",
+    "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_task_main.c",
+  ]
+
+  sources += [
+    "${dev_frameworks_path}/src/account_task_manager_mock/account_task_manager_mock.c",
+    "${dev_frameworks_path}/src/plugin_adapter_mock/account_auth_plugin_proxy_mock.c",
+    "source/creds_manager_test.cpp",
+    "source/device_auth_ext_mock.c",
+    "source/deviceauth_standard_auth_test.cpp",
+    "source/deviceauth_standard_member_test.cpp",
+    "source/deviceauth_standard_test.cpp",
+    "source/group_operation_common_test.cpp",
+    "source/iso_auth_task_test.cpp",
+    "source/os_account_adapter_mock.c",
+    "source/protocol_task_main_mock.c",
+    "source/standard_exchange_task_test.cpp",
+  ]
+  defines = [
+    "P2P_PAKE_DL_PRIME_LEN_384",
+    "P2P_PAKE_EC_TYPE",
+    "ENABLE_EC_SPEKE",
+    "ENABLE_ISO",
+    "ENABLE_AUTH_CODE_IMPORT",
+    "ENABLE_PUB_KEY_EXCHANGE",
+    "ENABLE_SAVE_TRUSTED_INFO",
+    "ENABLE_ACCOUNT_AUTH_ISO",
+    "ENABLE_ACCOUNT_AUTH_EC_SPEKE",
+    "ENABLE_P2P_BIND_ISO",
+    "ENABLE_P2P_BIND_EC_SPEKE",
+    "ENABLE_P2P_AUTH_ISO",
+    "ENABLE_P2P_AUTH_EC_SPEKE",
+    "DEV_AUTH_FUNC_TEST",
+    "ENABLE_PSEUDONYM",
+    "DEV_AUTH_HIVIEW_ENABLE",
+  ]
+
+  sources += identity_manager_files
+  include_dirs += identity_manager_inc
+  sources += [ "source/deviceauth_func_test.cpp" ]
+
+  cflags = [ "-DHILOG_ENABLE" ]
+  cflags += [
+    "-DDEV_AUTH_WORK_THREAD_STACK_SIZE=${device_auth_hichain_thread_stack_size}",
+    "-DMAX_AUTH_SESSION_COUNT=${max_auth_session_count}",
+  ]
+
+  deps = []
+
+  external_deps = [
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "huks:libhukssdk",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_static",
+  ]
+}
+
+ohos_unittest("device_auth_identity_service_test") {
+  module_out_path = module_output_path
+
+  include_dirs = inc_path
+  include_dirs += hals_inc_path
+
+  include_dirs += [
+    "./include",
+    "./unit_test/include",
+    "${dev_frameworks_path}/inc/permission_adapter",
+    "${dev_frameworks_path}/inc/hiview_adapter",
+  ]
+
+  sources = hal_common_files
+  sources -= [ "${common_lib_path}/impl/src/json_utils.c" ]
+  sources += [
+    "${key_management_adapter_path}/impl/src/common/mbedtls_ec_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter_utils.c",
+    "${key_management_adapter_path}/impl/src/standard/crypto_hash_to_point.c",
+    "${key_management_adapter_path}/impl/src/standard/huks_adapter_diff_impl.c",
+    "${os_adapter_path}/impl/src/hc_err_trace.c",
+    "${os_adapter_path}/impl/src/hc_log.c",
+    "${os_adapter_path}/impl/src/linux/hc_condition.c",
+    "${os_adapter_path}/impl/src/linux/hc_file.c",
+    "${os_adapter_path}/impl/src/linux/hc_init_protection.c",
+    "${os_adapter_path}/impl/src/linux/hc_thread.c",
+    "source/hc_dev_info_mock.c",
+    "source/json_utils_mock.c",
+  ]
+
+  sources += dev_frameworks_files
+  sources += deviceauth_common_files
+  sources += group_database_manager_files
+  sources += operation_database_manager_files
+  sources += ext_plugin_manager_files
+  sources += session_manager_files
+  sources += identity_service_files
+  sources += session_mini_files
+  sources += session_v1_files
+  sources += session_v2_files
+  sources += iso_protocol_files
+  sources += ec_speke_protocol_files
+  sources += auth_code_import_files
+  sources += pub_key_exchange_files
+  sources += save_trusted_info_files
+  sources += creds_manager_files
+  sources += broadcast_manager_files
+  sources += soft_bus_channel_mock_files
+  sources += permission_adapter_files
+  sources += sa_load_on_demand_mock_files
+
+  sources += group_auth_files
+  sources += group_auth_account_unrelated_files
+
+  sources += group_manager_files
+  sources += group_manager_peer_to_peer_files
+
+  sources += authenticators_p2p_files
+  sources += authenticators_p2p_iso_files
+  sources += authenticators_p2p_pake_files
+  sources += authenticators_standard_exchange_task_files
+
+  sources += account_related_files
+
+  sources += privacy_enhancement_files
+  sources += mk_agree_files
+
+  sources += security_label_adapter_files
+
+  sources += hiview_adapter_files
+
+  sources -= [
+    "${authenticators_path}/src/account_unrelated/iso_task/iso_task_main.c",
+    "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_task_main.c",
+    "${identity_service_path}/session/src/cred_session_util.c",
+    "${identity_service_path}/src/identity_operation.c",
+    "${cred_data_manager_path}/src/credential_data_manager.c",
+  ]
+
+  sources += [
+    "${dev_frameworks_path}/src/account_task_manager_mock/account_task_manager_mock.c",
+    "${dev_frameworks_path}/src/plugin_adapter_mock/account_auth_plugin_proxy_mock.c",
+    "source/device_auth_ext_mock.c",
+    "source/deviceauth_identity_service_test.cpp",
+    "source/os_account_adapter_mock.c",
+    "source/protocol_task_main_mock.c",
+  ]
+
+  defines = [
+    "P2P_PAKE_DL_PRIME_LEN_384",
+    "P2P_PAKE_EC_TYPE",
+    "ENABLE_EC_SPEKE",
+    "ENABLE_ISO",
+    "ENABLE_AUTH_CODE_IMPORT",
+    "ENABLE_PUB_KEY_EXCHANGE",
+    "ENABLE_SAVE_TRUSTED_INFO",
+    "ENABLE_ACCOUNT_AUTH_ISO",
+    "ENABLE_ACCOUNT_AUTH_EC_SPEKE",
+    "ENABLE_P2P_BIND_ISO",
+    "ENABLE_P2P_BIND_EC_SPEKE",
+    "ENABLE_P2P_AUTH_ISO",
+    "ENABLE_P2P_AUTH_EC_SPEKE",
+    "DEV_AUTH_FUNC_TEST",
+    "ENABLE_PSEUDONYM",
+    "DEV_AUTH_HIVIEW_ENABLE",
+    "DEV_AUTH_IS_ENABLE",
+  ]
+
+  sources += identity_manager_files
+  include_dirs += identity_manager_inc
+
+  cflags = [ "-DHILOG_ENABLE" ]
+  cflags += [
+    "-DDEV_AUTH_WORK_THREAD_STACK_SIZE=${device_auth_hichain_thread_stack_size}",
+    "-DMAX_AUTH_SESSION_COUNT=${max_auth_session_count}",
+  ]
+
+  deps = []
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "huks:libhukssdk",
+    "ipc:ipc_single",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_static",
+  ]
+}
+
+ohos_unittest("device_auth_interface_test") {
+  module_out_path = module_output_path
+
+  include_dirs = inc_path
+  include_dirs += hals_inc_path
+
+  include_dirs += [
+    "./include",
+    "./unit_test/include",
+    "${dev_frameworks_path}/inc/hiview_adapter",
+    "${frameworks_path}/inc/standard",
+    "${dev_frameworks_path}/inc/permission_adapter",
+    "${frameworks_path}/sdk/sa_load_on_demand/inc",
+  ]
+
+  sources = hal_common_files
+  sources -= [ "${common_lib_path}/impl/src/json_utils.c" ]
+  sources += [
+    "${key_management_adapter_path}/impl/src/common/mbedtls_ec_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter_utils.c",
+    "${key_management_adapter_path}/impl/src/standard/crypto_hash_to_point.c",
+    "${key_management_adapter_path}/impl/src/standard/huks_adapter_diff_impl.c",
+    "${os_adapter_path}/impl/src/hc_err_trace.c",
+    "${os_adapter_path}/impl/src/hc_log.c",
+    "${os_adapter_path}/impl/src/linux/hc_condition.c",
+    "${os_adapter_path}/impl/src/linux/hc_file.c",
+    "${os_adapter_path}/impl/src/linux/hc_init_protection.c",
+    "${os_adapter_path}/impl/src/linux/hc_thread.c",
+    "source/hc_dev_info_mock.c",
+    "source/json_utils_mock.c",
+  ]
+
+  sources += dev_frameworks_files
+  sources += identity_service_mock_files
+  sources += deviceauth_common_files
+  sources += group_database_manager_files
+  sources += operation_database_manager_files
+  sources += ext_plugin_manager_files
+  sources += session_manager_files
+  sources += session_mini_files
+  sources += session_v1_files
+  sources += session_v2_files
+  sources += iso_protocol_files
+  sources += ec_speke_protocol_files
+  sources += auth_code_import_files
+  sources += pub_key_exchange_files
+  sources += save_trusted_info_files
+  sources += creds_manager_files
+  sources += broadcast_manager_files
+  sources += soft_bus_channel_files
+  sources += deviceauth_ipc_files
+  sources += permission_adapter_files
+  sources += critical_handler_mock_files
+  sources += sdk_load_on_demand_mock_files
+
+  sources += group_auth_files
+  sources += group_auth_account_unrelated_files
+
+  sources += group_manager_files
+  sources += group_manager_peer_to_peer_files
+
+  sources += authenticators_p2p_files
+  sources += authenticators_p2p_iso_files
+  sources += authenticators_p2p_pake_files
+  sources += authenticators_standard_exchange_task_files
+
+  sources += account_related_files
+
+  sources += privacy_enhancement_files
+  sources += mk_agree_files
+
+  sources += security_label_adapter_files
+
+  sources += hiview_adapter_files
+
+  sources += [
+    "${dev_frameworks_path}/src/account_task_manager/account_task_manager.c",
+    "${dev_frameworks_path}/src/plugin_adapter/ext_part/account_auth_plugin/account_auth_plugin_proxy.c",
+    "source/device_auth_ext_mock.c",
+    "source/os_account_adapter_mock.c",
+  ]
+  sources -= [
+    "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_protocol_task/pake_v1_protocol_task_common.c",
+    "${deviceauth_account_group_manager_path}/src/group_operation/identical_account_group/identical_account_group.c",
+    "${session_manager_path}/src/session/v2/dev_session_util.c",
+  ]
+  defines = [
+    "P2P_PAKE_DL_PRIME_LEN_384",
+    "P2P_PAKE_EC_TYPE",
+    "ENABLE_EC_SPEKE",
+    "ENABLE_ISO",
+    "ENABLE_AUTH_CODE_IMPORT",
+    "ENABLE_PUB_KEY_EXCHANGE",
+    "ENABLE_SAVE_TRUSTED_INFO",
+    "ENABLE_ACCOUNT_AUTH_ISO",
+    "ENABLE_ACCOUNT_AUTH_EC_SPEKE",
+    "ENABLE_P2P_BIND_ISO",
+    "ENABLE_P2P_BIND_EC_SPEKE",
+    "ENABLE_P2P_AUTH_ISO",
+    "ENABLE_P2P_AUTH_EC_SPEKE",
+    "ENABLE_PSEUDONYM",
+    "DEV_AUTH_HIVIEW_ENABLE",
+  ]
+  sources += identity_manager_files
+  include_dirs += identity_manager_inc
+  sources += [ "source/ipc_adapt_test.cpp" ]
+
+  if (support_jsapi) {
+    sources += [ "source/deviceauth_interface_test.cpp" ]
+  }
+
+  cflags = [ "-DHILOG_ENABLE" ]
+  cflags += [
+    "-DDEV_AUTH_WORK_THREAD_STACK_SIZE=${device_auth_hichain_thread_stack_size}",
+    "-DMAX_AUTH_SESSION_COUNT=${max_auth_session_count}",
+  ]
+
+  deps = []
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "huks:libhukssdk",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_static",
+    "samgr:samgr_proxy",
+    "safwk:system_ability_fwk",
+  ]
+  if (device_auth_enable_soft_bus_channel) {
+    external_deps += [ "dsoftbus:softbus_client" ]
+  }
+  if (support_jsapi) {
+    external_deps += [ "common_event_service:cesfwk_innerkits" ]
+  }
+}
+
+ohos_unittest("deviceauth_unit_test") {
+  module_out_path = module_output_path
+
+  include_dirs = inc_path
+  include_dirs += hals_inc_path
+
+  include_dirs += [
+    "./include",
+    "./unit_test/include",
+    "${dev_frameworks_path}/inc/permission_adapter",
+    "${dev_frameworks_path}/inc/hiview_adapter",
+  ]
+
+  sources = hal_common_files
+  sources -= [ "${common_lib_path}/impl/src/hc_parcel.c" ]
+  sources += [
+    "${key_management_adapter_path}/impl/src/common/mbedtls_ec_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter_utils.c",
+    "${key_management_adapter_path}/impl/src/standard/crypto_hash_to_point.c",
+    "${key_management_adapter_path}/impl/src/standard/huks_adapter_diff_impl.c",
+    "${os_adapter_path}/impl/src/hc_err_trace.c",
+    "${os_adapter_path}/impl/src/hc_log.c",
+    "${os_adapter_path}/impl/src/linux/hc_condition.c",
+    "${os_adapter_path}/impl/src/linux/hc_file.c",
+    "${os_adapter_path}/impl/src/linux/hc_init_protection.c",
+    "${os_adapter_path}/impl/src/linux/hc_thread.c",
+    "source/hc_dev_info_mock.c",
+  ]
+
+  include_dirs += identity_manager_inc
+  sources += identity_manager_files
+  sources += identity_service_mock_files
+  sources += dev_frameworks_files
+  sources += deviceauth_common_files
+  sources += sa_load_on_demand_mock_files
+  sources += group_database_manager_files
+  sources += operation_database_manager_files
+  sources += ext_plugin_manager_files
+  sources += session_manager_files
+  sources += session_mini_files
+  sources += session_v1_files
+  sources += session_v2_files
+  sources += iso_protocol_files
+  sources += ec_speke_protocol_files
+  sources += auth_code_import_files
+  sources += pub_key_exchange_files
+  sources += save_trusted_info_files
+  sources += creds_manager_files
+  sources += broadcast_manager_files
+  sources += soft_bus_channel_mock_files
+
+  sources += group_auth_files
+  sources += group_auth_account_unrelated_files
+
+  sources += group_manager_files
+  sources += group_manager_peer_to_peer_files
+
+  sources += authenticators_p2p_files
+  sources += authenticators_p2p_iso_files
+  sources += authenticators_p2p_pake_files
+  sources += authenticators_standard_exchange_task_files
+
+  sources += account_related_files
+
+  sources += privacy_enhancement_files
+  sources += mk_agree_files
+
+  sources += security_label_adapter_files
+
+  sources -= [
+    "${authenticators_path}/src/account_unrelated/iso_task/iso_task_main.c",
+    "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_task_main.c",
+  ]
+
+  sources += [
+    "${dev_frameworks_path}/src/account_task_manager_mock/account_task_manager_mock.c",
+    "${dev_frameworks_path}/src/plugin_adapter_mock/account_auth_plugin_proxy_mock.c",
+    "source/os_account_adapter_mock.c",
+    "source/protocol_task_main_mock.c",
+    "unit_test/source/account_related_creds_manager_dir_test.cpp",
+    "unit_test/source/common_lib_test.cpp",
+    "unit_test/source/key_management_test.cpp",
+    "unit_test/source/group_data_manager_test.cpp",
+  ]
+
+  defines = [
+    "P2P_PAKE_DL_PRIME_LEN_384",
+    "P2P_PAKE_EC_TYPE",
+    "ENABLE_EC_SPEKE",
+    "ENABLE_ISO",
+    "ENABLE_AUTH_CODE_IMPORT",
+    "ENABLE_PUB_KEY_EXCHANGE",
+    "ENABLE_SAVE_TRUSTED_INFO",
+    "ENABLE_PSEUDONYM",
+    "DEV_AUTH_FUNC_TEST",
+  ]
+
+  cflags = [ "-DHILOG_ENABLE" ]
+  cflags += [
+    "-DDEV_AUTH_WORK_THREAD_STACK_SIZE=${device_auth_hichain_thread_stack_size}",
+    "-DMAX_AUTH_SESSION_COUNT=${max_auth_session_count}",
+  ]
+
+  deps = []
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "huks:libhukssdk",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_static",
+  ]
+}
+
+ohos_unittest("device_auth_ipc_test") {
+  module_out_path = module_output_path
+
+  include_dirs = hals_inc_path
+  include_dirs += []
+
+  sources = [
+    "source/device_auth_ipc_test.cpp",
+    "source/p2p_bind_ipc_test.cpp",
+  ]
+
+  deps = [
+    "${deps_adapter_path}:${hal_module_test_name}",
+    "//base/security/device_auth/services:deviceauth_sdk",
+  ]
+
+  cflags = [ "-DHILOG_ENABLE" ]
+
+  external_deps = [
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "selinux_adapter:librestorecon",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+ohos_unittest("light_auth_test") {
+  module_out_path = module_output_path
+
+  include_dirs = inc_path
+  include_dirs += hals_inc_path
+  include_dirs += [
+    "./include",
+    "./unit_test/include",
+    "${dev_frameworks_path}/inc/hiview_adapter",
+    "${frameworks_path}/inc/standard",
+    "${dev_frameworks_path}/inc/permission_adapter",
+    "${frameworks_path}/sdk/sa_load_on_demand/inc",
+  ]
+
+  sources = hal_common_files
+  sources -= ["${common_lib_path}/impl/src/json_utils.c"]
+  sources += [
+    "${key_management_adapter_path}/impl/src/common/mbedtls_ec_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter.c",
+    "${key_management_adapter_path}/impl/src/huks_adapter_utils.c",
+    "${key_management_adapter_path}/impl/src/standard/crypto_hash_to_point.c",
+    "${key_management_adapter_path}/impl/src/standard/huks_adapter_diff_impl.c",
+    "${os_adapter_path}/impl/src/hc_err_trace.c",
+    "${os_adapter_path}/impl/src/hc_log.c",
+    "${os_adapter_path}/impl/src/linux/hc_condition.c",
+    "${os_adapter_path}/impl/src/linux/hc_file.c",
+    "${os_adapter_path}/impl/src/linux/hc_init_protection.c",
+    "${os_adapter_path}/impl/src/linux/hc_thread.c",
+    "source/hc_dev_info_mock.c",
+    "source/json_utils_mock.c",
+  ]
+
+  sources += dev_frameworks_files
+  sources += identity_service_mock_files
+  sources += deviceauth_common_files
+  sources += group_database_manager_files
+  sources += operation_database_manager_files
+  sources += ext_plugin_manager_files
+  sources += session_manager_files
+  sources += session_mini_files
+  sources += session_v1_files
+  sources += session_v2_files
+  sources += iso_protocol_files
+  sources += ec_speke_protocol_files
+  sources += auth_code_import_files
+  sources += pub_key_exchange_files
+  sources += save_trusted_info_files
+  sources += creds_manager_files
+  sources += broadcast_manager_files
+  sources += soft_bus_channel_files
+  sources += deviceauth_ipc_files
+  sources += permission_adapter_files
+  sources += critical_handler_mock_files
+
+  sources += group_auth_files
+  sources += group_auth_account_unrelated_files
+
+  sources += group_manager_files
+  sources += group_manager_peer_to_peer_files
+
+  sources += authenticators_p2p_files
+  sources += authenticators_p2p_iso_files
+  sources += authenticators_p2p_pake_files
+  sources += authenticators_standard_exchange_task_files
+
+  sources += account_related_files
+
+  sources += privacy_enhancement_files
+  sources += mk_agree_files
+
+  sources += security_label_adapter_files
+
+  sources += hiview_adapter_files
+
+  sources += [
+    "${dev_frameworks_path}/src/account_task_manager/account_task_manager.c",
+    "${dev_frameworks_path}/src/plugin_adapter/ext_part/account_auth_plugin/account_auth_plugin_proxy.c",
+    "source/device_auth_ext_mock.c",
+    "source/os_account_adapter_mock.c",
+  ]
+
+  if (support_jsapi) {
+    sources += [ "${services_path}/sa/src/cache_common_event_handler/cache_common_event_handler.cpp" ]
+  } else {
+    sources += [ "${services_path}/sa/src/cache_common_event_handler/mock/cache_common_event_handler_mock.cpp" ]
+  }
+
+  sources -= ["${services_path}/device_auth.c",]
+
+  defines = [
+    "P2P_PAKE_DL_PRIME_LEN_384",
+    "P2P_PAKE_EC_TYPE",
+    "ENABLE_EC_SPEKE",
+    "ENABLE_ISO",
+    "ENABLE_AUTH_CODE_IMPORT",
+    "ENABLE_PUB_KEY_EXCHANGE",
+    "ENABLE_SAVE_TRUSTED_INFO",
+    "ENABLE_ACCOUNT_AUTH_ISO",
+    "ENABLE_ACCOUNT_AUTH_EC_SPEKE",
+    "ENABLE_P2P_BIND_ISO",
+    "ENABLE_P2P_BIND_EC_SPEKE",
+    "ENABLE_P2P_AUTH_ISO",
+    "ENABLE_P2P_AUTH_EC_SPEKE",
+    "ENABLE_PSEUDONYM",
+    "DEV_AUTH_HIVIEW_ENABLE",
+  ]
+
+  sources += identity_manager_files
+  include_dirs += identity_manager_inc
+
+  sources -= [
+    "${common_lib_path}/impl/src/string_util.c",
+    "${common_lib_path}/impl/src/uint8buff_utils.c"
+  ]
+
+  sources += [
+    "//base/security/device_auth/test/unittest/tdd_framework/common/src/string_util_mock.c",
+    "//base/security/device_auth/test/unittest/tdd_framework/common/src/uint8buff_utils_mock.c",
+  ]
+
+  sources += [
+    "source/light_auth_test.cpp",
+  ]
+
+  deps = [
+    "${deps_adapter_path}:${hal_module_test_name}",
+    "//base/security/device_auth/services:deviceauth_sdk",
+    ]
+
+  cflags = [ "-DHILOG_ENABLE" ]
+  cflags += [
+    "-DDEV_AUTH_WORK_THREAD_STACK_SIZE=${device_auth_hichain_thread_stack_size}",
+    "-DMAX_AUTH_SESSION_COUNT=${max_auth_session_count}",
+  ]
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "huks:libhukssdk",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_static",
+    "samgr:samgr_proxy",
+    "safwk:system_ability_fwk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "selinux_adapter:librestorecon",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+  if (device_auth_enable_soft_bus_channel) {
+    external_deps += [ "dsoftbus:softbus_client" ]
+  }
+  if (support_jsapi) {
+    external_deps += [ "common_event_service:cesfwk_innerkits" ]
+  }
+}
+
+ohos_unittest("identity_service_ipc_test") {
+  module_out_path = module_output_path
+
+  include_dirs = hals_inc_path
+  include_dirs += []
+
+  sources = [ "source/identity_service_ipc_test.cpp" ]
+
+  deps = [
+    "${deps_adapter_path}:${hal_module_test_name}",
+    "//base/security/device_auth/services:deviceauth_sdk",
+  ]
+
+  defines = [ "DEV_AUTH_IS_ENABLE" ]
+
+  cflags = [ "-DHILOG_ENABLE" ]
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "selinux_adapter:librestorecon",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}
+
+ohos_unittest("dfx_operation_common_test") {
+  module_out_path = module_output_path
+
+  include_dirs = inc_path
+  include_dirs += hals_inc_path
+  include_dirs += [
+    "./include",
+    "${operation_data_manager_path}/inc",
+    "${dev_frameworks_path}/inc/hiview_adapter",
+  ]
+
+  sources = hal_common_files
+
+  sources += security_label_adapter_files
+  sources += broadcast_manager_files
+  sources += hiview_adapter_files
+
+  sources += [
+    "source/dfx_operation_common_test.cpp",
+  ]
+
+  sources += [
+    "${os_adapter_path}/impl/src/hc_err_trace.c",
+    "${os_adapter_path}/impl/src/hc_log.c",
+    "${os_adapter_path}/impl/src/linux/hc_file.c",
+    "source/os_account_adapter_mock.c",
+    "source/hc_dev_info_mock.c",
+  ]
+
+  defines = [
+    "DEV_AUTH_HIVIEW_ENABLE",
+  ]
+
+  cflags = [ "-DHILOG_ENABLE" ]
+  external_deps = [
+    "cJSON:cjson",
+    "c_utils:utils",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}

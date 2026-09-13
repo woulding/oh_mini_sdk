@@ -1,0 +1,66 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  import("//build/lite/config/test.gni")
+  group("hdf_test_usb") {
+    testonly = true
+    deps = [
+      "./../sample/device/liteos:usb_dev_test",
+      "./../sample/host:usbhost_ddk_test",
+      "./../sample/host/liteos_test:liteos_host_speed_test",
+      "moduletest:hdf_peripheral_usb_test_module",
+    ]
+  }
+} else {
+  group("hdf_test_usb") {
+    testonly = true
+    deps = [
+      "benchmarktest/:hdi_usb_benchmark_driver_test",
+      "fuzztest/scsiddk_fuzzer:fuzztest",
+      "fuzztest/scsiinquiry_fuzzer:fuzztest",
+      "fuzztest/scsiread10_fuzzer:fuzztest",
+      "fuzztest/scsireadcapacity10_fuzzer:fuzztest",
+      "fuzztest/scsirequestsense_fuzzer:fuzztest",
+      "fuzztest/scsisendrequestbycdb_fuzzer:fuzztest",
+      "fuzztest/scsitestunitready_fuzzer:fuzztest",
+      "fuzztest/scsiverify10_fuzzer:fuzztest",
+      "fuzztest/scsiwrite10_fuzzer:fuzztest",
+      "fuzztest/serialclose_fuzzer:fuzztest",
+      "fuzztest/serialgetattribute_fuzzer:fuzztest",
+      "fuzztest/serialgetportlist_fuzzer:fuzztest",
+      "fuzztest/serialopen_fuzzer:fuzztest",
+      "fuzztest/serialread_fuzzer:fuzztest",
+      "fuzztest/serialsetattribute_fuzzer:fuzztest",
+      "fuzztest/serialwrite_fuzzer:fuzztest",
+      "fuzztest/usbgetdevices_fuzzer:fuzztest",
+      "fuzztest/usbgetnonroothubs_fuzzer:fuzztest",
+      "fuzztest/usbserialddk_fuzzer:fuzztest",
+      "fuzztest/usbserialflush_fuzzer:fuzztest",
+      "fuzztest/usbserialflushinput_fuzzer:fuzztest",
+      "fuzztest/usbserialflushoutput_fuzzer:fuzztest",
+      "fuzztest/usbserialread_fuzzer:fuzztest",
+      "fuzztest/usbserialsetbaudrate_fuzzer:fuzztest",
+      "fuzztest/usbserialsetflowcontrol_fuzzer:fuzztest",
+      "fuzztest/usbserialsetparams_fuzzer:fuzztest",
+      "fuzztest/usbserialsettimeout_fuzzer:fuzztest",
+      "fuzztest/usbserialwrite_fuzzer:fuzztest",
+      "fuzztest/usbdeviceauthorize_fuzzer:fuzztest",
+      "fuzztest/usbinterfaceauthorize_fuzzer:fuzztest",
+      "unittest/ddk_service:usb_ddk_service_test",
+      "unittest/hal:hal_test",
+      "unittest/mock:usb_mock_test",
+    ]
+  }
+}

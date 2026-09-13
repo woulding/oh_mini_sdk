@@ -1,0 +1,37 @@
+{
+    "name": "@ohos/drivers_devhost",
+    "description": "hdf framework devhost components",
+    "version": "6.0",
+    "license": "Apache License 2.0",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "drivers/peripheral/devhost"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "drivers_devhost",
+        "subsystem": "hdf",
+        "features": [],
+        "adapted_system_type": ["standard"],
+        "rom": "256KB",
+        "ram": "512KB",
+        "deps": {
+            "components": [
+                "hdf_core",
+                "hilog",
+                "c_utils",
+                "init",
+                "ipc",
+                "bounds_checking_function"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//drivers/peripheral/devhost:entry"
+            ],
+            "inner_kits": [],
+            "test": []
+        }
+    }
+}

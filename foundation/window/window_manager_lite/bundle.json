@@ -1,0 +1,42 @@
+{
+  "name": "@ohos/window_manager_lite",
+  "description": "Windows manager service",
+  "version": "3.1",
+  "license": "Apache License 2.0",
+  "pubiishAs": "code-segment",
+  "segment": {
+    "destPath": "foundation/window/window_manager_lite"
+  },
+  "dirs": {},
+  "scripts": {},
+  "component": {
+    "name": "window_manager_lite",
+    "subsystem": "window",
+    "feature": [],
+    "adapted_system_type": [ "small" ],
+    "rom": "110KB",
+    "ram": "~50KB",
+    "deps": {
+      "third_party": [
+        "bounds_checking_function"
+      ],
+      "components": [
+        "samgr_lite",
+        "surface_lite",
+        "drivers_peripheral_input",
+        "ipc",
+        "graphic_utils_lite",
+        "hdf_core",
+        "permission_lite"
+      ]
+    },
+    "build": {
+      "sub_component": [
+        "//foundation/window/window_manager_lite:window_manager_lite",
+        "//foundation/window/window_manager_lite/test:window_manager_lite_test"
+      ],
+      "inner_kits": [],
+      "test": []
+    }
+  }
+}

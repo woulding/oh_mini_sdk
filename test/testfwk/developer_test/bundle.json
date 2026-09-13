@@ -1,0 +1,66 @@
+{
+    "name": "@openharmony/developer_test",
+    "version": "3.1.0",
+    "description": "developer_test",
+    "license": "Apache License 2.0",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "test/testfwk/developer_test"
+    },
+    "scripts": {},  
+    "repository": "",
+    "dirs": {},
+    "component": {
+        "name": "developer_test",
+        "subsystem": "testfwk",
+        "syscap": [],
+          "features" :[],
+        "adapted_system_type": [ "mini", "small", "standard" ],
+          "rom": "0KB",
+          "ram": "0KB",
+          "deps": {},
+    "build": {
+      "sub_component": [
+            "//test/testfwk/developer_test/examples/app_info:app_info",
+            "//test/testfwk/developer_test/examples/detector:detector",
+            "//test/testfwk/developer_test/examples/calculator:calculator",
+            "//test/testfwk/developer_test/examples/calculator:calculator_static"
+          ],
+      "inner_kits": [
+        {
+          "name": "//test/testfwk/developer_test/aw/cxx/distributed:distributedtest_lib",
+          "header":{
+              "header_base":[
+                "//test/testfwk/developer_test/aw/cxx/distributed/utils",
+                "//test/testfwk/developer_test/aw/cxx/distributed"
+              ],
+              "header_files":[
+                "csv_transform_xml.h",
+                "distributed.h",
+                "distributed_agent.h",
+                "distributed_cfg.h",
+                "distributed_major.h"
+              ]
+          }
+        },
+        {
+          "name": "//test/testfwk/developer_test/aw/cxx/hwext:performance_test_static",
+          "header":{
+              "header_base": "//test/testfwk/developer_test/aw/cxx/hwext",
+              "header_files": "perf.h"
+          }
+        }
+      ],
+        "test": [
+          "//test/testfwk/developer_test/examples/app_info/test:unittest",
+              "//test/testfwk/developer_test/examples/calculator/test:unittest",
+              "//test/testfwk/developer_test/examples/calculator/test:fuzztest",
+              "//test/testfwk/developer_test/examples/calculator/test:benchmarktest",
+              "//test/testfwk/developer_test/examples/detector/test:unittest",
+              "//test/testfwk/developer_test/examples/sleep/test:performance",
+              "//test/testfwk/developer_test/examples/distributedb/test:distributedtest",
+              "//test/testfwk/developer_test/examples/stagetest/actsbundlemanagerstagetest:unittest"
+          ]
+      }
+  }
+}

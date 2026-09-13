@@ -1,0 +1,53 @@
+{
+  global:
+    extern "C++" {
+        "OHOS::HiviewDFX::HiSysEvent::controller";
+        "OHOS::HiviewDFX::HiSysEvent::EventBase::EventBase(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int, unsigned long)";
+        "OHOS::HiviewDFX::HiSysEvent::EventBase::EventBase(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int, unsigned long long)";
+        "OHOS::HiviewDFX::HiSysEvent::WritebaseInfo(OHOS::HiviewDFX::HiSysEvent::EventBase&)";
+        "OHOS::HiviewDFX::HiSysEvent::IsError(OHOS::HiviewDFX::HiSysEvent::EventBase&)";
+        "OHOS::HiviewDFX::HiSysEvent::ExplainThenReturnRetCode(int)";
+        "OHOS::HiviewDFX::HiSysEvent::SendSysEvent(OHOS::HiviewDFX::HiSysEvent::EventBase&)";
+        "OHOS::HiviewDFX::HiSysEvent::EventBase::GetRetCode()";
+        "OHOS::HiviewDFX::HiSysEvent::CheckKey(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::HiSysEvent::IsWarnAndUpdate(int, OHOS::HiviewDFX::HiSysEvent::EventBase&)";
+        "OHOS::HiviewDFX::HiSysEvent::UpdateAndCheckKeyNumIsOver(OHOS::HiviewDFX::HiSysEvent::EventBase&)";
+        "OHOS::HiviewDFX::HiSysEvent::CheckValue(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::StringFilter::GetInstance()";
+        "OHOS::HiviewDFX::StringFilter::EscapeToRaw(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::HiSysEvent::EventBase::GetEventBuilder()";
+        "OHOS::HiviewDFX::Encoded::EncodedParam::EncodedParam(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::HiSysEvent::InnerWrite(OHOS::HiviewDFX::HiSysEvent::EventBase&)";
+        "OHOS::HiviewDFX::Encoded::EncodedParam::~EncodedParam()";
+        "OHOS::HiviewDFX::Encoded::RawDataEncoder::ValueTypeEncoded(OHOS::HiviewDFX::Encoded::RawData&, bool, OHOS::HiviewDFX::Encoded::ValueType, unsigned char)";
+        "OHOS::HiviewDFX::Encoded::RawDataEncoder::StringValueEncoded(OHOS::HiviewDFX::Encoded::RawData&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::Encoded::EncodedParam::GetKey()";
+        "OHOS::HiviewDFX::Encoded::EncodedParam::GetRawData()";
+        "OHOS::HiviewDFX::Encoded::EncodedParam::Encode()";
+        "OHOS::HiviewDFX::Encoded::EncodedParam::EncodeKey()";
+        "OHOS::HiviewDFX::Encoded::RawDataEncoder::EncodedTag(unsigned char)";
+        "OHOS::HiviewDFX::Encoded::RawData::Append(unsigned char*, unsigned int)";
+        "OHOS::HiviewDFX::Encoded::RawData::Append(unsigned char*, unsigned long)";
+        "OHOS::HiviewDFX::HiSysEvent::CheckArraySize(unsigned int)";
+        "OHOS::HiviewDFX::HiSysEvent::CheckArraySize(unsigned long)";
+        "OHOS::HiviewDFX::Encoded::EncodedParam::AsString(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&)";
+        "OHOS::HiviewDFX::StringFilter::IsValidName(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, unsigned int)";
+        "OHOS::HiviewDFX::HiSysEvent::AppendValue(OHOS::HiviewDFX::HiSysEvent::EventBase&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::HiSysEvent::CheckValue(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+        "OHOS::HiviewDFX::HiSysEvent::controller";
+        "OHOS::HiviewDFX::WriteController::CheckLimitWritingEvent(OHOS::HiviewDFX::ControlParam const&, char const*, char const*, char const*, long)";
+        "OHOS::HiviewDFX::WriteController::CheckLimitWritingEvent(OHOS::HiviewDFX::ControlParam const&, char const*, char const*, char const*, long long)";
+        "OHOS::HiviewDFX::WriteController::CheckLimitWritingEvent(OHOS::HiviewDFX::ControlParam const&, char const*, char const*, OHOS::HiviewDFX::CallerInfo const&)";
+        "OHOS::HiviewDFX::WriteController::GetCurrentTimeMills()";
+        "OHOS::HiviewDFX::Encoded::ParseTimeZone(long)";
+        "OHOS::HiviewDFX::HiSysEvent::EventBase::AppendParam(std::__h::shared_ptr<OHOS::HiviewDFX::Encoded::EncodedParam>)";
+        "OHOS::HiviewDFX::Encoded::EncodedParam::SetRawData(std::__h::shared_ptr<OHOS::HiviewDFX::Encoded::RawData>)";
+        "OHOS::HiviewDFX::EventSocketFactory::GetEventSocket(OHOS::HiviewDFX::Encoded::RawData&)";
+    };
+  extern "C" {
+        "HiSysEvent_Write";
+        "OH_HiSysEvent_Write";
+  };
+  local:
+    *;
+};

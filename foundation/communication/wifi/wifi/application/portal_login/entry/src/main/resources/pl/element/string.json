@@ -1,0 +1,130 @@
+{
+    "string":[
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"Wersja dla komputerów",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"actions_menu_user_agent",
+            "value":"UA Przeglądarki",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"Anuluj",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"Otwórz w Przeglądarce",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"Wersja mobilna",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"Certyfikat SSL tej strony stracił ważność lub jest niezaufany. Dalsze korzystanie z tej strony może zagrażać bezpieczeństwu.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"continue_visit",
+            "value":"Przejść na tę stronę?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"Ustawienia %s",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"Kontynuuj",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"HarmonyOS",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"Odmów",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"Ta witryna może zawierać nieodpowiednie lub zabronione treści. Zachowaj ostrożność.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"Wykryto szkodliwe treści",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"Zezwolić witrynie %s na korzystanie z aparatu?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"To uprawnienie służy do robienia zdjęć i nagrywania filmów.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"Zezwól",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ok",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"Wiadomość z %s:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

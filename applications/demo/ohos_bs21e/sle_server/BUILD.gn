@@ -1,0 +1,49 @@
+# Copyright (C) 2026 HiHope Open Source Organization.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+static_library("bs21e_demo") {
+  sources = [
+    "main.c",
+    "src/sle_server.c",
+    "src/sle_server_adv.c",
+  ]
+
+  include_dirs = [
+    "inc",
+    "//commonlibrary/utils_lite/include",
+    "//device/soc/hisilicon/bs2xv107/sdk/include",
+    "//device/soc/hisilicon/bs2xv107/sdk/include/middleware/services/bts/sle",
+    # soc_osal.h and its __LITEOS__ sub-includes
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/atomic",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/debug",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/device",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/event",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/fileops",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/lock",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/math",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/memory",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/msgqueue",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/proc",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/schedule",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/semaphore",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/string",
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/osal/include/time",
+    # securec.h
+    "//device/soc/hisilicon/bs2xv107/sdk/kernel/liteos/liteos_v208.6.0_b017/Huawei_LiteOS/platform/libsec/include",
+    # product.h (CORE_NUMS)
+    "//device/soc/hisilicon/bs2xv107/sdk/drivers/chips/bs21e/board/memory_config/include/product",
+    # common_def.h (unused())
+    "//device/soc/hisilicon/bs2xv107/sdk/middleware/utils/common_headers",
+  ]
+}

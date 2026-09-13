@@ -1,0 +1,86 @@
+/*
+ * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+@!namespace("@ohos.bluetooth.access", "access")
+@!sts_inject("""
+static { loadLibraryWithPermissionCheck("bluetoothAccess_taihe_native.z", "@ohos.bluetooth.access") }
+""")
+
+from ohos.bluetooth.baseProfile use BaseProfile;
+
+@!sts_inject("""
+export function on(type: string, cb: (arg_0: Object) => void): void {
+    switch (type) {
+        case "stateChange": return onStateChange(cb);
+        default: throw new Error(`Unknown type: ${type}`);
+    }
+}
+export function off(type: string, cb?: (arg_0: Object) => void): void {
+    switch (type) {
+        case "stateChange": return offStateChange(cb as (((arg_0: BluetoothState) => void) | undefined));
+        default: throw new Error(`Unknown type: ${type}`);
+    }
+}
+""")
+function OnStateChange(callback: (data: BluetoothState) => void): void;
+function OffStateChange(callback: Optional<(data: BluetoothState) => void>): void;
+
+enum BluetoothState: i32 {
+    STATE_OFF = 0,
+    STATE_TURNING_ON = 1,
+    STATE_ON = 2,
+    STATE_TURNING_OFF = 3,
+    STATE_BLE_TURNING_ON = 4,
+    STATE_BLE_ON = 5,
+    STATE_BLE_TURNING_OFF = 6
+}
+
+enum DialogType: i32 {
+    BLUETOOTH_SWITCH = 0
+}
+
+struct NotifyDialogResultParams {
+    dialogType: DialogType;
+    dialogResult: bool;
+}
+
+@promise function RestrictBluetooth(): void;
+
+function GetState(): BluetoothState;
+
+function EnableBluetooth(): void;
+function DisableBluetooth(): void;
+
+@promise function EnableBluetoothAsync(): void;
+
+@promise function DisableBluetoothAsync(): void;
+
+function IsValidRandomDeviceId(deviceId: String): bool;
+
+function GetPersistentDeviceIds(): Array<String>;
+
+@promise function DeletePersistentDeviceId(deviceId: String): void;
+
+@promise function AddPersistentDeviceId(deviceId: String): void;
+
+function GetLocalAddress(): String;
+
+@promise function NotifyDialogResult(notifyDialogResultParams: NotifyDialogResultParams): void;
+
+@gen_async("factoryReset")
+@gen_promise("factoryReset")
+function FactoryResetSync(): void;
+
+function ConvertUuid(uuid: String): String;

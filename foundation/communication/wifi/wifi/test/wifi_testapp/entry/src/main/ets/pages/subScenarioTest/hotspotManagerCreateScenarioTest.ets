@@ -1,0 +1,222 @@
+/**
+ * Copyright (c) 2022 Shenzhen Kaihong Digital Industry Development Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import hilog from '@ohos.hilog';
+import promptAction from '@ohos.promptAction';
+import router from '@ohos.router';
+import { PageTitle} from '../../Component/pageTitle';
+import { TestImageDisplay} from '../../Component/testImageDisplay';
+import { TestData} from '../../entryability/model/testData';
+import { ScenarioContentTable} from '../../Component/scenarioContentTable';
+import {
+  HotspotManagerCreateScenarioTestCase,
+  initHotspotManagerCreateScenarioData
+} from '../../entryability/model/scenarioTestDataModels'
+import * as HotspotManagerInterface from '../../entryability/model/hotspotManagerInterface';
+import ConfigData from '../../Utils/ConfigData';
+/**
+ * hotspotManager Create Scenario Test Page Of WiFi test
+ */
+
+interface myParams extends Object {
+  testItem: TestData
+}
+
+interface IWifiAutoArrayItem {
+  name: string;
+  para: string[];
+}
+
+@Entry
+@Component
+struct hotspotManagerCreateScenarioTest {
+  @State message: string = ConfigData.TAG_MSG_HOTSPOT_M_CREATE;
+  private testItem: TestData = (router.getParams() as myParams).testItem
+  @State changeIndex: number = ConfigData.ITEM_CLICK_NONE
+  @StorageLink("hotspotManagerCreateScenarioMessage") hotspotManagerCreateScenarioMessage: string = ""
+  @State h_ssid1: string = ConfigData.SCENARIO_HS_SSID;
+  @State h_securityType1: number = ConfigData.QV_MOCK_SECURITY_TYPE;
+  @State h_band1: number = ConfigData.SCENARIO_HS_BAND;
+  @State h_preSharedKey1: string = ConfigData.QV_MOCK_PRE_SHARED_KEY;
+  @State h_maxConn1: number = ConfigData.SCENARIO_HS_MAX_CONN;
+  @State h_channel1: number = ConfigData.SCENARIO_HS_CHANNEL;
+
+  aboutToAppear() {
+    AppStorage.setOrCreate("h_ssid1", this.h_ssid1)
+    AppStorage.setOrCreate("h_securityType1", this.h_securityType1)
+    AppStorage.setOrCreate("h_band1", this.h_band1)
+    AppStorage.setOrCreate("h_preSharedKey1", this.h_preSharedKey1)
+    AppStorage.setOrCreate("h_maxConn1", this.h_maxConn1)
+    AppStorage.setOrCreate("h_channel1", this.h_channel1)
+  }
+
+  build() {
+    Column() {
+      Stack({alignContent: Alignment.TopStart}){
+        TestImageDisplay({testItem: this.testItem})
+        PageTitle({testItem: this.testItem})
+      }
+
+      Stack().height(ConfigData.VP_1).backgroundColor($r("app.color.black"));
+      Column() {
+        Scroll() {
+          Column() {
+            Text($r('app.string.wifitest_text_cjlcyz'))
+              .fontSize(ConfigData.VP_17)
+              .margin({top: ConfigData.VP_10, bottom: ConfigData.VP_10, left: ConfigData.VP_20})
+              .textAlign(TextAlign.Start)
+              .width(ConfigData.WH_100_100)
+            ScenarioContentTable({
+              scenarioItems: initHotspotManagerCreateScenarioData(),
+              //            testMessage: this.testMessage,  优化时修改
+              changeIndex: this.changeIndex
+            })
+          }
+          .width(ConfigData.WH_100_100)
+          .height(ConfigData.VP_280)
+        }
+        .scrollBarWidth(ConfigData.VP_10)
+        .scrollBar(BarState.Auto)
+
+        Stack().height(ConfigData.VP_1).backgroundColor($r("app.color.black"));
+
+        Scroll() {
+          Column() {
+            Text($r('app.string.wifitest_text_lcrz'))
+              .fontSize(ConfigData.VP_17)
+              .margin({top: ConfigData.VP_8, bottom: ConfigData.VP_8, left: ConfigData.VP_20})
+              .textAlign(TextAlign.Start)
+              .width(ConfigData.WH_100_100)
+            List() {
+              ListItem() {
+                Text(this.hotspotManagerCreateScenarioMessage)
+                  .fontSize(ConfigData.VP_17)
+                  .margin({top: ConfigData.VP_5, left: ConfigData.VP_30, right: ConfigData.VP_10})
+                  .textAlign(TextAlign.Start)
+                  .width(ConfigData.WH_90_100)
+              }
+            }
+            .height(ConfigData.WH_80_100)
+            .width(ConfigData.WH_90_100)
+            .backgroundColor($r("sys.color.ohos_id_color_foreground_contrary"))
+          }
+          .width(ConfigData.WH_100_100)
+          .height(ConfigData.VP_260)
+        }
+        .scrollBarWidth(ConfigData.VP_10)
+        .scrollBar(BarState.On)
+      }
+      .height(ConfigData.VP_500)
+      .width(ConfigData.WH_100_100)
+      .backgroundColor($r("sys.color.ohos_id_color_sub_background"))
+
+
+      Stack().height(ConfigData.VP_1).backgroundColor($r("app.color.black"));
+      Column() {
+        Flex({alignItems: ItemAlign.Center, justifyContent: FlexAlign.SpaceBetween}){
+          Button({type: ButtonType.Normal, stateEffect: true}){
+            Text($r('app.string.wifitest_text_cjcsks')).fontSize(ConfigData.VP_24).fontColor($r('app.color.white')).margin({left: ConfigData.VP_5, right: ConfigData.VP_5})
+          }
+          .borderRadius($r('app.float.wh_value_8'))
+          .backgroundColor($r("app.color.blue"))
+          .width(ConfigData.VP_100)
+          .height(ConfigData.VP_66)
+          .margin({top: ConfigData.VP_15, left: ConfigData.VP_20})
+          .align(Alignment.Start)
+          .onClick(async(event: ClickEvent) => {
+            promptAction.showToast({message: $r('app.string.wifitest_toast_start_hotspot_scenario')})
+            await this.forLoop()
+          })
+
+          Button({type: ButtonType.Normal, stateEffect: true}){
+            Row() {
+              Text($r('app.string.wifitest_text_cjcsjs')).fontSize(ConfigData.VP_24).fontColor($r('app.color.white')).margin({left: ConfigData.VP_5, right: ConfigData.VP_5})
+            }.alignItems(VerticalAlign.Center)
+          }
+          .borderRadius($r('app.float.wh_value_8'))
+          .backgroundColor($r("app.color.blue"))
+          .width(ConfigData.VP_100)
+          .height(ConfigData.VP_66)
+          .margin({top: ConfigData.VP_15, left: ConfigData.VP_10, right: ConfigData.VP_10})
+          .align(Alignment.Start)
+          .onClick(async(event: ClickEvent) => {
+            let hotspotManagerCreateScenarioMessage = ""
+            // 关闭热点状态改变事件
+            hotspotManagerCreateScenarioMessage += HotspotManagerInterface.testOnHotspotStateChangeManager() + "\n"
+            hilog.info(0x1500, 'wifiTestApp', '%{public}s', "testStopBluetoothDiscovery success")
+            AppStorage.setOrCreate("hotspotManagerCreateScenarioMessage", hotspotManagerCreateScenarioMessage)
+            await sleep(1)
+
+            //去使能热点
+            hotspotManagerCreateScenarioMessage += HotspotManagerInterface.testDisableHotspotManager() + "\n"
+            hilog.info(0x1500, 'wifiTestApp', '%{public}s', "testOffStateChange success")
+            AppStorage.setOrCreate("hotspotManagerCreateScenarioMessage", hotspotManagerCreateScenarioMessage)
+            await sleep(1)
+
+          })
+
+          Button({type: ButtonType.Normal, stateEffect: true}){
+            Row() {
+              Text($r('app.string.wifitest_text_qkrz')).fontSize(ConfigData.VP_24).fontColor($r('app.color.white')).margin({left: ConfigData.VP_5, right: ConfigData.VP_5})
+            }.alignItems(VerticalAlign.Center)
+          }
+          .borderRadius($r('app.float.wh_value_8'))
+          .backgroundColor($r("app.color.moon"))
+          .width(ConfigData.VP_80)
+          .height(ConfigData.VP_66)
+          .margin({top: ConfigData.VP_15, right: ConfigData.VP_20})
+          .align(Alignment.Start)
+          .onClick(async(event: ClickEvent) => {
+            let hotspotManagerCreateScenarioMessage = ""
+            AppStorage.setOrCreate("hotspotManagerCreateScenarioMessage", hotspotManagerCreateScenarioMessage)
+          })
+        }
+        .backgroundColor($r("sys.color.ohos_id_color_sub_background"))
+        .width(ConfigData.WH_100_100)
+      }
+      .backgroundColor($r("sys.color.ohos_id_color_sub_background"))
+      .width(ConfigData.WH_100_100)
+      .height(ConfigData.WH_100_100);
+    }
+  }
+
+  //循环调用
+  async forLoop() {
+    let hotspotManagerCreateScenarioMessage = ""
+    let hotspotManagerScenarioArray: IWifiAutoArrayItem[] = []
+
+    //拼装数组
+    let Interface = HotspotManagerCreateScenarioTestCase.map(i => {
+      // 查找与条件匹配的元素，并且确保其不是undefined
+      const foundItem = hotspotManagerScenarioArray.find(itm => itm.name === i.api.name);
+      let para: string[] = foundItem ? foundItem.para: [];
+      return { name: i.api.name, para} as IWifiAutoArrayItem;
+    })
+    for(let m = 0 ; m<Interface.length ; m++){
+      hotspotManagerCreateScenarioMessage += HotspotManagerCreateScenarioTestCase[m].api(... Interface[m].para) + "\n"
+      this.changeIndex = m
+      await sleep(1)
+      AppStorage.setOrCreate("hotspotManagerCreateScenarioMessage", hotspotManagerCreateScenarioMessage)
+    }
+  }
+}
+
+async function sleep(time: number): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    setTimeout(() => {
+      resolve();
+    }, time * 1000);
+  });
+}

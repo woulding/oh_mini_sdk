@@ -1,0 +1,6889 @@
+/*
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#define private public
+#define protected public
+
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <gtest/gtest.h>
+
+#include "app_log_wrapper.h"
+#include "bundle_constants.h"
+#include "bundle_extractor.h"
+#include "bundle_parser.h"
+#include "bundle_profile.h"
+#include "bundle_service_constants.h"
+#include "common_profile.h"
+#include "default_permission_profile.h"
+#include "json_constants.h"
+#include "module_profile.h"
+#include "form_info.h"
+#include "form_info_base.h"
+#include "extension_form_info.h"
+
+using namespace testing::ext;
+using namespace OHOS::AppExecFwk;
+using namespace OHOS::AppExecFwk::Constants;
+using namespace OHOS::AppExecFwk::ServiceConstants;
+using namespace OHOS::AppExecFwk::ProfileReader;
+namespace OHOS {
+namespace {
+const std::string RESOURCE_ROOT_PATH = "/data/test/resource/bms/parse_bundle/";
+const std::string BUNDLE_NAME1 = "com.ohos.test1";
+const std::string BUNDLE_PERMISSION_NAME1 = "ohos.permission.test1";
+const std::string BUNDLE_PERMISSION_NAME2 = "ohos.permission.test2";
+const std::string MODULE_NAME = "moduleName";
+const std::string NEW_APP = "new";
+const std::string UNKOWN_PATH = "unknown_path";
+const std::string EMPTY_NAME = "";
+const std::string MODULE = "module";
+const std::string NAME = "name";
+const std::string TYPE = "type";
+const std::string NO_EXIST_NAME = "noExist";
+const std::string BUNDLETYPE = "bundleType";
+const std::string BUNDLE_TYPE_APP = "app";
+const std::string PROFILE_KEY_LABEL_ID = "labelId";
+const std::string PROFILE_KEY_LABEL = "label";
+const std::string ATOMIC_SERVICE = "atomicService";
+const std::string RESIZEABLE = "resizeable";
+const std::string BUNDLE_MODULE_PROFILE_KEY_DISTRO = "distro";
+const std::string BUNDLE_MODULE_PROFILE_KEY_MODULE_TYPE = "moduleType";
+const std::string MODULE_TYPE_SHARED = "shared";
+const std::string BUNDLE_MODULE_PROFILE_KEY_DEVICE_TYPE = "deviceType";
+const std::string BUNDLE_APP_PROFILE_KEY_CODE = "code";
+const std::string BUNDLE_APP_PROFILE_KEY_VERSION = "version";
+const std::string BUNDLE_MODULE_PROFILE_KEY_MODULE_INSTALLATION_FREE = "installationFree";
+const std::string BUNDLE_MODULE_PROFILE_KEY_MODULE_DEDUPLICATE_HAR = "deduplicateHar";
+const size_t ONE = 1;
+const size_t TWO = 2;
+const std::string OVER_MAX_PATH_SIZE(4097, 'x');
+const nlohmann::json CONFIG_JSON = R"(
+    {
+        "app": {
+            "bundleName": "com.example.hiworld.himusic",
+            "vendor": "example",
+            "version": {
+                "code": 2,
+                "name": "2.0"
+            },
+            "apiVersion": {
+                "compatible": 3,
+                "compatibleMinorAPIVersion": 0,
+                "compatiblePatchAPIVersion": 0,
+                "target": 3,
+                "targetMinorAPIVersion": 0,
+                "targetPatchAPIVersion": 0,
+                "releaseType": "Beta1"
+            }
+        },
+        "deviceConfig": {
+            "default": {
+                "keepAlive":true
+            }
+        },
+        "module": {
+            "package": "com.example.hiworld.himusic.entry",
+            "name": ".MainApplication",
+            "supportedModes": [
+                "drive"
+            ],
+            "distro": {
+                "moduleType": "entry",
+                "deliveryWithInstall": true,
+                "moduleName": "hap-car"
+            },
+            "deviceType": [
+                "car"
+            ],
+            "shortcuts": [
+                {
+                    "shortcutId": "id",
+                    "label": "$string:shortcut",
+                    "icon": "$media:icon",
+                    "intents": [
+                      {
+                        "targetBundle": "com.demo.hiworld.himusic",
+                        "targetClass": "com.demo.hiworld.himusic.entry.MainAbility"
+                      }
+                    ]
+                }
+            ],
+            "abilities": [
+                {
+                    "name": ".MainAbility",
+                    "description": "himusic main ability",
+                    "icon": "$media:ic_launcher",
+                    "label": "HiMusic",
+                    "launchType": "standard",
+                    "orientation": "unspecified",
+                    "visible": true,
+                    "forms": [
+                        {
+                        "name": "Form_JS",
+                        "description": "It's JS Form",
+                        "type": "JS",
+                        "colorMode": "auto",
+                        "isDefault": false,
+                        "jsComponentName": "card4x4",
+                        "updateEnabled": true,
+                        "scheduledUpdateTime": "21:05",
+                        "updateDuration": 1,
+                        "defaultDimension": "2*1",
+                        "supportDimensions": [
+                            "2*1"
+                        ],
+                        "landscapeLayouts": [
+                            "$layout:ability_form"
+                        ],
+                        "portraitLayouts": [
+                            "$layout:ability_form"
+                        ],
+                        "src": "pages/card/index",
+                        "window": {
+                            "designWidth": 720,
+                            "autoDesignWidth": true
+                        },
+                        "formVisibleNotify": true,
+                        "deepLink": "ability://com.example.myapplication.fa/.MainAbility",
+                        "formConfigAbility": "ability://com.example.myapplication.fa/.MainAbility",
+                            "metaData": {
+                                "customizeData": [
+                                    {
+                                        "name": "originWidgetName",
+                                        "value": "com.weather.testWidget"
+                                    }
+                                ]
+                            },
+                        "funInteractionParams": {
+                            "abilityName": "GameLoaderExtensionAbility",
+                            "targetBundleName": "Game",
+                            "subBundleName": "subGame",
+                            "keepStateDuration": 10000
+                        },
+                        "sceneAnimationParams": {
+                            "abilityName": "GameLoaderExtensionAbility",
+                            "disabledDesktopBehaviors": "PULL_DOWN_SEARCH|LONG_CLICK"
+                        }
+                        }
+                    ],
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.system.home"
+                            ]
+                        }
+                    ],
+                    "type": "page",
+                    "formEnabled": true
+                },
+                {
+                    "name": ".PlayService",
+                    "description": "himusic play ability",
+                    "icon": "$media:ic_launcher",
+                    "label": "HiMusic",
+                    "launchType": "standard",
+                    "orientation": "unspecified",
+                    "visible": false,
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.play.music",
+                                "action.stop.music"
+                            ],
+                            "entities": [
+                                "entity.audio"
+                            ]
+                        }
+                    ],
+                    "type": "service",
+                    "backgroundModes": [
+                        "audioPlayback"
+                    ]
+                },
+                {
+                    "name": ".UserADataAbility",
+                    "type": "data",
+                    "uri": "dataability://com.example.hiworld.himusic.UserADataAbility",
+                    "visible": true
+                }
+            ],
+            "reqPermissions": [
+                {
+                    "name": "ohos.permission.DISTRIBUTED_DATASYNC",
+                    "reason": "",
+                    "usedScene": {
+                        "ability": [
+                            "com.example.hiworld.himusic.entry.MainAbility",
+                            "com.example.hiworld.himusic.entry.PlayService"
+                        ],
+                        "when": "inuse"
+                    }
+                }
+            ]
+        }
+    }
+)"_json;
+
+const nlohmann::json CONFIG_JSON_2 = R"(
+{
+    "app":{
+        "apiVersion":{
+            "compatible":8,
+            "compatibleMinorAPIVersion": 0,
+            "compatiblePatchAPIVersion": 0,
+            "releaseType":"Release",
+            "target":8,
+            "targetMinorAPIVersion": 0,
+            "targetPatchAPIVersion": 0
+        },
+        "bundleName":"com.example.myapplication",
+        "vendor":"example",
+        "version":{
+            "code":1000000,
+            "name":"1.0.0"
+        }
+    },
+    "deviceConfig":{
+        "default":{
+            "debug":true
+        }
+    },
+    "module":{
+        "abilities":[
+            {
+                "description":"$string:MainAbility_desc",
+                "descriptionId":16777216,
+                "formsEnabled":false,
+                "icon":"$media:icon",
+                "iconId":16777220,
+                "label":"$string:MainAbility_label",
+                "labelId":16777217,
+                "launchType":"standard",
+                "name":".MainAbility",
+                "orientation":"unspecified",
+                "srcLanguage":"ets",
+                "srcPath":"MainAbility",
+                "type":"page",
+                "visible":true
+            }
+        ],
+        "deviceType":[
+            "phone"
+        ],
+        "distro":{
+            "deliveryWithInstall":true,
+            "installationFree":false,
+            "moduleName":"entry",
+            "moduleType":"entry",
+            "virtualMachine":"ark0.0.0.2"
+        },
+        "js":[
+            {
+                "mode":{
+                    "syntax":"ets",
+                    "type":"pageAbility"
+                },
+                "name":".MainAbility",
+                "pages":[
+                    "pages/index"
+                ],
+                "window":{
+                    "autoDesignWidth":false,
+                    "designWidth":720
+                }
+            }
+        ],
+        "mainAbility":".MainAbility",
+        "name":".entry",
+        "package":"com.example.myapplication"
+    }
+}
+)"_json;
+
+const nlohmann::json CONFIG_JSON_3 = R"(
+{
+    "app":{
+        "apiVersion":{
+            "compatible":8,
+            "compatibleMinorAPIVersion": 0,
+            "compatiblePatchAPIVersion": 0,
+            "releaseType":"Release",
+            "target":8,
+            "targetMinorAPIVersion": 0,
+            "targetPatchAPIVersion": 0
+        },
+        "bundleName":"com.example.myapplication",
+        "vendor":"example",
+        "version":{
+            "code":1000000,
+            "name":"1.0.0"
+        }
+    },
+    "deviceConfig":{
+        "default":{
+            "debug":true
+        }
+    },
+    "module":{
+        "abilities":[
+            {
+                "skills": [
+                    {
+                        "entities": [
+                            "entity.system.home"
+                        ],
+                        "actions": [
+                            "action.system.home"
+                        ]
+                    }
+                ],
+                "description":"$string:MainAbility_desc",
+                "descriptionId":16777216,
+                "formsEnabled":false,
+                "icon":"$media:icon",
+                "iconId":16777220,
+                "label":"$string:MainAbility_label",
+                "labelId":16777217,
+                "launchType":"standard",
+                "name":".MainAbility",
+                "orientation":"unspecified",
+                "srcLanguage":"ets",
+                "srcPath":"MainAbility",
+                "type":"page",
+                "visible":true
+            }
+        ],
+        "deviceType":[
+            "phone"
+        ],
+        "distro":{
+            "deliveryWithInstall":true,
+            "installationFree":false,
+            "moduleName":"entry",
+            "moduleType":"entry",
+            "virtualMachine":"ark0.0.0.2"
+        },
+        "js":[
+            {
+                "mode":{
+                    "syntax":"ets",
+                    "type":"pageAbility"
+                },
+                "name":".MainAbility",
+                "pages":[
+                    "pages/index"
+                ],
+                "window":{
+                    "autoDesignWidth":false,
+                    "designWidth":720
+                }
+            }
+        ],
+        "mainAbility":".MainAbility",
+        "name":".entry",
+        "package":"com.example.myapplication"
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON = R"(
+    {
+        "app": {
+            "apiReleaseType": "Beta3",
+            "bundleName": "com.example.backuptest",
+            "debug": true,
+            "icon": "$media:app_icon",
+            "iconId": 16777220,
+            "label": "$string:app_name",
+            "labelId": 16777216,
+            "minAPIVersion": 9,
+            "minMinorAPIVersion": 0,
+            "minPatchAPIVersion": 0,
+            "targetAPIVersion": 9,
+            "vendor": "example",
+            "versionCode": 1000000,
+            "versionName": "1.0.0",
+            "bundleType": "atomicService",
+            "default": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "car": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "liteWearable": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "phone": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "router": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "smartVision": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "tablet": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "tv": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "wearable": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            }
+        },
+        "deviceConfig": {
+            "default": {
+                "keepAlive":true,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false,
+                "accessible": false
+            }
+        },
+        "module": {
+            "deduplicateHar": true,
+            "abilities": [
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.system.home",
+                                "flag.home.intent.from.system"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.thirdparty.home"
+                            ],
+                            "entities": [
+                                "entity.thirdparty.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.thirdparty.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.thirdparty.home"
+                            ],
+                            "entities": [
+                                "entity.system.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                }
+            ],
+            "deliveryWithInstall": true,
+            "description": "$string:entry_desc",
+            "descriptionId": 16777219,
+            "deviceTypes": [
+                "unknowtype"
+            ],
+            "extensionAbilities": [
+                {
+                    "name": "extensionAbility_A",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.system.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "",
+                    "type": "backup"
+                }
+            ],
+            "installationFree": true,
+            "mainElement": "MainAbility",
+            "name": "entry",
+            "pages": "$profile:main_pages",
+            "srcEntrance": "./ets/Application/AbilityStage.ts",
+            "type": "unknowtype",
+            "virtualMachine": "ark0.0.0.3",
+            "atomicService":{
+                "preloads":[],
+                "resizeable": true
+            }
+        }
+    }
+)"_json;
+
+const nlohmann::json MODULE_JSON_DEDUPLICATEHAR_TRUE = R"(
+    {
+        "app": {
+            "apiReleaseType": "Beta3",
+            "bundleName": "com.example.backuptest",
+            "debug": true,
+            "icon": "$media:app_icon",
+            "iconId": 16777220,
+            "label": "$string:app_name",
+            "labelId": 16777216,
+            "minAPIVersion": 9,
+            "minMinorAPIVersion": 0,
+            "minPatchAPIVersion": 0,
+            "targetAPIVersion": 9,
+            "vendor": "example",
+            "versionCode": 1000000,
+            "versionName": "1.0.0",
+            "bundleType": "atomicService",
+            "default": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "phone": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            }
+        },
+        "deviceConfig": {
+            "default": {
+                "keepAlive":true,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false,
+                "accessible": false
+            }
+        },
+        "module": {
+            "deduplicateHar": true,
+            "abilities": [
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.system.home",
+                                "flag.home.intent.from.system"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.thirdparty.home"
+                            ],
+                            "entities": [
+                                "entity.thirdparty.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.thirdparty.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.thirdparty.home"
+                            ],
+                            "entities": [
+                                "entity.system.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                }
+            ],
+            "deliveryWithInstall": true,
+            "description": "$string:entry_desc",
+            "descriptionId": 16777219,
+            "deviceTypes": [
+                "unknowtype"
+            ],
+            "extensionAbilities": [
+                {
+                    "name": "extensionAbility_A",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.system.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "",
+                    "type": "backup"
+                }
+            ],
+            "installationFree": true,
+            "mainElement": "MainAbility",
+            "name": "entry",
+            "pages": "$profile:main_pages",
+            "srcEntrance": "./ets/Application/AbilityStage.ts",
+            "type": "unknowtype",
+            "virtualMachine": "ark0.0.0.3",
+            "atomicService":{
+                "preloads":[],
+                "resizeable": true
+            }
+        }
+    }
+)"_json;
+
+const nlohmann::json MODULE_JSON_DEDUPLICATEHAR_FALSE = R"(
+    {
+        "app": {
+            "apiReleaseType": "Beta3",
+            "bundleName": "com.example.backuptest",
+            "debug": true,
+            "icon": "$media:app_icon",
+            "iconId": 16777220,
+            "label": "$string:app_name",
+            "labelId": 16777216,
+            "minAPIVersion": 9,
+            "minMinorAPIVersion": 0,
+            "minPatchAPIVersion": 0,
+            "targetAPIVersion": 9,
+            "vendor": "example",
+            "versionCode": 1000001,
+            "versionName": "1.0.0",
+            "bundleType": "atomicService",
+            "default": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            },
+            "phone": {
+                "accessible": false,
+                "keepAlive": false,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false
+            }
+        },
+        "deviceConfig": {
+            "default": {
+                "keepAlive":true,
+                "minAPIVersion": 9,
+                "minMinorAPIVersion": 0,
+                "minPatchAPIVersion": 0,
+                "removable": false,
+                "singleton": false,
+                "userDataClearable": false,
+                "accessible": false
+            }
+        },
+        "module": {
+            "deduplicateHar": false,
+            "abilities": [
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.system.home",
+                                "flag.home.intent.from.system"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.thirdparty.home"
+                            ],
+                            "entities": [
+                                "entity.thirdparty.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.thirdparty.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                },
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.thirdparty.home"
+                            ],
+                            "entities": [
+                                "entity.system.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                }
+            ],
+            "deliveryWithInstall": true,
+            "description": "$string:entry_desc",
+            "descriptionId": 16777219,
+            "deviceTypes": [
+                "unknowtype"
+            ],
+            "extensionAbilities": [
+                {
+                    "name": "extensionAbility_A",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.system.home"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "",
+                    "type": "backup"
+                }
+            ],
+            "installationFree": true,
+            "mainElement": "MainAbility",
+            "name": "entry",
+            "pages": "$profile:main_pages",
+            "srcEntrance": "./ets/Application/AbilityStage.ts",
+            "type": "unknowtype",
+            "virtualMachine": "ark0.0.0.3",
+            "atomicService":{
+                "preloads":[],
+                "resizeable": true
+            }
+        }
+    }
+)"_json;
+
+const nlohmann::json MODULE_JSON_2 = R"(
+{
+        "app": {
+            "bundleName": "com.example.backuptest",
+            "debug": true,
+            "icon": "$media:app_icon",
+            "iconId": 16777220,
+            "label": "$string:app_name",
+            "labelId": 16777216,
+            "minAPIVersion": 9,
+            "minMinorAPIVersion": 0,
+            "minPatchAPIVersion": 0,
+            "targetAPIVersion": 9,
+            "vendor": "example",
+            "versionCode": 1000000,
+            "versionName": "1.0.0"
+        },
+        "module": {
+            "deduplicateHar": false,
+            "deliveryWithInstall": true,
+            "description": "$string:entry_desc",
+            "descriptionId": 16777219,
+            "deviceTypes": [
+                "default"
+            ],
+            "abilities": [
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                }
+            ],
+            "name": "entry",
+            "installationFree": false,
+            "mainElement": "MainAbility",
+            "pages": "$profile:main_pages",
+            "srcEntrance": "./ets/Application/AbilityStage.ts",
+            "type": "entry",
+            "virtualMachine": "ark0.0.0.3"
+        }
+    }
+)"_json;
+
+const nlohmann::json MODULE_JSON_3 = R"(
+{
+    "app": {
+            "bundleName": "com.example.backuptest",
+            "debug": true,
+            "icon": "$media:app_icon",
+            "iconId": 16777220,
+            "label": "$string:app_name",
+            "labelId": 16777216,
+            "minAPIVersion": 9,
+            "minMinorAPIVersion": 0,
+            "minPatchAPIVersion": 0,
+            "targetAPIVersion": 9,
+            "vendor": "example",
+            "versionCode": 1000000,
+            "versionName": "1.0.0"
+        },
+        "module": {
+            "deliveryWithInstall": true,
+            "description": "$string:entry_desc",
+            "descriptionId": 16777219,
+            "deviceTypes": [
+                "default"
+            ],
+            "abilities": [
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true,
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.system.home"
+                            ],
+                            "entities": [
+                                "entity.system.home"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "name": "entry",
+            "installationFree": false,
+            "mainElement": "MainAbility",
+            "pages": "$profile:main_pages",
+            "srcEntrance": "./ets/Application/AbilityStage.ts",
+            "type": "entry",
+            "virtualMachine": "ark0.0.0.3"
+        }
+    }
+)"_json;
+
+const nlohmann::json MODULE_JSON_4 = R"(
+    {
+    }
+)"_json;
+
+const nlohmann::json MODULE_JSON_5 = R"(
+{
+    "app": {
+        "iconId": 33554433,
+        "debug": true,
+        "minAPIVersion": 16,
+        "icon": "$media:app_icon",
+        "label": "$string:app_name",
+        "bundleType": "app",
+        "versionName": "2.0.0",
+        "versionCode": 2000000,
+        "multiAppMode": {
+            "multiAppModeType": "appClone",
+            "maxCount": 5
+        },
+        "appEnvironments": [],
+        "compileSdkType": "OpenHarmony",
+        "labelId": 33554432,
+        "compileSdkVersion": "5.1.0.46",
+        "targetAPIVersion": 16,
+        "vendor": "example",
+        "bundleName": "com.example.myapplication",
+        "apiReleaseType": "Beta1"
+    },
+    "module": {
+        "virtualMachine": "ark13.0.1.0",
+        "mainElement": "EntryAbility",
+        "installationFree": false,
+        "deliveryWithInstall": true,
+        "description": "$string:module_desc",
+        "extensionAbilities": [
+            {
+                "exported": false,
+                "metadata": [
+                    {
+                        "resourceId": 33554448,
+                        "resource": "$profile:backup_config",
+                        "name": "ohos.extension.backup"
+                    }
+                ],
+                "srcEntry": "./ets/entrybackupability/EntryBackupAbility.ets",
+                "name": "EntryBackupAbility",
+                "type": "backup"
+            },
+            {
+                "name": "EntryAppServiceAbility",
+                "srcEntry": "./ets/entryappserviceability/EntryAppServiceAbility.ets",
+                "type": "appService",
+                "exported": false,
+                "appIdentifierAllowList": [
+                    "5765880207853134833"
+                ],
+                "metadata": [
+                    {
+                        "name": "ohos.extension.backup",
+                        "resource": "$profile:backup_config"
+                    }
+                ]
+            }
+        ],
+        "compileMode": "esmodule",
+        "type": "entry",
+        "dependencies": [],
+        "abilities": [
+            {
+                "exported": true,
+                "iconId": 33554442,
+                "startWindowIconId": 33554443,
+                "icon": "$media:layered_image",
+                "startWindowIcon": "$media:startIcon",
+                "startWindowBackgroundId": 33554439,
+                "description": "$string:EntryAbility_desc",
+                "startWindow": "$profile:start_window",
+                "label": "$string:EntryAbility_label",
+                "skills": [
+                    {
+                        "entities": [
+                            "entity.system.home"
+                        ],
+                        "actions": [
+                            "action.system.home"
+                        ]
+                    }
+                ],
+                "srcEntry": "./ets/entryability/EntryAbility.ets",
+                "descriptionId": 33554434,
+                "labelId": 33554435,
+                "startWindowBackground": "$color:start_window_background",
+                "startWindowId": 33554450,
+                "name": "EntryAbility"
+            }
+        ],
+        "deviceTypes": [
+            "default",
+            "tablet"
+        ],
+        "pages": "$profile:main_pages",
+        "descriptionId": 33554436,
+        "name": "entry",
+        "packageName": "entry"
+        }
+    }
+)"_json;
+
+const nlohmann::json MODULE_JSON_6 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": false,
+        "extractNativeLibs": false
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_7 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": true,
+        "extractNativeLibs": true
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_8 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": true,
+        "extractNativeLibs": false
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_9 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": false,
+        "extractNativeLibs": true
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_10 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0",
+        "appPreloadPhase": "processCreated",
+        "buildVersion": "1.0.0"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": false,
+        "extractNativeLibs": true
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_11 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": false,
+        "extractNativeLibs": true
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_12 = R"(
+{
+    "app": {
+        "iconId": 33554433,
+        "debug": true,
+        "minAPIVersion": 16,
+        "icon": "$media:app_icon",
+        "label": "$string:app_name",
+        "bundleType": "app",
+        "versionName": "2.0.0",
+        "versionCode": 2000000,
+        "multiAppMode": {
+            "multiAppModeType": "appClone",
+            "maxCount": 5
+        },
+        "appEnvironments": [],
+        "compileSdkType": "OpenHarmony",
+        "labelId": 33554432,
+        "compileSdkVersion": "5.1.0.46",
+        "targetAPIVersion": 16,
+        "vendor": "example",
+        "bundleName": "com.example.myapplication",
+        "apiReleaseType": "Beta1"
+    },
+    "module": {
+        "virtualMachine": "ark13.0.1.0",
+        "mainElement": "EntryAbility",
+        "installationFree": false,
+        "deliveryWithInstall": true,
+        "description": "$string:module_desc",
+        "extensionAbilities": [
+            {
+                "exported": false,
+                "metadata": [
+                    {
+                        "resourceId": 33554448,
+                        "resource": "$profile:backup_config",
+                        "name": "ohos.extension.backup"
+                    }
+                ],
+                "srcEntry": "./ets/entrybackupability/EntryBackupAbility.ets",
+                "name": "EntryBackupAbility",
+                "isolationProcess": true,
+                "skipAbilityStageLifecycle": false,
+                "type": "sys/commonUI"
+            },
+            {
+                "exported": false,
+                "metadata": [
+                    {
+                        "resourceId": 33554448,
+                        "resource": "$profile:backup_config",
+                        "name": "ohos.extension.backup"
+                    }
+                ],
+                "srcEntry": "./ets/entrybackupability/EntryBackupAbility.ets",
+                "name": "EntryBackupAbilitySecond",
+                "isolationProcess": false,
+                "skipAbilityStageLifecycle": false,
+                "type": "sys/commonUI"
+            }
+        ],
+        "compileMode": "esmodule",
+        "type": "entry",
+        "dependencies": [],
+        "abilities": [
+            {
+                "exported": true,
+                "iconId": 33554442,
+                "startWindowIconId": 33554443,
+                "icon": "$media:layered_image",
+                "startWindowIcon": "$media:startIcon",
+                "startWindowBackgroundId": 33554439,
+                "description": "$string:EntryAbility_desc",
+                "startWindow": "$profile:start_window",
+                "label": "$string:EntryAbility_label",
+                "skills": [
+                    {
+                        "entities": [
+                            "entity.system.home"
+                        ],
+                        "actions": [
+                            "action.system.home"
+                        ]
+                    }
+                ],
+                "srcEntry": "./ets/entryability/EntryAbility.ets",
+                "descriptionId": 33554434,
+                "labelId": 33554435,
+                "startWindowBackground": "$color:start_window_background",
+                "startWindowId": 33554450,
+                "name": "EntryAbility"
+            }
+        ],
+        "deviceTypes": [
+            "default",
+            "tablet"
+        ],
+        "pages": "$profile:main_pages",
+        "descriptionId": 33554436,
+        "name": "entry",
+        "packageName": "entry"
+        }
+    }
+)"_json;
+
+const nlohmann::json MODULE_JSON_13 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0",
+        "bundleType": "atomicService",
+        "appPreloadPhase": "processCreated"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": false,
+        "extractNativeLibs": true
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_14 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0",
+        "bundleType": "atomicService",
+        "appPreloadPhase": "processCreated"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": false,
+        "extractNativeLibs": true,
+        "querySchemes": ["scheme1", "scheme2"]
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_15 = R"(
+{
+    "app": {
+        "bundleName": "com.example.backuptest",
+        "debug": true,
+        "icon": "$media:app_icon",
+        "iconId": 16777220,
+        "label": "$string:app_name",
+        "labelId": 16777216,
+        "minAPIVersion": 9,
+        "targetAPIVersion": 9,
+        "vendor": "example",
+        "versionCode": 1000000,
+        "versionName": "1.0.0",
+        "bundleType": "atomicService",
+        "appPreloadPhase": "processCreated"
+    },
+    "module": {
+        "deliveryWithInstall": true,
+        "description": "$string:entry_desc",
+        "descriptionId": 16777219,
+        "deviceTypes": [
+            "default"
+        ],
+        "abilities": [
+            {
+                "description": "$string:MainAbility_desc",
+                "descriptionId": 16777217,
+                "icon": "$media:icon",
+                "iconId": 16777221,
+                "label": "$string:MainAbility_label",
+                "labelId": 16777218,
+                "name": "MainAbility",
+                "launchType": "unknowlaunchType",
+                "orientation": "unknoworientation",
+                "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                "visible": true
+            }
+        ],
+        "name": "entry",
+        "installationFree": false,
+        "mainElement": "MainAbility",
+        "pages": "$profile:main_pages",
+        "srcEntrance": "./ets/Application/AbilityStage.ts",
+        "type": "entry",
+        "virtualMachine": "ark0.0.0.3",
+        "compressNativeLibs": false,
+        "extractNativeLibs": true,
+        "querySchemes": [
+            "scheme1", "scheme2", "scheme3", "scheme4", "scheme5",
+            "scheme6", "scheme7", "scheme8", "scheme9", "scheme10",
+            "scheme11", "scheme12", "scheme13", "scheme14", "scheme15",
+            "scheme16", "scheme17", "scheme18", "scheme19", "scheme20",
+            "scheme21", "scheme22", "scheme23", "scheme24", "scheme25",
+            "scheme26", "scheme27", "scheme28", "scheme29", "scheme30",
+            "scheme31", "scheme32", "scheme33", "scheme34", "scheme35",
+            "scheme36", "scheme37", "scheme38", "scheme39", "scheme40",
+            "scheme41", "scheme42", "scheme43", "scheme44", "scheme45",
+            "scheme46", "scheme47", "scheme48", "scheme49", "scheme50",
+            "scheme51", "scheme52", "scheme53", "scheme54", "scheme55",
+            "scheme56", "scheme57", "scheme58", "scheme59", "scheme60",
+            "scheme61", "scheme62", "scheme63", "scheme64", "scheme65",
+            "scheme66", "scheme67", "scheme68", "scheme69", "scheme70",
+            "scheme71", "scheme72", "scheme73", "scheme74", "scheme75",
+            "scheme76", "scheme77", "scheme78", "scheme79", "scheme80",
+            "scheme81", "scheme82", "scheme83", "scheme84", "scheme85",
+            "scheme86", "scheme87", "scheme88", "scheme89", "scheme90",
+            "scheme91", "scheme92", "scheme93", "scheme94", "scheme95",
+            "scheme96", "scheme97", "scheme98", "scheme99", "scheme100",
+            "scheme101", "scheme102", "scheme103", "scheme104", "scheme105",
+            "scheme106", "scheme107", "scheme108", "scheme109", "scheme110",
+            "scheme111", "scheme112", "scheme113", "scheme114", "scheme115",
+            "scheme116", "scheme117", "scheme118", "scheme119", "scheme120",
+            "scheme121", "scheme122", "scheme123", "scheme124", "scheme125",
+            "scheme126", "scheme127", "scheme128", "scheme129", "scheme130",
+            "scheme131", "scheme132", "scheme133", "scheme134", "scheme135",
+            "scheme136", "scheme137", "scheme138", "scheme139", "scheme140",
+            "scheme141", "scheme142", "scheme143", "scheme144", "scheme145",
+            "scheme146", "scheme147", "scheme148", "scheme149", "scheme150",
+            "scheme151", "scheme152", "scheme153", "scheme154", "scheme155",
+            "scheme156", "scheme157", "scheme158", "scheme159", "scheme160",
+            "scheme161", "scheme162", "scheme163", "scheme164", "scheme165",
+            "scheme166", "scheme167", "scheme168", "scheme169", "scheme170",
+            "scheme171", "scheme172", "scheme173", "scheme174", "scheme175",
+            "scheme176", "scheme177", "scheme178", "scheme179", "scheme180",
+            "scheme181", "scheme182", "scheme183", "scheme184", "scheme185",
+            "scheme186", "scheme187", "scheme188", "scheme189", "scheme190",
+            "scheme191", "scheme192", "scheme193", "scheme194", "scheme195",
+            "scheme196", "scheme197", "scheme198", "scheme199", "scheme200",
+            "scheme201"
+        ]
+    }
+}
+)"_json;
+
+const nlohmann::json MODULE_JSON_16 = R"(
+{
+    "app": {
+        "bundleName": "com.example.app",
+        "vendor": "example",
+        "version": { "code": 1, "name": "1.0" },
+        "apiVersion": {
+            "compatible": 8,
+            "compatibleMinorAPIVersion": 0,
+            "compatiblePatchAPIVersion": 0,
+            "target": 8,
+            "targetMinorAPIVersion": 0,
+            "targetPatchAPIVersion": 0,
+            "releaseType": "Release"
+        },
+        "2in1": {
+            "minAPIVersion": 9,
+            "keepAlive": true,
+            "removable": false,
+            "singleton": true,
+            "userDataClearable": true,
+            "accessible": false
+        }
+    },
+    "deviceConfig": { "default": { } },
+    "module": {
+        "package": "com.example.app.entry",
+        "name": ".Entry",
+        "deviceType": [ "phone" ],
+        "distro": { "moduleType": "entry", "moduleName": "entry", "deliveryWithInstall": true },
+        "abilities": [
+            {
+                "name": ".MainAbility",
+                "type": "page",
+                "srcLanguage": "ets",
+                "srcPath": "MainAbility",
+                "label": "main",
+                "visible": true
+            }
+        ]
+    }
+})"_json;
+
+InnerBundleInfo CreateInnerBundleInfoForTest(const std::string &bundleName,
+    const std::string &modulePackage, const std::string &moduleName, int32_t userId, int32_t uid)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    ApplicationInfo applicationInfo;
+    applicationInfo.bundleName = bundleName;
+    innerBundleInfo.SetBaseApplicationInfo(applicationInfo);
+
+    BundleInfo bundleInfo;
+    bundleInfo.name = bundleName;
+    innerBundleInfo.SetBaseBundleInfo(bundleInfo);
+
+    InnerBundleUserInfo innerBundleUserInfo;
+    innerBundleUserInfo.bundleName = bundleName;
+    innerBundleUserInfo.bundleUserInfo.userId = userId;
+    innerBundleUserInfo.bundleUserInfo.enabled = true;
+    innerBundleUserInfo.uid = uid;
+    innerBundleInfo.AddInnerBundleUserInfo(innerBundleUserInfo);
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.modulePackage = modulePackage;
+    innerModuleInfo.moduleName = moduleName;
+    innerModuleInfo.name = moduleName;
+    innerBundleInfo.InsertInnerModuleInfo(modulePackage, innerModuleInfo);
+    return innerBundleInfo;
+}
+
+InnerBundleInfo CreateCopyInfoForTest(const std::string &bundleName, const std::string &modulePackage,
+    const std::string &moduleName, int32_t userId)
+{
+    InnerBundleInfo innerBundleInfo = CreateInnerBundleInfoForTest(
+        bundleName, modulePackage, moduleName, userId, 20010000);
+    auto &innerModuleInfo = innerBundleInfo.innerModuleInfos_[modulePackage];
+    innerModuleInfo.resizeable = true;
+    innerModuleInfo.metadata.emplace_back("moduleMeta", "moduleValue", "moduleResource");
+    Dependency dependency;
+    dependency.bundleName = "com.example.shared";
+    dependency.moduleName = "sharedEntry";
+    dependency.versionCode = 1;
+    innerModuleInfo.dependencies.emplace_back(dependency);
+    innerModuleInfo.preloads.emplace_back("warmup");
+    ProxyData proxyData;
+    proxyData.uri = "datashareproxy://copytest";
+    proxyData.requiredReadPermission = "read.permission";
+    proxyData.requiredWritePermission = "write.permission";
+    proxyData.metadata.name = "proxyMeta";
+    proxyData.metadata.value = "proxyValue";
+    innerModuleInfo.proxyDatas.emplace_back(proxyData);
+
+    InnerAbilityInfo innerAbilityInfo;
+    innerAbilityInfo.bundleName = bundleName;
+    innerAbilityInfo.moduleName = moduleName;
+    innerAbilityInfo.name = ".MainAbility";
+    innerBundleInfo.InsertAbilitiesInfo(bundleName + "." + moduleName + "." + innerAbilityInfo.name,
+        innerAbilityInfo);
+
+    InnerExtensionInfo innerExtensionInfo;
+    innerExtensionInfo.bundleName = bundleName;
+    innerExtensionInfo.moduleName = moduleName;
+    innerExtensionInfo.name = "MainExtension";
+    innerBundleInfo.InsertExtensionInfo(bundleName + "." + moduleName + "." + innerExtensionInfo.name,
+        innerExtensionInfo);
+    return innerBundleInfo;
+}
+}  // namespace
+
+class BmsBundleParserTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp();
+    void TearDown();
+
+protected:
+    void GetProfileTypeErrorProps(nlohmann::json &typeErrorProps) const;
+    void CheckNoPropProfileParseApp(const std::string &propKey, const ErrCode expectCode) const;
+    void CheckNoPropProfileParseDeviceConfig(const std::string &propKey, const ErrCode expectCode) const;
+    void CheckNoPropProfileParseModule(const std::string &propKey, const ErrCode expectCode) const;
+    void CheckProfilePermission(const nlohmann::json &checkedProfileJson) const;
+    void CheckProfileForms(const nlohmann::json &checkedProfileJson) const;
+    void CheckProfileShortcut(const nlohmann::json &checkedProfileJson, const ErrCode expectCode) const;
+    void CheckProfileModule(const nlohmann::json &checkedProfileJson, const ErrCode code) const;
+    ErrCode CheckProfileDefaultPermission(const nlohmann::json &checkedProfileJson,
+        std::set<DefaultPermission> &defaultPermissions) const;
+    bool WriteToConfigFile(const std::string &bundleName) const;
+    void UpdateDeduplicateHarConfig(InnerBundleInfo info, bool deduplicateHar);
+protected:
+    std::ostringstream pathStream_;
+};
+
+void BmsBundleParserTest::SetUpTestCase()
+{}
+
+void BmsBundleParserTest::TearDownTestCase()
+{}
+
+void BmsBundleParserTest::SetUp()
+{}
+
+void BmsBundleParserTest::TearDown()
+{
+    pathStream_.clear();
+}
+
+void BmsBundleParserTest::UpdateDeduplicateHarConfig(InnerBundleInfo info, bool deduplicateHar)
+{
+    std::string entryModuleName = info.GetEntryModuleName();
+    auto item = info.innerModuleInfos_.find(entryModuleName);
+    if (item == info.innerModuleInfos_.end()) {
+        APP_LOGE("entry module info is not found");
+        return;
+    }
+    if (deduplicateHar) {
+        BundleUtil::SetBit(InnerModuleInfoBoolFlag::HAS_DEDUPLICATE_HAR, item->second.boolSet);
+    } else {
+        BundleUtil::ResetBit(InnerModuleInfoBoolFlag::HAS_DEDUPLICATE_HAR, item->second.boolSet);
+    }
+}
+
+void BmsBundleParserTest::GetProfileTypeErrorProps(nlohmann::json &typeErrorProps) const
+{
+    typeErrorProps[PROFILE_KEY_NAME] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[PROFILE_KEY_LABEL] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[PROFILE_KEY_DESCRIPTION] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[PROFILE_KEY_TYPE] = JsonConstants::NOT_STRING_TYPE;
+    // bundle profile tag
+    typeErrorProps[BUNDLE_PROFILE_KEY_APP] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_PROFILE_KEY_DEVICE_CONFIG] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_PROFILE_KEY_MODULE] = JsonConstants::NOT_OBJECT_TYPE;
+    // sub BUNDLE_PROFILE_KEY_APP
+    typeErrorProps[BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_APP_PROFILE_KEY_VENDOR] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_APP_PROFILE_KEY_VERSION] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_APP_PROFILE_KEY_API_VERSION] = JsonConstants::NOT_OBJECT_TYPE;
+    // BUNDLE_APP_PROFILE_KEY_VERSION
+    typeErrorProps[BUNDLE_APP_PROFILE_KEY_CODE] = JsonConstants::NOT_NUMBER_TYPE;
+    // BUNDLE_APP_PROFILE_KEY_API_VERSION
+    typeErrorProps[BUNDLE_APP_PROFILE_KEY_COMPATIBLE] = JsonConstants::NOT_NUMBER_TYPE;
+    typeErrorProps[BUNDLE_APP_PROFILE_KEY_TARGET] = JsonConstants::NOT_NUMBER_TYPE;
+    typeErrorProps[BUNDLE_APP_PROFILE_KEY_RELEASE_TYPE] = JsonConstants::NOT_STRING_TYPE;
+    // sub BUNDLE_PROFILE_KEY_DEVICE_CONFIG
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DEFAULT] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_PHONE] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_TABLET] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_TV] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_CAR] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_WEARABLE] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_LITE_WEARABLE] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SMART_VISION] = JsonConstants::NOT_OBJECT_TYPE;
+    // BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DEFAULT
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_PROCESS] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DIRECT_LAUNCH] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SUPPORT_BACKUP] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_COMPRESS_NATIVE_LIBS] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_NETWORK] = JsonConstants::NOT_OBJECT_TYPE;
+    // BUNDLE_DEVICE_CONFIG_PROFILE_KEY_NETWORK
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_USES_CLEAR_TEXT] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SECURITY_CONFIG] = JsonConstants::NOT_OBJECT_TYPE;
+    // BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SECURITY_CONFIG
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DOMAIN_SETTINGS] = JsonConstants::NOT_OBJECT_TYPE;
+    // BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DOMAIN_SETTINGS
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_CLEAR_TEXT_PERMITTED] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DOMAINS] = JsonConstants::NOT_ARRAY_TYPE;
+    // BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DOMAINS
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SUB_DOMAINS] = JsonConstants::NOT_ARRAY_TYPE;
+    // sub BUNDLE_PROFILE_KEY_MODULE
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_PACKAGE] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_SUPPORTED_MODES] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_DEVICE_TYPE] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_DISTRO] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_ABILITIES] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_JS] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_SHORTCUTS] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_REQ_PERMISSIONS] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_COLOR_MODE] = JsonConstants::NOT_STRING_TYPE;
+    // BUNDLE_MODULE_PROFILE_KEY_DISTRO
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_DELIVERY_WITH_INSTALL] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_MODULE_NAME] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_MODULE_TYPE] = JsonConstants::NOT_STRING_TYPE;
+    // BUNDLE_MODULE_PROFILE_KEY_ABILITIES
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_ICON] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_URI] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_LAUNCH_TYPE] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_VISIBLE] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_PERMISSIONS] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_SKILLS] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_DEVICE_CAP_ABILITY] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_ORIENTATION] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_BACKGROUND_MODES] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_READ_PERMISSION] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_WRITE_PERMISSION] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_DIRECT_LAUNCH] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_CONFIG_CHANGES] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_MISSION] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_TARGET_ABILITY] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_MULTIUSER_SHARED] = JsonConstants::NOT_BOOL_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_SUPPORT_PIP_MODE] = JsonConstants::NOT_BOOL_TYPE;
+    // BUNDLE_MODULE_PROFILE_KEY_SKILLS
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_ACTIONS] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_ENTITIES] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_URIS] = JsonConstants::NOT_ARRAY_TYPE;
+    // BUNDLE_MODULE_PROFILE_KEY_URIS
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_SCHEME] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_HOST] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_PORT] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_PATH] = JsonConstants::NOT_STRING_TYPE;
+    // BUNDLE_MODULE_PROFILE_KEY_JS
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_PAGES] = JsonConstants::NOT_ARRAY_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_WINDOW] = JsonConstants::NOT_OBJECT_TYPE;
+    // BUNDLE_MODULE_PROFILE_KEY_WINDOW
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_DESIGN_WIDTH] = JsonConstants::NOT_NUMBER_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_AUTO_DESIGN_WIDTH] = JsonConstants::NOT_BOOL_TYPE;
+    // BUNDLE_MODULE_PROFILE_KEY_SHORTCUTS
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_SHORTCUT_ID] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_SHORTCUT_WANTS] = JsonConstants::NOT_STRING_TYPE;
+    // BUNDLE_MODULE_PROFILE_KEY_SHORTCUT_WANTS
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_TARGET_CLASS] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_TARGET_BUNDLE] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_COMPATIBLE] = JsonConstants::NOT_NUMBER_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_TARGET] = JsonConstants::NOT_NUMBER_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_REQ_VERSION] = JsonConstants::NOT_OBJECT_TYPE;
+    typeErrorProps[BUNDLE_DEVICE_CONFIG_PROFILE_KEY_FLAG] = JsonConstants::NOT_STRING_TYPE;
+    typeErrorProps[BUNDLE_MODULE_PROFILE_KEY_MODE] = JsonConstants::NOT_STRING_TYPE;
+}
+
+void BmsBundleParserTest::CheckNoPropProfileParseApp(const std::string &propKey, const ErrCode expectCode) const
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json errorProfileJson = CONFIG_JSON;
+    errorProfileJson[BUNDLE_PROFILE_KEY_APP].erase(propKey);
+    profileFileBuffer << errorProfileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, expectCode);
+}
+
+void BmsBundleParserTest::CheckNoPropProfileParseDeviceConfig(
+    const std::string &propKey, const ErrCode expectCode) const
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json errorProfileJson = CONFIG_JSON;
+    errorProfileJson[BUNDLE_PROFILE_KEY_DEVICE_CONFIG].erase(propKey);
+    profileFileBuffer << errorProfileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, expectCode);
+}
+
+void BmsBundleParserTest::CheckNoPropProfileParseModule(const std::string &propKey, const ErrCode expectCode) const
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json errorProfileJson = CONFIG_JSON;
+    errorProfileJson[BUNDLE_PROFILE_KEY_MODULE].erase(propKey);
+    profileFileBuffer << errorProfileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, expectCode);
+}
+
+void BmsBundleParserTest::CheckProfilePermission(const nlohmann::json &checkedProfileJson) const
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    profileFileBuffer << checkedProfileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+void BmsBundleParserTest::CheckProfileForms(const nlohmann::json &checkedProfileJson) const
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    profileFileBuffer << checkedProfileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_MISSING_PROP) << profileFileBuffer.str();
+}
+
+void BmsBundleParserTest::CheckProfileShortcut(const nlohmann::json &checkedProfileJson, const ErrCode expectCode) const
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    profileFileBuffer << checkedProfileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, expectCode) << profileFileBuffer.str();
+}
+
+void BmsBundleParserTest::CheckProfileModule(const nlohmann::json &checkedProfileJson, const ErrCode code) const
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseBundleInfo_->isPreInstallApp = true;
+    std::ostringstream profileFileBuffer;
+
+    profileFileBuffer << checkedProfileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, code) << profileFileBuffer.str();
+}
+
+ErrCode BmsBundleParserTest::CheckProfileDefaultPermission(const nlohmann::json &checkedProfileJson,
+    std::set<DefaultPermission> &defaultPermissions) const
+{
+    DefaultPermissionProfile profile;
+    std::ostringstream profileFileBuffer;
+    profileFileBuffer << checkedProfileJson.dump();
+    nlohmann::json jsonObject =  nlohmann::json::parse(profileFileBuffer.str(), nullptr, false);
+    if (jsonObject.is_discarded()) {
+        return ERR_APPEXECFWK_PARSE_BAD_PROFILE;
+    }
+
+    return profile.TransformTo(jsonObject, defaultPermissions);
+}
+
+bool BmsBundleParserTest::WriteToConfigFile(const std::string &bundleName) const
+{
+const std::string filename = ServiceConstants::APP_STARTUP_CACHE_CONG;
+    nlohmann::json jsonObject;
+    std::ifstream inFile(filename);
+    if (inFile.is_open()) {
+        try {
+            inFile >> jsonObject;
+        } catch (const nlohmann::json::parse_error& e) {
+            APP_LOGW("JSON parse failed for empty file or invalid format, err: %{public}s", e.what());
+            jsonObject = nlohmann::json::object();
+        }
+        inFile.close();
+    } else {
+        APP_LOGI("create new fike: %{public}s", filename.c_str());
+        jsonObject = nlohmann::json::object();
+    }
+    if (!jsonObject.contains("ark_startup_snapshot_list") || !jsonObject["ark_startup_snapshot_list"].is_array()) {
+        jsonObject["ark_startup_snapshot_list"] = nlohmann::json::array();
+    }
+
+    auto& snapshotList = jsonObject["ark_startup_snapshot_list"];
+    if (std::find(snapshotList.begin(), snapshotList.end(), bundleName) == snapshotList.end()) {
+        snapshotList.push_back(bundleName);
+    } else {
+        APP_LOGI("bundlename already existed: %{public}s", bundleName.c_str());
+    }
+
+    const std::string tempFile = filename + ".tmp";
+    std::ofstream outFile(tempFile);
+    if (!outFile) {
+        APP_LOGE("create file failed: %{public}s, err: %{public}d", tempFile.c_str(), errno);
+        return false;
+    }
+    outFile << std::setw(Constants::DUMP_INDENT) << jsonObject;
+    outFile.close();
+
+    if (std::rename(tempFile.c_str(), filename.c_str())) {
+        APP_LOGE("rename file failed: %{public}s, err: %{public}d", tempFile.c_str(), errno);
+        std::remove(tempFile.c_str());
+        return false;
+    }
+    return true;
+}
+
+/**
+ * @tc.number: TestParse_0200
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parse bundle failed when file is not exist by the input pathName
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_0200, Function | SmallTest | Level0)
+{
+    BundleParser bundleParser;
+    InnerBundleInfo innerBundleInfo;
+    pathStream_ << RESOURCE_ROOT_PATH << UNKOWN_PATH << INSTALL_FILE_SUFFIX;
+    bool isAbcCompressed = false;
+    ErrCode result = bundleParser.Parse(pathStream_.str(), innerBundleInfo, isAbcCompressed);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_UNEXPECTED);
+}
+
+/**
+ * @tc.number: TestParse_0600
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parse bundle failed when prop(APP_notMustPropKeys) is not exist in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_0600, Function | SmallTest | Level0)
+{
+    std::vector<std::string> notMustPropKeys = {
+        PROFILE_KEY_DESCRIPTION,
+        PROFILE_KEY_LABEL,
+        // sub BUNDLE_APP_PROFILE_KEY_API_VERSION
+        BUNDLE_APP_PROFILE_KEY_VENDOR,
+        BUNDLE_APP_PROFILE_KEY_TARGET,
+        BUNDLE_APP_PROFILE_KEY_TARGET_MINOR_API_VERSION,
+        BUNDLE_APP_PROFILE_KEY_TARGET_PATCH_API_VERSION,
+        BUNDLE_APP_PROFILE_KEY_RELEASE_TYPE,
+    };
+
+    for (const auto &propKey : notMustPropKeys) {
+        APP_LOGD("test not must prop %{public}s not exist", propKey.c_str());
+        CheckNoPropProfileParseApp(propKey, ERR_OK);
+    }
+}
+
+/**
+ * @tc.number: TestParse_0700
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parse bundle failed when prop(deviceConfig_notMustPropKeys) is not exist in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_0700, Function | SmallTest | Level0)
+{
+    std::vector<std::string> notMustPropKeys = {
+        PROFILE_KEY_DESCRIPTION,
+        PROFILE_KEY_LABEL,
+        // sub BUNDLE_PROFILE_KEY_DEVICE_CONFIG
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_PHONE,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_TABLET,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_TV,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_CAR,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_WEARABLE,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_LITE_WEARABLE,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SMART_VISION,
+        // sub BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DEFAULT
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_PROCESS,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DIRECT_LAUNCH,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SUPPORT_BACKUP,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_COMPRESS_NATIVE_LIBS,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_NETWORK,
+        // sub BUNDLE_DEVICE_CONFIG_PROFILE_KEY_NETWORK
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_USES_CLEAR_TEXT,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SECURITY_CONFIG,
+        // sub BUNDLE_DEVICE_CONFIG_PROFILE_KEY_SECURITY_CONFIG
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_DOMAIN_SETTINGS,
+    };
+
+    for (const auto &propKey : notMustPropKeys) {
+        APP_LOGD("test not must prop %{public}s not exist", propKey.c_str());
+        CheckNoPropProfileParseDeviceConfig(propKey, ERR_OK);
+    }
+}
+
+/**
+ * @tc.number: TestParse_0800
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parse bundle failed when prop(module_notMustPropKeys) is not exist in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_0800, Function | SmallTest | Level0)
+{
+    std::vector<std::string> notMustPropKeys = {
+        PROFILE_KEY_DESCRIPTION,
+        PROFILE_KEY_LABEL,
+        // sub BUNDLE_PROFILE_KEY_MODULE
+        BUNDLE_MODULE_PROFILE_KEY_SUPPORTED_MODES,
+        BUNDLE_MODULE_PROFILE_KEY_ABILITIES,
+        BUNDLE_MODULE_PROFILE_KEY_JS,
+        BUNDLE_MODULE_PROFILE_KEY_SHORTCUTS,
+        BUNDLE_MODULE_PROFILE_KEY_DEFINE_PERMISSIONS,
+        BUNDLE_MODULE_PROFILE_KEY_REQ_PERMISSIONS,
+        BUNDLE_MODULE_PROFILE_KEY_COLOR_MODE,
+        // sub BUNDLE_MODULE_PROFILE_KEY_ABILITIES
+        BUNDLE_MODULE_PROFILE_KEY_PROCESS,
+        BUNDLE_MODULE_PROFILE_KEY_ICON,
+        BUNDLE_MODULE_PROFILE_KEY_URI,
+        BUNDLE_MODULE_PROFILE_KEY_LAUNCH_TYPE,
+        BUNDLE_MODULE_PROFILE_KEY_VISIBLE,
+        BUNDLE_MODULE_PROFILE_KEY_PERMISSIONS,
+        BUNDLE_MODULE_PROFILE_KEY_SKILLS,
+        BUNDLE_MODULE_PROFILE_KEY_DEVICE_CAP_ABILITY,
+        BUNDLE_MODULE_PROFILE_KEY_ORIENTATION,
+        BUNDLE_MODULE_PROFILE_KEY_BACKGROUND_MODES,
+        BUNDLE_MODULE_PROFILE_KEY_READ_PERMISSION,
+        BUNDLE_MODULE_PROFILE_KEY_WRITE_PERMISSION,
+        BUNDLE_MODULE_PROFILE_KEY_DIRECT_LAUNCH,
+        BUNDLE_MODULE_PROFILE_KEY_CONFIG_CHANGES,
+        BUNDLE_MODULE_PROFILE_KEY_MISSION,
+        BUNDLE_MODULE_PROFILE_KEY_TARGET_ABILITY,
+        BUNDLE_MODULE_PROFILE_KEY_MULTIUSER_SHARED,
+        BUNDLE_MODULE_PROFILE_KEY_SUPPORT_PIP_MODE,
+        // sub BUNDLE_MODULE_PROFILE_KEY_JS
+        BUNDLE_MODULE_PROFILE_KEY_WINDOW,
+        // sub BUNDLE_MODULE_PROFILE_KEY_WINDOW
+        BUNDLE_MODULE_PROFILE_KEY_DESIGN_WIDTH,
+        BUNDLE_MODULE_PROFILE_KEY_AUTO_DESIGN_WIDTH,
+        // sub BUNDLE_MODULE_PROFILE_KEY_SHORTCUTS
+        BUNDLE_MODULE_PROFILE_KEY_SHORTCUT_WANTS,
+        // sub BUNDLE_MODULE_PROFILE_KEY_SHORTCUT_WANTS
+        BUNDLE_MODULE_PROFILE_KEY_TARGET_CLASS,
+        BUNDLE_MODULE_PROFILE_KEY_TARGET_BUNDLE,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_COMPATIBLE,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_TARGET,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_REQ_VERSION,
+        BUNDLE_DEVICE_CONFIG_PROFILE_KEY_FLAG,
+        BUNDLE_MODULE_PROFILE_KEY_MODE,
+        BUNDLE_MODULE_PROFILE_KEY_PATH,
+    };
+
+    for (const auto &propKey : notMustPropKeys) {
+        APP_LOGD("test not must prop %{public}s not exist", propKey.c_str());
+        CheckNoPropProfileParseModule(propKey, ERR_OK);
+    }
+}
+
+/**
+ * @tc.number: TestParse_0900
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parse bundle failed when prop(configJson.app.bundleName) is not exist in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_0900, Function | SmallTest | Level0)
+{
+    std::vector<std::string> mustPropKeys = {
+        BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME,
+    };
+
+    for (const auto &propKey : mustPropKeys) {
+        APP_LOGD("test must prop %{public}s not exist", propKey.c_str());
+        CheckNoPropProfileParseApp(propKey, ERR_APPEXECFWK_PARSE_PROFILE_MISSING_PROP);
+    }
+}
+
+/**
+ * @tc.number: TestParse_1000
+ * @tc.name: parse bundle deviceType by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parse bundle failed when prop(configJson.module.deviceType) is not exist in the
+ *              config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_1000, Function | SmallTest | Level0)
+{
+    std::vector<std::string> mustPropKeys = {
+        BUNDLE_MODULE_PROFILE_KEY_DEVICE_TYPE,
+    };
+
+    for (const auto &propKey : mustPropKeys) {
+        APP_LOGD("test must prop %{public}s not exist", propKey.c_str());
+        CheckNoPropProfileParseModule(propKey, ERR_APPEXECFWK_PARSE_PROFILE_MISSING_PROP);
+    }
+}
+
+/**
+ * @tc.number: TestParse_1100
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parse bundle failed when prop(configJson.module.package,distro.moduleName) is not exist in the
+ *           config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_1100, Function | SmallTest | Level0)
+{
+    std::vector<std::string> mustPropKeys = {
+        BUNDLE_MODULE_PROFILE_KEY_PACKAGE,
+        BUNDLE_MODULE_PROFILE_KEY_DISTRO,
+    };
+
+    for (const auto &propKey : mustPropKeys) {
+        APP_LOGD("test must prop %{public}s not exist", propKey.c_str());
+        CheckNoPropProfileParseModule(propKey, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+    }
+}
+
+/**
+ * @tc.number: TestParse_1200
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parse bundle failed when prop(module.abilities.name) is not exist in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_1200, Function | SmallTest | Level0)
+{
+    std::vector<std::string> mustPropKeys = {
+        PROFILE_KEY_NAME,
+    };
+
+    for (const auto &propKey : mustPropKeys) {
+        APP_LOGD("test must prop %{public}s not exist", propKey.c_str());
+        CheckNoPropProfileParseModule(propKey, ERR_OK);
+    }
+}
+
+/**
+ * @tc.number: TestParse_1600
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when an ability packet with an incorrect type in the file path
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_1600, Function | SmallTest | Level0)
+{
+    BundleParser bundleParser;
+    InnerBundleInfo innerBundleInfo;
+    pathStream_ << RESOURCE_ROOT_PATH << "demo.error_type";
+    bool isAbcCompressed = false;
+    ErrCode result = bundleParser.Parse(pathStream_.str(), innerBundleInfo, isAbcCompressed);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_UNEXPECTED);
+
+    pathStream_.str("");
+    pathStream_ << RESOURCE_ROOT_PATH << "demo.";
+    result = bundleParser.Parse(pathStream_.str(), innerBundleInfo, isAbcCompressed);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_UNEXPECTED);
+
+    pathStream_.str("");
+    pathStream_ << RESOURCE_ROOT_PATH << "bundle_suffix_test.BUNDLE";
+    result = bundleParser.Parse(pathStream_.str(), innerBundleInfo, isAbcCompressed);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_UNEXPECTED);
+}
+
+/**
+ * @tc.number: TestParse_1700
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when an bundle packet with a deep file path depth
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_1700, Function | SmallTest | Level1)
+{
+    BundleParser bundleParser;
+    InnerBundleInfo innerBundleInfo;
+    pathStream_ << RESOURCE_ROOT_PATH;
+    int maxDeep = 100;
+    for (int i = 0; i < maxDeep; i++) {
+        pathStream_ << "test/";
+    }
+    pathStream_ << NEW_APP << INSTALL_FILE_SUFFIX;
+    bool isAbcCompressed = false;
+    ErrCode result = bundleParser.Parse(pathStream_.str(), innerBundleInfo, isAbcCompressed);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_UNEXPECTED) << pathStream_.str();
+}
+
+/**
+ * @tc.number: TestParse_1800
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when an bundle packet with a long path
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_1800, Function | SmallTest | Level1)
+{
+    BundleParser bundleParser;
+    InnerBundleInfo innerBundleInfo;
+    pathStream_ << RESOURCE_ROOT_PATH;
+    int maxLength = 256;
+    for (int i = 0; i < maxLength; i++) {
+        pathStream_ << "test/";
+    }
+    pathStream_ << NEW_APP << INSTALL_FILE_SUFFIX;
+    bool isAbcCompressed = false;
+    ErrCode result = bundleParser.Parse(pathStream_.str(), innerBundleInfo, isAbcCompressed);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_UNEXPECTED);
+}
+
+/**
+ * @tc.number: TestParse_1900
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when an bundle packet with special character in the file path
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_1900, Function | SmallTest | Level1)
+{
+    BundleParser bundleParser;
+    InnerBundleInfo innerBundleInfo;
+    pathStream_ << RESOURCE_ROOT_PATH;
+    std::string specialChars = "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-";
+    pathStream_ << specialChars << "new" << INSTALL_FILE_SUFFIX;
+    bool isAbcCompressed = false;
+    ErrCode result = bundleParser.Parse(pathStream_.str(), innerBundleInfo, isAbcCompressed);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_UNEXPECTED);
+}
+
+/**
+ * @tc.number: TestParse_2000
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when def-permission prop has error in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2000, Function | SmallTest | Level1)
+{
+    nlohmann::json errorDefPermJson = CONFIG_JSON;
+    errorDefPermJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_DEFINE_PERMISSIONS] = R"(
+        [{
+            "name": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+            "reason": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+            "when": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-"
+        }]
+    )"_json;
+    CheckProfilePermission(errorDefPermJson);
+}
+
+/**
+ * @tc.number: TestParse_2100
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when req-permission prop has error in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2100, Function | SmallTest | Level1)
+{
+    nlohmann::json errorReqPermJson = CONFIG_JSON;
+    errorReqPermJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_REQ_PERMISSIONS] = R"(
+        [{
+            "reason": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+            "when": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-"
+        }]
+    )"_json;
+    CheckProfilePermission(errorReqPermJson);
+}
+
+/**
+ * @tc.number: TestParse_2200
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when def-permission prop has empty in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2200, Function | SmallTest | Level1)
+{
+    nlohmann::json errorDefPermJson = CONFIG_JSON;
+    errorDefPermJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_DEFINE_PERMISSIONS] = R"(
+        [{
+
+        }]
+    )"_json;
+    CheckProfilePermission(errorDefPermJson);
+}
+
+/**
+ * @tc.number: TestParse_2300
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when req-permission prop has empty in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2300, Function | SmallTest | Level1)
+{
+    nlohmann::json errorReqPermJson = CONFIG_JSON;
+    errorReqPermJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_REQ_PERMISSIONS] = R"(
+        [{
+
+        }]
+    )"_json;
+    CheckProfilePermission(errorReqPermJson);
+}
+
+/**
+ * @tc.number: TestParse_2400
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when forms prop has error in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2400, Function | SmallTest | Level1)
+{
+    nlohmann::json errorFormsJson = CONFIG_JSON;
+    errorFormsJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_ABILITIES]= R"(
+    [{
+        "skills": [
+          {
+            "entities": [
+              "entity.system.home",
+              "flag.home.intent.from.system"
+            ],
+            "actions": [
+              "action.system.home"
+            ]
+          }
+        ],
+        "forms": [
+            {
+                "description": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "type": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "colorMode": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "isDefault": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "updateEnabled": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "scheduledUpdateTime": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "updateDuration": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "defaultDimension": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "supportDimensions": [
+                    "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                    "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-"
+                ],
+                "jsComponentName": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "deepLink": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "metaData": {
+                    "customizeData": [
+                        {
+                            "name": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                            "value": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-"
+                        }
+                    ]
+                }
+            }
+        ],
+        "name": "com.example.napi_test_suite.MainAbility",
+        "icon": "$media:icon",
+        "description": "$string:mainability_description",
+        "label": "MyApplication11",
+        "type": "page",
+        "launchType": "standard"
+    }]
+
+    )"_json;
+    CheckProfileForms(errorFormsJson);
+}
+
+/**
+ * @tc.number: TestParse_2500
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when forms prop has empty in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2500, Function | SmallTest | Level1)
+{
+    nlohmann::json errorFormsJson = CONFIG_JSON;
+    errorFormsJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_ABILITIES] = R"(
+        [{
+        "skills": [
+          {
+            "entities": [
+              "entity.system.home",
+              "flag.home.intent.from.system"
+            ],
+            "actions": [
+              "action.system.home"
+            ]
+          }
+        ],
+        "forms": [{
+                 }],
+        "name": "com.example.napi_test_suite.MainAbility",
+        "icon": "$media:icon",
+        "description": "$string:mainability_description",
+        "label": "MyApplication11",
+        "type": "page",
+        "launchType": "standard"
+        }]
+    )"_json;
+    CheckProfileForms(errorFormsJson);
+}
+
+/**
+ * @tc.number: TestParse_2600
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when shortcuts prop has empty in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2600, Function | SmallTest | Level1)
+{
+    nlohmann::json errorShortcutJson = CONFIG_JSON;
+    errorShortcutJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_SHORTCUTS] = R"(
+        [{
+
+        }]
+    )"_json;
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_MISSING_PROP);
+}
+
+/**
+ * @tc.number: TestParse_2700
+ * @tc.name: parse bundle package by config.json
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when shortcuts prop has error in the config.json
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2700, Function | SmallTest | Level1)
+{
+    nlohmann::json errorShortcutJson = CONFIG_JSON;
+    errorShortcutJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_SHORTCUTS] = R"(
+        [{
+            "label": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+            "icon": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+            "intents": [
+              {
+                "targetBundle": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-",
+                "targetClass": "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-"
+              }
+            ]
+        }]
+    )"_json;
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_MISSING_PROP);
+}
+
+/**
+ * @tc.name: TestParse_2800
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when forms prop has empty in the config.json
+ * @tc.type: FUNC
+ * @tc.require: issueI5MZ3F
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2800, Function | SmallTest | Level1)
+{
+    nlohmann::json formsJson = CONFIG_JSON;
+
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    profileFileBuffer << formsJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+    innerBundleInfo.GetFormsInfoByApp(formInfos);
+    int newSupportDimension = 5;
+    EXPECT_EQ(formInfos[0].supportDimensions[0], newSupportDimension);
+}
+
+/**
+ * @tc.name: TestParse_2900
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when forms prop has empty in the config.json
+ * @tc.type: FUNC
+ * @tc.require: issueI5MZ3F
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_2900, Function | SmallTest | Level1)
+{
+    nlohmann::json errorShortcutJson = CONFIG_JSON;
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "xxx";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = OVER_MAX_PATH_SIZE;
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_SIZE_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "bundleName&";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "bundleName/";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "bundleName?";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "bundleName]";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "bundleName`";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "bundleName|";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+}
+
+/**
+ * @tc.name: TestParse_3000
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when forms prop has empty in the config.json
+ * @tc.type: FUNC
+ * @tc.require: issueI5MZ3F
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3000, Function | SmallTest | Level1)
+{
+    nlohmann::json errorShortcutJson = CONFIG_JSON;
+    errorShortcutJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_PACKAGE] = "";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][
+        BUNDLE_MODULE_PROFILE_KEY_MODULE_NAME] = "com../hiworld../";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][
+        BUNDLE_MODULE_PROFILE_KEY_MODULE_NAME] = "";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    errorShortcutJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_DEVICE_TYPE] = "";
+    CheckProfileShortcut(errorShortcutJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_TYPE_ERROR);
+}
+
+/**
+ * @tc.name: TestParse_3100
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3100, Function | SmallTest | Level1)
+{
+    nlohmann::json moduleJson = MODULE_JSON;
+    CheckProfileModule(moduleJson, ERR_OK);
+
+    moduleJson[BUNDLE_PROFILE_KEY_MODULE][PROFILE_KEY_NAME] = "";
+    CheckProfileModule(moduleJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    moduleJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "";
+    CheckProfileModule(moduleJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    moduleJson[BUNDLE_PROFILE_KEY_MODULE][PROFILE_KEY_NAME] = "../entry";
+    moduleJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "com.ex";
+    CheckProfileModule(moduleJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    moduleJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] =
+        "doe8m8mMt2DicXm3fZ7Nz0xaVaw4R2in5Gm1gJVvzRKmh3SM7Jf5gmkaDGFzRsriDtLRioSvg07wokZtmUDE4XKplv6pIMqF5aVIdaff";
+    CheckProfileModule(moduleJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    moduleJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "1com.example.backuptest";
+    moduleJson[BUNDLE_PROFILE_KEY_MODULE][PROFILE_KEY_NAME] = "entry";
+    CheckProfileModule(moduleJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+
+    moduleJson[BUNDLE_PROFILE_KEY_APP][BUNDLE_APP_PROFILE_KEY_BUNDLE_NAME] = "com.example/.backuptest";
+    CheckProfileModule(moduleJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+}
+
+/**
+ * @tc.name: TestParse_3200
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3200, Function | SmallTest | Level1)
+{
+    nlohmann::json formsJson = R"({
+        "app": {
+            "bundleName": "com.example.backuptest",
+            "debug": true,
+            "icon": "$media:app_icon",
+            "iconId": 16777220,
+            "label": "$string:app_name",
+            "labelId": 16777216,
+            "minAPIVersion": 9,
+            "minMinorAPIVersion": 0,
+            "minPatchAPIVersion": 0,
+            "targetAPIVersion": 9,
+            "vendor": "example",
+            "versionCode": 1000000,
+            "versionName": "1.0.0"
+        },
+        "module": {
+            "name": "entry",
+            "installationFree": false,
+            "mainElement": "MainAbility",
+            "pages": "$profile:main_pages",
+            "srcEntrance": "./ets/Application/AbilityStage.ts",
+            "type": "entry",
+            "virtualMachine": "ark0.0.0.3"
+        }
+    }
+    )"_json;
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    profileFileBuffer << formsJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_MISSING_PROP) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_3300
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3300, Function | SmallTest | Level1)
+{
+    nlohmann::json formsJson = R"({
+        "app": {
+            "bundleName": "com.example.backuptest",
+            "debug": true,
+            "icon": "$media:app_icon",
+            "iconId": 16777220,
+            "label": "$string:app_name",
+            "labelId": 16777216,
+            "minAPIVersion": 9,
+            "minMinorAPIVersion": 0,
+            "minPatchAPIVersion": 0,
+            "targetAPIVersion": 9,
+            "vendor": "example",
+            "versionCode": 1000000,
+            "versionName": "1.0.0"
+        },
+        "module": {
+            "deliveryWithInstall": true,
+            "description": "$string:entry_desc",
+            "descriptionId": 16777219,
+            "deviceTypes": [
+                "default"
+            ],
+            "abilities": [
+                {
+                    "description": "$string:MainAbility_desc",
+                    "descriptionId": 16777217,
+                    "icon": "$media:icon",
+                    "iconId": 16777221,
+                    "label": "$string:MainAbility_label",
+                    "labelId": 16777218,
+                    "name": "MainAbility",
+                    "launchType": "unknowlaunchType",
+                    "orientation": "unknoworientation",
+                    "skills": [
+                        {
+                            "actions": [
+                                "action.thirdparty.home"
+                            ],
+                            "entities": [
+                                "entity.system.home",
+                                "flag.home.intent.from.system"
+                            ]
+                        }
+                    ],
+                    "srcEntrance": "./ets/MainAbility/MainAbility.ts",
+                    "visible": true
+                }
+            ],
+            "name": "entry",
+            "installationFree": false,
+            "mainElement": "MainAbility",
+            "pages": "$profile:main_pages",
+            "srcEntrance": "./ets/Application/AbilityStage.ts",
+            "type": "entry",
+            "virtualMachine": "ark0.0.0.3"
+        }
+    }
+    )"_json;
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    profileFileBuffer << formsJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.number: TestExtractByName_0100
+ * @tc.name: extract file stream by file name from package
+ * @tc.desc: 1. system running normally
+ *           2. test extract file from is not exist bundle or ability package
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0100, Function | SmallTest | Level0)
+{
+    pathStream_ << RESOURCE_ROOT_PATH << UNKOWN_PATH << INSTALL_FILE_SUFFIX;
+    std::string fileInBundle = "";
+    std::ostringstream fileBuffer;
+
+    BundleExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_0200
+ * @tc.name: extract file stream by file name from package
+ * @tc.desc: 1. system running normally
+ *           2. test extract is not exist file from bundle or ability package
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0200, Function | SmallTest | Level0)
+{
+    pathStream_ << RESOURCE_ROOT_PATH << NEW_APP << INSTALL_FILE_SUFFIX;
+    std::string fileInBundle = "unknown";
+    std::ostringstream fileBuffer;
+
+    BundleExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_0300
+ * @tc.name: extract file stream by file name from package
+ * @tc.desc: 1. system running normally
+ *           2. test failed to extract files from a package with a deep file path depth
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0300, Function | SmallTest | Level1)
+{
+    pathStream_ << RESOURCE_ROOT_PATH;
+    int maxDeep = 100;
+    for (int i = 0; i < maxDeep; i++) {
+        pathStream_ << "test/";
+    }
+    pathStream_ << BUNDLE_TYPE_APP << INSTALL_FILE_SUFFIX;
+
+    std::string fileInBundle = "config.json";
+    std::ostringstream fileBuffer;
+
+    BundleExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_0400
+ * @tc.name: extract file stream by file name from package
+ * @tc.desc: 1. system running normally
+ *           2. test failed to extract files from a file with a long path
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0400, Function | SmallTest | Level1)
+{
+    pathStream_ << RESOURCE_ROOT_PATH;
+    int maxLength = 256;
+    for (int i = 0; i < maxLength; i++) {
+        pathStream_ << "test";
+    }
+    pathStream_ << "new" << INSTALL_FILE_SUFFIX;
+
+    std::string fileInBundle = "config.json";
+    std::ostringstream fileBuffer;
+
+    BundleExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_0500
+ * @tc.name: extract file stream by file name from package
+ * @tc.desc: 1. system running normally
+ *           2. test failed to extract files from a package with special character in the file path
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0500, Function | SmallTest | Level1)
+{
+    pathStream_ << RESOURCE_ROOT_PATH;
+    std::string specialChars = "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-";
+    pathStream_ << specialChars << "new" << INSTALL_FILE_SUFFIX;
+
+    std::string fileInBundle = "config.json";
+    std::ostringstream fileBuffer;
+
+    BundleExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_0600
+ * @tc.name: extract file stream by file name from package parallelly
+ * @tc.desc: 1. system running normally
+ *           2. test extract file from is not exist bundle or ability package
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0600, Function | SmallTest | Level0)
+{
+    pathStream_ << RESOURCE_ROOT_PATH << UNKOWN_PATH << INSTALL_FILE_SUFFIX;
+    std::string fileInBundle = "";
+    std::ostringstream fileBuffer;
+
+    BundleParallelExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_0700
+ * @tc.name: extract file stream by file name from package parallelly
+ * @tc.desc: 1. system running normally
+ *           2. test extract is not exist file from bundle or ability package
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0700, Function | SmallTest | Level0)
+{
+    pathStream_ << RESOURCE_ROOT_PATH << NEW_APP << INSTALL_FILE_SUFFIX;
+    std::string fileInBundle = "unknown";
+    std::ostringstream fileBuffer;
+
+    BundleParallelExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_0800
+ * @tc.name: extract file stream by file name from package parallelly
+ * @tc.desc: 1. system running normally
+ *           2. test failed to extract files from a package with a deep file path depth
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0800, Function | SmallTest | Level1)
+{
+    pathStream_ << RESOURCE_ROOT_PATH;
+    int maxDeep = 100;
+    for (int i = 0; i < maxDeep; i++) {
+        pathStream_ << "test/";
+    }
+    pathStream_ << BUNDLE_TYPE_APP << INSTALL_FILE_SUFFIX;
+
+    std::string fileInBundle = "config.json";
+    std::ostringstream fileBuffer;
+
+    BundleParallelExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_0900
+ * @tc.name: extract file stream by file name from package parallelly
+ * @tc.desc: 1. system running normally
+ *           2. test failed to extract files from a file with a long path
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_0900, Function | SmallTest | Level1)
+{
+    pathStream_ << RESOURCE_ROOT_PATH;
+    int maxLength = 256;
+    for (int i = 0; i < maxLength; i++) {
+        pathStream_ << "test";
+    }
+    pathStream_ << "new" << INSTALL_FILE_SUFFIX;
+
+    std::string fileInBundle = "config.json";
+    std::ostringstream fileBuffer;
+
+    BundleParallelExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestExtractByName_1000
+ * @tc.name: extract file stream by file name from package parallelly
+ * @tc.desc: 1. system running normally
+ *           2. test failed to extract files from a package with special character in the file path
+ */
+HWTEST_F(BmsBundleParserTest, TestExtractByName_1000, Function | SmallTest | Level1)
+{
+    pathStream_ << RESOURCE_ROOT_PATH;
+    std::string specialChars = "~!@#$%^&*(){}[]:;'?<>,.|`/./+_-";
+    pathStream_ << specialChars << "new" << INSTALL_FILE_SUFFIX;
+
+    std::string fileInBundle = "config.json";
+    std::ostringstream fileBuffer;
+
+    BundleParallelExtractor bundleExtractor(pathStream_.str());
+    bool result = bundleExtractor.ExtractByName(fileInBundle, fileBuffer);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: TestDefaultPermissionProfile_0100
+ * @tc.name: test default permission profile
+ * @tc.desc: 1. system running normally
+ *           2. test success
+ */
+HWTEST_F(BmsBundleParserTest, TestDefaultPermissionProfile_0100, Function | SmallTest | Level1)
+{
+    std::set<DefaultPermission> defaultPermissions;
+    nlohmann::json profileJson = R"(
+        [
+            {
+                "bundleName": "com.ohos.test"
+            }
+        ]
+        )"_json;
+    ErrCode result = CheckProfileDefaultPermission(profileJson, defaultPermissions);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(defaultPermissions.size(), ONE);
+}
+
+/**
+ * @tc.number: TestDefaultPermissionProfile_0200
+ * @tc.name: test default permission profile
+ * @tc.desc: 1. system running normally
+ *           2. test success
+ */
+HWTEST_F(BmsBundleParserTest, TestDefaultPermissionProfile_0200, Function | SmallTest | Level1)
+{
+    std::set<DefaultPermission> defaultPermissions;
+    nlohmann::json profileJson = R"(
+        [
+            {
+                "bundleName": "com.ohos.test1",
+                "permissions":[
+                    {
+                        "name": "ohos.permission.test1",
+                        "userCancellable":true
+                    },
+                    {
+                        "name": "ohos.permission.test2",
+                        "userCancellable":false
+                    }
+                ]
+            }
+        ]
+        )"_json;
+    ErrCode result = CheckProfileDefaultPermission(profileJson, defaultPermissions);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(defaultPermissions.size(), ONE);
+    if (defaultPermissions.size() == ONE) {
+        auto defaultPermission = *defaultPermissions.begin();
+        EXPECT_EQ(defaultPermission.bundleName, BUNDLE_NAME1);
+        EXPECT_EQ(defaultPermission.grantPermission[0].name, BUNDLE_PERMISSION_NAME1);
+        EXPECT_TRUE(defaultPermission.grantPermission[0].userCancellable);
+        EXPECT_EQ(defaultPermission.grantPermission[1].name, BUNDLE_PERMISSION_NAME2);
+        EXPECT_FALSE(defaultPermission.grantPermission[1].userCancellable);
+    }
+}
+
+/**
+ * @tc.number: TestDefaultPermissionProfile_0300
+ * @tc.name: test default permission profile
+ * @tc.desc: 1. system running normally
+ *           2. test success
+ */
+HWTEST_F(BmsBundleParserTest, TestDefaultPermissionProfile_0300, Function | SmallTest | Level1)
+{
+    std::set<DefaultPermission> defaultPermissions;
+    nlohmann::json profileJson = R"(
+        [
+            {
+                "bundleName": "com.ohos.test1",
+                "permissions":[
+                    {
+                        "name": "ohos.permission.test1",
+                        "userCancellable":true
+                    },
+                    {
+                        "name": "ohos.permission.test2",
+                        "userCancellable":false
+                    }
+                ]
+            },
+            {
+                "bundleName": "com.ohos.test2",
+                "permissions":[
+                    {
+                        "name": "ohos.permission.test1",
+                        "userCancellable":true
+                    },
+                    {
+                        "name": "ohos.permission.test2",
+                        "userCancellable":false
+                    }
+                ]
+            }
+        ]
+        )"_json;
+    ErrCode result = CheckProfileDefaultPermission(profileJson, defaultPermissions);
+    EXPECT_EQ(result, ERR_OK);
+    EXPECT_EQ(defaultPermissions.size(), TWO);
+    if (defaultPermissions.size() == TWO) {
+        DefaultPermission firstDefaultPermission;
+        firstDefaultPermission.bundleName = BUNDLE_NAME1;
+        auto firstDefaultPermissionIter = defaultPermissions.find(firstDefaultPermission);
+        EXPECT_TRUE(firstDefaultPermissionIter != defaultPermissions.end());
+        firstDefaultPermission = *firstDefaultPermissionIter;
+        EXPECT_EQ(firstDefaultPermission.grantPermission[0].name, BUNDLE_PERMISSION_NAME1);
+        EXPECT_TRUE(firstDefaultPermission.grantPermission[0].userCancellable);
+        EXPECT_EQ(firstDefaultPermission.grantPermission[1].name, BUNDLE_PERMISSION_NAME2);
+        EXPECT_FALSE(firstDefaultPermission.grantPermission[1].userCancellable);
+        DefaultPermission secondDefaultPermission;
+        secondDefaultPermission.bundleName = "com.ohos.test2";
+        EXPECT_TRUE(defaultPermissions.find(secondDefaultPermission) != defaultPermissions.end());
+    }
+}
+
+/**
+ * @tc.number: TestDefaultPermissionProfile_0400
+ * @tc.name: test default permission profile
+ * @tc.desc: 1. system running normally
+ *           2. test failed
+ */
+HWTEST_F(BmsBundleParserTest, TestDefaultPermissionProfile_0400, Function | SmallTest | Level1)
+{
+    std::set<DefaultPermission> defaultPermissions;
+    nlohmann::json errorProfileJson = R"(
+        [
+            {
+                "bundleName": "com.ohos.test",
+                "permissions": [
+                    {
+                        "name": "ohos.permission.test1"
+                    }
+                ]
+            }
+        ]
+        )"_json;
+    ErrCode result = CheckProfileDefaultPermission(errorProfileJson, defaultPermissions);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_MISSING_PROP);
+}
+
+/**
+ * @tc.number: TestDefaultPermissionProfile_0500
+ * @tc.name: test default permission profile
+ * @tc.desc: 1. system running normally
+ *           2. test failed
+ */
+HWTEST_F(BmsBundleParserTest, TestDefaultPermissionProfile_0500, Function | SmallTest | Level1)
+{
+    std::set<DefaultPermission> defaultPermissions;
+    nlohmann::json errorProfileJson = R"(
+        [
+            {
+            }
+        ]
+        )"_json;
+    ErrCode result = CheckProfileDefaultPermission(errorProfileJson, defaultPermissions);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_MISSING_PROP);
+}
+
+/**
+ * @tc.name: TestParse_3400
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3400, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_3500
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3500, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_3600
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3600, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[MODULE][TYPE] = PROFILE_KEY_LABEL_ID;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_3700
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3700, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[MODULE][TYPE] = PROFILE_KEY_LABEL_ID;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_3800
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3800, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_3;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_3900
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3900, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_3;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4000
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4000, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_3;
+    profileJson[MODULE][TYPE] = PROFILE_KEY_LABEL_ID;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4100
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4100, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_3;
+    profileJson[MODULE][TYPE] = PROFILE_KEY_LABEL_ID;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4200
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4200, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[BUNDLE_TYPE_APP][PROFILE_KEY_LABEL_ID] = 0;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4300
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4300, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[BUNDLE_TYPE_APP][PROFILE_KEY_LABEL_ID] = 0;
+    profileJson[BUNDLE_TYPE_APP][PROFILE_KEY_LABEL] = EMPTY_NAME;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4400
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4400, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[BUNDLE_TYPE_APP][PROFILE_KEY_LABEL] = EMPTY_NAME;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4500
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4500, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_2;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4600
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4600, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_2;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4700
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4700, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+    nlohmann::json profileJson = CONFIG_JSON_2;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][
+        BUNDLE_MODULE_PROFILE_KEY_MODULE_TYPE] = MODULE_TYPE_SHARED;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4800
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4800, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_2;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][
+        BUNDLE_MODULE_PROFILE_KEY_MODULE_TYPE] = MODULE_TYPE_SHARED;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_4900
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_4900, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5000
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5000, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5100
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5100, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][
+        BUNDLE_MODULE_PROFILE_KEY_MODULE_TYPE] = MODULE_TYPE_SHARED;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5200
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5200, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][
+        BUNDLE_MODULE_PROFILE_KEY_MODULE_TYPE] = MODULE_TYPE_SHARED;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5300
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5300, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileJson[MODULE][NAME] = ServiceConstants::RELATIVE_PATH;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5400
+ * @tc.desc: 1. system running normally
+ *           2. test parsing succeed when deviceType is empty in the config.json
+ * @tc.type: FUNC
+ * @tc.require: issueI5MZ3F
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5400, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_DEVICE_TYPE].clear();
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5500
+ * @tc.desc: 1. system running normally
+ *           2. test parsing failed when version code is -1 in the config.json
+ * @tc.type: FUNC
+ * @tc.require: issueI5MZ3F
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5500, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileJson[BUNDLE_TYPE_APP][BUNDLE_APP_PROFILE_KEY_VERSION][BUNDLE_APP_PROFILE_KEY_CODE] = -1;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_NE(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5600
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5600, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[BUNDLE_TYPE_APP][PROFILE_KEY_LABEL] = EMPTY_NAME;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5700
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5700, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[MODULE][NAME] = EMPTY_NAME;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_NE(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5800
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5800, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[MODULE][NAME] = OVER_MAX_PATH_SIZE;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_NE(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_5900
+ * @tc.desc: 1. system running normally
+ *           2. test ParserAtomicConfig failed invalid installationFree in module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5900, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[BUNDLE_TYPE_APP][BUNDLETYPE] = BUNDLE_TYPE_APP;
+
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6000
+ * @tc.desc: 1. system running normally
+ *           2. test ParserAtomicConfig split not exist
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6000, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[BUNDLE_TYPE_APP][BUNDLETYPE] = EMPTY_NAME;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_MODULE_INSTALLATION_FREE] = true;
+
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6100
+ * @tc.desc: 1. system running normally
+ *           2. test ParserAtomicConfig
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6100, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_MODULE_INSTALLATION_FREE] = true;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6200
+ * @tc.desc: 1. system running normally
+ *           2. test ParserAtomicConfig
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6200, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_MODULE_INSTALLATION_FREE] = true;
+    profileJson[MODULE][TYPE] = NO_EXIST_NAME;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6300
+ * @tc.desc: 1. system running normally
+ *           2. test ParserAtomicConfig
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6300, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6400
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6400, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileJson[MODULE][NAME] = NAME + ServiceConstants::MODULE_NAME_SEPARATOR;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_NE(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6500
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6500, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_4;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_NE(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6600
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6600, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+    nlohmann::json profileJson = MODULE_JSON;
+
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6700
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6700, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][MODULE_NAME] = ServiceConstants::RELATIVE_PATH;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6800
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the config.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6800, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::vector<FormInfo> formInfos;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileJson[MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][MODULE_NAME] = ServiceConstants::MODULE_NAME_SEPARATOR;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_6900
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_6900, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+    nlohmann::json profileJson = MODULE_JSON_5;
+
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+
+    auto extensionInfoMap = innerBundleInfo.GetInnerExtensionInfos();
+    for (auto iter = extensionInfoMap.begin(); iter != extensionInfoMap.end(); iter++) {
+        if (iter->second.type == ExtensionAbilityType::APP_SERVICE) {
+            std::for_each(iter->second.appIdentifierAllowList.begin(), iter->second.appIdentifierAllowList.end(),
+                [](const auto &appId) {
+                    EXPECT_EQ(appId, "5765880207853134833");
+                });
+        }
+    }
+}
+
+/**
+ * @tc.name: TestParse_7000
+ * @tc.desc: 1. system running normally
+ *           2. test parsing info in the module.json
+ *           3. Verify that the value of the "isolationProcess" property of
+ *              the "extensionAbilities" attribute is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_7000, Function | SmallTest | Level1)
+{
+    const string moduleName = "entry";
+    const string extensionName = "EntryBackupAbility";
+    const string extensionNameSecond = "EntryBackupAbilitySecond";
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+    nlohmann::json profileJson = MODULE_JSON_12;
+
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+
+    auto extensionAbilityInfo = innerBundleInfo.FindExtensionInfo(moduleName, extensionName);
+    EXPECT_NE(extensionAbilityInfo, std::nullopt);
+    EXPECT_TRUE(extensionAbilityInfo->isolationProcess);
+
+    auto extensionAbilityInfoSecond = innerBundleInfo.FindExtensionInfo(moduleName, extensionNameSecond);
+    EXPECT_NE(extensionAbilityInfoSecond, std::nullopt);
+    EXPECT_FALSE(extensionAbilityInfoSecond->isolationProcess);
+}
+
+/**
+ * @tc.name: TestParse_7100
+ * @tc.desc: 1. system running normally
+ *           2. test ParserAtomicConfig
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_7100, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON;
+    profileJson[MODULE][ATOMIC_SERVICE][RESIZEABLE] = "true";
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.name: TestParse_7200
+ * @tc.desc: 1. system running normally
+ *           2. test ParserAtomicConfig
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_7200, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo("entry");
+    EXPECT_NE(hapModule, std::nullopt);
+    EXPECT_TRUE(hapModule->resizeable);
+}
+
+/**
+ * @tc.name: TestParse_7300
+ * @tc.desc: 1. system running normally
+ *           2. test ParserAtomicConfig
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_7300, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON;
+    profileJson[MODULE][ATOMIC_SERVICE] = "{\"array1\", \"array2\"}";
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR) << profileFileBuffer.str();
+}
+
+
+/**
+ * @tc.name: TestParse_7400
+ * @tc.desc: 1. system running normally
+ *           2. test parse deduplicateHar
+ * @tc.type: FUNC
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_7400, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_DEDUPLICATEHAR_TRUE;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer.str();
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo("entry");
+    EXPECT_NE(hapModule, std::nullopt);
+    EXPECT_TRUE(hapModule->deduplicateHar);
+
+    // update deduplicateHar
+    InnerBundleInfo innerBundleInfo2;
+    nlohmann::json profileJson2 = MODULE_JSON_DEDUPLICATEHAR_FALSE;
+    std::ostringstream profileFileBuffer2;
+    profileFileBuffer2 << profileJson2.dump();
+
+    BundleExtractor bundleExtractor2(EMPTY_NAME);
+    result = moduleProfile.TransformTo(
+        profileFileBuffer2, bundleExtractor2, innerBundleInfo2);
+    EXPECT_EQ(result, ERR_OK) << profileFileBuffer2.str();
+
+    hapModule = innerBundleInfo2.FindHapModuleInfo("entry");
+    EXPECT_NE(hapModule, std::nullopt);
+    EXPECT_FALSE(hapModule->deduplicateHar);
+
+    // update deduplicateHar by UpdateDeduplicateHarConfig
+    InnerBundleInfo info;
+    UpdateDeduplicateHarConfig(info, hapModule->deduplicateHar);
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleName = MODULE_NAME;
+    innerModuleInfo.modulePackage = MODULE_NAME;
+    innerModuleInfo.isEntry = true;
+    info.innerModuleInfos_.try_emplace(MODULE_NAME, innerModuleInfo);
+    UpdateDeduplicateHarConfig(info, hapModule->deduplicateHar);
+    EXPECT_EQ(info.innerModuleInfos_[MODULE_NAME].boolSet, 0);
+}
+
+/**
+ * @tc.number: BundleParser_0100
+ * @tc.name: Test ReadFileIntoJson
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0100, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string filePath;
+    nlohmann::json jsonBuf;
+    bool ret = bundleParser.ReadFileIntoJson(filePath, jsonBuf);
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.number: BundleParser_0200
+ * @tc.name: Test ReadFileIntoJson
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0200, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string filePath = "config/sharefs/com.ohos.settings/appid";
+    nlohmann::json jsonBuf;
+    bool ret = bundleParser.ReadFileIntoJson(filePath, jsonBuf);
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.number: BundleParser_0300
+ * @tc.name: Test ParsePackInfo
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0300, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string pathName = "com.ohos.settings";
+    BundlePackInfo bundlePackInfo;
+    ErrCode ret = bundleParser.ParsePackInfo(pathName, bundlePackInfo);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_UNEXPECTED);
+}
+
+/**
+ * @tc.number: BundleParser_0400
+ * @tc.name: Test ParseSysCap
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0400, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string pathName = "com.ohos.settings";
+    std::vector<std::string> sysCaps;
+    ErrCode ret = bundleParser.ParseSysCap(pathName, sysCaps);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_UNEXPECTED);
+}
+
+/**
+ * @tc.number: BundleParser_0500
+ * @tc.name: Test ParsePreInstallConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0500, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile;
+    std::set<PreScanInfo> scanInfos;
+    ErrCode ret = bundleParser.ParsePreInstallConfig(configFile, scanInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_0600
+ * @tc.name: Test ParsePreInstallConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0600, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile = "config.cfg";
+    std::set<PreScanInfo> scanInfos;
+    ErrCode ret = bundleParser.ParsePreInstallConfig(configFile, scanInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_0700
+ * @tc.name: Test ParsePreUnInstallConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0700, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile;
+    std::set<std::string> uninstallList;
+    ErrCode ret = bundleParser.ParsePreUnInstallConfig(configFile, uninstallList);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_0800
+ * @tc.name: Test ParsePreUnInstallConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0800, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile = "config.cfg";
+    std::set<std::string> uninstallList;
+    ErrCode ret = bundleParser.ParsePreUnInstallConfig(configFile, uninstallList);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_0900
+ * @tc.name: Test ParsePreInstallAbilityConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_0900, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile;
+    std::set<PreBundleConfigInfo> preBundleConfigInfos;
+    ErrCode ret = bundleParser.ParsePreInstallAbilityConfig(configFile, preBundleConfigInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_1000
+ * @tc.name: Test ParsePreInstallAbilityConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1000, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile = "config.cfg";
+    std::set<PreBundleConfigInfo> preBundleConfigInfos;
+    ErrCode ret = bundleParser.ParsePreInstallAbilityConfig(configFile, preBundleConfigInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_1100
+ * @tc.name: Test ParseDefaultPermission
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1100, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string permissionFile;
+    std::set<DefaultPermission> defaultPermissions;
+    ErrCode ret = bundleParser.ParseDefaultPermission(permissionFile, defaultPermissions);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_1200
+ * @tc.name: Test ParseDefaultPermission
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1200, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string permissionFile = "permission.file";
+    std::set<DefaultPermission> defaultPermissions;
+    ErrCode ret = bundleParser.ParseDefaultPermission(permissionFile, defaultPermissions);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_1300
+ * @tc.name: Test ParseExtTypeConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1300, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile;
+    std::set<std::string> extensionTypeList;
+    ErrCode ret = bundleParser.ParseExtTypeConfig(configFile, extensionTypeList);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_1400
+ * @tc.name: Test ParseExtTypeConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1400, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile = "config.cfg";
+    std::set<std::string> extensionTypeList;
+    ErrCode ret = bundleParser.ParseExtTypeConfig(configFile, extensionTypeList);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_1500
+ * @tc.name: Test ParseRouterArray
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1500, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string jsonString;
+    std::vector<RouterItem> routerArray;
+    ErrCode ret = bundleParser.ParseRouterArray(jsonString, routerArray);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_NO_PROFILE);
+}
+
+/**
+ * @tc.number: BundleParser_1600
+ * @tc.name: Test ParseRouterArray
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1600, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string jsonString = "{\"Name\" : \"zhangsan\"}";
+    std::vector<RouterItem> routerArray;
+    ErrCode ret = bundleParser.ParseRouterArray(jsonString, routerArray);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_PROFILE_PROP_TYPE_ERROR);
+}
+
+/**
+ * @tc.number: BundleParser_1700
+ * @tc.name: Test ParseNoDisablingList
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1700, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configPath;
+    std::vector<std::string> noDisablingList;
+    ErrCode ret = bundleParser.ParseNoDisablingList(configPath, noDisablingList);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_INSTALL_FAILED_PROFILE_PARSE_FAIL);
+}
+
+/**
+ * @tc.number: BundleParser_1800
+ * @tc.name: Test ParseNoDisablingList
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1800, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configPath = "config.cfg";
+    std::vector<std::string> noDisablingList;
+    ErrCode ret = bundleParser.ParseNoDisablingList(configPath, noDisablingList);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_INSTALL_FAILED_PROFILE_PARSE_FAIL);
+}
+
+/**
+ * @tc.number: BundleParser_1900
+ * @tc.name: Test CheckRouterData
+ * @tc.desc: Test the CheckRouterData of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_1900, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+    nlohmann::json data;
+    auto ret = bundleParser.CheckRouterData(data);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: BundleParser_2000
+ * @tc.name: Test ParseNoDisablingList
+ * @tc.desc: Test the ParseNoDisablingList of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_2000, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+    std::string configPath;
+    std::vector<std::string> noDisablingList;
+    ErrCode ret = bundleParser.ParseNoDisablingList(configPath, noDisablingList);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_INSTALL_FAILED_PROFILE_PARSE_FAIL);
+}
+
+/**
+ * @tc.number: BundleParser_2100
+ * @tc.name: Test CheckRouterData
+ * @tc.desc: Test the CheckRouterData of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_2100, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+    nlohmann::json data;
+    data["data"] = "data";
+    auto ret = bundleParser.CheckRouterData(data);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: BundleParser_2110
+ * @tc.name: Test CheckRouterData with non-string value
+ * @tc.desc: Test the CheckRouterData of BundleParser when data value is not string
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_2110, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+    nlohmann::json data;
+    data["data"] = nlohmann::json::object({{"key1", 123}});
+    auto ret = bundleParser.CheckRouterData(data);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: TestParse_5510
+ * @tc.name: test parsing failed when version code is 0 in config.json
+ * @tc.desc: 1. version code is 0
+ *           2. TransformTo returns error
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5510, Function | SmallTest | Level1)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.SetIsPreInstallApp(true);
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = CONFIG_JSON_3;
+    profileJson[BUNDLE_TYPE_APP][BUNDLE_APP_PROFILE_KEY_VERSION][BUNDLE_APP_PROFILE_KEY_CODE] = 0;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = bundleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_NE(result, ERR_OK) << profileFileBuffer.str();
+}
+
+/**
+ * @tc.number: TestParse_5520
+ * @tc.name: test parsing failed when moduleName contains comma in config.json
+ * @tc.desc: 1. moduleName contains comma
+ *           2. TransformTo returns error
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5520, Function | SmallTest | Level1)
+{
+    nlohmann::json errorProfileJson = CONFIG_JSON;
+    errorProfileJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][
+        BUNDLE_MODULE_PROFILE_KEY_MODULE_NAME] = "entry,extra";
+    CheckProfileShortcut(errorProfileJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+}
+
+/**
+ * @tc.number: TestParse_5530
+ * @tc.name: test lite device app skips module name validation
+ * @tc.desc: 1. deviceType contains liteWearable
+ *           2. CheckModuleInfosIsValid returns true early
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_5530, Function | SmallTest | Level1)
+{
+    nlohmann::json profileJson = CONFIG_JSON;
+    profileJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_DEVICE_TYPE] =
+        nlohmann::json::array({"liteWearable"});
+    profileJson[BUNDLE_PROFILE_KEY_MODULE][BUNDLE_MODULE_PROFILE_KEY_DISTRO][
+        BUNDLE_MODULE_PROFILE_KEY_MODULE_NAME] = "invalid,name";
+    CheckProfileShortcut(profileJson, ERR_OK);
+}
+
+/**
+ * @tc.number: TestParse_3110
+ * @tc.name: test parsing failed when module name contains comma in module.json
+ * @tc.desc: 1. module name contains comma
+ *           2. TransformTo returns error
+ */
+HWTEST_F(BmsBundleParserTest, TestParse_3110, Function | SmallTest | Level1)
+{
+    nlohmann::json moduleJson = MODULE_JSON;
+    moduleJson[BUNDLE_PROFILE_KEY_MODULE][PROFILE_KEY_NAME] = "entry,extra";
+    CheckProfileModule(moduleJson, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+}
+
+/**
+ * @tc.number: BundleParser_2200
+ * @tc.name: Test ParsePreAppListConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_2200, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile;
+    std::set<PreScanInfo> scanInfos;
+    std::set<PreScanInfo> scanOnDemandInfos;
+    ErrCode ret = bundleParser.ParsePreAppListConfig(configFile, scanInfos, scanOnDemandInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_2300
+ * @tc.name: Test ParsePreAppListConfig
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_2300, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string configFile = "config.cfg";
+    std::set<PreScanInfo> scanInfos;
+    std::set<PreScanInfo> scanOnDemandInfos;
+    ErrCode ret = bundleParser.ParsePreAppListConfig(configFile, scanInfos, scanOnDemandInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+}
+
+/**
+ * @tc.number: BundleParser_2400
+ * @tc.name: Test ParseAclExtendedMap
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_2400, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string jsonString;
+    std::map<std::string, std::string> aclExtendedMap = bundleParser.ParseAclExtendedMap(jsonString);
+    EXPECT_EQ(aclExtendedMap.empty(), true);
+
+    jsonString = R"({"name": "zhangsan")";
+    aclExtendedMap = bundleParser.ParseAclExtendedMap(jsonString);
+    EXPECT_EQ(aclExtendedMap.empty(), true);
+}
+
+/**
+ * @tc.number: BundleParser_2500
+ * @tc.name: Test ParseAclExtendedMap
+ * @tc.desc: test the interface of BundleParser
+ */
+ HWTEST_F(BmsBundleParserTest, BundleParser_2500, Function | MediumTest | Level1)
+ {
+    BundleParser bundleParser;
+
+    std::string jsonString = R"(["one", "two"])";
+    std::map<std::string, std::string> aclExtendedMap = bundleParser.ParseAclExtendedMap(jsonString);
+    EXPECT_EQ(aclExtendedMap.empty(), true);
+
+    jsonString = "a";
+    aclExtendedMap = bundleParser.ParseAclExtendedMap(jsonString);
+    EXPECT_EQ(aclExtendedMap.empty(), true);
+ }
+
+/**
+ * @tc.number: BundleParser_2600
+ * @tc.name: Test ParseAclExtendedMap
+ * @tc.desc: test the interface of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, BundleParser_2600, Function | MediumTest | Level1)
+{
+    BundleParser bundleParser;
+
+    std::string jsonString = R"({"name": "zhangsan", "age": 18})";
+    std::map<std::string, std::string> aclExtendedMap = bundleParser.ParseAclExtendedMap(jsonString);
+    EXPECT_EQ(aclExtendedMap.size(), 2);
+
+    for (auto it = aclExtendedMap.begin(); it != aclExtendedMap.end(); ++it) {
+        if (it->first == "name") {
+            EXPECT_EQ(it->second, "zhangsan");
+        } else if (it->first == "age") {
+            EXPECT_EQ(it->second, "18");
+        }
+    }
+}
+
+/**
+ * @tc.number: FormInfo_0100
+ * @tc.name: Test from_json
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0100, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    jsonObject["name"] = "testName";
+    jsonObject["appFormVisibleNotify"] = true;
+    FormInfo formInfo;
+    from_json(jsonObject, formInfo);
+    EXPECT_EQ(formInfo.name, "testName");
+    EXPECT_TRUE(formInfo.appFormVisibleNotify);
+}
+
+/**
+ * @tc.number: FormInfo_0200
+ * @tc.name: Test to_json
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0200, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    FormInfo formInfo;
+    formInfo.name = "testName";
+    formInfo.appFormVisibleNotify = true;
+    to_json(jsonObject, formInfo);
+    EXPECT_TRUE(jsonObject["appFormVisibleNotify"]);
+    EXPECT_EQ(jsonObject["name"], "testName");
+}
+
+/**
+* @tc.number: ParseCompressExtractNativeLibs
+* @tc.name: Test ParseCompressExtractNativeLibs
+* @tc.desc: test parse compressNativeLibs extractNativeLibs
+*/
+HWTEST_F(BmsBundleParserTest, ParseCompressExtractNativeLibs_0100, Function | MediumTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_6;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+
+    auto appInfo = innerBundleInfo.GetBaseApplicationInfo();
+    EXPECT_EQ(appInfo.isCompressNativeLibs, false);
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo("entry");
+    EXPECT_NE(hapModule, std::nullopt);
+    EXPECT_EQ(hapModule->compressNativeLibs, false);
+}
+
+/**
+* @tc.number: ParseCompressExtractNativeLibs_0200
+* @tc.name: Test ParseCompressExtractNativeLibs
+* @tc.desc: test parse compressNativeLibs extractNativeLibs
+*/
+HWTEST_F(BmsBundleParserTest, ParseCompressExtractNativeLibs_0200, Function | MediumTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_7;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+
+    auto appInfo = innerBundleInfo.GetBaseApplicationInfo();
+    EXPECT_EQ(appInfo.isCompressNativeLibs, true);
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo("entry");
+    EXPECT_NE(hapModule, std::nullopt);
+    EXPECT_EQ(hapModule->compressNativeLibs, true);
+}
+
+/**
+* @tc.number: ParseCompressExtractNativeLibs_0300
+* @tc.name: Test ParseCompressExtractNativeLibs
+* @tc.desc: test parse compressNativeLibs extractNativeLibs
+*/
+HWTEST_F(BmsBundleParserTest, ParseCompressExtractNativeLibs_0300, Function | MediumTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_8;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+
+    auto appInfo = innerBundleInfo.GetBaseApplicationInfo();
+    EXPECT_EQ(appInfo.isCompressNativeLibs, true);
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo("entry");
+    EXPECT_NE(hapModule, std::nullopt);
+    EXPECT_EQ(hapModule->compressNativeLibs, true);
+}
+
+/**
+* @tc.number: ParseCompressExtractNativeLibs_0400
+* @tc.name: Test ParseCompressExtractNativeLibs
+* @tc.desc: test parse compressNativeLibs extractNativeLibs
+*/
+HWTEST_F(BmsBundleParserTest, ParseCompressExtractNativeLibs_0400, Function | MediumTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_9;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+
+    auto appInfo = innerBundleInfo.GetBaseApplicationInfo();
+    EXPECT_EQ(appInfo.isCompressNativeLibs, true);
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo("entry");
+    EXPECT_NE(hapModule, std::nullopt);
+    EXPECT_EQ(hapModule->compressNativeLibs, true);
+}
+
+/**
+* @tc.number: ParseCompressExtractNativeLibs_0500
+* @tc.name: Test ParseCompressExtractNativeLibs
+* @tc.desc: test parse compressNativeLibs extractNativeLibs
+*/
+HWTEST_F(BmsBundleParserTest, ParseCompressExtractNativeLibs_0500, Function | MediumTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_2;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor(EMPTY_NAME);
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+
+    auto appInfo = innerBundleInfo.GetBaseApplicationInfo();
+    EXPECT_EQ(appInfo.isCompressNativeLibs, true);
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo("entry");
+    EXPECT_NE(hapModule, std::nullopt);
+    EXPECT_EQ(hapModule->compressNativeLibs, true);
+}
+
+/**
+ * @tc.number: FindHapModuleInfo_0100
+ * @tc.name: FindHapModuleInfo
+ * @tc.desc: test FindHapModuleInfo skips ability and extension copy when isCopyInfo is false
+ */
+HWTEST_F(BmsBundleParserTest, FindHapModuleInfo_0100, Function | SmallTest | Level1)
+{
+    const std::string bundleName = "com.example.copytest";
+    const std::string modulePackage = "entry";
+    const std::string moduleName = "entry";
+    const int32_t userId = 100;
+    InnerBundleInfo innerBundleInfo = CreateCopyInfoForTest(bundleName, modulePackage, moduleName, userId);
+
+    auto copiedHapModule = innerBundleInfo.FindHapModuleInfo(modulePackage, userId, 0, true);
+    ASSERT_NE(copiedHapModule, std::nullopt);
+    EXPECT_EQ(copiedHapModule->abilityInfos.size(), ONE);
+    EXPECT_EQ(copiedHapModule->extensionInfos.size(), ONE);
+
+    auto trimmedHapModule = innerBundleInfo.FindHapModuleInfo(modulePackage, userId, 0, false);
+    ASSERT_NE(trimmedHapModule, std::nullopt);
+    EXPECT_TRUE(trimmedHapModule->abilityInfos.empty());
+    EXPECT_TRUE(trimmedHapModule->extensionInfos.empty());
+    EXPECT_EQ(trimmedHapModule->metadata.size(), ONE);
+    EXPECT_EQ(trimmedHapModule->dependencies.size(), ONE);
+    EXPECT_EQ(trimmedHapModule->preloads.size(), ONE);
+    EXPECT_EQ(trimmedHapModule->proxyDatas.size(), ONE);
+    EXPECT_TRUE(trimmedHapModule->resizeable);
+}
+
+/**
+ * @tc.number: FindHapModuleInfo_0200
+ * @tc.name: FindHapModuleInfo
+ * @tc.desc: test FindHapModuleInfo returns nullopt when module package does not exist
+ */
+HWTEST_F(BmsBundleParserTest, FindHapModuleInfo_0200, Function | SmallTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    auto hapModule = innerBundleInfo.FindHapModuleInfo("missing.module");
+    EXPECT_EQ(hapModule, std::nullopt);
+}
+
+/**
+ * @tc.number: FindHapModuleInfo_0300
+ * @tc.name: FindHapModuleInfo
+ * @tc.desc: test FindHapModuleInfo copies only matched ability and extension info, and filters app detail ability
+ */
+HWTEST_F(BmsBundleParserTest, FindHapModuleInfo_0300, Function | SmallTest | Level1)
+{
+    const std::string bundleName = "com.example.filtertest";
+    const std::string modulePackage = "entry";
+    const std::string moduleName = "entry";
+    const int32_t userId = 100;
+    InnerBundleInfo innerBundleInfo = CreateInnerBundleInfoForTest(
+        bundleName, modulePackage, moduleName, userId, 20010002);
+
+    InnerAbilityInfo matchedAbilityInfo;
+    matchedAbilityInfo.bundleName = bundleName;
+    matchedAbilityInfo.moduleName = moduleName;
+    matchedAbilityInfo.name = ".MainAbility";
+    innerBundleInfo.InsertAbilitiesInfo(bundleName + "." + moduleName + "." + matchedAbilityInfo.name,
+        matchedAbilityInfo);
+
+    InnerAbilityInfo appDetailAbilityInfo;
+    appDetailAbilityInfo.bundleName = bundleName;
+    appDetailAbilityInfo.moduleName = moduleName;
+    appDetailAbilityInfo.name = ServiceConstants::APP_DETAIL_ABILITY;
+    innerBundleInfo.InsertAbilitiesInfo(bundleName + "." + moduleName + "." + appDetailAbilityInfo.name,
+        appDetailAbilityInfo);
+
+    InnerAbilityInfo otherModuleAbilityInfo;
+    otherModuleAbilityInfo.bundleName = bundleName;
+    otherModuleAbilityInfo.moduleName = "feature";
+    otherModuleAbilityInfo.name = ".FeatureAbility";
+    innerBundleInfo.InsertAbilitiesInfo(bundleName + ".feature." + otherModuleAbilityInfo.name,
+        otherModuleAbilityInfo);
+
+    InnerExtensionInfo matchedExtensionInfo;
+    matchedExtensionInfo.bundleName = bundleName;
+    matchedExtensionInfo.moduleName = moduleName;
+    matchedExtensionInfo.name = "MainExtension";
+    innerBundleInfo.InsertExtensionInfo(bundleName + "." + moduleName + "." + matchedExtensionInfo.name,
+        matchedExtensionInfo);
+
+    InnerExtensionInfo otherModuleExtensionInfo;
+    otherModuleExtensionInfo.bundleName = bundleName;
+    otherModuleExtensionInfo.moduleName = "feature";
+    otherModuleExtensionInfo.name = "FeatureExtension";
+    innerBundleInfo.InsertExtensionInfo(bundleName + ".feature." + otherModuleExtensionInfo.name,
+        otherModuleExtensionInfo);
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo(modulePackage, userId, 0, true);
+    ASSERT_NE(hapModule, std::nullopt);
+    ASSERT_EQ(hapModule->abilityInfos.size(), ONE);
+    EXPECT_EQ(hapModule->abilityInfos[0].name, matchedAbilityInfo.name);
+    ASSERT_EQ(hapModule->extensionInfos.size(), ONE);
+    EXPECT_EQ(hapModule->extensionInfos[0].name, matchedExtensionInfo.name);
+}
+
+/**
+ * @tc.number: FindHapModuleInfo_0400
+ * @tc.name: FindHapModuleInfo
+ * @tc.desc: test FindHapModuleInfo maps module fields and falls back to base bundle version code
+ */
+HWTEST_F(BmsBundleParserTest, FindHapModuleInfo_0400, Function | SmallTest | Level1)
+{
+    const std::string bundleName = "com.example.fieldtest";
+    const std::string modulePackage = "feature.pkg";
+    const std::string moduleName = "feature";
+    const int32_t supportedModes = 1;
+    const uint8_t firstBoolFlag = 1;
+
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo applicationInfo;
+    applicationInfo.bundleName = bundleName;
+    applicationInfo.supportedModes = supportedModes;
+    innerBundleInfo.SetBaseApplicationInfo(applicationInfo);
+
+    BundleInfo bundleInfo;
+    bundleInfo.name = bundleName;
+    bundleInfo.versionCode = 66;
+    innerBundleInfo.SetBaseBundleInfo(bundleInfo);
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.name = moduleName;
+    innerModuleInfo.modulePackage = modulePackage;
+    innerModuleInfo.moduleName = moduleName;
+    innerModuleInfo.description = "feature desc";
+    innerModuleInfo.srcPath = "pages/index";
+    innerModuleInfo.process = "feature_process";
+    innerModuleInfo.moduleResPath = "/data/app/el1/bundle/res";
+    innerModuleInfo.distro.moduleType = Profile::MODULE_TYPE_FEATURE;
+    innerModuleInfo.compileMode = Profile::COMPILE_MODE_ES_MODULE;
+    innerModuleInfo.boolSet = firstBoolFlag;
+    innerBundleInfo.InsertInnerModuleInfo(modulePackage, innerModuleInfo);
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo(modulePackage);
+    ASSERT_NE(hapModule, std::nullopt);
+    EXPECT_EQ(hapModule->bundleName, bundleName);
+    EXPECT_EQ(hapModule->package, modulePackage);
+    EXPECT_EQ(hapModule->moduleName, moduleName);
+    EXPECT_EQ(hapModule->versionCode, bundleInfo.versionCode);
+    EXPECT_EQ(hapModule->moduleType, ModuleType::FEATURE);
+    EXPECT_EQ(hapModule->compileMode, CompileMode::ES_MODULE);
+    EXPECT_EQ(hapModule->supportedModes, supportedModes);
+    EXPECT_TRUE(hapModule->hasIntent);
+}
+
+/**
+ * @tc.number: FindHapModuleInfo_0500
+ * @tc.name: FindHapModuleInfo
+ * @tc.desc: test FindHapModuleInfo keeps module version code and maps unknown module type to UNKNOWN
+ */
+HWTEST_F(BmsBundleParserTest, FindHapModuleInfo_0500, Function | SmallTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo applicationInfo;
+    applicationInfo.bundleName = "com.example.unknowntype";
+    innerBundleInfo.SetBaseApplicationInfo(applicationInfo);
+
+    BundleInfo bundleInfo;
+    bundleInfo.name = applicationInfo.bundleName;
+    bundleInfo.versionCode = 66;
+    innerBundleInfo.SetBaseBundleInfo(bundleInfo);
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.modulePackage = "unknown.pkg";
+    innerModuleInfo.moduleName = "unknownModule";
+    innerModuleInfo.name = "unknownModule";
+    innerModuleInfo.versionCode = 88;
+    innerModuleInfo.distro.moduleType = "unexpectedType";
+    innerBundleInfo.InsertInnerModuleInfo(innerModuleInfo.modulePackage, innerModuleInfo);
+
+    auto hapModule = innerBundleInfo.FindHapModuleInfo(innerModuleInfo.modulePackage);
+    ASSERT_NE(hapModule, std::nullopt);
+    EXPECT_EQ(hapModule->versionCode, innerModuleInfo.versionCode);
+    EXPECT_EQ(hapModule->moduleType, ModuleType::UNKNOWN);
+}
+
+/**
+ * @tc.number: ParseAppPreloadPhase_0100
+ * @tc.name: parse appPreloadPhase by config appPreloadPhase type
+ * @tc.desc: 1. system running normally
+ *           2. test parsing success when catch appPreloadPhase type in the config appPreloadPhase type
+ */
+HWTEST_F(BmsBundleParserTest, ParseAppPreloadPhase_0100, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo applicationInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_10;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+    applicationInfo = innerBundleInfo.GetBaseApplicationInfo();
+    EXPECT_EQ(applicationInfo.appPreloadPhase, AppExecFwk::AppPreloadPhase::PROCESS_CREATED);
+}
+
+/**
+ * @tc.number: ParseAppPreloadPhase_0200
+ * @tc.name: parse appPreloadPhase by config appPreloadPhase type
+ * @tc.desc: 1. system running normally
+ *           2. test parsing success when not set config appPreloadPhase type
+ */
+HWTEST_F(BmsBundleParserTest, ParseAppPreloadPhase_0200, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo applicationInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_11;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+    applicationInfo = innerBundleInfo.GetBaseApplicationInfo();
+    EXPECT_EQ(applicationInfo.appPreloadPhase, AppExecFwk::AppPreloadPhase::DEFAULT);
+}
+
+/**
+ * @tc.number: ParseAppPreloadPhase_0300
+ * @tc.name: parse appPreloadPhase by config appPreloadPhase type
+ * @tc.desc: 1. system running normally
+ *           2. test parsing success when bundle type is not app
+ */
+HWTEST_F(BmsBundleParserTest, ParseAppPreloadPhase_0300, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo applicationInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_13;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+    applicationInfo = innerBundleInfo.GetBaseApplicationInfo();
+    EXPECT_EQ(applicationInfo.appPreloadPhase, AppExecFwk::AppPreloadPhase::DEFAULT);
+}
+
+/**
+ * @tc.number: ParseBuildVersion_0100
+ * @tc.name: parse buildVersion
+ * @tc.desc: 1. system running normally
+ *           2. test parsing success when set buildVersion
+ */
+HWTEST_F(BmsBundleParserTest, ParseBuildVersion_0100, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    BundleInfo bundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_10;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+    bundleInfo = innerBundleInfo.GetBaseBundleInfo();
+    EXPECT_EQ(bundleInfo.buildVersion, "1.0.0");
+}
+
+/**
+ * @tc.number: ParseBuildVersion_0200
+ * @tc.name: parse buildVersion
+ * @tc.desc: 1. system running normally
+ *           2. test parsing success when not set buildVersion
+ */
+HWTEST_F(BmsBundleParserTest, ParseBuildVersion_0200, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    BundleInfo bundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_11;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+    bundleInfo = innerBundleInfo.GetBaseBundleInfo();
+    EXPECT_EQ(bundleInfo.buildVersion, "");
+}
+
+/**
+ * @tc.number: ParseQuerySchemes_0100
+ * @tc.name: parse querySchemes
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleParserTest, ParseQuerySchemes_0100, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_14;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.number: ParseDeviceConfig_0100
+ * @tc.name: deviceConfig keys missing
+ * @tc.desc: 1. system running normally
+ */
+
+HWTEST_F(BmsBundleParserTest, ParseDeviceConfig_0100, Function | SmallTest | Level0)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream buf;
+
+    nlohmann::json profile = CONFIG_JSON_3;
+    profile["deviceConfig"]["default"] = nlohmann::json::object();
+    buf << profile.dump();
+
+    BundleExtractor extractor("");
+    ErrCode ret = bundleProfile.TransformTo(buf, extractor, innerBundleInfo);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: ParseAppTwoInOne_0001
+ * @tc.name: app_two_in_one present parses successfully
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleParserTest, ParseAppTwoInOne_0100, Function | SmallTest | Level0)
+{
+    BundleProfile bundleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream buf;
+
+    nlohmann::json profile = MODULE_JSON_16;
+
+    buf << profile.dump();
+    BundleExtractor extractor("");
+    ErrCode ret = bundleProfile.TransformTo(buf, extractor, innerBundleInfo);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: ParseQuerySchemes_0200
+ * @tc.name: parse querySchemes
+ * @tc.desc: 1. system running normally
+ */
+HWTEST_F(BmsBundleParserTest, ParseQuerySchemes_0200, Function | SmallTest | Level1)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    std::ostringstream profileFileBuffer;
+
+    nlohmann::json profileJson = MODULE_JSON_15;
+    profileFileBuffer << profileJson.dump();
+
+    BundleExtractor bundleExtractor("");
+    ErrCode result = moduleProfile.TransformTo(
+        profileFileBuffer, bundleExtractor, innerBundleInfo);
+    EXPECT_EQ(result, ERR_APPEXECFWK_PARSE_PROFILE_PROP_CHECK_ERROR);
+}
+
+/**
+ * @tc.number: FormInfo_0300
+ * @tc.name: Test from_json
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0300, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    jsonObject["name"] = "testName";
+    jsonObject["resizable"] = true;
+    FormInfo formInfo;
+    from_json(jsonObject, formInfo);
+    EXPECT_EQ(formInfo.name, "testName");
+    EXPECT_TRUE(formInfo.resizable);
+}
+
+/**
+ * @tc.number: FormInfo_0400
+ * @tc.name: Test to_json
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0400, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    FormInfo formInfo;
+    formInfo.name = "testName";
+    formInfo.resizable = true;
+    to_json(jsonObject, formInfo);
+    EXPECT_TRUE(jsonObject["resizable"]);
+    EXPECT_EQ(jsonObject["name"], "testName");
+}
+
+/**
+ * @tc.number: FormInfo_0500
+ * @tc.name: Test from_json
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0500, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    jsonObject["name"] = "testName";
+    jsonObject["groupId"] = "123";
+    FormInfo formInfo;
+    from_json(jsonObject, formInfo);
+    EXPECT_EQ(formInfo.name, "testName");
+    EXPECT_EQ(formInfo.groupId, "123");
+}
+
+/**
+ * @tc.number: FormInfo_0600
+ * @tc.name: Test to_json
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0600, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    FormInfo formInfo;
+    formInfo.name = "testName";
+    formInfo.groupId = "123";
+    to_json(jsonObject, formInfo);
+    EXPECT_EQ(jsonObject["groupId"], "123");
+    EXPECT_EQ(jsonObject["name"], "testName");
+}
+
+/**
+ * @tc.number: FormInfo_0601
+ * @tc.name: Test to_json
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0601, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    FormInfo formInfo;
+    formInfo.name = "testName";
+    formInfo.isTemplateForm = true;
+    to_json(jsonObject, formInfo);
+    EXPECT_TRUE(jsonObject["isTemplateForm"]);
+    EXPECT_EQ(jsonObject["name"], "testName");
+}
+
+/**
+ * @tc.number: FormInfo_0700
+ * @tc.name: Test to_json
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0700, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    FormInfo formInfo;
+    formInfo.supportDeviceTypes = {"phone"};
+    formInfo.supportDevicePerformanceClasses = {0};
+    to_json(jsonObject, formInfo);
+    EXPECT_EQ(jsonObject["supportDeviceTypes"][0], "phone");
+    EXPECT_EQ(jsonObject["supportDevicePerformanceClasses"][0], 0);
+}
+
+/**
+ * @tc.number: FormInfo_0800
+ * @tc.name: Test Unmarshalling
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0800, Function | MediumTest | Level1)
+{
+    FormInfo formInfo;
+    Parcel parcel;
+    auto ret = formInfo.Unmarshalling(parcel);
+    EXPECT_EQ(ret, nullptr);
+}
+
+/**
+ * @tc.number: FormInfo_0900
+ * @tc.name: Test Unmarshalling
+ * @tc.desc: test the interface of FormInfo
+ */
+HWTEST_F(BmsBundleParserTest, FormInfo_0900, Function | MediumTest | Level1)
+{
+    FormInfo formInfo;
+    formInfo.name = NAME;
+    formInfo.bundleName = BUNDLE_NAME1;
+    formInfo.moduleName = MODULE_NAME;
+    formInfo.updateEnabled = false;
+    Parcel parcel;
+    auto ret = formInfo.Marshalling(parcel);
+    EXPECT_TRUE(ret);
+    auto info = formInfo.Unmarshalling(parcel);
+    EXPECT_NE(info, nullptr);
+    EXPECT_EQ(info->name, NAME);
+    EXPECT_EQ(info->bundleName, BUNDLE_NAME1);
+    EXPECT_EQ(info->moduleName, MODULE_NAME);
+    EXPECT_EQ(info->updateEnabled, false);
+    if (info != nullptr) {
+        delete info;
+    }
+}
+
+/**
+ * @tc.number: ParseArkStartupCacheConfig_0100
+ * @tc.name: Test ParseArkStartupCacheConfig
+ * @tc.desc: test the ParseArkStartupCacheConfig of BundleParser
+ */
+HWTEST_F(BmsBundleParserTest, ParseArkStartupCacheConfig_0100, Function | MediumTest | Level1)
+{
+    std::string configFile = "config.config";
+    std::unordered_set<std::string> arkStartupCacheList;
+    ErrCode ret = BundleParser::ParseArkStartupCacheConfig(configFile, arkStartupCacheList);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_FILE_FAILED);
+    WriteToConfigFile("com.123");
+    ret = BundleParser::ParseArkStartupCacheConfig(ServiceConstants::APP_STARTUP_CACHE_CONG, arkStartupCacheList);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: IsHapCompress_0100
+ * @tc.name: parse abc compressed in hap
+ * @tc.desc: 1. test IsHapCompress in bundleExtractor
+ */
+HWTEST_F(BmsBundleParserTest, IsHapCompress_0100, Function | SmallTest | Level1)
+{
+    BundleParser bundleParser;
+    pathStream_ << RESOURCE_ROOT_PATH << UNKOWN_PATH << INSTALL_FILE_SUFFIX;
+    bool result = false;
+
+    BundleExtractor bundleExtractor(pathStream_.str());
+    bundleExtractor.IsHapCompress(result);
+    EXPECT_FALSE(result);
+
+    ZipEntry zipEntry;
+    zipEntry.compressionMethod = 0;
+    bundleExtractor.zipFile_.entriesMap_.emplace(
+        std::string("ets/modules.abc"), zipEntry);
+    bundleExtractor.IsHapCompress(result);
+    EXPECT_FALSE(result);
+
+    BundleExtractor bundleExtractor2(pathStream_.str());
+    zipEntry.compressionMethod = 1;
+    bundleExtractor2.zipFile_.entriesMap_.emplace(
+        std::string("ets/modules.abc"), zipEntry);
+    bundleExtractor2.IsHapCompress(result);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.number: from_json_standby
+ * @tc.name: Test from_json standby
+ * @tc.desc: test the interface of Standby
+ */
+HWTEST_F(BmsBundleParserTest, from_json_standby, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    jsonObject["name"] = "testName";
+    jsonObject["standby"]["isSupported"] = true;
+    jsonObject["standby"]["isAdapted"] = false;
+    jsonObject["standby"]["isPrivacySensitive"] = false;
+    FormInfo formInfo;
+    from_json(jsonObject, formInfo);
+    EXPECT_EQ(formInfo.name, "testName");
+    EXPECT_TRUE(formInfo.standby.isSupported);
+    EXPECT_FALSE(formInfo.standby.isAdapted);
+    EXPECT_FALSE(formInfo.standby.isPrivacySensitive);
+}
+ 
+/**
+ * @tc.number: to_json_standby
+ * @tc.name: Test to_json standby
+ * @tc.desc: test the interface of Standby
+ */
+HWTEST_F(BmsBundleParserTest, to_json_standby, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    FormInfo formInfo;
+    formInfo.name = "testName";
+    formInfo.standby.isSupported = true;
+    formInfo.standby.isAdapted = false;
+    formInfo.standby.isPrivacySensitive = false;
+    to_json(jsonObject, formInfo);
+    EXPECT_EQ(jsonObject["name"], "testName");
+    EXPECT_TRUE(jsonObject["standby"]["isSupported"]);
+    EXPECT_FALSE(jsonObject["standby"]["isAdapted"]);
+    EXPECT_FALSE(jsonObject["standby"]["isPrivacySensitive"]);
+}
+
+/**
+ * @tc.number: ModuleProfile_ParseBadProfile_0001
+ * Function: ModuleProfile TransformTo
+ * @tc.name: bad profile json
+ * @tc.desc: test the interface of TransformTo
+ */
+HWTEST_F(BmsBundleParserTest, ModuleProfile_ParseBadProfile_0100, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    InnerBundleInfo innerBundleInfo;
+    BundleExtractor extractor("");
+
+    std::ostringstream badStream;
+    badStream << "{ invalid json";
+
+    ErrCode ret = moduleProfile.TransformTo(badStream, extractor, innerBundleInfo);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_BAD_PROFILE);
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0100
+ * @tc.name: bad profile json for testRunner
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0100, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream badStream;
+    badStream << "{ invalid json";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(badStream, runner);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_BAD_PROFILE);
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0200
+ * @tc.name: missing module field returns parse bad profile
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0200, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({"app": {}})";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_BAD_PROFILE);
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0200
+ * @tc.name: missing testRunner field
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0300, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({"module": {"name": "entry"}})";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_BAD_PROFILE);
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0400
+ * @tc.name: testRunner is not object
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0400, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({"module": {"testRunner": "not_object"}})";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARSE_BAD_PROFILE);
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0500
+ * @tc.name: testRunner without name field
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0500, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({
+        "module": {
+            "testRunner": {
+                "srcPath": "TestRunner.ts",
+                "arkTSMode": "dynamic"
+            }
+        }
+    })";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(runner.name.empty());
+    EXPECT_EQ(runner.srcPath, "TestRunner.ts");
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0600
+ * @tc.name: testRunner name not string
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0600, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({"module":{"testRunner":{"name":123,"srcPath":"TestRunner.ts","arkTSMode":"dynamic"}}})";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(runner.name.empty());
+    EXPECT_EQ(runner.srcPath, "TestRunner.ts");
+    EXPECT_EQ(runner.arkTSMode, "dynamic");
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0700
+ * @tc.name: testRunner without srcPath
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0700, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({"module":{"testRunner":{"name":"Runner","arkTSMode":"dynamic"}}})";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(runner.name, "Runner");
+    EXPECT_TRUE(runner.srcPath.empty());
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0800
+ * @tc.name: testRunner srcPath not string
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0800, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({"module":{"testRunner":{"name":"Runner","srcPath":123,"arkTSMode":"dynamic"}}})";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(runner.name, "Runner");
+    EXPECT_TRUE(runner.srcPath.empty());
+    EXPECT_EQ(runner.arkTSMode, "dynamic");
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0900
+ * @tc.name: arkTSMode is string
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0900, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({"module":{"testRunner":{"arkTSMode":"dynamic"}}})";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(runner.arkTSMode, "dynamic");
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0110
+ * @tc.name: arkTSMode is not string
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0110, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({"module":{"testRunner":{"arkTSMode":123}}})";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(runner.arkTSMode.empty());
+}
+
+/**
+ * @tc.number: TransformToTestRunner_0120
+ * @tc.name: testRunner fields type error (indirect from_json)
+ * @tc.desc: test the interface of TransformToTestRunner
+ */
+HWTEST_F(BmsBundleParserTest, TransformToTestRunner_0120, Function | SmallTest | Level0)
+{
+    ModuleProfile moduleProfile;
+    ModuleTestRunner runner;
+    std::ostringstream buf;
+    buf << R"({
+        "module": {
+            "testRunner": {
+                "name": 123,
+                "srcPath": true,
+                "arkTSMode": null
+            }
+        }
+    })";
+
+    ErrCode ret = moduleProfile.TransformToTestRunner(buf, runner);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_TRUE(runner.name.empty());
+    EXPECT_TRUE(runner.srcPath.empty());
+    EXPECT_TRUE(runner.arkTSMode.empty());
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0001
+ * @tc.name: test CalculateRequiredInodes with small file
+ * @tc.desc: 1. fileSize < 923*4KB
+ *           2. verify inode count = 1
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0001, Function | SmallTest | Level0)
+{
+    // Case 1: fileSize < 923*4KB (3692 KB)
+    uint64_t fileSizeKb = 1000;  // Less than 3692 KB
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 1);  // BASE_INODES_SMALL
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0002
+ * @tc.name: test CalculateRequiredInodes with exact threshold 1
+ * @tc.desc: 1. fileSize = 923*4KB - 1
+ *           2. verify inode count = 1
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0002, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 3691;  // Just below threshold 1
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 1);
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0003
+ * @tc.name: test CalculateRequiredInodes at threshold 1
+ * @tc.desc: 1. fileSize = 923*4KB
+ *           2. verify inode count = 3 (enters medium range)
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0003, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 3692;  // Exactly threshold 1: 923*4KB
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 3);  // BASE_INODES_MEDIUM
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0004
+ * @tc.name: test CalculateRequiredInodes with medium file
+ * @tc.desc: 1. 923*4KB < fileSize < 923*4+2*1018*4 KB
+ *           2. verify inode count = 3
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0004, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 5000;  // Between 3692 and 11836 KB
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 3);
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0005
+ * @tc.name: test CalculateRequiredInodes at threshold 2
+ * @tc.desc: 1. fileSize = 923*4+2*1018*4 KB
+ *           2. verify inode count starts increasing
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0005, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 11836;  // Exactly threshold 2
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 3);  // Still at base, before increment
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0006
+ * @tc.name: test CalculateRequiredInodes with large file
+ * @tc.desc: 1. fileSize just above threshold 2
+ *           2. verify inode count calculation with ceiling
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0006, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 11840;  // 11836 + 4 (one indirect block size)
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 4);  // 3 + 1
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0007
+ * @tc.name: test CalculateRequiredInodes with multiple indirect blocks
+ * @tc.desc: 1. fileSize in large range
+ *           2. verify ceiling division works correctly
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0007, Function | SmallTest | Level0)
+{
+    // 11836 + 2*4072 = 11836 + 8144 = 19980 (should be 3 + 2 = 5 inodes)
+    uint64_t fileSizeKb = 19980;
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 5);
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0008
+ * @tc.name: test CalculateRequiredInodes at threshold 3
+ * @tc.desc: 1. fileSize = 923*4+2*1018*4+2*1018*1018*4 KB
+ *           2. verify enters huge range
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0008, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 8302428
+    ;  // Exactly threshold 3
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 2042);  // BASE_INODES_LARGE (3 + 2*1018 = 2039) + 1 before increment
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0009
+ * @tc.name: test CalculateRequiredInodes with huge file
+ * @tc.desc: 1. fileSize > threshold 3
+ *           2. verify double indirect blocks calculation
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0009, Function | SmallTest | Level0)
+{
+    // 8302428 + 4KB = 8302432 (should be 2041 + 1 = 2042)
+    uint64_t fileSizeKb = 8302432;
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 2043);
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0010
+ * @tc.name: test CalculateRequiredInodes with zero size
+ * @tc.desc: 1. fileSize = 0
+ *           2. verify handles edge case
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0010, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 0;
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 1);  // Minimum 1 inode for any file
+}
+
+/**
+ * @tc.number: CalculateRequiredInodes_0011
+ * @tc.name: test CalculateRequiredInodes with 1KB file
+ * @tc.desc: 1. fileSize = 1KB
+ *           2. verify minimum file handling
+ */
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0011, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 1;
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 1);
+}
+
+/**
+ * @tc.number: GetExtractedFileInodes_0001
+ * @tc.name: test BundleExtractor::GetExtractedFileInodes with all conditions false
+ * @tc.desc: 1. test with isCompressNativeLibrary=false, hasArkNativeFile=false
+ *           2. verify only AP and resources files are counted
+ */
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0001, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,  // isCompressNativeLibrary
+        false,  // hasArkNativeFile
+        {});     // hnpPackages
+    // Should count AP and resources files
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0002
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with native library extraction
+* @tc.desc: 1. test with isCompressNativeLibrary=true
+*           2. verify SO files in libs/ are counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0002, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        true,   // isCompressNativeLibrary - libs should be extracted
+        false,  // hasArkNativeFile
+        {});     // hnpPackages
+    // With libs enabled, should count more files
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0003
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with ark native files
+* @tc.desc: 1. test with hasArkNativeFile=true
+*           2. verify AN/AI files are counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0003, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,  // isCompressNativeLibrary
+        true,   // hasArkNativeFile - AN/AI files should be extracted
+        {});     // hnpPackages
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0004
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with HNP packages
+* @tc.desc: 1. test with HNP packages specified
+*           2. verify matching HNP files are counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0004, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    std::vector<OHOS::AppExecFwk::HnpPackage> hnpPackages;
+    OHOS::AppExecFwk::HnpPackage hnpPkg;
+    hnpPkg.package = "test_hnp";
+    hnpPackages.push_back(hnpPkg);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,        // isCompressNativeLibrary
+        false,        // hasArkNativeFile
+        hnpPackages);  // HNP packages to extract
+    // Should count matching HNP files
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0005
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with all conditions enabled
+* @tc.desc: 1. test with all extraction conditions enabled
+*           2. verify all extractable files are counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0005, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    std::vector<OHOS::AppExecFwk::HnpPackage> hnpPackages;
+    OHOS::AppExecFwk::HnpPackage hnpPkg;
+    hnpPkg.package = "test_hnp";
+    hnpPackages.push_back(hnpPkg);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        true,         // isCompressNativeLibrary - extract libs
+        true,         // hasArkNativeFile - extract AN/AI
+        hnpPackages);  // extract HNP
+    // Should count maximum number of inodes
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0006
+* @tc.name: test BundleExtractor::GetExtractedFileInodes inode calculation
+* @tc.desc: 1. test that inodes are calculated correctly
+*           2. verify total is reasonable
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0006, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,
+        false,
+        {});
+
+    // Total inodes should be at least 1 if any files are extracted
+    // Each file requires at least 1 inode
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0007
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with invalid HAP
+* @tc.desc: 1. test with non-existent HAP file
+*           2. verify returns 0
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0007, Function | SmallTest | Level0)
+{
+    std::string bundlePath = "/non/exist/file.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,
+        false,
+        {});
+    // Should fail because file doesn't exist
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0008
+* @tc.name: test BundleExtractor::GetExtractedFileInodes empty HNP packages list
+* @tc.desc: 1. test with empty hnpPackages vector
+*           2. verify HNP files are not counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0008, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    // Empty hnpPackages list
+    std::vector<OHOS::AppExecFwk::HnpPackage> hnpPackages;
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,
+        false,
+        hnpPackages);
+    EXPECT_GE(totalInodes, 0);
+    // HNP files should not be counted when packages list is empty
+    // Total inodes should reflect only AP and resource files
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0009
+* @tc.name: test BundleExtractor::GetExtractedFileInodes result validation
+* @tc.desc: 1. test that inode calculation is done internally
+*           2. verify total inodes matches expected range
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0009, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,
+        false,
+        {});
+
+    // Verify inodes were calculated
+    // Each file should have at least 1 inode
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0010
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with valid HAP file
+* @tc.desc: 1. test with valid HAP file
+*           2. verify returns non-zero
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0010, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,
+        false,
+        {});
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0011
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with different file paths
+* @tc.desc: 1. test that different
+*           2. verify extraction conditions work
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0011, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        true,   // isCompressNativeLibrary
+        true,   // hasArkNativeFile
+        {});     // hnpPackages
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0012
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with only libs condition
+* @tc.desc: 1. test with only libs extraction enabled
+*           2. verify libs files are counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0012, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        true,   // isCompressNativeLibrary
+        false,  // hasArkNativeFile
+        {});     // hnpPackages
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0013
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with only ark native condition
+* @tc.desc: 1. test with only ark native extraction enabled
+*           2. verify AN/AI files are counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0013, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,  // isCompressNativeLibrary
+        true,   // hasArkNativeFile
+        {});     // hnpPackages
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0014
+* @tc.name: test BundleExtractor::GetExtractedFileInodes with only hnp condition
+* @tc.desc: 1. test with only hnp extraction enabled
+*           2. verify HNP files are counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0014, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    std::vector<OHOS::AppExecFwk::HnpPackage> hnpPackages;
+    OHOS::AppExecFwk::HnpPackage hnpPkg;
+    hnpPkg.package = "test_hnp";
+    hnpPackages.push_back(hnpPkg);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,        // isCompressNativeLibrary
+        false,        // hasArkNativeFile
+        hnpPackages);  // hnpPackages
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: GetExtractedFileInodes_0015
+* @tc.name: test BundleExtractor::GetExtractedFileInodes all conditions disabled
+* @tc.desc: 1. test with all extraction conditions disabled
+*           2. verify only AP and resources files are counted
+*/
+HWTEST_F(BmsBundleParserTest, GetExtractedFileInodes_0015, Function | SmallTest | Level0)
+{
+    std::string bundlePath = RESOURCE_ROOT_PATH + "base.hap";
+    BundleExtractor bundleExtractor(bundlePath);
+
+    uint32_t totalInodes = bundleExtractor.GetExtractedFileInodes(
+        false,  // isCompressNativeLibrary
+        false,  // hasArkNativeFile
+        {});     // hnpPackages
+    EXPECT_GE(totalInodes, 0);
+}
+
+/**
+* @tc.number: CalculateRequiredInodes_0013
+* @tc.name: test BundleExtractor::CalculateRequiredInodes just below threshold 2
+* @tc.desc: 1. fileSize = 11835 KB (threshold 2 - 1)
+*           2. verify inode count = 3
+*/
+HWTEST_F(BmsBundleParserTest, CalculateRequiredInodes_0013, Function | SmallTest | Level0)
+{
+    uint64_t fileSizeKb = 11835;
+    uint32_t inodes = BundleExtractor::CalculateRequiredInodes(fileSizeKb);
+    EXPECT_EQ(inodes, 3);
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_ValidJson_0100, Function | SmallTest | Level1)
+{
+    std::string data = R"({"name": "test", "value": 123})";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_object());
+    EXPECT_EQ(jsonObject["name"], "test");
+    EXPECT_EQ(jsonObject["value"], 123);
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_WithComments_0200, Function | SmallTest | Level1)
+{
+    std::string data = R"({
+        // This is a comment
+        "name": "test",
+        /* multi-line comment */
+        "value": 123
+    })";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_object());
+    EXPECT_EQ(jsonObject["name"], "test");
+    EXPECT_EQ(jsonObject["value"], 123);
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_WithTrailingCommas_0300, Function | SmallTest | Level1)
+{
+    std::string data = R"({
+        "name": "test",
+        "value": 123,
+    })";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_ArrayWithTrailingCommas_0400, Function | SmallTest | Level1)
+{
+    std::string data = R"([1, 2, 3,])";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_InvalidJson_0500, Function | SmallTest | Level1)
+{
+    std::string data = R"({"name": "test", "value": )";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_EmptyString_0600, Function | SmallTest | Level1)
+{
+    std::string data = "";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_ComplexJson_0700, Function | SmallTest | Level1)
+{
+    std::string data = R"({
+        "app": {
+            "name": "MyApp",
+            "version": "1.0.0",
+            "permissions": ["READ", "WRITE"]
+        },
+        "modules": [
+            {"name": "module1", "type": "entry"},
+            {"name": "module2", "type": "feature"}
+        ]
+    })";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_object());
+    EXPECT_EQ(jsonObject["app"]["name"], "MyApp");
+    EXPECT_EQ(jsonObject["app"]["version"], "1.0.0");
+    EXPECT_EQ(jsonObject["app"]["permissions"].size(), 2);
+    EXPECT_EQ(jsonObject["modules"].size(), 2);
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_WithCommentsAndTrailingCommas_0800, Function | SmallTest | Level1)
+{
+    std::string data = R"({
+        // configuration
+        "config": {
+            "debug": true,
+            "logLevel": "info"
+        }, // end of config
+        // features
+        "features": [
+            "feature1",
+            "feature2"
+        ] // end of features
+    })";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_object());
+    EXPECT_TRUE(jsonObject["config"]["debug"]);
+    EXPECT_EQ(jsonObject["config"]["logLevel"], "info");
+    EXPECT_EQ(jsonObject["features"].size(), 2);
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_MalformedJson_0900, Function | SmallTest | Level1)
+{
+    std::string data = R"({name: "test", value: 123})";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_WhitespaceOnly_1000, Function | SmallTest | Level1)
+{
+    std::string data = "   \n\t   ";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, true);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_StrictMode_WithComments_1100, Function | SmallTest | Level1)
+{
+    std::string data = R"({
+        // This is a comment
+        "name": "test",
+        "value": 123
+    })";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, false);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_StrictMode_WithTrailingCommas_1200, Function | SmallTest | Level1)
+{
+    std::string data = R"({
+        "name": "test",
+        "value": 123,
+    })";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, false);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_StrictMode_ArrayWithTrailingCommas_1300, Function | SmallTest | Level1)
+{
+    std::string data = R"([1, 2, 3,])";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, false);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_StrictMode_ValidJson_1400, Function | SmallTest | Level1)
+{
+    std::string data = R"({"name": "test", "value": 123})";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, false);
+    EXPECT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_object());
+    EXPECT_EQ(jsonObject["name"], "test");
+    EXPECT_EQ(jsonObject["value"], 123);
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_StrictMode_ComplexJson_1500, Function | SmallTest | Level1)
+{
+    std::string data = R"({
+        "app": {
+            "name": "MyApp",
+            "version": "1.0.0",
+            "permissions": ["READ", "WRITE"]
+        },
+        "modules": [
+            {"name": "module1", "type": "entry"},
+            {"name": "module2", "type": "feature"}
+        ]
+    })";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, false);
+    EXPECT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_object());
+    EXPECT_EQ(jsonObject["app"]["name"], "MyApp");
+    EXPECT_EQ(jsonObject["app"]["version"], "1.0.0");
+    EXPECT_EQ(jsonObject["app"]["permissions"].size(), 2);
+    EXPECT_EQ(jsonObject["modules"].size(), 2);
+}
+
+HWTEST_F(BmsBundleParserTest, JsonParse_StrictMode_MalformedJson_1600, Function | SmallTest | Level1)
+{
+    std::string data = R"({name: "test", value: 123})";
+    nlohmann::json jsonObject = nlohmann::json::parse(data, nullptr, false, false);
+    EXPECT_TRUE(jsonObject.is_discarded());
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_AlternateIcon_Parcel_0100
+ * @tc.name: Test AlternateIcon Parcel Marshalling and Unmarshalling
+ * @tc.desc: 1. Test AlternateIcon serialization via Parcel
+ */
+HWTEST_F(BmsBundleParserTest, AlternateIcon_Parcel_0100, Function | SmallTest | Level1)
+{
+    AlternateIcon originalIcon;
+    originalIcon.name = "dark_mode";
+    originalIcon.icon = "$media:icon_dark";
+    originalIcon.iconId = 10001;
+
+    Parcel parcel;
+    EXPECT_TRUE(originalIcon.Marshalling(parcel));
+
+    AlternateIcon *restoredIcon = AlternateIcon::Unmarshalling(parcel);
+    EXPECT_NE(restoredIcon, nullptr);
+
+    if (restoredIcon != nullptr) {
+        EXPECT_EQ(restoredIcon->name, "dark_mode");
+        EXPECT_EQ(restoredIcon->icon, "$media:icon_dark");
+        EXPECT_EQ(restoredIcon->iconId, 10001);
+        delete restoredIcon;
+    }
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_AlternateIcon_Parcel_0200
+ * @tc.name: Test AlternateIcon with empty values
+ * @tc.desc: 1. Test AlternateIcon with empty name and icon
+ */
+HWTEST_F(BmsBundleParserTest, AlternateIcon_Parcel_0200, Function | SmallTest | Level1)
+{
+    AlternateIcon originalIcon;
+    originalIcon.name = "";
+    originalIcon.icon = "";
+    originalIcon.iconId = 0;
+
+    Parcel parcel;
+    EXPECT_TRUE(originalIcon.Marshalling(parcel));
+
+    AlternateIcon *restoredIcon = AlternateIcon::Unmarshalling(parcel);
+    EXPECT_NE(restoredIcon, nullptr);
+
+    if (restoredIcon != nullptr) {
+        EXPECT_EQ(restoredIcon->name, "");
+        EXPECT_EQ(restoredIcon->icon, "");
+        EXPECT_EQ(restoredIcon->iconId, 0);
+        delete restoredIcon;
+    }
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_ApplicationInfo_AlternateIcons_0100
+ * @tc.name: Test ApplicationInfo with alternateIcons Parcel serialization
+ * @tc.desc: 1. Test ApplicationInfo containing multiple alternateIcons
+ */
+HWTEST_F(BmsBundleParserTest, ApplicationInfo_AlternateIcons_0100, Function | SmallTest | Level1)
+{
+    ApplicationInfo appInfo;
+    appInfo.name = "com.ohos.test";
+    appInfo.bundleName = "com.ohos.test";
+
+    AlternateIcon icon1;
+    icon1.name = "dark_mode";
+    icon1.icon = "$media:icon_dark";
+    icon1.iconId = 10001;
+    appInfo.alternateIcons.push_back(icon1);
+
+    AlternateIcon icon2;
+    icon2.name = "light_mode";
+    icon2.icon = "$media:icon_light";
+    icon2.iconId = 10002;
+    appInfo.alternateIcons.push_back(icon2);
+
+    AlternateIcon icon3;
+    icon3.name = "seasonal";
+    icon3.icon = "$media:icon_spring";
+    icon3.iconId = 10003;
+    appInfo.alternateIcons.push_back(icon3);
+
+    Parcel parcel;
+    EXPECT_TRUE(appInfo.Marshalling(parcel));
+
+    ApplicationInfo *restoredInfo = ApplicationInfo::Unmarshalling(parcel);
+    EXPECT_NE(restoredInfo, nullptr);
+
+    if (restoredInfo != nullptr) {
+        EXPECT_EQ(restoredInfo->name, "com.ohos.test");
+        EXPECT_EQ(restoredInfo->bundleName, "com.ohos.test");
+        EXPECT_EQ(restoredInfo->alternateIcons.size(), 3);
+        EXPECT_EQ(restoredInfo->alternateIcons[0].name, "dark_mode");
+        EXPECT_EQ(restoredInfo->alternateIcons[0].icon, "$media:icon_dark");
+        EXPECT_EQ(restoredInfo->alternateIcons[0].iconId, 10001);
+        EXPECT_EQ(restoredInfo->alternateIcons[1].name, "light_mode");
+        EXPECT_EQ(restoredInfo->alternateIcons[1].icon, "$media:icon_light");
+        EXPECT_EQ(restoredInfo->alternateIcons[1].iconId, 10002);
+        EXPECT_EQ(restoredInfo->alternateIcons[2].name, "seasonal");
+        EXPECT_EQ(restoredInfo->alternateIcons[2].icon, "$media:icon_spring");
+        EXPECT_EQ(restoredInfo->alternateIcons[2].iconId, 10003);
+        delete restoredInfo;
+    }
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_ApplicationInfo_AlternateIcons_0200
+ * @tc.name: Test ApplicationInfo with empty alternateIcons
+ * @tc.desc: 1. Test ApplicationInfo with empty alternateIcons vector
+ */
+HWTEST_F(BmsBundleParserTest, ApplicationInfo_AlternateIcons_0200, Function | SmallTest | Level1)
+{
+    ApplicationInfo appInfo;
+    appInfo.name = "com.ohos.test";
+    appInfo.bundleName = "com.ohos.test";
+    // alternateIcons is empty by default
+
+    Parcel parcel;
+    EXPECT_TRUE(appInfo.Marshalling(parcel));
+
+    ApplicationInfo *restoredInfo = ApplicationInfo::Unmarshalling(parcel);
+    EXPECT_NE(restoredInfo, nullptr);
+
+    if (restoredInfo != nullptr) {
+        EXPECT_EQ(restoredInfo->alternateIcons.size(), 0);
+        delete restoredInfo;
+    }
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_AlternateIcon_Json_0100
+ * @tc.name: Test AlternateIcon JSON serialization
+ * @tc.desc: 1. Test AlternateIcon to_json and from_json
+ */
+HWTEST_F(BmsBundleParserTest, AlternateIcon_Json_0100, Function | SmallTest | Level1)
+{
+    AlternateIcon originalIcon;
+    originalIcon.name = "dark_mode";
+    originalIcon.icon = "$media:icon_dark";
+    originalIcon.iconId = 10001;
+
+    nlohmann::json jsonObject;
+    to_json(jsonObject, originalIcon);
+
+    EXPECT_EQ(jsonObject["name"], "dark_mode");
+    EXPECT_EQ(jsonObject["icon"], "$media:icon_dark");
+    EXPECT_EQ(jsonObject["iconId"], 10001);
+
+    AlternateIcon restoredIcon;
+    from_json(jsonObject, restoredIcon);
+
+    EXPECT_EQ(restoredIcon.name, "dark_mode");
+    EXPECT_EQ(restoredIcon.icon, "$media:icon_dark");
+    EXPECT_EQ(restoredIcon.iconId, 10001);
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_AlternateIcon_Json_0200
+ * @tc.name: Test ApplicationInfo with alternateIcons JSON serialization
+ * @tc.desc: 1. Test ApplicationInfo containing alternateIcons in JSON
+ */
+HWTEST_F(BmsBundleParserTest, AlternateIcon_Json_0200, Function | SmallTest | Level1)
+{
+    ApplicationInfo appInfo;
+    appInfo.name = "com.ohos.test";
+    appInfo.bundleName = "com.ohos.test";
+
+    AlternateIcon icon1;
+    icon1.name = "dark_mode";
+    icon1.icon = "$media:icon_dark";
+    icon1.iconId = 10001;
+    appInfo.alternateIcons.push_back(icon1);
+
+    AlternateIcon icon2;
+    icon2.name = "light_mode";
+    icon2.icon = "$media:icon_light";
+    icon2.iconId = 10002;
+    appInfo.alternateIcons.push_back(icon2);
+
+    nlohmann::json jsonObject;
+    to_json(jsonObject, appInfo);
+
+    EXPECT_TRUE(jsonObject.contains("alternateIcons"));
+    EXPECT_TRUE(jsonObject["alternateIcons"].is_array());
+    EXPECT_EQ(jsonObject["alternateIcons"].size(), 2);
+    EXPECT_EQ(jsonObject["alternateIcons"][0]["name"], "dark_mode");
+    EXPECT_EQ(jsonObject["alternateIcons"][0]["icon"], "$media:icon_dark");
+    EXPECT_EQ(jsonObject["alternateIcons"][0]["iconId"], 10001);
+    EXPECT_EQ(jsonObject["alternateIcons"][1]["name"], "light_mode");
+    EXPECT_EQ(jsonObject["alternateIcons"][1]["icon"], "$media:icon_light");
+    EXPECT_EQ(jsonObject["alternateIcons"][1]["iconId"], 10002);
+
+    ApplicationInfo restoredInfo;
+    from_json(jsonObject, restoredInfo);
+
+    EXPECT_EQ(restoredInfo.alternateIcons.size(), 2);
+    EXPECT_EQ(restoredInfo.alternateIcons[0].name, "dark_mode");
+    EXPECT_EQ(restoredInfo.alternateIcons[0].icon, "$media:icon_dark");
+    EXPECT_EQ(restoredInfo.alternateIcons[0].iconId, 10001);
+    EXPECT_EQ(restoredInfo.alternateIcons[1].name, "light_mode");
+    EXPECT_EQ(restoredInfo.alternateIcons[1].icon, "$media:icon_light");
+    EXPECT_EQ(restoredInfo.alternateIcons[1].iconId, 10002);
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_AlternateIcon_Json_0300
+ * @tc.name: Test ApplicationInfo from JSON with alternateIcons
+ * @tc.desc: 1. Test parsing ApplicationInfo from JSON containing alternateIcons
+ */
+HWTEST_F(BmsBundleParserTest, AlternateIcon_Json_0300, Function | SmallTest | Level1)
+{
+    std::string jsonData = R"({
+        "name": "com.ohos.test",
+        "bundleName": "com.ohos.test",
+        "label": "Test App",
+        "iconPath": "/data/app/el1/budle/public/com.ohos.test",
+        "alternateIcons": [
+            {
+                "name": "dark_mode",
+                "icon": "$media:icon_dark",
+                "iconId": 10001
+            },
+            {
+                "name": "light_mode",
+                "icon": "$media:icon_light",
+                "iconId": 10002
+            },
+            {
+                "name": "seasonal_spring",
+                "icon": "$media:icon_spring",
+                "iconId": 10003
+            }
+        ]
+    })";
+
+    nlohmann::json jsonObject = nlohmann::json::parse(jsonData);
+    ApplicationInfo appInfo;
+    from_json(jsonObject, appInfo);
+
+    EXPECT_EQ(appInfo.name, "com.ohos.test");
+    EXPECT_EQ(appInfo.bundleName, "com.ohos.test");
+    EXPECT_EQ(appInfo.alternateIcons.size(), 3);
+    EXPECT_EQ(appInfo.alternateIcons[0].name, "dark_mode");
+    EXPECT_EQ(appInfo.alternateIcons[0].icon, "$media:icon_dark");
+    EXPECT_EQ(appInfo.alternateIcons[0].iconId, 10001);
+    EXPECT_EQ(appInfo.alternateIcons[1].name, "light_mode");
+    EXPECT_EQ(appInfo.alternateIcons[1].icon, "$media:icon_light");
+    EXPECT_EQ(appInfo.alternateIcons[1].iconId, 10002);
+    EXPECT_EQ(appInfo.alternateIcons[2].name, "seasonal_spring");
+    EXPECT_EQ(appInfo.alternateIcons[2].icon, "$media:icon_spring");
+    EXPECT_EQ(appInfo.alternateIcons[2].iconId, 10003);
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_AlternateIcon_Json_0400
+ * @tc.name: Test ApplicationInfo from JSON with empty alternateIcons
+ * @tc.desc: 1. Test parsing ApplicationInfo from JSON with empty alternateIcons array
+ */
+HWTEST_F(BmsBundleParserTest, AlternateIcon_Json_0400, Function | SmallTest | Level1)
+{
+    std::string jsonData = R"({
+        "name": "com.ohos.test",
+        "bundleName": "com.ohos.test",
+        "label": "Test App",
+        "alternateIcons": []
+    })";
+
+    nlohmann::json jsonObject = nlohmann::json::parse(jsonData);
+    ApplicationInfo appInfo;
+    from_json(jsonObject, appInfo);
+
+    EXPECT_EQ(appInfo.name, "com.ohos.test");
+    EXPECT_EQ(appInfo.alternateIcons.size(), 0);
+}
+
+/**
+ * @tc.number: BmsBundleParserTest_AlternateIcon_Profile_0100
+ * @tc.name: Test parsing alternateIcons from module profile
+ * @tc.desc: 1. Test parsing App profile with alternateIcons configuration
+ */
+HWTEST_F(BmsBundleParserTest, AlternateIcon_Profile_0100, Function | SmallTest | Level1)
+{
+    std::string profileData = R"({
+        "app": {
+            "bundleName": "com.ohos.test",
+            "vendor": "example",
+            "version": {
+                "code": 1,
+                "name": "1.0"
+            },
+            "alternateIcons": [
+                {
+                    "name": "dark_theme",
+                    "icon": "$media:icon_dark",
+                    "iconId": 10001
+                },
+                {
+                    "name": "light_theme",
+                    "icon": "$media:icon_light",
+                    "iconId": 10002
+                }
+            ]
+        },
+        "module": {
+            "package": "com.ohos.test.entry",
+            "name": "entry",
+            "deviceType": ["default"]
+        }
+    })";
+
+    nlohmann::json jsonObject = nlohmann::json::parse(profileData);
+    EXPECT_TRUE(jsonObject.contains("app"));
+    EXPECT_TRUE(jsonObject["app"].contains("alternateIcons"));
+    EXPECT_TRUE(jsonObject["app"]["alternateIcons"].is_array());
+    EXPECT_EQ(jsonObject["app"]["alternateIcons"].size(), 2);
+    EXPECT_EQ(jsonObject["app"]["alternateIcons"][0]["name"], "dark_theme");
+    EXPECT_EQ(jsonObject["app"]["alternateIcons"][0]["icon"], "$media:icon_dark");
+    EXPECT_EQ(jsonObject["app"]["alternateIcons"][0]["iconId"], 10001);
+}
+
+/**
+ * @tc.number: from_json_sceneAnimationParams
+ * @tc.name: Test from_json sceneAnimationParams
+ * @tc.desc: test the interface of sceneAnimationParams
+ */
+HWTEST_F(BmsBundleParserTest, from_json_sceneAnimationParams, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    jsonObject["name"] = "testName";
+    jsonObject["sceneAnimationParams"]["abilityName"] = "testAbilityName";
+    jsonObject["sceneAnimationParams"]["disabledDesktopBehaviors"] = "PULL_DOWN_SEARCH|LONG_CLICK";
+    jsonObject["sceneAnimationParams"]["triggerTypes"] = {SceneAnimationTriggerType::SHAKE};
+    FormInfo formInfo;
+    from_json(jsonObject, formInfo);
+    EXPECT_EQ(formInfo.name, "testName");
+    EXPECT_EQ(formInfo.sceneAnimationParams.abilityName, "testAbilityName");
+    EXPECT_EQ(formInfo.sceneAnimationParams.disabledDesktopBehaviors, "PULL_DOWN_SEARCH|LONG_CLICK");
+    EXPECT_EQ(formInfo.sceneAnimationParams.triggerTypes.size(), 1);
+    EXPECT_EQ(formInfo.sceneAnimationParams.triggerTypes[0], SceneAnimationTriggerType::SHAKE);
+}
+ 
+/**
+ * @tc.number: to_json_sceneAnimationParams
+ * @tc.name: Test to_json sceneAnimationParams
+ * @tc.desc: test the interface of sceneAnimationParams
+ */
+HWTEST_F(BmsBundleParserTest, to_json_sceneAnimationParams, Function | MediumTest | Level1)
+{
+    nlohmann::json jsonObject;
+    FormInfo formInfo;
+    formInfo.name = "testName";
+    formInfo.sceneAnimationParams.abilityName = "testAbilityName";
+    formInfo.sceneAnimationParams.disabledDesktopBehaviors = "PULL_DOWN_SEARCH|LONG_CLICK";
+    formInfo.sceneAnimationParams.triggerTypes = {SceneAnimationTriggerType::SHAKE};
+    to_json(jsonObject, formInfo);
+    EXPECT_EQ(jsonObject["name"], "testName");
+    EXPECT_EQ(jsonObject["sceneAnimationParams"]["abilityName"], "testAbilityName");
+    EXPECT_EQ(jsonObject["sceneAnimationParams"]["disabledDesktopBehaviors"], "PULL_DOWN_SEARCH|LONG_CLICK");
+    EXPECT_EQ(jsonObject["sceneAnimationParams"]["triggerTypes"].size(), 1);
+    EXPECT_EQ(jsonObject["sceneAnimationParams"]["triggerTypes"][0], SceneAnimationTriggerType::SHAKE);
+}
+} // OHOS

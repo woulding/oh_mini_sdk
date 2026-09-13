@@ -1,0 +1,77 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("../../../../../appexecfwk.gni")
+
+module_output_path = "bundle_framework/bundle_framework"
+
+config("module_private_config") {
+  visibility = [ ":*" ]
+  include_dirs = [ "${kits_path}/ani/zlib" ]
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+}
+
+ohos_unittest("zip_test") {
+  module_out_path = module_output_path
+  use_exceptions = true
+  sources = [
+    "../napi/zlib_callback_info.cpp",
+    "../src/file_path.cpp",
+    "../src/zip.cpp",
+    "../src/zip_internal.cpp",
+    "../src/zip_reader.cpp",
+    "../src/zip_utils.cpp",
+    "../src/zip_writer.cpp",
+    "unittest/zip_test.cpp",
+  ]
+
+  configs = [
+    "../:zip_config",
+    ":module_private_config",
+  ]
+
+  deps = [
+    "${base_path}:appexecfwk_base",
+    "${bundle_framework_path}/test/sceneProject/unittest/ohos_test:copy_ohos_test",
+    "${bundle_framework_path}/test/sceneProject/unittest/test_bundle/resourceManagerTest:resourceManagerTest",
+    "${common_path}:libappexecfwk_common",
+    "${core_path}:appexecfwk_core",
+    "${kits_path}/js/common:bundle_napi_common",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
+
+  public_external_deps = [
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "zlib:libz",
+  ]
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":zip_test" ]
+}

@@ -1,0 +1,23 @@
+Skill commands (from repo skills/ohproj):
+  python3 skills/ohproj/ohproj.py build <项目>
+  python3 skills/ohproj/ohproj.py build-test <项目>
+  python3 skills/ohproj/ohproj.py build-test-uitest <项目>   # entry + entry@ohosTest（含本目录 UiTest）
+  python3 skills/ohproj/ohproj.py sign <项目> debug
+  python3 skills/ohproj/ohproj.py test <项目> [--timeout 毫秒]           # API + 全量 Hypium（含 UiTest 套件）
+  python3 skills/ohproj/ohproj.py test-uitest <项目> [--timeout 毫秒]   # 同上部署，默认仍跑 entry_test 全量
+  python3 skills/ohproj/ohproj.py test-all <项目> [--timeout 毫秒]
+
+Hypium 单入口：entry/src/ohosTest/ets/apitest/List.test.ets 的 testsuite() 注册 API 测试与 UiTest（本目录）。
+
+UiTest 源码（@ohos.UiTest）：
+  entry/src/ohosTest/ets/uitest/
+  - MainPageControlUiShared.ets, UitestStubSmoke.test.ets, MainPageControlsUi01/02/03.test.ets
+Stub 页与 UiTestStubAbility 在 entry 主模块：entry/src/main/ets/pages/uitestStub/、entry/src/main/ets/uitestability/
+
+测试模块名：entry_test（entry/src/ohosTest/module.json5）
+构建：build + build-test（或 build-test-uitest 仅打 entry 与 entry@ohosTest）
+安装：entry-default-signed.hap + entry-ohosTest-signed.hap
+运行：test -b <bundle> -m entry_test -s unittest OpenHarmonyTestRunner -s timeout <ms>
+仅跑某一 UiTest 套件可加：-s class MainPageControlsUi01（通过 ohhdc --suite）
+
+参考副本与生成脚本见 scripts/ui_tests_backup/

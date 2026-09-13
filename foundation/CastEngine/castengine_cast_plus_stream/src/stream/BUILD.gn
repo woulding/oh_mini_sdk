@@ -1,0 +1,72 @@
+# Copyright (c) 2024-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//foundation/CastEngine/castengine_cast_framework/cast_engine.gni")
+
+config("cast_session_stream_config") {
+  include_dirs = [
+    "include",
+    "${cast_engine_service}/src/device_manager/include",
+    "${cast_engine_service}/src/session/include",
+    "${cast_engine_service}/src/session/src/utils/include",
+    "${cast_engine_service}/src/session/src/stream/include",
+    "${cast_engine_service}/src/session/src/stream/src/local/include",
+    "${cast_engine_service}/src/session/src/stream/src/player/include",
+    "//third_party/json/single_include/nlohmann",
+  ]
+}
+
+ohos_static_library("cast_session_stream") {
+  sources = [
+    "src/cast_stream_manager_client.cpp",
+    "src/cast_stream_manager_server.cpp",
+    "src/i_cast_stream_manager.cpp",
+    "src/local/src/cast_local_file_channel_client.cpp",
+    "src/local/src/cast_local_file_channel_common.cpp",
+    "src/local/src/cast_local_file_channel_server.cpp",
+    "src/local/src/local_data_source.cpp",
+    "src/player/src/cast_stream_player.cpp",
+    "src/player/src/cast_stream_player_manager.cpp",
+    "src/player/src/remote_player_controller.cpp",
+    "src/player/src/stream_player_impl_stub.cpp",
+    "src/player/src/stream_player_listener_impl_proxy.cpp",
+    "src/player/src/cast_stream_player_utils.cpp",
+  ]
+
+  configs = [
+    ":cast_session_stream_config",
+    "${cast_engine_root}:cast_engine_default_config",
+  ]
+
+  public_configs = [ ":cast_session_stream_config" ]
+
+  deps = [
+    "${cast_engine_common}:cast_engine_common_sources",
+    "${cast_engine_service}/src/device_manager:cast_discovery",
+    "${cast_engine_service}/src/session/src/channel:cast_session_channel",
+    "${cast_engine_service}/src/session/src/utils:cast_session_utils",
+  ]
+
+  external_deps = [
+    "audio_framework:audio_client",
+    "c_utils:utils",
+    "graphic_surface:surface",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "player_framework:media_client",
+    "image_framework:image_native",
+  ]
+
+  subsystem_name = "castplus"
+  part_name = "cast_engine"
+}

@@ -1,0 +1,12 @@
+[
+   "accessibility",
+   "remote_file_share_native",
+   "medialibrary",
+   "utils",
+   "usbmanager",
+   "pasteboard_napi",
+   "ets_interop_js_napi",
+   "camera_napi",
+   "bluetoothBaseProfile_taihe_native",
+   "mediabackup"
+]

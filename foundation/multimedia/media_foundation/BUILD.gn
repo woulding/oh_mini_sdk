@@ -1,0 +1,100 @@
+# Copyright (c) 2021-2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import("//foundation/multimedia/media_foundation/config.gni")
+config("histreamer_presets") {
+  include_dirs = [
+    "//foundation/multimedia/media_foundation/engine",
+  ]
+  defines = [
+    "HST_ANY_WITH_NO_RTTI",
+    "MEDIA_OHOS",
+  ]
+  cflags = [
+    "-O2",
+    "-fPIC",
+    "-Wall",
+    "-fexceptions",
+    "-fno-rtti",
+    "-Wno-unused-but-set-variable",
+    "-Wno-format",
+  ]
+  cflags_cc = cflags
+  if (media_foundation_enable_recorder) {
+    defines += [ "RECORDER_SUPPORT" ]
+  }
+  if (media_foundation_enable_video) {
+    defines += [ "VIDEO_SUPPORT" ]
+  }
+  if (media_foundation_enable_avs3da) {
+    defines += [ "AVS3DA_SUPPORT" ]
+  }
+  if (hst_is_lite_sys) {
+    defines += [ "OHOS_LITE" ]
+  }
+}
+
+if (!hst_is_mini_sys) {
+  # L1 & std shared and seprated
+
+  # media_engine_histreamer lib for L1 & std
+  if (hst_is_lite_sys) {
+    group("histreamer") {
+      deps = [
+        ":media_engine_histreamer",
+        "engine/plugin/plugins:histreamer_plugin_store",
+      ]
+    }
+    import("//build/lite/config/component/lite_component.gni")
+    lite_library("media_engine_histreamer") {
+      target_type = "shared_library"
+      include_dirs = [ "//foundation/multimedia/media_foundation/interface" ]
+      sources = []
+      deps = [ "engine/scene/player:histreamer_player" ]
+      if (media_foundation_enable_recorder) {
+        deps += [ "engine/scene/recorder:histreamer_recorder" ]
+      }
+      public_deps = [ "//foundation/multimedia/media_utils_lite:media_common" ]
+      output_name = "media_foundation"
+    }
+    group("media_foundation") {
+    }
+  } else {
+    group("histreamer") {
+      deps = [ "engine/plugin/plugins:histreamer_plugin_store" ]
+    }
+    group("media_foundation") {
+      deps = [
+        "src:media_foundation",
+        "src/capi:capi_packages",
+      ]
+    }
+  }
+} else {
+  # L0 compile as a whole static lib
+  import("//build/lite/config/component/lite_component.gni")
+  lite_library("histreamer") {
+    target_type = "static_library"
+    complete_static_lib = true
+    sources = []
+    include_dirs = [ "//foundation/multimedia/media_foundation/interface" ]
+    deps = [
+      "engine/plugin/plugins:histreamer_plugin_store",
+      "engine/scene/player:histreamer_player",
+    ]
+    if (media_foundation_enable_recorder) {
+      deps += [ "engine/scene/recorder:histreamer_recorder" ]
+    }
+    public_deps = [ "//foundation/multimedia/media_utils_lite:media_common" ]
+  }
+}

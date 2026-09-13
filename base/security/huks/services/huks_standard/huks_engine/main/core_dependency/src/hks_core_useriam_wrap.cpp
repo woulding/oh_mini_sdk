@@ -1,0 +1,126 @@
+/*
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifdef HKS_CONFIG_FILE
+#include HKS_CONFIG_FILE
+#else
+#include "hks_config.h"
+#endif
+
+#include "hks_core_useriam_wrap.h"
+#include "hks_type_enum.h"
+#include "hks_log.h"
+#include "hks_template.h"
+
+#ifdef HKS_SUPPORT_USER_AUTH_ACCESS_CONTROL
+#ifdef HKS_CORE_ENABLE_HDI_DRIVER
+#include "v4_1/user_auth_types.h"
+
+using AuthType = OHOS::HDI::UserAuth::V4_1::AuthType;
+
+static int32_t ConvertToHksAuthType(uint32_t authType, enum HksUserAuthType *hksAuthType)
+{
+    switch (authType) {
+        case HKS_IAM_USER_AUTH_TYPE_FACE:
+            *hksAuthType = HKS_USER_AUTH_TYPE_FACE;
+            break;
+        case HKS_IAM_USER_AUTH_TYPE_PIN:
+            *hksAuthType =  HKS_USER_AUTH_TYPE_PIN;
+            break;
+        case HKS_IAM_USER_AUTH_TYPE_FINGERPRINT:
+            *hksAuthType =  HKS_USER_AUTH_TYPE_FINGERPRINT;
+            break;
+        case HKS_IAM_USER_AUTH_TYPE_TUI_PIN:
+            *hksAuthType =  HKS_USER_AUTH_TYPE_TUI_PIN;
+            break;
+        default:
+            HKS_LOG_E("Invalid authType!");
+            return HKS_ERROR_NOT_SUPPORTED;
+    }
+    return HKS_SUCCESS;
+}
+
+static int32_t ConvertToHksAuthTrustLevel(uint32_t authType, enum HksUserAuthAtlType *hksAuthAtlType)
+{
+    switch (authType) {
+        case HKS_IAM_USER_AUTH_ATL1:
+            *hksAuthAtlType = HKS_USER_AUTH_ATL1;
+            break;
+        case HKS_IAM_USER_AUTH_ATL2:
+            *hksAuthAtlType = HKS_USER_AUTH_ATL2;
+            break;
+        case HKS_IAM_USER_AUTH_ATL3:
+            *hksAuthAtlType = HKS_USER_AUTH_ATL3;
+            break;
+        case HKS_IAM_USER_AUTH_ATL4:
+            *hksAuthAtlType = HKS_USER_AUTH_ATL4;
+            break;
+        default:
+            HKS_LOG_E("Invalid authType!");
+            return HKS_ERROR_NOT_SUPPORTED;
+    }
+    return HKS_SUCCESS;
+}
+
+int32_t HksCoreConvertUserIamTypeToHksType(enum HksUserIamType type, uint32_t userIamValue, uint32_t *hksValue)
+{
+    HKS_IF_NULL_RETURN(hksValue, HKS_ERROR_NULL_POINTER)
+
+    switch (type) {
+        case HKS_AUTH_TYPE:
+            return ConvertToHksAuthType(userIamValue, reinterpret_cast<enum HksUserAuthType *>(hksValue));
+        default:
+            break;
+    }
+    return HKS_ERROR_NOT_SUPPORTED;
+}
+
+int32_t HksCoreConvertToHksAuthTrustLevel(uint32_t authAtlType, uint32_t *hksAuthAtlType)
+{
+    HKS_IF_NULL_RETURN(hksAuthAtlType, HKS_ERROR_NULL_POINTER)
+    return ConvertToHksAuthTrustLevel(authAtlType, reinterpret_cast<enum HksUserAuthAtlType *>(hksAuthAtlType));
+}
+
+#else
+
+#include "hks_useridm_api_wrap.h"
+
+int32_t HksCoreConvertUserIamTypeToHksType(enum HksUserIamType type, uint32_t userIamValue, uint32_t *hksValue)
+{
+    return HksConvertUserIamTypeToHksType(type, userIamValue, hksValue);
+}
+
+int32_t HksCoreConvertToHksAuthTrustLevel(uint32_t authAtlType, uint32_t *hksAuthAtlType)
+{
+    return HksConvertToHksAuthTrustLevel(authAtlType, hksAuthAtlType);
+}
+#endif
+#else
+
+int32_t HksCoreConvertUserIamTypeToHksType(enum HksUserIamType type, uint32_t userIamValue, uint32_t *hksValue)
+{
+    (void)type;
+    (void)userIamValue;
+    (void)hksValue;
+    return HKS_ERROR_NOT_SUPPORTED;
+}
+
+int32_t HksCoreConvertToHksAuthTrustLevel(uint32_t authAtlType, uint32_t *hksAuthAtlType)
+{
+    (void)authAtlType;
+    (void)hksAuthAtlType;
+    return HKS_ERROR_NOT_SUPPORTED;
+}
+#endif

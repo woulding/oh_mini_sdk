@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "port-sle-uart-adv",
+  "prompt": "把 sle_uart_server 的 SLE 广播配置移植到 OHOS demo，问广播数据构造有什么坑，要求给出可用构造代码。",
+  "assertions": []
+}

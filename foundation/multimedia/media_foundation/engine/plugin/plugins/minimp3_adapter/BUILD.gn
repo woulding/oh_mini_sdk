@@ -1,0 +1,99 @@
+# Copyright (c) 2021-2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import("//build/ohos.gni")
+import("//foundation/multimedia/media_foundation/config.gni")
+
+group("plugin_minimp3_adapter") {
+  if (hst_is_mini_sys) {
+    deps = [ ":histreamer_plugin_Minimp3_static" ]
+  } else {
+    deps = [ ":histreamer_plugin_Minimp3Demuxer" ]
+    deps += [ ":histreamer_plugin_Minimp3Decoder" ]
+  }
+}
+
+config("plugin_minimp3_adapter_config") {
+  include_dirs = [
+    "minimp3_adapter",
+    "//foundation/multimedia/media_foundation/engine/include",
+    "//third_party/minimp3",
+  ]
+}
+
+if (hst_is_mini_sys) {
+  static_library("histreamer_plugin_Minimp3_static") {
+    sources = [
+      "minimp3_decoder_plugin.cpp",
+      "minimp3_demuxer_plugin.cpp",
+      "minimp3_wrapper.c",
+    ]
+    public_configs = [
+      ":plugin_minimp3_adapter_config",
+      "//foundation/multimedia/media_foundation:histreamer_presets",
+    ]
+    public_deps = [
+      "//foundation/multimedia/media_foundation/engine/foundation:histreamer_foundation",
+      "//foundation/multimedia/media_foundation/engine/plugin:histreamer_plugin_base",
+    ]
+  }
+} else {
+  ohos_shared_library("histreamer_plugin_Minimp3Demuxer") {
+    subsystem_name = "multimedia"
+    part_name = "media_foundation"
+    sources = [
+      "minimp3_demuxer_plugin.cpp",
+      "minimp3_wrapper.c",
+    ]
+    public_configs = [
+      ":plugin_minimp3_adapter_config",
+      "//foundation/multimedia/media_foundation:histreamer_presets",
+    ]
+    public_deps = [
+      "//foundation/multimedia/media_foundation/engine/foundation:histreamer_foundation",
+      "//foundation/multimedia/media_foundation/engine/plugin:histreamer_plugin_base",
+    ]
+    external_deps = [ "hilog:libhilog" ]
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+    }
+    relative_install_dir = "media/histreamer_plugins"
+  }
+  ohos_shared_library("histreamer_plugin_Minimp3Decoder") {
+    subsystem_name = "multimedia"
+    part_name = "media_foundation"
+    sources = [
+      "minimp3_decoder_plugin.cpp",
+      "minimp3_wrapper.c",
+    ]
+    public_configs = [
+      ":plugin_minimp3_adapter_config",
+      "//foundation/multimedia/media_foundation:histreamer_presets",
+    ]
+    external_deps = [ "hilog:libhilog" ]
+    public_deps = [
+      "//foundation/multimedia/media_foundation/engine/foundation:histreamer_foundation",
+      "//foundation/multimedia/media_foundation/engine/plugin:histreamer_plugin_intf",
+    ]
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+    }
+    relative_install_dir = "media/histreamer_plugins"
+  }
+}

@@ -1,0 +1,65 @@
+# Copyright (c) 2022-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import("//foundation/multimedia/media_foundation/config.gni")
+
+config("histreamer_recorder_config") {
+  if (media_foundation_enable_recorder) {
+    include_dirs = [
+      "//foundation/multimedia/media_foundation/engine/include",
+      "//foundation/multimedia/media_foundation/engine/scene/recorder",
+    ]
+    if (hst_is_standard_sys) {
+      include_dirs += [
+        "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include",
+        "//foundation/multimedia/player_framework/interfaces/inner_api/native",
+        "//foundation/multimedia/image_framework/interfaces/innerkits/include",
+        "//foundation/multimedia/player_framework/services/include",
+        "//foundation/multimedia/player_framework/services/services/engine_intf",
+        "//commonlibrary/c_utils/base/include",
+      ]
+    }
+  }
+}
+
+ohos_source_set("histreamer_recorder") {
+  subsystem_name = "multimedia"
+  part_name = "media_foundation"
+  if (media_foundation_enable_recorder) {
+    sources = [
+      "internal/state.cpp",
+      "internal/state_machine.cpp",
+    ]
+    public_configs = [
+      ":histreamer_recorder_config",
+      "//foundation/communication/ipc/interfaces/innerkits/ipc_core:libipc_core_private_config",
+      "//foundation/multimedia/media_foundation:histreamer_presets",
+    ]
+    deps = [ "//foundation/multimedia/media_foundation/engine/foundation:histreamer_foundation" ]
+    if (hst_is_standard_sys) {
+      sources += [
+        "standard/hirecorder_impl.cpp",
+        "standard/recorder_utils.cpp",
+      ]
+      deps += [
+        "//foundation/multimedia/media_foundation/engine/pipeline:histreamer_base",
+        "//foundation/multimedia/media_foundation/engine/pipeline:histreamer_engine_filters",
+      ]
+      external_deps = [
+        "graphic_surface:surface",
+        "hilog:libhilog",
+        "hitrace:hitrace_meter",
+      ]
+    }
+  }
+}

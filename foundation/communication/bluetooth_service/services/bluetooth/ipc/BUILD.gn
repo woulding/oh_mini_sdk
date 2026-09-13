@@ -1,0 +1,133 @@
+# Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/ohos_var.gni")
+import("//foundation/communication/bluetooth_service/bluetooth.gni")
+
+SUBSYSTEM_DIR = "//foundation/communication"
+
+config("btipc_public_config") {
+  include_dirs = [ "include" ]
+}
+
+ohos_static_library("btipc_service") {
+  # sanitize = {
+  #   cfi = true
+  #   blocklist = "./ipc_blocklist.txt"
+  # }
+  stack_protector_ret = true
+  public_configs = [ ":btipc_public_config" ]
+  include_dirs = [
+    "$SUBSYSTEM_DIR/bluetooth_service/services/bluetooth/service/src/permission",
+  ]
+  sources = [
+    "src/bluetooth_ble_advertise_callback_proxy.cpp",
+    "src/bluetooth_ble_advertiser_stub.cpp",
+    "src/bluetooth_ble_central_manager_callback_proxy.cpp",
+    "src/bluetooth_ble_central_manager_stub.cpp",
+    "src/bluetooth_ble_peripheral_observer_proxy.cpp",
+    "src/bluetooth_gatt_client_callback_proxy.cpp",
+    "src/bluetooth_gatt_client_stub.cpp",
+    "src/bluetooth_gatt_server_callback_proxy.cpp",
+    "src/bluetooth_gatt_server_stub.cpp",
+    "src/bluetooth_host_observer_proxy.cpp",
+    "src/bluetooth_host_stub.cpp",
+    "src/bluetooth_remote_device_observer_proxy.cpp",
+    "src/bluetooth_socket_observer_proxy.cpp",
+    "src/bluetooth_socket_stub.cpp",
+  ]
+
+  if (bluetooth_service_a2dp_sink_feature) {
+    sources += [
+      "src/bluetooth_a2dp_sink_observer_proxy.cpp",
+      "src/bluetooth_a2dp_sink_stub.cpp",
+    ]
+  }
+
+  if (bluetooth_service_a2dp_source_feature) {
+    sources += [
+      "src/bluetooth_a2dp_src_observer_proxy.cpp",
+      "src/bluetooth_a2dp_src_stub.cpp",
+    ]
+  }
+
+  if (bluetooth_service_avrcp_ct_feature) {
+    sources += [
+      "src/bluetooth_avrcp_ct_observer_proxy.cpp",
+      "src/bluetooth_avrcp_ct_stub.cpp",
+    ]
+  }
+
+  if (bluetooth_service_avrcp_tg_feature) {
+    sources += [
+      "src/bluetooth_avrcp_tg_observer_proxy.cpp",
+      "src/bluetooth_avrcp_tg_stub.cpp",
+    ]
+  }
+
+  if (bluetooth_service_hfp_ag_feature) {
+    sources += [
+      "src/bluetooth_hfp_ag_observer_proxy.cpp",
+      "src/bluetooth_hfp_ag_stub.cpp",
+    ]
+  }
+
+  if (bluetooth_service_hfp_hf_feature) {
+    sources += [
+      "src/bluetooth_hfp_hf_observer_proxy.cpp",
+      "src/bluetooth_hfp_hf_stub.cpp",
+    ]
+  }
+
+  if (bluetooth_service_hid_host_feature) {
+    sources += [
+      "src/bluetooth_hid_host_observer_proxy.cpp",
+      "src/bluetooth_hid_host_stub.cpp",
+    ]
+  }
+
+  if (bluetooth_service_pan_feature) {
+    sources += [
+      "src/bluetooth_pan_observer_proxy.cpp",
+      "src/bluetooth_pan_stub.cpp",
+    ]
+  }
+
+  cflags_cc = [ "-fvisibility=hidden" ]
+
+  deps = []
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "bluetooth:btframework",
+    "bluetooth:btcommon",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "bounds_checking_function:libsec_shared",
+  ]
+
+  subsystem_name = "communication"
+  part_name = "bluetooth_service"
+}
+
+# Only temporary used in drivers_peripheral\bluetooth\audio
+
+config("btipc_static_public_config") {
+  visibility = [ "*" ]
+  include_dirs = [
+    "//foundation/communication/bluetooth_service/services/bluetooth/ipc/include",
+    "//foundation/communication/bluetooth_service/services/bluetooth/common",
+  ]
+}

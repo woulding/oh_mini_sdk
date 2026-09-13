@@ -1,0 +1,229 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "install_exception_mgr.h"
+
+#include "app_log_tag_wrapper.h"
+#include "app_log_wrapper.h"
+#include "appexecfwk_errors.h"
+#include "bundle_mgr_service.h"
+#include "bundle_service_constants.h"
+#include "bundle_constants.h"
+#include "installd_client.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+
+InstallExceptionMgr::InstallExceptionMgr()
+{
+    installExceptionMgr_ = std::make_shared<InstallExceptionMgrRdb>();
+}
+
+InstallExceptionMgr::~InstallExceptionMgr()
+{
+}
+
+ErrCode InstallExceptionMgr::SaveBundleExceptionInfo(
+    const std::string &bundleName, const InstallExceptionInfo &installExceptionInfo)
+{
+    if (installExceptionMgr_ == nullptr) {
+        APP_LOGE("installExceptionMgr_ is null");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return installExceptionMgr_->SaveBundleExceptionInfo(bundleName, installExceptionInfo);
+}
+
+ErrCode InstallExceptionMgr::DeleteBundleExceptionInfo(const std::string &bundleName)
+{
+    if (installExceptionMgr_ == nullptr) {
+        APP_LOGE("installExceptionMgr_ is null");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return installExceptionMgr_->DeleteBundleExceptionInfo(bundleName);
+}
+
+void InstallExceptionMgr::HandleBundleExceptionInfo(
+    const std::string &bundleName, const InstallExceptionInfo &installExceptionInfo)
+{
+    LOG_NOFUNC_E(BMS_TAG_INSTALLER, "exception mgr bundle %{public}s exception status %{public}d -v %{public}d",
+        bundleName.c_str(), static_cast<int32_t>(installExceptionInfo.status),
+        static_cast<int32_t>(installExceptionInfo.versionCode));
+    switch (installExceptionInfo.status) {
+        case InstallRenameExceptionStatus::CREATE_NEW_DIR : {
+            InnerProcessCreateNewDir(bundleName);
+            break;
+        }
+        case InstallRenameExceptionStatus::RENAME_RELA_TO_OLD_PATH : {
+            InnerProcessRealToOldPath(bundleName);
+            break;
+        }
+        case InstallRenameExceptionStatus::RENAME_NEW_TO_REAL_PATH : {
+            InnerProcessNewToRealPath(bundleName, installExceptionInfo.versionCode);
+            break;
+        }
+        case InstallRenameExceptionStatus::DELETE_OLD_PATH : {
+            InnerProcessDeleteOldPath(bundleName);
+            break;
+        }
+        default :
+            APP_LOGE("bundle %{public}s install unknown exception status %{public}d",
+                bundleName.c_str(), static_cast<int32_t>(installExceptionInfo.status));
+    }
+}
+
+void InstallExceptionMgr::HandleAllBundleExceptionInfo()
+{
+    APP_LOGI("handle exception start");
+    if (installExceptionMgr_ == nullptr) {
+        APP_LOGE("installExceptionMgr_ is null");
+        return;
+    }
+    std::map<std::string, InstallExceptionInfo> bundleExceptionInfos;
+    installExceptionMgr_->GetAllBundleExceptionInfo(bundleExceptionInfos);
+    for (const auto &exceptionInfo : bundleExceptionInfos) {
+        HandleBundleExceptionInfo(exceptionInfo.first, exceptionInfo.second);
+    }
+    APP_LOGI("handle exception end, all size %{public}zu", bundleExceptionInfos.size());
+}
+
+bool InstallExceptionMgr::HandleBundleExceptionInfo(const std::string &bundleName)
+{
+    if (installExceptionMgr_ == nullptr) {
+        LOG_NOFUNC_E(BMS_TAG_INSTALLER, "installExceptionMgr_ is null");
+        return false;
+    }
+    if (bundleName.empty()) {
+        LOG_NOFUNC_E(BMS_TAG_INSTALLER, "exception mgr bundleName is empty");
+        return false;
+    }
+    InstallExceptionInfo installExceptionInfo;
+    if (!installExceptionMgr_->GetBundleExceptionInfo(bundleName, installExceptionInfo)) {
+        LOG_NOFUNC_D(BMS_TAG_INSTALLER, "exception mgr -n %{public}s not exist in db", bundleName.c_str());
+        return false;
+    }
+    HandleBundleExceptionInfo(bundleName, installExceptionInfo);
+    return true;
+}
+
+ErrCode InstallExceptionMgr::InnerProcessCreateNewDir(const std::string &bundleName)
+{
+    std::string newPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+        std::string(ServiceConstants::BUNDLE_NEW_CODE_DIR) + bundleName;
+    ErrCode result =
+        InstalldClient::GetInstance()->RemoveDir(newPath, BundleDirScene::REMOVE_BUNDLE_CODE_DIR, bundleName);
+    if (result == ERR_OK) {
+        (void)DeleteBundleExceptionInfo(bundleName);
+    } else {
+        LOG_NOFUNC_E(BMS_TAG_INSTALLER, " exception mgr delete -n %{public}s new path failed", bundleName.c_str());
+    }
+    return result;
+}
+
+ErrCode InstallExceptionMgr::InnerProcessRealToOldPath(const std::string &bundleName)
+{
+    /**
+     * 1.rename +old- to real
+     *  +old exist, real not exist
+     *  +old not exist, real exist
+     */
+    std::string oldPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+        std::string(ServiceConstants::BUNDLE_OLD_CODE_DIR) + bundleName;
+    std::string realPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+        bundleName;
+    ErrCode result = InstalldClient::GetInstance()->RenameModuleDir(oldPath, realPath,
+        bundleName, BundleDirScene::BUNDLE_CODE_DIR);
+    if (result == ERR_OK) {
+        (void)DeleteBundleExceptionInfo(bundleName);
+    } else {
+        LOG_NOFUNC_E(BMS_TAG_INSTALLER, "exception mgr rename +old- to real dir failed -e %{public}d", result);
+    }
+    // 2.delete +new-
+    std::string newPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+        std::string(ServiceConstants::BUNDLE_NEW_CODE_DIR) + bundleName;
+    result = InstalldClient::GetInstance()->RemoveDir(newPath, BundleDirScene::REMOVE_BUNDLE_CODE_DIR, bundleName);
+    if (result != ERR_OK) {
+        LOG_NOFUNC_W(BMS_TAG_INSTALLER, "exception mgr delete -n %{public}s new path failed", bundleName.c_str());
+    }
+    return result;
+}
+
+ErrCode InstallExceptionMgr::InnerProcessNewToRealPath(const std::string &bundleName, const uint32_t oldVersionCode)
+{
+    InnerBundleInfo bundleInfo;
+    auto dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
+    if ((dataMgr != nullptr) && (!dataMgr->FetchInnerBundleInfo(bundleName, bundleInfo))) {
+        LOG_NOFUNC_W(BMS_TAG_INSTALLER, " exception mgr bundle %{public}s not exist", bundleName.c_str());
+        // for bundle already uninstalled, need to delete +new- dir
+        std::string newPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+            std::string(ServiceConstants::BUNDLE_NEW_CODE_DIR) + bundleName;
+        (void)InstalldClient::GetInstance()->RemoveDir(newPath, BundleDirScene::REMOVE_BUNDLE_CODE_DIR, bundleName);
+    }
+    /**
+     * rename +old- to real, or delete +old-
+     * versionCode same:
+     *  +old- exist, +new- exist, real not exist
+     *  +old- exist, +new- not exist, real exist
+     * versionCode not same:
+     *  delete +old-
+     */
+    ErrCode result = ERR_OK;
+    if (bundleInfo.GetVersionCode() == oldVersionCode) {
+        std::string realPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+            bundleName;
+        std::string oldPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+        std::string(ServiceConstants::BUNDLE_OLD_CODE_DIR) + bundleName;
+        result = InstalldClient::GetInstance()->RenameModuleDir(oldPath, realPath,
+            bundleName, BundleDirScene::BUNDLE_CODE_DIR);
+        if (result == ERR_OK) {
+            (void)DeleteBundleExceptionInfo(bundleName);
+        } else {
+            LOG_NOFUNC_E(BMS_TAG_INSTALLER, " exception mgr rename +old to real dir failed -e %{public}d", result);
+        }
+        std::string newPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+            std::string(ServiceConstants::BUNDLE_NEW_CODE_DIR) + bundleName;
+        result = InstalldClient::GetInstance()->RemoveDir(newPath, BundleDirScene::REMOVE_BUNDLE_CODE_DIR, bundleName);
+        if (result != ERR_OK) {
+            LOG_NOFUNC_E(BMS_TAG_INSTALLER, "exception mgr remove dir failed, -e %{public}d errno %{public}d",
+                result, errno);
+        }
+    } else {
+        result = InnerProcessDeleteOldPath(bundleName);
+    }
+    return result;
+}
+
+ErrCode InstallExceptionMgr::InnerProcessDeleteOldPath(const std::string &bundleName)
+{
+    std::string oldPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+        std::string(ServiceConstants::BUNDLE_OLD_CODE_DIR) + bundleName;
+    std::string tempPath = std::string(Constants::BUNDLE_CODE_DIR) + ServiceConstants::PATH_SEPARATOR +
+        std::string(ServiceConstants::BUNDLE_TEMP_CODE_DIR) + bundleName;
+    // rename first
+    ErrCode result = InstalldClient::GetInstance()->RenameModuleDir(oldPath, tempPath,
+        bundleName, BundleDirScene::BUNDLE_CODE_DIR);
+    if (result == ERR_OK) {
+        result = InstalldClient::GetInstance()->RemoveDir(tempPath, BundleDirScene::REMOVE_BUNDLE_CODE_DIR, bundleName);
+    } else {
+        LOG_NOFUNC_E(BMS_TAG_INSTALLER, "exception mgr rename temp dir failed -e %{public}d", result);
+    }
+    if (result == ERR_OK) {
+        (void)DeleteBundleExceptionInfo(bundleName);
+    } else {
+        LOG_NOFUNC_E(BMS_TAG_INSTALLER, "exception mgr remove temp dir failed -e %{public}d", result);
+    }
+    return result;
+}
+} // AppExecFwk
+} // OHOS

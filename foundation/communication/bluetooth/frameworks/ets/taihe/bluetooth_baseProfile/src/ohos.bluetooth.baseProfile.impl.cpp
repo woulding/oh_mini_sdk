@@ -1,0 +1,63 @@
+/*
+ * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ohos.bluetooth.baseProfile.proj.hpp"
+#include "ohos.bluetooth.baseProfile.impl.hpp"
+#include "taihe/runtime.hpp"
+#include "stdexcept"
+
+namespace OHOS {
+namespace Bluetooth {
+class BaseProfileImpl {
+public:
+    BaseProfileImpl()
+    {
+        // Don't forget to implement the constructor.
+    }
+
+    void OnConnectionStateChange(::taihe::callback_view<void(
+        ::ohos::bluetooth::baseProfile::StateChangeParam const& data)> callback)
+    {}
+
+    void OffConnectionStateChange(::taihe::optional_view<::taihe::callback_view<void(
+        ::ohos::bluetooth::baseProfile::StateChangeParam const& data)>> callback)
+    {}
+
+    ohos::bluetooth::constant::ProfileConnectionState GetConnectionState(taihe::string_view deviceId)
+    {
+        return ohos::bluetooth::constant::ProfileConnectionState(
+            ohos::bluetooth::constant::ProfileConnectionState::key_t::STATE_DISCONNECTED);
+    }
+
+    taihe::array<taihe::string> GetConnectedDevices()
+    {
+        return {};
+    }
+
+    ohos::bluetooth::baseProfile::ConnectionStrategy GetConnectionStrategySync(taihe::string_view deviceId)
+    {
+        return ohos::bluetooth::baseProfile::ConnectionStrategy(
+            ohos::bluetooth::baseProfile::ConnectionStrategy::key_t::CONNECTION_STRATEGY_UNSUPPORTED);
+    }
+
+    void SetConnectionStrategySync(taihe::string_view deviceId,
+                                   ohos::bluetooth::baseProfile::ConnectionStrategy strategy) {}
+};
+}  // namespace Bluetooth
+}  // namespace OHOS
+
+// Since these macros are auto-generate, lint will cause false positive.
+// NOLINTBEGIN
+// NOLINTEND

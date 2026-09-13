@@ -1,0 +1,28 @@
+{
+    "plural":[
+        {
+            "name":"dm_not_allow",
+            "value":[
+                {
+                    "quantity":"other",
+                    "value":"不信任 (%d 秒)",
+                    "attr":{
+                        "priority":"translate"
+                    }
+                }
+            ]
+        },
+        {
+            "name":"dm_incorrect_code",
+            "value":[
+                {
+                    "quantity":"other",
+                    "value":"连接码错误，还可以尝试 %d 次",
+                    "attr":{
+                        "priority":"translate"
+                    }
+                }
+            ]
+        }
+    ]
+}

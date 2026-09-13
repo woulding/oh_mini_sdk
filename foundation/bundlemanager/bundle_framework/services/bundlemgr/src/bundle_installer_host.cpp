@@ -1,0 +1,1717 @@
+/*
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "bundle_installer_host.h"
+
+#include <sys/stat.h>
+#include <unistd.h>
+
+#ifdef ABILITY_RUNTIME_ENABLE
+#include "ability_manager_client.h"
+#endif
+#ifdef BUNDLE_FRAMEWORK_APP_CONTROL
+#include "app_control_manager.h"
+#endif
+#include "app_log_tag_wrapper.h"
+#include "bundle_clone_installer.h"
+#include "bundle_cli_sandbox_installer.h"
+#include "bundle_file_util.h"
+#include "bundle_framework_core_ipc_interface_code.h"
+#include "bundle_hitrace_chain.h"
+#include "bundle_memory_guard.h"
+#include "bundle_mgr_service.h"
+#include "bundle_multiuser_installer.h"
+#include "bundle_permission_mgr.h"
+#include "bundle_util.h"
+#include "datetime_ex.h"
+#include "directory_ex.h"
+#include "installd_client.h"
+#include "ipc_skeleton.h"
+#include "modal_system_ui_extension.h"
+#include "parameters.h"
+#include "plugin_installer.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+constexpr const char* GET_MANAGER_FAIL = "fail to get bundle installer manager";
+constexpr const char* BMS_PARA_BUNDLE_NAME = "ohos.bms.param.bundleName";
+constexpr const char* BMS_PARA_IS_KEEP_DATA = "ohos.bms.param.isKeepData";
+constexpr const char* BMS_PARA_USER_ID = "ohos.bms.param.userId";
+constexpr const char* BMS_PARA_APP_INDEX = "ohos.bms.param.appIndex";
+constexpr const char* UIEXTENSION_MODAL_TYPE = "ability.want.params.modalType";
+int32_t INVALID_APP_INDEX = 0;
+int32_t LOWER_DLP_TYPE_BOUND = 0;
+int32_t UPPER_DLP_TYPE_BOUND = 3;
+}  // namespace
+
+BundleInstallerHost::BundleInstallerHost()
+{
+    LOG_NOFUNC_I(BMS_TAG_INSTALLER, "create bundle installer host instance");
+}
+
+BundleInstallerHost::~BundleInstallerHost()
+{
+    LOG_NOFUNC_I(BMS_TAG_INSTALLER, "destroy bundle installer host instance");
+}
+
+void BundleInstallerHost::Init()
+{
+    LOG_D(BMS_TAG_INSTALLER, "begin to init");
+    manager_ = std::make_shared<BundleInstallerManager>();
+    LOG_D(BMS_TAG_INSTALLER, "init successfully");
+}
+
+int BundleInstallerHost::OnRemoteRequest(
+    uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option)
+{
+    BundleMemoryGuard memoryGuard;
+    LOG_D(BMS_TAG_INSTALLER, "bundle installer host onReceived message, the message code is %{public}u", code);
+    std::u16string descripter = GetDescriptor();
+    std::u16string remoteDescripter = data.ReadInterfaceToken();
+    if (descripter != remoteDescripter) {
+        LOG_E(BMS_TAG_INSTALLER, "descripter is not matched");
+        return OBJECT_NULL;
+    }
+    switch (code) {
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::INSTALL):
+            HandleInstallMessage(data);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::INSTALL_MULTIPLE_HAPS):
+            HandleInstallMultipleHapsMessage(data);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::UNINSTALL):
+            HandleUninstallMessage(data);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::UNINSTALL_MODULE):
+            HandleUninstallModuleMessage(data);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::UNINSTALL_BY_UNINSTALL_PARAM):
+            HandleUninstallByUninstallParam(data);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::RECOVER):
+            HandleRecoverMessage(data);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::INSTALL_SANDBOX_APP):
+            HandleInstallSandboxApp(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::UNINSTALL_SANDBOX_APP):
+            HandleUninstallSandboxApp(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::CREATE_STREAM_INSTALLER):
+            HandleCreateStreamInstaller(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::DESTORY_STREAM_INSTALLER):
+            HandleDestoryBundleStreamInstaller(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::UNINSTALL_AND_RECOVER):
+            HandleUninstallAndRecoverMessage(data);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::INSTALL_CLONE_APP):
+            HandleInstallCloneApp(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::UNINSTALL_CLONE_APP):
+            HandleUninstallCloneApp(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::INSTALL_EXISTED):
+            HandleInstallExisted(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::INSTALL_PLUGIN_APP):
+            HandleInstallPlugin(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::UNINSTALL_PLUGIN_APP):
+            HandleUninstallPlugin(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::ADD_ENTERPRISE_RESIGN_CERT):
+            HandleAddEnterpriseResignCert(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::DELETE_ENTERPRISE_RE_SIGNATURE_CERT):
+            HandleDeleteEnterpriseReSignatureCert(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::GET_ENTERPRISE_RE_SIGNATURE_CERT):
+            HandleGetEnterpriseReSignatureCert(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::UNINSTALL_NEW_PREINSTALLED_APPS):
+            HandleUninstallNewPreinstalledApps(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::CREATE_CLI_SANDBOX_APP):
+            HandleCreateCliSandboxApp(data, reply);
+            break;
+        case static_cast<uint32_t>(BundleInstallerInterfaceCode::DESTROY_CLI_SANDBOX_APP):
+            HandleDestroyCliSandboxApp(data, reply);
+            break;
+        default:
+            return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
+    }
+    return NO_ERROR;
+}
+
+void BundleInstallerHost::HandleInstallMessage(MessageParcel &data)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("Install", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle install message");
+    std::string bundlePath = Str16ToStr8(data.ReadString16());
+    std::unique_ptr<InstallParam> installParam(data.ReadParcelable<InstallParam>());
+    if (installParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<InstallParam> failed");
+        return;
+    }
+    sptr<IRemoteObject> object = data.ReadRemoteObject();
+    if (object == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "read failed");
+        return;
+    }
+    sptr<IStatusReceiver> statusReceiver = iface_cast<IStatusReceiver>(object);
+    if (statusReceiver == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver is nullptr");
+        return;
+    }
+    installParam->withCopyHaps = true;
+    installParam->pgoParams.clear();
+    if (installParam->parameters.find(ServiceConstants::ENTERPRISE_MANIFEST) != installParam->parameters.end()) {
+        installParam->parameters.erase(ServiceConstants::ENTERPRISE_MANIFEST);
+    }
+    Install(bundlePath, *installParam, statusReceiver);
+    LOG_D(BMS_TAG_INSTALLER, "handle install message finished");
+}
+
+void BundleInstallerHost::HandleRecoverMessage(MessageParcel &data)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("Recover", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle install message by bundleName");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    std::unique_ptr<InstallParam> installParam(data.ReadParcelable<InstallParam>());
+    if (installParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<InstallParam> failed");
+        return;
+    }
+    sptr<IRemoteObject> object = data.ReadRemoteObject();
+    if (object == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "read failed");
+        return;
+    }
+    sptr<IStatusReceiver> statusReceiver = iface_cast<IStatusReceiver>(object);
+    if (statusReceiver == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver is nullptr");
+        return;
+    }
+
+    installParam->preinstallSourceFlag = ApplicationInfoFlag::FLAG_RECOVER_INSTALLED;
+    Recover(bundleName, *installParam, statusReceiver);
+    LOG_D(BMS_TAG_INSTALLER, "handle install message by bundleName finished");
+}
+
+void BundleInstallerHost::HandleInstallMultipleHapsMessage(MessageParcel &data)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("Install", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle install multiple haps message");
+    int32_t size = data.ReadInt32();
+    if (size > ServiceConstants::MAX_HAP_NUMBER) {
+        LOG_E(BMS_TAG_INSTALLER, "bundle path size is greater than the max hap number 128");
+        return;
+    }
+    std::vector<std::string> pathVec;
+    for (int i = 0; i < size; ++i) {
+        pathVec.emplace_back(Str16ToStr8(data.ReadString16()));
+    }
+    if (size == 0 || pathVec.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "inputted bundlepath vector is empty");
+        return;
+    }
+    std::unique_ptr<InstallParam> installParam(data.ReadParcelable<InstallParam>());
+    if (installParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<InstallParam> failed");
+        return;
+    }
+    sptr<IRemoteObject> object = data.ReadRemoteObject();
+    if (object == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "read failed");
+        return;
+    }
+    sptr<IStatusReceiver> statusReceiver = iface_cast<IStatusReceiver>(object);
+    if (statusReceiver == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver is nullptr");
+        return;
+    }
+    installParam->withCopyHaps = true;
+    installParam->pgoParams.clear();
+    if (installParam->parameters.find(ServiceConstants::ENTERPRISE_MANIFEST) != installParam->parameters.end()) {
+        installParam->parameters.erase(ServiceConstants::ENTERPRISE_MANIFEST);
+    }
+    Install(pathVec, *installParam, statusReceiver);
+    LOG_D(BMS_TAG_INSTALLER, "handle install multiple haps finished");
+}
+
+void BundleInstallerHost::HandleUninstallMessage(MessageParcel &data)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("Uninstall", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle uninstall message");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    std::unique_ptr<InstallParam> installParam(data.ReadParcelable<InstallParam>());
+    if (installParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<InstallParam> failed");
+        return;
+    }
+    sptr<IRemoteObject> object = data.ReadRemoteObject();
+    if (object == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "read failed");
+        return;
+    }
+    sptr<IStatusReceiver> statusReceiver = iface_cast<IStatusReceiver>(object);
+    if (statusReceiver == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver is nullptr");
+        return;
+    }
+    Uninstall(bundleName, *installParam, statusReceiver);
+    LOG_D(BMS_TAG_INSTALLER, "handle uninstall message finished");
+}
+
+void BundleInstallerHost::HandleUninstallModuleMessage(MessageParcel &data)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("Uninstall", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle uninstall module message");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    std::string modulePackage = Str16ToStr8(data.ReadString16());
+    std::unique_ptr<InstallParam> installParam(data.ReadParcelable<InstallParam>());
+    if (installParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<InstallParam> failed");
+        return;
+    }
+    sptr<IRemoteObject> object = data.ReadRemoteObject();
+    if (object == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "read failed");
+        return;
+    }
+    sptr<IStatusReceiver> statusReceiver = iface_cast<IStatusReceiver>(object);
+    if (statusReceiver == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver is nullptr");
+        return;
+    }
+    Uninstall(bundleName, modulePackage, *installParam, statusReceiver);
+    LOG_D(BMS_TAG_INSTALLER, "handle uninstall message finished");
+}
+
+void BundleInstallerHost::HandleUninstallByUninstallParam(MessageParcel &data)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("Uninstall", HITRACE_FLAG_INCLUDE_ASYNC);
+    std::unique_ptr<UninstallParam> uninstallParam(data.ReadParcelable<UninstallParam>());
+    if (uninstallParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<UninstallParam failed");
+        return;
+    }
+    sptr<IRemoteObject> object = data.ReadRemoteObject();
+    if (object == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "read failed");
+        return;
+    }
+    sptr<IStatusReceiver> statusReceiver = iface_cast<IStatusReceiver>(object);
+    if (statusReceiver == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver is nullptr");
+        return;
+    }
+    Uninstall(*uninstallParam, statusReceiver);
+}
+
+void BundleInstallerHost::HandleInstallSandboxApp(MessageParcel &data, MessageParcel &reply)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("InstallSandboxApp", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle install sandbox app message");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    int32_t dplType = data.ReadInt32();
+    int32_t userId = data.ReadInt32();
+    int32_t appIndex = Constants::INITIAL_SANDBOX_APP_INDEX;
+    auto ret = InstallSandboxApp(bundleName, dplType, userId, appIndex);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    if (ret == ERR_OK && !reply.WriteInt32(appIndex)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle install sandbox app message finished");
+}
+
+void BundleInstallerHost::HandleUninstallSandboxApp(MessageParcel &data, MessageParcel &reply)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("UninstallSandbox", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle install sandbox app message");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    int32_t appIndex = data.ReadInt32();
+    int32_t userId = data.ReadInt32();
+    auto ret = UninstallSandboxApp(bundleName, appIndex, userId);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle install sandbox app message finished");
+}
+
+void BundleInstallerHost::HandleInstallPlugin(MessageParcel &data, MessageParcel &reply)
+{
+    LOG_D(BMS_TAG_INSTALLER, "handle install plugin application");
+    std::string hostBundleName = data.ReadString();
+    std::vector<std::string> pluginFilePaths;
+    if (!data.ReadStringVector(&pluginFilePaths)) {
+        reply.WriteInt32(ERR_APPEXECFWK_PLUGIN_INSTALL_READ_PARCEL_ERROR);
+        LOG_E(BMS_TAG_INSTALLER, "read pluginFilePaths failed");
+        return;
+    }
+    std::unique_ptr<InstallPluginParam> installPluginParam(data.ReadParcelable<InstallPluginParam>());
+    if (installPluginParam == nullptr) {
+        reply.WriteInt32(ERR_APPEXECFWK_PLUGIN_INSTALL_READ_PARCEL_ERROR);
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<installPluginParam> failed");
+        return;
+    }
+    auto ret = InstallPlugin(hostBundleName, pluginFilePaths, *installPluginParam);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle install plugin application finished");
+}
+
+void BundleInstallerHost::HandleUninstallPlugin(MessageParcel &data, MessageParcel &reply)
+{
+    LOG_D(BMS_TAG_INSTALLER, "handle uninstall plugin application");
+    std::string hostBundleName = Str16ToStr8(data.ReadString16());
+    std::string pluginBundleName = Str16ToStr8(data.ReadString16());
+    std::unique_ptr<InstallPluginParam> installPluginParam(data.ReadParcelable<InstallPluginParam>());
+    if (installPluginParam == nullptr) {
+        reply.WriteInt32(ERR_APPEXECFWK_PLUGIN_INSTALL_READ_PARCEL_ERROR);
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<installPluginParam> failed");
+        return;
+    }
+    auto ret = UninstallPlugin(hostBundleName, pluginBundleName, *installPluginParam);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle uninstall plugin application finished");
+}
+
+void BundleInstallerHost::HandleCreateStreamInstaller(MessageParcel &data, MessageParcel &reply)
+{
+    LOG_D(BMS_TAG_INSTALLER, "handle create stream installer message begin");
+    std::unique_ptr<InstallParam> installParam(data.ReadParcelable<InstallParam>());
+    if (installParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<InstallParam> failed");
+        return;
+    }
+    sptr<IRemoteObject> object = data.ReadRemoteObject();
+    if (object == nullptr) {
+        reply.WriteBool(false);
+        LOG_E(BMS_TAG_INSTALLER, "read receiver failed");
+        return;
+    }
+    sptr<IStatusReceiver> statusReceiver = iface_cast<IStatusReceiver>(object);
+    if (statusReceiver == nullptr) {
+        reply.WriteBool(false);
+        LOG_E(BMS_TAG_INSTALLER, "cast remote object to status receiver error");
+        return;
+    }
+    std::vector<std::string> originHapPaths;
+    if (!data.ReadStringVector(&originHapPaths)) {
+        reply.WriteBool(false);
+        LOG_E(BMS_TAG_INSTALLER, "read originPaths failed");
+        return;
+    }
+
+    sptr<IBundleStreamInstaller> streamInstaller = CreateStreamInstaller(*installParam, statusReceiver, originHapPaths);
+    if (streamInstaller == nullptr) {
+        if (!reply.WriteBool(false)) {
+            LOG_E(BMS_TAG_INSTALLER, "write result failed");
+        }
+        return;
+    }
+    if (!reply.WriteBool(true)) {
+        LOG_E(BMS_TAG_INSTALLER, "write result failed");
+        return;
+    }
+    if (!reply.WriteUint32(streamInstaller->GetInstallerId())) {
+        LOG_E(BMS_TAG_INSTALLER, "write stream installe id failed");
+        return;
+    }
+    if (!reply.WriteRemoteObject(streamInstaller->AsObject())) {
+        LOG_E(BMS_TAG_INSTALLER, "write stream installer remote object failed");
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(streamInstallMutex_);
+    streamInstallers_.emplace_back(streamInstaller);
+    LOG_D(BMS_TAG_INSTALLER, "handle create stream installer message finish");
+}
+
+void BundleInstallerHost::HandleDestoryBundleStreamInstaller(MessageParcel &data, MessageParcel &reply)
+{
+    LOG_D(BMS_TAG_INSTALLER, "handle destory stream installer message begin");
+    uint32_t installerId = data.ReadUint32();
+    DestoryBundleStreamInstaller(installerId);
+    LOG_D(BMS_TAG_INSTALLER, "handle destoy stream installer message finish");
+}
+
+void BundleInstallerHost::HandleUninstallAndRecoverMessage(MessageParcel &data)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("UninstallAndRecover", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle UninstallAndRecover message");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    std::unique_ptr<InstallParam> installParam(data.ReadParcelable<InstallParam>());
+    if (installParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<InstallParam> failed");
+        return;
+    }
+    sptr<IRemoteObject> object = data.ReadRemoteObject();
+    if (object == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "read failed");
+        return;
+    }
+    sptr<IStatusReceiver> statusReceiver = iface_cast<IStatusReceiver>(object);
+    if (statusReceiver == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver is nullptr");
+        return;
+    }
+    installParam->preinstallSourceFlag = ApplicationInfoFlag::FLAG_RECOVER_INSTALLED;
+    UninstallAndRecover(bundleName, *installParam, statusReceiver);
+    LOG_D(BMS_TAG_INSTALLER, "handle UninstallAndRecover message finished");
+}
+
+bool BundleInstallerHost::Install(
+    const std::string &bundleFilePath, const InstallParam &installParam, const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    if (!BundlePermissionMgr::CheckUserFromShell(installParam.userId)) {
+        LOG_E(BMS_TAG_INSTALLER, "check shell user fail");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_USER_NOT_INSTALL_HAP, "can not specify user in shell");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSystemApp() &&
+        !BundlePermissionMgr::VerifyCallingBundleSdkVersion(ServiceConstants::API_VERSION_NINE)) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        statusReceiver->OnFinished(ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED, "");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSelfCalling() &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_NORMAL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_MDM_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_INTERNALTESTING_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "install permission denied");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED, "");
+        return false;
+    }
+    if (!CheckInstallDowngradeParam(installParam)) {
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED, "");
+        return false;
+    }
+    manager_->CreateInstallTask(bundleFilePath, installParam, statusReceiver);
+    return true;
+}
+
+ErrCode BundleInstallerHost::VerifyInstallPermission()
+{
+    if (!BundlePermissionMgr::IsSystemApp() &&
+        !BundlePermissionMgr::VerifyCallingBundleSdkVersion(ServiceConstants::API_VERSION_NINE)) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::IsSelfCalling() &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_NORMAL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_MDM_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_INTERNALTESTING_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "install permission denied");
+        return ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
+bool BundleInstallerHost::Install(const std::vector<std::string> &bundleFilePaths, const InstallParam &installParam,
+    const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    if (!BundlePermissionMgr::CheckUserFromShell(installParam.userId)) {
+        LOG_E(BMS_TAG_INSTALLER, "check shell user fail");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_USER_NOT_INSTALL_HAP, "can not specify user in shell");
+        return false;
+    }
+    InstallParam verifiedInstallParam = installParam;
+    auto verifyResult = VerifyInstallPermission();
+    if (verifyResult != ERR_OK) {
+        if (!OHOS::system::GetBoolParameter(ServiceConstants::DEVELOPERMODE_STATE, false) ||
+            !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_ALLOW_USE_BM)) {
+            statusReceiver->OnFinished(verifyResult, "");
+            return false;
+        }
+        verifiedInstallParam.isCheckDebugApp = true;
+    }
+
+    if (!CheckInstallDowngradeParam(verifiedInstallParam)) {
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED, "");
+        return false;
+    }
+    manager_->CreateInstallTask(bundleFilePaths, verifiedInstallParam, statusReceiver);
+    return true;
+}
+
+bool BundleInstallerHost::Recover(
+    const std::string &bundleName, const InstallParam &installParam, const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSystemApp() &&
+        !BundlePermissionMgr::VerifyCallingBundleSdkVersion(ServiceConstants::API_VERSION_NINE)) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        statusReceiver->OnFinished(ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED, "");
+        return false;
+    }
+    if (!BundlePermissionMgr::VerifyRecoverPermission()) {
+        LOG_E(BMS_TAG_INSTALLER, "Recover permission denied");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED, "");
+        return false;
+    }
+    manager_->CreateRecoverTask(bundleName, CheckInstallParam(installParam), statusReceiver);
+    return true;
+}
+
+ErrCode BundleInstallerHost::VerifyUninstallPermission(bool isCheckSdkVersion)
+{
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        if (!isCheckSdkVersion ||
+            !BundlePermissionMgr::VerifyCallingBundleSdkVersion(ServiceConstants::API_VERSION_NINE)) {
+            LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+            return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+        }
+    }
+
+    if (!BundlePermissionMgr::VerifyUninstallPermission()) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall permission denied");
+        return ERR_APPEXECFWK_UNINSTALL_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
+ErrCode BundleInstallerHost::CheckIsDebugAppProvisionType(const std::string &bundleName, int32_t userId, bool isHsp)
+{
+    std::shared_ptr<BundleDataMgr> dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
+    if (dataMgr == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "null dataMgr");
+        return ERR_APPEXECFWK_UNINSTALL_BUNDLE_MGR_SERVICE_ERROR;
+    }
+
+    if (isHsp) {
+        InnerBundleInfo info;
+        if (!dataMgr->QueryInnerBundleInfo(bundleName, info)) {
+            LOG_E(BMS_TAG_INSTALLER, "not exist for bundle %{public}s", bundleName.c_str());
+            return ERR_APPEXECFWK_UNINSTALL_MISSING_INSTALLED_BUNDLE;
+        }
+        if (info.GetBaseApplicationInfo().appProvisionType != Constants::APP_PROVISION_TYPE_DEBUG) {
+            LOG_E(BMS_TAG_INSTALLER, "app provision type is not debug for bundle %{public}s", bundleName.c_str());
+            return ERR_APPEXECFWK_UNINSTALL_PERMISSION_DENIED;
+        }
+        return ERR_OK;
+    }
+
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = BundleUtil::GetUserIdByCallingUid();
+    }
+    AppExecFwk::ApplicationInfo applicationInfo;
+    if (!dataMgr->GetApplicationInfo(
+        bundleName, AppExecFwk::ApplicationFlag::GET_BASIC_APPLICATION_INFO, userId, applicationInfo)) {
+        LOG_E(BMS_TAG_INSTALLER, "not exist for bundle %{public}s", bundleName.c_str());
+        return ERR_APPEXECFWK_UNINSTALL_MISSING_INSTALLED_BUNDLE;
+    }
+    if (applicationInfo.appProvisionType != Constants::APP_PROVISION_TYPE_DEBUG) {
+        LOG_E(BMS_TAG_INSTALLER, "app provision type is not debug for bundle %{public}s", bundleName.c_str());
+        return ERR_APPEXECFWK_UNINSTALL_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
+bool BundleInstallerHost::Uninstall(
+    const std::string &bundleName, const InstallParam &installParam, const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    if (!BundlePermissionMgr::CheckUserFromShell(installParam.userId)) {
+        LOG_E(BMS_TAG_INSTALLER, "check shell user fail");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_USER_NOT_INSTALL_HAP, "can not specify user in shell");
+        return false;
+    }
+    auto verifyResult = VerifyUninstallPermission(true);
+    if (verifyResult != ERR_OK) {
+        if (!OHOS::system::GetBoolParameter(ServiceConstants::DEVELOPERMODE_STATE, false) ||
+            !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_ALLOW_USE_BM)) {
+            statusReceiver->OnFinished(verifyResult, "");
+            return false;
+        }
+        auto checkDebugResult = CheckIsDebugAppProvisionType(bundleName, installParam.userId);
+        if (checkDebugResult != ERR_OK) {
+            statusReceiver->OnFinished(checkDebugResult, "");
+            return false;
+        }
+    }
+    if (installParam.IsForcedUninstall() && IPCSkeleton::GetCallingUid() != Constants::EDC_UID) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall permission denied");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PREINSTALL_BUNDLE_ONLY_ALLOW_FORCE_UNINSTALLED_BY_EDC,
+            "Only edc can force uninstall");
+        return false;
+    }
+    if (installParam.IsVerifyUninstallRule() &&
+        CheckUninstallDisposedRule(bundleName, installParam.userId, Constants::MAIN_APP_INDEX,
+                                   installParam.isKeepData)) {
+        LOG_W(BMS_TAG_INSTALLER, "CheckUninstallDisposedRule failed");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_UNINSTALL_DISPOSED_RULE_FAILED, "");
+        return false;
+    }
+    manager_->CreateUninstallTask(bundleName, CheckInstallParam(installParam), statusReceiver);
+    return true;
+}
+
+bool BundleInstallerHost::Uninstall(const std::string &bundleName, const std::string &modulePackage,
+    const InstallParam &installParam, const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    if (!BundlePermissionMgr::CheckUserFromShell(installParam.userId)) {
+        LOG_E(BMS_TAG_INSTALLER, "check shell user fail");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_USER_NOT_INSTALL_HAP, "can not specify user in shell");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSystemApp() &&
+        !BundlePermissionMgr::VerifyCallingBundleSdkVersion(ServiceConstants::API_VERSION_NINE)) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        statusReceiver->OnFinished(ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED, "");
+        return false;
+    }
+    if (!BundlePermissionMgr::VerifyUninstallPermission()) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall permission denied");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_UNINSTALL_PERMISSION_DENIED, "");
+        return false;
+    }
+    if (installParam.IsVerifyUninstallRule() &&
+        CheckUninstallDisposedRule(
+            bundleName, installParam.userId, Constants::MAIN_APP_INDEX, installParam.isKeepData, modulePackage)) {
+        LOG_W(BMS_TAG_INSTALLER, "CheckUninstallDisposedRule failed");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_UNINSTALL_DISPOSED_RULE_FAILED, "");
+        return false;
+    }
+    manager_->CreateUninstallTask(
+        bundleName, modulePackage, CheckInstallParam(installParam), statusReceiver);
+    return true;
+}
+
+bool BundleInstallerHost::Uninstall(const UninstallParam &uninstallParam,
+    const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    auto verifyResult = VerifyUninstallPermission(false);
+    if (verifyResult != ERR_OK) {
+        if (!OHOS::system::GetBoolParameter(ServiceConstants::DEVELOPERMODE_STATE, false) ||
+            !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_ALLOW_USE_BM)) {
+            statusReceiver->OnFinished(verifyResult, "");
+            return false;
+        }
+        auto checkDebugResult = CheckIsDebugAppProvisionType(uninstallParam.bundleName, uninstallParam.userId, true);
+        if (checkDebugResult != ERR_OK) {
+            statusReceiver->OnFinished(checkDebugResult, "");
+            return false;
+        }
+    }
+    UninstallParam callUninstallParam = uninstallParam;
+    manager_->CreateUninstallTask(callUninstallParam, statusReceiver);
+    return true;
+}
+
+bool BundleInstallerHost::InstallByBundleName(const std::string &bundleName,
+    const InstallParam &installParam, const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSystemApp() &&
+        !BundlePermissionMgr::VerifyCallingBundleSdkVersion(ServiceConstants::API_VERSION_NINE)) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        statusReceiver->OnFinished(ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED, "");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSelfCalling() &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_NORMAL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_MDM_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_INTERNALTESTING_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "install permission denied");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED, "");
+        return false;
+    }
+
+    manager_->CreateInstallByBundleNameTask(bundleName, CheckInstallParam(installParam), statusReceiver);
+    return true;
+}
+
+ErrCode BundleInstallerHost::InstallSandboxApp(const std::string &bundleName, int32_t dplType, int32_t userId,
+    int32_t &appIndex)
+{
+    if (bundleName.empty() || dplType <= LOWER_DLP_TYPE_BOUND || dplType >= UPPER_DLP_TYPE_BOUND) {
+        LOG_E(BMS_TAG_INSTALLER, "install sandbox failed due to error parameters");
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_PARAM_ERROR;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "vnon-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_SANDBOX_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "InstallSandboxApp permission denied");
+        return ERR_APPEXECFWK_PERMISSION_DENIED;
+    }
+    auto helper = DelayedSingleton<BundleSandboxAppHelper>::GetInstance();
+    if (helper == nullptr) {
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_INTERNAL_ERROR;
+    }
+    auto res = helper->InstallSandboxApp(bundleName, dplType, userId, appIndex);
+    if (res != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLER, "install sandbox failed due to error code : %{public}d", res);
+    }
+    return res;
+}
+
+ErrCode BundleInstallerHost::UninstallSandboxApp(const std::string &bundleName, int32_t appIndex, int32_t userId)
+{
+    // check bundle name
+    if (bundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall sandbox failed due to empty bundleName");
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_PARAM_ERROR;
+    }
+    // check appIndex
+    if (appIndex <= INVALID_APP_INDEX || appIndex > Constants::MAX_SANDBOX_APP_INDEX) {
+        LOG_E(BMS_TAG_INSTALLER, "the appIndex %{public}d is invalid", appIndex);
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_PARAM_ERROR;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_UNINSTALL_SANDBOX_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "UninstallSandboxApp permission denied");
+        return ERR_APPEXECFWK_PERMISSION_DENIED;
+    }
+    auto helper = DelayedSingleton<BundleSandboxAppHelper>::GetInstance();
+    if (helper == nullptr) {
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_INTERNAL_ERROR;
+    }
+    auto res = helper->UninstallSandboxApp(bundleName, appIndex, userId);
+    if (res != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall sandbox failed due to error code : %{public}d", res);
+    }
+    return res;
+}
+
+ErrCode BundleInstallerHost::InstallPlugin(const std::string &hostBundleName,
+    const std::vector<std::string> &pluginFilePaths, const InstallPluginParam &installPluginParam)
+{
+    if (hostBundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "install plugin failed due to empty hostBundleName");
+        return ERR_APPEXECFWK_HOST_APPLICATION_NOT_FOUND;
+    }
+    if (pluginFilePaths.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "install plugin failed due to empty pluginFilePaths");
+        return ERR_APPEXECFWK_PLUGIN_INSTALL_FILEPATH_INVALID;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!OHOS::system::GetBoolParameter(ServiceConstants::IS_SUPPORT_PLUGIN, false)) {
+        LOG_E(BMS_TAG_INSTALLER, "current device not support plugin");
+        return ERR_APPEXECFWK_DEVICE_NOT_SUPPORT_PLUGIN;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_PLUGIN)) {
+        LOG_E(BMS_TAG_INSTALLER, "InstallPlugin permission denied");
+        return ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED;
+    }
+    std::shared_ptr<PluginInstaller> pluginInstaller = std::make_shared<PluginInstaller>();
+    auto ret = pluginInstaller->InstallPlugin(hostBundleName, pluginFilePaths, installPluginParam);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLER, "install plugin failed due to error code : %{public}d", ret);
+    }
+    return ret;
+}
+
+ErrCode BundleInstallerHost::UninstallPlugin(const std::string &hostBundleName, const std::string &pluginBundleName,
+    const InstallPluginParam &installPluginParam)
+{
+    if (hostBundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall plugin failed due to empty hostBundleName");
+        return ERR_APPEXECFWK_HOST_APPLICATION_NOT_FOUND;
+    }
+    if (pluginBundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall plugin failed due to empty pluginBundleName");
+        return ERR_APPEXECFWK_PLUGIN_NOT_FOUND;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_UNINSTALL_PLUGIN)) {
+        LOG_E(BMS_TAG_INSTALLER, "UninstallPlugin permission denied");
+        return ERR_APPEXECFWK_UNINSTALL_PERMISSION_DENIED;
+    }
+    std::shared_ptr<PluginInstaller> pluginInstaller = std::make_shared<PluginInstaller>();
+    auto ret = pluginInstaller->UninstallPlugin(hostBundleName, pluginBundleName, installPluginParam);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall plugin failed due to error code : %{public}d", ret);
+    }
+    return ret;
+}
+
+ErrCode BundleInstallerHost::StreamInstall(const std::vector<std::string> &bundleFilePaths,
+    const InstallParam &installParam, const sptr<IStatusReceiver> &statusReceiver)
+{
+    return ERR_OK;
+}
+
+ErrCode BundleInstallerHost::VerifyCreateStreamInstallerPermission(
+    const InstallParam &installParam, InstallParam &verifiedInstallParam)
+{
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+
+    if (!IsPermissionValid(installParam, verifiedInstallParam)) {
+        LOG_E(BMS_TAG_INSTALLER, "install permission denied");
+        return ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED;
+    }
+    return ERR_OK;
+}
+
+sptr<IBundleStreamInstaller> BundleInstallerHost::CreateStreamInstaller(const InstallParam &installParam,
+    const sptr<IStatusReceiver> &statusReceiver, const std::vector<std::string> &originHapPaths)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return nullptr;
+    }
+    InstallParam verifiedInstallParam = installParam;
+    auto verifyResult = VerifyCreateStreamInstallerPermission(installParam, verifiedInstallParam);
+    if (verifyResult != ERR_OK) {
+        if (!OHOS::system::GetBoolParameter(ServiceConstants::DEVELOPERMODE_STATE, false) ||
+            !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_ALLOW_USE_BM)) {
+            statusReceiver->OnFinished(verifyResult, "");
+            return nullptr;
+        }
+        verifiedInstallParam.isCheckDebugApp = true;
+    }
+    auto uid = IPCSkeleton::GetCallingUid();
+    sptr<BundleStreamInstallerHostImpl> streamInstaller(new (std::nothrow) BundleStreamInstallerHostImpl(
+        ++streamInstallerIds_, uid));
+    if (streamInstaller == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "streamInstaller is nullptr, uid : %{public}d", uid);
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR, "");
+        return nullptr;
+    }
+    bool res = streamInstaller->Init(verifiedInstallParam, statusReceiver, originHapPaths);
+    if (!res) {
+        LOG_E(BMS_TAG_INSTALLER, "stream installer init failed");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR, "");
+        return nullptr;
+    }
+    return streamInstaller;
+}
+
+bool BundleInstallerHost::IsPermissionValid(const InstallParam &installParam, InstallParam &verifiedInstallParam)
+{
+    verifiedInstallParam.isCallByShell = BundlePermissionMgr::IsShellTokenType();
+    verifiedInstallParam.installBundlePermissionStatus =
+        BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) ?
+        PermissionStatus::HAVE_PERMISSION_STATUS : PermissionStatus::NON_HAVE_PERMISSION_STATUS;
+    verifiedInstallParam.installEnterpriseBundlePermissionStatus =
+        BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_BUNDLE) ?
+        PermissionStatus::HAVE_PERMISSION_STATUS : PermissionStatus::NON_HAVE_PERMISSION_STATUS;
+    verifiedInstallParam.installEtpNormalBundlePermissionStatus =
+        BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_NORMAL_BUNDLE) ?
+        PermissionStatus::HAVE_PERMISSION_STATUS : PermissionStatus::NON_HAVE_PERMISSION_STATUS;
+    verifiedInstallParam.installEtpMdmBundlePermissionStatus =
+        BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_MDM_BUNDLE) ?
+        PermissionStatus::HAVE_PERMISSION_STATUS : PermissionStatus::NON_HAVE_PERMISSION_STATUS;
+    verifiedInstallParam.installInternaltestingBundlePermissionStatus =
+        BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_INTERNALTESTING_BUNDLE)
+            ? PermissionStatus::HAVE_PERMISSION_STATUS
+            : PermissionStatus::NON_HAVE_PERMISSION_STATUS;
+    verifiedInstallParam.installUpdateSelfBundlePermissionStatus =
+        BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_SELF_BUNDLE) ?
+        PermissionStatus::HAVE_PERMISSION_STATUS : PermissionStatus::NON_HAVE_PERMISSION_STATUS;
+    return (verifiedInstallParam.installBundlePermissionStatus == PermissionStatus::HAVE_PERMISSION_STATUS ||
+        verifiedInstallParam.installEnterpriseBundlePermissionStatus == PermissionStatus::HAVE_PERMISSION_STATUS ||
+        verifiedInstallParam.installEtpNormalBundlePermissionStatus == PermissionStatus::HAVE_PERMISSION_STATUS ||
+        verifiedInstallParam.installEtpMdmBundlePermissionStatus == PermissionStatus::HAVE_PERMISSION_STATUS ||
+        verifiedInstallParam.installUpdateSelfBundlePermissionStatus == PermissionStatus::HAVE_PERMISSION_STATUS ||
+        BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_QUICK_FIX_BUNDLE));
+}
+
+bool BundleInstallerHost::VerifyDestoryBundleStreamInstallerPermission()
+{
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSelfCalling() &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_NORMAL_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_ENTERPRISE_MDM_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(
+            ServiceConstants::PERMISSION_INSTALL_INTERNALTESTING_BUNDLE) &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_QUICK_FIX_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "install permission denied");
+        return false;
+    }
+    return true;
+}
+
+bool BundleInstallerHost::DestoryBundleStreamInstaller(uint32_t streamInstallerId)
+{
+    if (!VerifyDestoryBundleStreamInstallerPermission()) {
+        if (!OHOS::system::GetBoolParameter(ServiceConstants::DEVELOPERMODE_STATE, false) ||
+            !BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_ALLOW_USE_BM)) {
+            return false;
+        }
+    }
+    std::lock_guard<std::mutex> lock(streamInstallMutex_);
+    for (auto it = streamInstallers_.begin(); it != streamInstallers_.end();) {
+        if ((*it)->GetInstallerId() == streamInstallerId) {
+            (*it)->UnInit();
+            it = streamInstallers_.erase(it);
+        } else {
+            it++;
+        }
+    }
+    return true;
+}
+
+bool BundleInstallerHost::CheckBundleInstallerManager(const sptr<IStatusReceiver> &statusReceiver) const
+{
+    if (statusReceiver == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "the receiver is nullptr");
+        return false;
+    }
+    if (manager_ == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "the bundle installer manager is nullptr");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_INTERNAL_ERROR, GET_MANAGER_FAIL);
+        return false;
+    }
+    return true;
+}
+
+InstallParam BundleInstallerHost::CheckInstallParam(const InstallParam &installParam)
+{
+    if (installParam.userId == Constants::UNSPECIFIED_USERID) {
+        LOG_I(BMS_TAG_INSTALLER, "installParam userId is unspecified and get calling userId by callingUid");
+        InstallParam callInstallParam = installParam;
+        callInstallParam.userId = BundleUtil::GetUserIdByCallingUid();
+        return callInstallParam;
+    }
+
+    return installParam;
+}
+
+bool BundleInstallerHost::UpdateBundleForSelf(const std::vector<std::string> &bundleFilePaths,
+    const InstallParam &installParam, const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        statusReceiver->OnFinished(ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED, "");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSelfCalling() &&
+        !BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_INSTALL_SELF_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "install permission denied");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED, "");
+        return false;
+    }
+    manager_->CreateInstallTask(bundleFilePaths, installParam, statusReceiver);
+    return true;
+}
+
+bool BundleInstallerHost::UninstallAndRecover(const std::string &bundleName, const InstallParam &installParam,
+    const sptr<IStatusReceiver> &statusReceiver)
+{
+    if (!CheckBundleInstallerManager(statusReceiver)) {
+        LOG_E(BMS_TAG_INSTALLER, "statusReceiver invalid");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        statusReceiver->OnFinished(ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED, "");
+        return false;
+    }
+    if (!BundlePermissionMgr::IsSelfCalling() &&
+        !BundlePermissionMgr::VerifyCallingPermissionsForAll({Constants::PERMISSION_INSTALL_BUNDLE,
+        ServiceConstants::PERMISSION_UNINSTALL_BUNDLE})) {
+        LOG_E(BMS_TAG_INSTALLER, "install permission denied");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PERMISSION_DENIED, "");
+        return false;
+    }
+    if (installParam.IsForcedUninstall() && IPCSkeleton::GetCallingUid() != Constants::EDC_UID) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall permission denied");
+        statusReceiver->OnFinished(ERR_APPEXECFWK_INSTALL_PREINSTALL_BUNDLE_ONLY_ALLOW_FORCE_UNINSTALLED_BY_EDC,
+            "Only edc can force uninstall");
+        return false;
+    }
+    manager_->CreateUninstallAndRecoverTask(bundleName, CheckInstallParam(installParam), statusReceiver);
+    return true;
+}
+
+void BundleInstallerHost::AddTask(const ThreadPoolTask &task, const std::string &taskName)
+{
+    manager_->AddTask(task, taskName);
+}
+
+int32_t BundleInstallerHost::GetThreadsNum()
+{
+    return manager_->GetThreadsNum();
+}
+
+size_t BundleInstallerHost::GetCurTaskNum()
+{
+    return manager_->GetCurTaskNum();
+}
+
+ErrCode BundleInstallerHost::InstallCloneApp(const std::string &bundleName, int32_t userId, int32_t& appIndex)
+{
+    if (OHOS::system::GetBoolParameter(ServiceConstants::IS_APP_CLONE_DISABLE, false)) {
+        LOG_E(BMS_TAG_INSTALLER, "the enterprise device does not support the creation of an appClone instance.");
+        return ERR_APPEXECFWK_CLONE_INSTALL_APP_NOT_SUPPORTED_MULTI_TYPE;
+    }
+    LOG_D(BMS_TAG_INSTALLER, "params[bundleName: %{public}s, user_id: %{public}d, appIndex: %{public}d]",
+        bundleName.c_str(), userId, appIndex);
+    if (bundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "install clone app failed due to error parameters");
+        return ERR_APPEXECFWK_CLONE_INSTALL_PARAM_ERROR;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api bundleName: %{public}s", bundleName.c_str());
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_CLONE_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "InstallCloneApp permission denied");
+        return ERR_APPEXECFWK_PERMISSION_DENIED;
+    }
+    std::shared_ptr<BundleCloneInstaller> installer = std::make_shared<BundleCloneInstaller>();
+    return installer->InstallCloneApp(bundleName, userId, appIndex);
+}
+
+void BundleInstallerHost::HandleInstallCloneApp(MessageParcel &data, MessageParcel &reply)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("Install", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle install clone app message");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    int32_t userId = data.ReadInt32();
+    int32_t appIndex = data.ReadInt32();
+
+    LOG_I(BMS_TAG_INSTALLER, "receive Install CLone App Request");
+
+    auto ret = InstallCloneApp(bundleName, userId, appIndex);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+
+    if (ret == ERR_OK && !reply.WriteInt32(appIndex)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle install clone app message finished");
+}
+
+ErrCode BundleInstallerHost::UninstallCloneApp(const std::string &bundleName, int32_t userId, int32_t appIndex,
+                                               const DestroyAppCloneParam &destroyAppCloneParam)
+{
+    LOG_D(BMS_TAG_INSTALLER, "params[bundleName: %{public}s, user_id: %{public}d, appIndex: %{public}d]",
+        bundleName.c_str(), userId, appIndex);
+    if (bundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "install clone app failed due to empty bundleName");
+        return ERR_APPEXECFWK_CLONE_UNINSTALL_INVALID_BUNDLE_NAME;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api, bundleName: %{public}s", bundleName.c_str());
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_UNINSTALL_CLONE_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "UninstallCloneApp permission denied");
+        return ERR_APPEXECFWK_PERMISSION_DENIED;
+    }
+    if (appIndex >= ServiceConstants::CLI_SANDBOX_APP_INDEX_MIN &&
+        appIndex <= ServiceConstants::CLI_SANDBOX_APP_INDEX_MAX) {
+        auto installer = std::make_shared<BundleCliSandboxInstaller>();
+        return installer->DestroyCliSandboxApp("", "", bundleName, userId, appIndex, true);
+    }
+    if (appIndex < ServiceConstants::CLONE_APP_INDEX_MIN || appIndex > BundleFileUtil::GetCloneMaxCount()) {
+        APP_LOGE("Add Clone Bundle Fail, appIndex: %{public}d not in valid range", appIndex);
+        return ERR_APPEXECFWK_CLONE_UNINSTALL_INVALID_APP_INDEX;
+    }
+    auto iter = destroyAppCloneParam.parameters.find(ServiceConstants::BMS_PARA_CLONE_IS_KEEP_DATA);
+    bool isKeepData = (iter != destroyAppCloneParam.parameters.end() && iter->second == ServiceConstants::BMS_TRUE);
+    if (destroyAppCloneParam.IsVerifyUninstallRule() &&
+        CheckUninstallDisposedRule(bundleName, userId, appIndex, isKeepData)) {
+        LOG_W(BMS_TAG_INSTALLER, "CheckUninstallDisposedRule failed");
+        return ERR_APPEXECFWK_UNINSTALL_DISPOSED_RULE_FAILED;
+    }
+    std::shared_ptr<BundleCloneInstaller> installer = std::make_shared<BundleCloneInstaller>();
+    return installer->UninstallCloneApp(bundleName, userId, appIndex, false, destroyAppCloneParam);
+}
+
+void BundleInstallerHost::HandleUninstallCloneApp(MessageParcel &data, MessageParcel &reply)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("UninstallCloneApp", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle uninstall clone app message");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    int32_t userId = data.ReadInt32();
+    int32_t appIndex = data.ReadInt32();
+    std::unique_ptr<DestroyAppCloneParam> destroyAppCloneParam(data.ReadParcelable<DestroyAppCloneParam>());
+    if (destroyAppCloneParam == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "ReadParcelable<DestroyAppCloneParam> failed");
+        return;
+    }
+
+    LOG_I(BMS_TAG_INSTALLER, "receive Uninstall CLone App Request");
+
+    auto ret = UninstallCloneApp(bundleName, userId, appIndex, *destroyAppCloneParam);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle uninstall clone app message finished");
+}
+
+ErrCode BundleInstallerHost::InstallExisted(const std::string &bundleName, int32_t userId)
+{
+    LOG_D(BMS_TAG_INSTALLER, "params[bundleName: %{public}s, user_id: %{public}d]",
+        bundleName.c_str(), userId);
+    if (bundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "install existed app failed due to error parameters");
+        return ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api bundleName: %{public}s", bundleName.c_str());
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "InstallExisted permission denied");
+        return ERR_APPEXECFWK_PERMISSION_DENIED;
+    }
+    std::shared_ptr<BundleMultiUserInstaller> installer = std::make_shared<BundleMultiUserInstaller>();
+    return installer->InstallExistedApp(bundleName, userId);
+}
+
+void BundleInstallerHost::HandleInstallExisted(MessageParcel &data, MessageParcel &reply)
+{
+    LOG_D(BMS_TAG_INSTALLER, "handle install existed app message");
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    int32_t userId = data.ReadInt32();
+
+    LOG_I(BMS_TAG_INSTALLER, "receive InstallExisted Request -n %{public}s -u %{public}d",
+        bundleName.c_str(), userId);
+
+    auto ret = InstallExisted(bundleName, userId);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle installExisted message finished");
+}
+
+ErrCode BundleInstallerHost::UninstallNewPreinstalledApps(const std::vector<std::string> &bundleNames)
+{
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_INSTALLER, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_UNINSTALL_BUNDLE)) {
+        LOG_E(BMS_TAG_INSTALLER, "verify uninstall permission failed");
+        return ERR_APPEXECFWK_UNINSTALL_PERMISSION_DENIED;
+    }
+    if (bundleNames.size() > Constants::MAX_UNINSTALL_PREINSTALLED_APP_NUM) {
+        LOG_E(BMS_TAG_INSTALLER, "the number of bundles to uninstall exceeds the limit");
+        return ERR_APPEXECFWK_UNINSTALL_PARAM_ERROR;
+    }
+    auto installer = std::make_shared<BundleInstaller>(GetMicroTickCount(), nullptr);
+    installer->SetCallingUid(IPCSkeleton::GetCallingUid());
+    installer->SetCallingTokenId(IPCSkeleton::GetCallingTokenID());
+    return installer->UninstallNewPreinstalledApps(bundleNames, BundleUtil::GetUserIdByCallingUid());
+}
+
+void BundleInstallerHost::HandleUninstallNewPreinstalledApps(MessageParcel &data, MessageParcel &reply)
+{
+    std::vector<std::string> bundleNames;
+    if (!data.ReadStringVector(&bundleNames)) {
+        LOG_E(BMS_TAG_INSTALLER, "read bundle names failed");
+        reply.WriteInt32(ERR_APPEXECFWK_PARCEL_ERROR);
+        return;
+    }
+    auto ret = UninstallNewPreinstalledApps(bundleNames);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+}
+
+bool BundleInstallerHost::CheckUninstallDisposedRule(
+    const std::string &bundleName, int32_t userId, int32_t appIndex, bool isKeepData, const std::string &modulePackage)
+{
+#if defined (BUNDLE_FRAMEWORK_APP_CONTROL) && defined (ABILITY_RUNTIME_ENABLE)
+    std::shared_ptr<BundleDataMgr> dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
+    if (dataMgr == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "null dataMgr");
+        return false;
+    }
+
+    InnerBundleInfo bundleInfo;
+    bool isBundleExist = dataMgr->FetchInnerBundleInfo(bundleName, bundleInfo);
+    if (!isBundleExist) {
+        LOG_E(BMS_TAG_INSTALLER, "the bundle: %{public}s is not install", bundleName.c_str());
+        return false;
+    }
+    if (!modulePackage.empty() && !bundleInfo.IsOnlyModule(modulePackage)) {
+        return false;
+    }
+    std::string appId = bundleInfo.GetAppIdentifier();
+    if (appId.empty()) {
+        appId = bundleInfo.GetAppId();
+    }
+
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        LOG_I(BMS_TAG_INSTALLER, "installParam userId is unspecified and get calling userId by callingUid");
+        userId = BundleUtil::GetUserIdByCallingUid();
+    }
+
+    UninstallDisposedRule rule;
+    auto ret = DelayedSingleton<AppControlManager>::GetInstance()
+                   ->GetUninstallDisposedRule(appId, appIndex, userId, rule);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLER, "GetUninstallDisposedRule failed code:%{public}d", ret);
+        return false;
+    }
+
+    if (rule.want == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "null rule.want");
+        return false;
+    }
+    rule.want->SetParam(BMS_PARA_BUNDLE_NAME, bundleName);
+    rule.want->SetParam(BMS_PARA_USER_ID, userId);
+    rule.want->SetParam(BMS_PARA_APP_INDEX, appIndex);
+    rule.want->SetParam(BMS_PARA_IS_KEEP_DATA, isKeepData);
+
+    if (rule.uninstallComponentType == UninstallComponentType::EXTENSION) {
+        std::string identity = IPCSkeleton::ResetCallingIdentity();
+        ErrCode err = AAFwk::AbilityManagerClient::GetInstance()->StartExtensionAbility(
+            *rule.want, nullptr, userId, AppExecFwk::ExtensionAbilityType::SERVICE);
+        IPCSkeleton::SetCallingIdentity(identity);
+        if (err != ERR_OK) {
+            LOG_E(BMS_TAG_INSTALLER, "start extension ability failed code:%{public}d", err);
+        }
+    } else if (rule.uninstallComponentType == UninstallComponentType::UI_EXTENSION) {
+        rule.want->SetParam(UIEXTENSION_MODAL_TYPE, 1);
+        auto connection = std::make_shared<Rosen::ModalSystemUiExtension>();
+        std::string identity = IPCSkeleton::ResetCallingIdentity();
+        bool err = connection->CreateModalUIExtension(*rule.want);
+        IPCSkeleton::SetCallingIdentity(identity);
+        if (!err) {
+            LOG_E(BMS_TAG_INSTALLER, "request modal UI extension failed");
+        }
+    } else {
+        LOG_E(BMS_TAG_INSTALLER, "uninstallComponentType wrong type:%{public}d", rule.uninstallComponentType);
+    }
+
+    return true;
+#else
+    LOG_I(BMS_TAG_INSTALLER, "BUNDLE_FRAMEWORK_APP_CONTROL or ABILITY_RUNTIME_ENABLE is false");
+    return false;
+#endif
+}
+
+void BundleInstallerHost::HandleAddEnterpriseResignCert(MessageParcel &data, MessageParcel &reply)
+{
+    LOG_D(BMS_TAG_INSTALLER, "start");
+    std::string certAlias = Str16ToStr8(data.ReadString16());
+    size_t dataSize = data.ReadUint32();
+    if (dataSize == 0 || dataSize > Constants::CAPACITY_SIZE) {
+        reply.WriteInt32(ERR_APPEXECFWK_PARCEL_ERROR);
+        return;
+    }
+    const char *content = reinterpret_cast<const char *>(data.ReadRawData(dataSize));
+    if (!content) {
+        reply.WriteInt32(ERR_APPEXECFWK_PARCEL_ERROR);
+        return;
+    }
+    std::string certContent(content, dataSize);
+    int32_t userId = data.ReadInt32();
+
+    auto ret = AddEnterpriseResignCert(certAlias, certContent, userId);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+    }
+    LOG_D(BMS_TAG_INSTALLER, "end");
+}
+
+ErrCode BundleInstallerHost::AddEnterpriseResignCert(
+    const std::string &certAlias, const std::string &certContent, int32_t userId)
+{
+    if (certAlias.empty() || certContent.empty() || certContent.size() > Constants::CAPACITY_SIZE ||
+        certAlias.size() > Constants::MAX_FILE_NAME_LENGTH || userId < Constants::START_USERID) {
+        APP_LOGE("param error certAlias: %{public}s, certContent size: %{public}zu, userId: %{public}d",
+            certAlias.c_str(), certContent.size(), userId);
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_MANAGE_EDM_POLICY)) {
+        APP_LOGE("verify permission failed");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PERMISSION_DENIED;
+    }
+    if (!OHOS::system::GetBoolParameter(ServiceConstants::IS_ENTERPRISE_DEVICE, false)) {
+        APP_LOGE("not enterprise device");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_DEVICE_ERROR;
+    }
+    if (!BundleUtil::CheckFileType(certAlias, ServiceConstants::CER_SUFFIX)) {
+        APP_LOGE("file is not cer %{public}s", certAlias.c_str());
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    if (certAlias.find(ServiceConstants::PATH_SEPARATOR) != std::string::npos) {
+        APP_LOGE("certAlias contain path separator %{public}s", certAlias.c_str());
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    std::shared_ptr<BundleDataMgr> dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
+    if (dataMgr == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "null dataMgr");
+        return ERR_BUNDLE_MANAGER_INTERNAL_ERROR;
+    }
+    std::set<int32_t> userIds = dataMgr->GetAllUser();
+    if (userIds.find(userId) == userIds.end()) {
+        APP_LOGE("userId %{public}d not exist", userId);
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    return InnerAddEnterpriseResignCert(certAlias, certContent, userId);
+}
+
+ErrCode BundleInstallerHost::InnerAddEnterpriseResignCert(
+    const std::string &certAlias, const std::string &certContent, int32_t userId)
+{
+    std::unique_lock<std::shared_mutex> lock(enterpriseCertMutex_);
+    std::string certPath = std::string(ServiceConstants::HAP_COPY_PATH) + ServiceConstants::ENTERPRISE_CERT_PATH +
+        std::to_string(userId);
+    std::vector<std::string> existingCerts;
+    if (!BundleUtil::IsExistDir(certPath)) {
+        CreateDirParam createDirParam;
+        createDirParam.bundleDirScene = BundleDirScene::SERVICE_BMS_ENTERPRISE_CERT_DIR;
+        auto ret = InstalldClient::GetInstance()->Mkdir(certPath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH,
+            Constants::FOUNDATION_UID, Constants::FOUNDATION_UID, createDirParam);
+        if (ret != ERR_OK) {
+            APP_LOGE("mkdir failed %{public}d %{public}d", ret, errno);
+            return ret;
+        }
+    } else if (BundleUtil::GetEnterpriseReSignatureCert(userId, existingCerts) != ERR_OK) {
+        APP_LOGE("get existing certs failed");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_WRITE_CERT_FAILED;
+    } else if (existingCerts.size() >= ServiceConstants::MAX_ENTERPRISE_RESIGN_CERT_NUM) {
+        APP_LOGE("exceed max cert num %{public}zu", existingCerts.size());
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_EXCEED_MAX_NUM;
+    }
+    if (std::find(existingCerts.begin(), existingCerts.end(), certAlias) != existingCerts.end()) {
+        APP_LOGE("cert already exists %{public}s", certAlias.c_str());
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_ALREADY_EXISTS;
+    }
+    std::string certFilePath = certPath + ServiceConstants::PATH_SEPARATOR + certAlias;
+    auto ret = InstalldClient::GetInstance()->AddCertAndEnableKey(certFilePath, certContent);
+    if (ret != ERR_OK) {
+        APP_LOGE("add cert and enable key failed %{public}d", ret);
+        return ret;
+    }
+    APP_LOGI("add enterprise resign cert success %{public}s %{public}d", certAlias.c_str(), userId);
+    return ERR_OK;
+}
+
+bool BundleInstallerHost::CheckInstallDowngradeParam(const InstallParam &installParam)
+{
+    auto item = installParam.parameters.find(ServiceConstants::BMS_PARA_INSTALL_ALLOW_DOWNGRADE);
+    if ((item == installParam.parameters.end()) || (item->second != ServiceConstants::BMS_TRUE)) {
+        return true;
+    }
+    if (BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_BUNDLE) &&
+        BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_INSTALL_ALLOW_DOWNGRADE)) {
+        return true;
+    }
+    if (OHOS::system::GetBoolParameter(ServiceConstants::DEVELOPERMODE_STATE, false) &&
+        BundlePermissionMgr::VerifyCallingPermissionForAll(Constants::PERMISSION_ALLOW_USE_BM)) {
+        return true;
+    }
+    LOG_E(BMS_TAG_INSTALLER, "no permission to install allow downgrade");
+    return false;
+}
+
+ErrCode BundleInstallerHost::HandleDeleteEnterpriseReSignatureCert(MessageParcel &data, MessageParcel &reply)
+{
+    LOG_D(BMS_TAG_INSTALLER, "handle delete enterprise re sign cert");
+    std::string certificateAlias = Str16ToStr8(data.ReadString16());
+    int32_t userId = data.ReadInt32();
+
+    auto ret = DeleteEnterpriseReSignatureCert(certificateAlias, userId);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write failed");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_WRITE_PARCEL_ERROR;
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle delete enterprise re sign cert");
+    return ERR_OK;
+}
+
+ErrCode BundleInstallerHost::DeleteEnterpriseReSignatureCert(const std::string &certificateAlias, int32_t userId)
+{
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_MANAGE_EDM_POLICY)) {
+        LOG_E(BMS_TAG_INSTALLER, "verify permission failed");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PERMISSION_DENIED;
+    }
+    if (certificateAlias.empty() || certificateAlias.size() > Constants::MAX_FILE_NAME_LENGTH
+        || userId < Constants::START_USERID) {
+        LOG_E(BMS_TAG_INSTALLER, "param is invalid");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    std::shared_ptr<BundleDataMgr> dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
+    if (dataMgr == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "null dataMgr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    std::set<int32_t> userIds = dataMgr->GetAllUser();
+    if (userIds.find(userId) == userIds.end()) {
+        LOG_E(BMS_TAG_INSTALLER, "userId %{public}d not exist", userId);
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    if (!BundleUtil::CheckFileType(certificateAlias, ServiceConstants::CER_SUFFIX)) {
+        LOG_E(BMS_TAG_INSTALLER, "file is not cer %{public}s", certificateAlias.c_str());
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    if (certificateAlias.find(ServiceConstants::PATH_SEPARATOR) != std::string::npos) {
+        LOG_E(BMS_TAG_INSTALLER, "illegal certAlias %{public}s", certificateAlias.c_str());
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    std::string path = std::string(ServiceConstants::HAP_COPY_PATH) + ServiceConstants::ENTERPRISE_CERT_PATH +
+        std::to_string(userId) + ServiceConstants::PATH_SEPARATOR + certificateAlias;
+    if (path.size() > Constants::BMS_MAX_PATH_LENGTH) {
+        LOG_E(BMS_TAG_INSTALLER, "path is invalid");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    std::unique_lock<std::shared_mutex> lock(enterpriseCertMutex_);
+    if (!BundleUtil::IsExistFile(path)) {
+        LOG_E(BMS_TAG_INSTALLER, "path is not exist");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_NOT_EXIST;
+    }
+    auto ret = InstalldClient::GetInstance()->DeleteCertAndRemoveKey({path});
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLER, "uninstall sign cert failed");
+        return ret;
+    }
+    LOG_I(BMS_TAG_INSTALLER, "delete resign cert success %{public}s %{public}d", certificateAlias.c_str(), userId);
+    return ERR_OK;
+}
+
+ErrCode BundleInstallerHost::HandleGetEnterpriseReSignatureCert(MessageParcel &data, MessageParcel &reply)
+{
+    LOG_D(BMS_TAG_INSTALLER, "handle get re sign cert");
+    int32_t userId = data.ReadInt32();
+    
+    std::vector<std::string> certificateAlias;
+    auto ret = GetEnterpriseReSignatureCert(userId, certificateAlias);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "get re sign cert write failed");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_WRITE_PARCEL_ERROR;
+    }
+    if (ret == ERR_OK && !reply.WriteStringVector(certificateAlias)) {
+        LOG_E(BMS_TAG_INSTALLER, "Write certificateAlias failed");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_WRITE_PARCEL_ERROR;
+    }
+    LOG_D(BMS_TAG_INSTALLER, "handle get re sign cert");
+    return ERR_OK;
+}
+
+ErrCode BundleInstallerHost::GetEnterpriseReSignatureCert(int32_t userId, std::vector<std::string> &certificateAlias)
+{
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(ServiceConstants::PERMISSION_MANAGE_EDM_POLICY)) {
+        LOG_E(BMS_TAG_INSTALLER, "verify permission failed");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PERMISSION_DENIED;
+    }
+    if (!OHOS::system::GetBoolParameter(ServiceConstants::IS_ENTERPRISE_DEVICE, false)) {
+        APP_LOGE("not enterprise device");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_DEVICE_ERROR;
+    }
+    if (userId < Constants::START_USERID) {
+        LOG_E(BMS_TAG_INSTALLER, "userId is invalid");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    std::shared_ptr<BundleDataMgr> dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
+    if (dataMgr == nullptr) {
+        LOG_E(BMS_TAG_INSTALLER, "null dataMgr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    std::set<int32_t> userIds = dataMgr->GetAllUser();
+    if (userIds.find(userId) == userIds.end()) {
+        LOG_E(BMS_TAG_INSTALLER, "userId %{public}d not exist", userId);
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    std::shared_lock<std::shared_mutex> lock(enterpriseCertMutex_);
+    if (BundleUtil::GetEnterpriseReSignatureCert(userId, certificateAlias) != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLER, "get re sign cert failed");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_GET_CERT_ERROR;
+    }
+    return ERR_OK;
+}
+
+ErrCode BundleInstallerHost::DeleteReSignCert(int32_t userId)
+{
+    if (userId < Constants::START_USERID) {
+        LOG_E(BMS_TAG_INSTALLER, "param error -u:%{public}d", userId);
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PARAM_ERROR;
+    }
+    if (!BundlePermissionMgr::IsCallingUidValid(Constants::ACCOUNT_UID)) {
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_PERMISSION_DENIED;
+    }
+    std::unique_lock<std::shared_mutex> lock(enterpriseCertMutex_);
+    std::string baseDir = std::string(ServiceConstants::HAP_COPY_PATH) + ServiceConstants::ENTERPRISE_CERT_PATH +
+        std::to_string(userId);
+    if (!BundleUtil::IsExistDir(baseDir)) {
+        LOG_W(BMS_TAG_INSTALLER, "baseDir not exist");
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_BASE_DIR_NOT_EXIST;
+    }
+    std::vector<std::string> certificateAlias;
+    if (BundleUtil::GetEnterpriseReSignatureCert(userId, certificateAlias) != ERR_OK) {
+        LOG_W(BMS_TAG_INSTALLER, "get re sign cert failed");
+    }
+    if (!certificateAlias.empty()) {
+        std::vector<std::string> certPaths;
+        for (const std::string &cert : certificateAlias) {
+            std::string path = baseDir + ServiceConstants::PATH_SEPARATOR + cert;
+            certPaths.emplace_back(path);
+        }
+        if (InstalldClient::GetInstance()->DeleteCertAndRemoveKey(certPaths) != ERR_OK) {
+            LOG_W(BMS_TAG_INSTALLER, "DeleteCertAndRemoveKey failed userId:%{public}d", userId);
+        }
+    }
+    if (InstalldClient::GetInstance()->RemoveDir(baseDir, BundleDirScene::REMOVE_ENTERPRISE_CERT_DIR)) {
+        LOG_W(BMS_TAG_INSTALLER, "remove basedir failed errno:%{public}d", errno);
+        return ERR_APPEXECFWK_ENTERPRISE_CERT_DELETE_CERT_ERROR;
+    }
+    return ERR_OK;
+}
+
+ErrCode BundleInstallerHost::CreateCliSandboxApp(const std::string &creatorBundleName,
+    const std::string &envCreatorBundleName, const std::string &bundleName,
+    int32_t userId, int32_t &appIndex)
+{
+    if (envCreatorBundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "env creatorBundleName is empty");
+        return ERR_APPEXECFWK_CLI_SANDBOX_INSTALL_INVALID_ENV_CREATOR_BUNDLE_NAME;
+    }
+
+    if (bundleName.empty()) {
+        LOG_E(BMS_TAG_INSTALLER, "bundleName is empty");
+        return ERR_APPEXECFWK_CLI_SANDBOX_INSTALL_INVALID_BUNDLE_NAME;
+    }
+
+    std::string finalCreatorBundleName = creatorBundleName;
+    int32_t result = BundlePermissionMgr::VerifyPermission(
+        envCreatorBundleName, Constants::PERMISSION_CLI_MANAGE_WEB_SANDBOX, userId);
+    if (result != Constants::PERMISSION_GRANTED) {
+        LOG_W(BMS_TAG_INSTALLER, "env creator %{public}s does not have permission", envCreatorBundleName.c_str());
+        finalCreatorBundleName = envCreatorBundleName;
+    }
+
+    int32_t finalResult = BundlePermissionMgr::VerifyPermission(
+        finalCreatorBundleName, Constants::PERMISSION_MANAGE_SANDBOX_BUNDLE, userId);
+    if (finalResult != Constants::PERMISSION_GRANTED) {
+        LOG_NOFUNC_E(BMS_TAG_INSTALLER, "creator %{public}s does not have permission", finalCreatorBundleName.c_str());
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+
+    auto installer = std::make_shared<BundleCliSandboxInstaller>();
+    return installer->CreateCliSandboxApp(finalCreatorBundleName, bundleName, userId, appIndex);
+}
+
+void BundleInstallerHost::HandleCreateCliSandboxApp(MessageParcel &data, MessageParcel &reply)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("CreateCliSandboxApp", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle create cli sandbox app message");
+    std::string creatorBundleName = Str16ToStr8(data.ReadString16());
+    std::string envCreatorBundleName = Str16ToStr8(data.ReadString16());
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    int32_t userId = data.ReadInt32();
+    int32_t appIndex = 0;
+
+    auto ret = CreateCliSandboxApp(creatorBundleName, envCreatorBundleName, bundleName, userId, appIndex);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write ret failed");
+    }
+    if (ret == ERR_OK && !reply.WriteInt32(appIndex)) {
+        LOG_E(BMS_TAG_INSTALLER, "write appIndex failed");
+    }
+}
+
+ErrCode BundleInstallerHost::DestroyCliSandboxApp(const std::string &creatorBundleName,
+    const std::string &envCallerBundleName, const std::string &bundleName,
+    int32_t userId, int32_t appIndex)
+{
+    auto installer = std::make_shared<BundleCliSandboxInstaller>();
+    return installer->DestroyCliSandboxApp(creatorBundleName, envCallerBundleName,
+        bundleName, userId, appIndex, false);
+}
+
+void BundleInstallerHost::HandleDestroyCliSandboxApp(MessageParcel &data, MessageParcel &reply)
+{
+    BUNDLE_MANAGER_HITRACE_CHAIN_NAME("DestroyCliSandboxApp", HITRACE_FLAG_INCLUDE_ASYNC);
+    LOG_D(BMS_TAG_INSTALLER, "handle destroy cli sandbox app message");
+    std::string creatorBundleName = Str16ToStr8(data.ReadString16());
+    std::string envCallerBundleName = Str16ToStr8(data.ReadString16());
+    std::string bundleName = Str16ToStr8(data.ReadString16());
+    int32_t userId = data.ReadInt32();
+    int32_t appIndex = data.ReadInt32();
+
+    auto ret = DestroyCliSandboxApp(creatorBundleName, envCallerBundleName, bundleName, userId, appIndex);
+    if (!reply.WriteInt32(ret)) {
+        LOG_E(BMS_TAG_INSTALLER, "write ret failed");
+    }
+}
+}  // namespace AppExecFwk
+}  // namespace OHOS

@@ -1,0 +1,37 @@
+{
+    "name": "@ohos/audio_lite",
+    "description": "Audio encoder and decoder for small system.",
+    "version": "3.1",
+    "license": "Apache License 2.0",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/multimedia/audio_lite"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "audio_lite",
+        "subsystem": "multimedia",
+        "syscap": [],
+        "features": [],
+        "adapted_system_type": [
+            "mini",
+            "small"
+        ],
+        "rom": "59KB",
+        "ram": "",
+        "deps": {
+            "components": [],
+            "third_party": [
+                "bounds_checking_function"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//foundation/multimedia/audio_lite/frameworks:audio_capturer_lite"
+            ],
+            "inner_kits": [],
+            "test": []
+        }
+    }
+}

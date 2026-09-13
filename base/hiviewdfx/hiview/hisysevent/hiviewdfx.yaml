@@ -1,0 +1,182 @@
+#  Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+domain: HIVIEWDFX
+
+APP_EVENT_RECEIVE:
+  __BASE: {type: STATISTIC, level: MINOR, desc: Number of times that an application successfully subscribes to APP_CRASH or APP_FREEZE through hiappevent, preserve: true}
+  BUNDLENAME: {type: STRING, desc: bundle name}
+  BUNDLEVERSION: {type: STRING, desc: bundle version}
+  CALLBACK: {type: STRING, desc: callback}
+  EVENTTYPE: {type: UINT8, desc: event type}
+  CRASHTYPE: {type: STRING, desc: crash type}
+  WATCHERNAME: {type: STRING, desc: watcher name}
+  EXTERNALLOG: {type: BOOL, desc: Whether there are log files}
+  FAULTCNT: {type: UINT8, desc: Number of successful callbacks}
+  RUNNINGID: {type: STRING, desc: running ID}
+
+APP_EVENT_SEND:
+  __BASE: {type: STATISTIC, level: MINOR, desc: Number of times that the HiView successfully shares the APP_CRASH or APP_FREEZE event to an application, preserve: true}
+  BUNDLENAME: {type: STRING, desc: bundle name}
+  BUNDLEVERSION: {type: STRING, desc: bundle version}
+  EVENTTYPE: {type: UINT8, desc: event type}
+  EXTERNALLOG: {type: BOOL, desc: Whether there are log files}
+  FAULTCNT: {type: UINT8, desc: Number of APP_CRASH or APP_FREEZE events that are successfully shared by the HiView to applications}
+  RUNNINGID: {type: STRING, desc: running ID}
+  CRASH_TYPE: {type: STRING, desc: crash type}
+
+FW_MEM_ANOMALY:
+  __BASE: {type: STATISTIC, level: CRITICAL, desc: The VM of the three_party framework reports high memory usage, preserve: true}
+  PROCESS_NAME: {type: STRING, desc: bundle name}
+  FW_TYPE: {type: STRING, desc: framework VM type}
+  FW_VER: {type: STRING, desc: framework version}
+  APP_VER: {type: STRING, desc: application version}
+  RUNNING_ID: {type: STRING, desc: running id}
+  DESCRIPTION: {type: STRING, desc: description}
+
+PLUGIN_LOAD:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, tag: hiviewPlugin, desc: load hiview plugin}
+  NAME: {type: STRING, desc: plugin name}
+  RESULT: {type: UINT32, desc: result of plugin loading}
+  DURATION: {type: UINT32, desc: loading duration }
+
+PLUGIN_UNLOAD:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, tag: hiviewPlugin, desc: unload hiview plugin}
+  NAME: {type: STRING, desc: plugin name}
+  RESULT: {type: UINT32, desc: result of plugin unloading}
+  DURATION: {type: UINT32, desc: unloading duration } # Not supported, default value 0.
+
+PLUGIN_STATS:
+  __BASE: {type: STATISTIC, level: CRITICAL, tag: hiviewPlugin, desc: statistics of events handled by plugins}
+  NAME: {type: STRING, desc: plugin name}
+  AVG_TIME: {type: UINT32, desc: average time spent}
+  TOP_K_TIME: {type: UINT32, arrsize: 3, desc: K times that took the most time}
+  TOP_K_EVENT: {type: STRING, arrsize: 3, desc: K events that took the most time}
+  TOTAL: {type: UINT32, desc: total events}
+
+PLUGIN_FAULT:
+  __BASE: {type: FAULT, level: CRITICAL, tag: hiviewPlugin, desc: plugin fault}
+  NAME: {type: STRING, desc: plugin name}
+  REASON: {type: STRING, desc: reason of plugin fault}
+
+APP_USAGE:
+  __BASE: {type: STATISTIC, level: CRITICAL, tag: usageStats, desc: application usage statistics}
+  PACKAGE: {type: STRING, desc: package name}
+  VERSION: {type: STRING, desc: version name}
+  USAGE: {type: UINT32, desc: usage duration}
+  DATE: {type: STRING, desc: usage date}
+  TOTAL_START_NUM: {type: UINT32, desc: total start number}
+
+SYS_USAGE:
+  __BASE: {type: STATISTIC, level: CRITICAL, tag: usageStats, desc: system usage statistics}
+  START: {type: UINT64, desc: start time}
+  END: {type: UINT64, desc: end time}
+  POWER: {type: UINT64, desc: power_on duration}
+  RUNNING: {type: UINT64, desc: running duration}
+
+PROFILE_STAT:
+  __BASE: {type: STATISTIC, level: CRITICAL, desc: hisysevent profile status}
+  MAX_TOTAL_COUNT: {type: UINT32, desc: maximum total count}
+  MAX_TOTAL_SIZE: {type: UINT32, desc: maximum total size}
+  DOMAINS: {type: STRING, arrsize: 100, desc: measured domains}
+  DOMAIN_DETAIL: {type: UINT32, arrsize: 100, desc: domain detail}
+  TOTAL_COUNT: {type: UINT32, desc: total count}
+  TOTAL_SIZE: {type: UINT32, desc: total size}
+  BREAK_COUNT: {type: UINT8, desc: break count}
+  BREAK_DURATION: {type: UINT64, desc: break duration}
+  MIN_SPEED: {type: UINT32, desc: minimum speed}
+  MAX_SPEED: {type: UINT32, desc: maximum speed}
+  REAL_COUNT: {type: UINT32, arrsize: 10, desc: real time cost distribution}
+  PROCESS_COUNT: {type: UINT32, arrsize: 10, desc: process time cost distribution}
+  WAIT_COUNT: {type: UINT32, arrsize: 10, desc: wait count cost distribution}
+  FINISHED_COUNT: {type: UINT32, desc: finished count}
+  OVER_REAL_COUNT: {type: UINT32, desc: over real time benchmark count}
+  OVER_REAL_PCT: {type: UINT32, desc: over real time benchmark percentage}
+  OVER_PROC_COUNT: {type: UINT32, desc: over process time cost benchmark count}
+  OVER_PROC_PCT: {type: UINT32, desc: over process time cost percentage}
+
+BREAK:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: hisysevent is break}
+  TOTAL_COUNT: {type: UINT32, desc: total count}
+  TOTAL_SIZE: {type: UINT32, desc: total size}
+  REAL_SPEED: {type: UINT32, desc: real time of handle hisysevent each second}
+  PROC_SPEED: {type: UINT32, desc: process time of handle hisysevent each second}
+  AVG_REAL_TIME: {type: DOUBLE, desc: average real time cost}
+  AVG_PROC_TIME: {type: DOUBLE, desc: average process time cost}
+  AVG_WAIT_TIME: {type: DOUBLE, desc: average wait time cost}
+  TOP_EVENT: {type: STRING, arrsize: 3, desc: topN events}
+  TOP_EVENT_COUNT: {type: UINT32, arrsize: 3, desc: count of topN events}
+  TOP_DOMAIN: {type: STRING, arrsize: 3, desc: topN domains}
+  TOP_DOMAIN_COUNT: {type: UINT32, arrsize: 3, desc: count of topN domains}
+
+RECOVER:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: hisysevent is recover}
+  DURATION: {type: INT64, desc: recover after break duration}
+
+XPOWER_STACKTRACE:
+  __BASE: {type: STATISTIC, level: MINOR, tag: PowerStats, desc: stack trace info}
+  TAGNAME: {type: STRING,  desc: tag name}
+  INFO: {type: STRING,  desc: additional information}
+  STACKTRACE: {type: STRING,  desc: stack data}
+
+CPU_COLLECTION:
+  __BASE: {type: FAULT, level: MINOR, desc: HiView CPU Unified Collection Event}
+
+EVENTS_DAILY:
+  __BASE: {type: FAULT, level: MINOR, desc: HiView daily logging data collection}
+  DATE: {type: STRING, desc: date when logging data is collected}
+
+DUMP_CATCHER_STATS:
+  __BASE: {type: STATISTIC, level: MINOR, tag: HivewDFX, desc: dumpcatcher stats}
+  CALLER_PROCESS_NAME: {type: STRING, desc: caller process name}
+  CALLER_FUNC_NAME: {type: STRING, desc: caller elf name}
+  TARGET_PROCESS_NAME: {type: STRING, desc: target process name}
+  PID: {type: UINT32, desc: target process id}
+  RESULT: {type: UINT32, desc: result code}
+  SUMMARY: {type: STRING, desc: dumpcatcher msg if result is failure}
+  REQUEST_TIME: {type: UINT32, desc: the time when calling dumpcatcher}
+  OVERALL_TIME: {type: UINT32, desc: overall time of dumpcatacher}
+  SIGNAL_TIME: {type: UINT32, desc: from faultloggerd request to target signal handler}
+  DUMPER_START_TIME: {type: UINT32, desc: from signal handler to the entry of processdump}
+  UNWIND_TIME: {type: UINT32, desc: from signal handler to the entry of processdump}
+
+DEL_EXPORTED_EVENTS:
+  __BASE: {type: STATISTIC, level: MINOR, desc: record the periodic deletion of exported event files, preserve: true}
+  MODULE_NAME: {type: STRING, desc: name of the module which export the deleted event files}
+  BEGIN_SEQS: {type: INT64, arrsize: 100, desc: list consists of sysevent begin sequence stored in all of the deleted event files}
+  END_SEQS: {type: INT64, arrsize: 100, desc: list consists of sysevent end sequence stored in all of the deleted event files}
+  EVENT_NAMES: {type: STRING, arrsize: 100, desc: list consists of sysevent name stored in all of the deleted event files}
+
+READ_UNEXPECTED_SEQ:
+  __BASE: {type: FAULT, level: CRITICAL, desc: event for reading unexpected sequence from file , preserve: true}
+  SEQ: {type: INT64, desc: sequence read from event sequence file}
+  SEQ_BACKUP: {type: INT64, desc: sequence read from event sequence backup file}
+  MAX_SEQ_FROM_DB_FILE: {type: INT64, desc: maximum sequence read from local db file}
+  IS_SEQ_FILE_EXIST: {type: BOOL, desc: tag for whether event sequence file is exist}
+  IS_SEQ_BACKUP_FILE_EXIST: {type: BOOL, desc: tag for whether event sequence backup file is exist}
+
+SYSEVENT_LISTENER_ANALYSIS:
+  __BASE: {type: STATISTIC, level: CRITICAL, desc: system event subscription maintenance event, preserve: true}
+  USER_ID: {type: INT32, desc: subscriber uid}
+  LISTENER_NAME: {type: STRING, desc: subscriber process name or package name}
+  LISTENER_MATCH_COUNT: {type: INT32, desc: matching status of AddListener and RemoveListener}
+  ADDLISTENER_SUCC_COUNT: {type: INT32, desc: number of AddListener success}
+  ADDLISTENER_FAULT_COUNT: {type: INT32, desc: number of AddListener failures}
+  REMOVELISTENER_FAULT_COUNT: {type: INT32, desc: number of RemoveListener failures}
+  EVENT_RULE: {type: STRING, desc: subscribed event rule}
+
+EVENT_COUNT_OVER_THRESHOLD:
+  __BASE: {type: STATISTIC, level: CRITICAL, desc: system events cached in hiview exceeds the threshold, preserve: true}
+  TOP5_DOMAIN_NAME: {type: STRING, arrsize: 5, desc: top5 domain name}
+  TOP5_DOMAIN_EVENT_NUM: {type: INT32, arrsize: 5, desc: top5 domain name event}
+  TOTAL_CACHED_EVENTS: {type: INT32, desc: total cached events}

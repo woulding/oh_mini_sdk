@@ -1,0 +1,284 @@
+[
+    {
+        "name": "thirdparty:libssl_shared",
+        "so_file_name": "libssl_openssl.z.so",
+        "path": "//third_party/openssl:libssl_shared",
+        "headers": []
+    },
+    {
+        "name": "hdf:libmap_data_sequenceable_1.0",
+        "so_file_name": "libmap_data_sequenceable_1.0.z.so",
+        "path": "//drivers/interface/camera/sequenceable/map_data:libmap_data_sequenceable_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libpower_proxy_1.2",
+        "so_file_name": "libpower_proxy_1.2.z.so",
+        "path": "//drivers/interface/power/v1_2:libpower_proxy_1.2",
+        "headers": []
+    },
+    {
+        "name": "hdf:metadata",
+        "so_file_name": "libmetadata.z.so",
+        "path": "//drivers/interface/camera/metadata:metadata",
+        "headers": []
+    },
+    {
+        "name": "hdf:libdisplay_buffer_hdi_impl_v1_1",
+        "so_file_name": "libdisplay_buffer_hdi_impl_v1_1.z.so",
+        "path": "//drivers/interface/display/buffer/v1_1:libdisplay_buffer_hdi_impl_v1_1",
+        "headers": []
+    },
+    {
+        "name": "security:libaccesstoken_sdk",
+        "so_file_name": "libaccesstoken_sdk.z.so",
+        "path": "//base/security/access_token/interfaces/innerkits/accesstoken:libaccesstoken_sdk",
+        "headers": []
+    },
+    {
+        "name": "hdf:libsensor_proxy_3.0",
+        "so_file_name": "libsensor_proxy_3.0.z.so",
+        "path": "//drivers/interface/sensor/v3_0:libsensor_proxy_3.0",
+        "headers": []
+    },
+    {
+        "name": "communication:btcommon",
+        "so_file_name": "libbtcommon.z.so",
+        "path": "//foundation/communication/bluetooth/frameworks/inner:btcommon",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:libexif",
+        "so_file_name": "libexif.z.so",
+        "path": "//third_party/libexif:libexif",
+        "headers": []
+    },
+    {
+        "name": "security:cert_manager_sdk",
+        "so_file_name": "libcert_manager_sdk.z.so",
+        "path": "//base/security/certificate_manager/interfaces/innerkits/cert_manager_standard/main:cert_manager_sdk",
+        "headers": []
+    },
+    {
+        "name": "commonlibrary:ylong_runtime",
+        "so_file_name": "libylong_runtime.dylib.so",
+        "path": "//commonlibrary/rust/ylong_runtime/ylong_runtime:ylong_runtime",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:libxml2",
+        "so_file_name": "libxml2.z.so",
+        "path": "//third_party/libxml2:libxml2",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:mbedtls_shared",
+        "so_file_name": "libmbedtls.z.so",
+        "path": "//third_party/mbedtls:mbedtls_shared",
+        "headers": []
+    },
+    {
+        "name": "hdf:libbuffer_producer_sequenceable_1.0",
+        "so_file_name": "libbuffer_producer_sequenceable_1.0.z.so",
+        "path": "//drivers/interface/camera/sequenceable/buffer_producer:libbuffer_producer_sequenceable_1.0",
+        "headers": []
+    },
+    {
+        "name": "build:libclang_rt.ubsan_standalone.so",
+        "so_file_name": "libclang_rt.ubsan_standalone.so",
+        "path": "//build/common/ubsan:libclang_rt.ubsan_standalone.so",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:libnl_share",
+        "so_file_name": "libnl_share.z.so",
+        "path": "//third_party/libnl:libnl_share",
+        "headers": []
+    },
+    {
+        "name": "hdf:libbuffer_handle_sequenceable_1.0",
+        "so_file_name": "libbuffer_handle_sequenceable_1.0.z.so",
+        "path": "//drivers/interface/camera/sequenceable/buffer_handle:libbuffer_handle_sequenceable_1.0",
+        "headers": []
+    },
+    {
+        "name": "security:libservice_checker",
+        "so_file_name": "libservice_checker.z.so",
+        "path": "//base/security/selinux_adapter:libservice_checker",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:libdrm",
+        "so_file_name": "libdrm.so",
+        "path": "//third_party/libdrm:libdrm",
+        "headers": []
+    },
+    {
+        "name": "hdf:libaudio_proxy_5.0",
+        "so_file_name": "libaudio_proxy_5.0.z.so",
+        "path": "//drivers/interface/audio/v5_0:libaudio_proxy_5.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libpower_proxy_1.3",
+        "so_file_name": "libpower_proxy_1.3.z.so",
+        "path": "//drivers/interface/power/v1_3:libpower_proxy_1.3",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:libpng",
+        "so_file_name": "libpng.z.so",
+        "path": "//third_party/libpng:libpng",
+        "headers": []
+    },
+    {
+        "name": "hdf:libdisplay_buffer_hdi_impl",
+        "so_file_name": "libdisplay_buffer_hdi_impl.z.so",
+        "path": "//drivers/interface/display/buffer/v1_0:libdisplay_buffer_hdi_impl",
+        "headers": []
+    },
+    {
+        "name": "hiviewdfx:xperfservice_client",
+        "so_file_name": "libxperfservice_client.z.so",
+        "path": "//base/hiviewdfx/hiview/plugins/performance/xperf_service/interfaces/inner_api/xperfservice_client:xperfservice_client",
+        "headers": []
+    },
+    {
+        "name": "resourceschedule:socperf_client",
+        "so_file_name": "libsocperf_client.z.so",
+        "path": "//foundation/resourceschedule/soc_perf/interfaces/inner_api/socperf_client:socperf_client",
+        "headers": []
+    },
+    {
+        "name": "hdf:libpower_proxy_1.0",
+        "so_file_name": "libpower_proxy_1.0.z.so",
+        "path": "//drivers/interface/power/v1_0:libpower_proxy_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libzcodec_proxy_1.0",
+        "so_file_name": "libzcodec_proxy_1.0.z.so",
+        "path": "//drivers/interface/codec/zcodec/v1_0:libzcodec_proxy_1.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libserials_proxy_1.0",
+        "so_file_name": "libserials_proxy_1.0.z.so",
+        "path": "//drivers/interface/serials/v1_0:libserials_proxy_1.0",
+        "headers": []
+    },
+    {
+        "name": "developtools:libffrt_profiler",
+        "so_file_name": "libffrt_profiler.z.so",
+        "path": "//developtools/profiler/device/plugins/ffrt_profiler/client:libffrt_profiler",
+        "headers": []
+    },
+    {
+        "name": "security:libhukssdk",
+        "so_file_name": "libhukssdk.z.so",
+        "path": "//base/security/huks/interfaces/inner_api/huks_standard/main:libhukssdk",
+        "headers": []
+    },
+    {
+        "name": "security:libhukschipsetsdk",
+        "so_file_name": "libhukschipsetsdk.z.so",
+        "path": "//base/security/huks/interfaces/inner_api/huks_standard/main:libhukschipsetsdk",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:curl_shared",
+        "so_file_name": "libcurl_shared.z.so",
+        "path": "//third_party/curl:curl_shared",
+        "headers": []
+    },
+    {
+        "name": "hdf:libdisplay_buffer_hdi_impl_v1_3",
+        "so_file_name": "libdisplay_buffer_hdi_impl_v1_3.z.so",
+        "path": "//drivers/interface/display/buffer/v1_3:libdisplay_buffer_hdi_impl_v1_3",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:libohosffmpeg",
+        "so_file_name": "libohosffmpeg.z.so",
+        "path": "//third_party/ffmpeg:libohosffmpeg",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:turbojpeg",
+        "so_file_name": "libturbojpeg.z.so",
+        "path": "//third_party/libjpeg-turbo:turbojpeg",
+        "headers": []
+    },
+    {
+        "name": "pulseaudio:pulsecommon",
+        "so_file_name": "libpulsecommon.z.so",
+        "path": "//third_party/pulseaudio/ohosbuild/src:pulsecommon",
+        "headers": []
+    },
+    {
+        "name": "pulseaudio:pulsecore",
+        "so_file_name": "libpulsecore.z.so",
+        "path": "//third_party/pulseaudio/ohosbuild/src/pulsecore:pulsecore",
+        "headers": []
+    },
+    {
+        "name": "pulseaudio:pulse",
+        "so_file_name": "libpulse.z.so",
+        "path": "//third_party/pulseaudio/ohosbuild/src/pulse:pulse",
+        "headers": []
+    },
+    {
+    	"name": "drivers_interface_sensor:libsensor_proxy_3.1",
+	    "so_file_name": "libsensor_proxy_3.1.z.so",
+    	"path": "//drivers/interface/sensor/v3_1:libsensor_proxy_3.1",
+	    "headers": []
+    },
+    {
+        "name": "hdf:libaudio_proxy_6.0",
+        "so_file_name": "libaudio_proxy_6.0.z.so",
+        "path": "//drivers/interface/audio/v6_0:libaudio_proxy_6.0",
+        "headers": []
+    },
+    {
+        "name": "hdf:libaudio_proxy_6.1",
+        "so_file_name": "libaudio_proxy_6.1.z.so",
+        "path": "//drivers/interface/audio/v6_1:libaudio_proxy_6.1",
+        "headers": []
+    },
+    {
+        "name": "hdf:libsensor_convert_proxy_1.0.z.so",
+        "so_file_name": "libsensor_convert_proxy_1.0.z.so",
+        "path": "//drivers/interface/sensor/convert/v1_0:libsensor_convert_proxy_1.0.z.so",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:openhitls_bsl",
+        "so_file_name": "libopenhitls_bsl.z.so",
+        "path": "//third_party/openhitls:openhitls_bsl",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:openhitls_crypto",
+        "so_file_name": "libopenhitls_crypto.z.so",
+        "path": "//third_party/openhitls:openhitls_crypto",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:openhitls_pki",
+        "so_file_name": "libopenhitls_pki.z.so",
+        "path": "//third_party/openhitls:openhitls_pki",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:openhitls_tls",
+        "so_file_name": "libopenhitls_tls.z.so",
+        "path": "//third_party/openhitls:openhitls_tls",
+        "headers": []
+    },
+    {
+        "name": "thirdparty:openhitls_auth",
+        "so_file_name": "libopenhitls_auth.z.so",
+        "path": "//third_party/openhitls:openhitls_auth",
+        "headers": []
+    }
+]

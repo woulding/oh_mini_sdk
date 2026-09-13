@@ -1,0 +1,419 @@
+/*
+ * Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_IP2P_SERVICE_H
+#define OHOS_IP2P_SERVICE_H
+
+#include "wifi_errcode.h"
+#include "wifi_msg.h"
+#include "ip2p_service_callbacks.h"
+#include "wifi_hid2d_msg.h"
+#include "wifi_ap_msg.h"
+#include "ienhance_service.h"
+
+namespace OHOS {
+namespace Wifi {
+class IP2pService {
+public:
+    /**
+     * @Description Destroy the IP2pService object.
+     */
+    virtual ~IP2pService() = default;
+
+    /**
+     * @Description - The interface of enable p2p.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode EnableP2p() = 0;
+
+    /**
+     * @Description - The interface of disable p2p.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode DisableP2p() = 0;
+
+    /**
+     * @Description - The interface of start discover peers.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode DiscoverDevices() = 0;
+
+    /**
+     * @Description - The interface of stop discover peers.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode StopDiscoverDevices() = 0;
+
+    /**
+     * @Description - The interface of start discover services.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode DiscoverServices() = 0;
+
+    /**
+     * @Description - The interface of stop discover services.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode StopDiscoverServices() = 0;
+
+    /**
+     * @Description - The interface of add local p2p service.
+     * @param  srvInfo - information of service.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode PutLocalP2pService(const WifiP2pServiceInfo &srvInfo) = 0;
+
+    /**
+     * @Description - The interface of delete local p2p service.
+     * @param  srvInfo - information of service.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode DeleteLocalP2pService(const WifiP2pServiceInfo &srvInfo) = 0;
+
+    /**
+     * @Description - The interface of add service request.
+     * @param  device - target device information.
+     * @param  request - request information.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode RequestService(const WifiP2pDevice &device, const WifiP2pServiceRequest &request) = 0;
+
+    /**
+     * @Description - The interface of start p2p listen(milliseconds).
+     * @param  period - time of period.
+     * @param  interval - time of interval.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode StartP2pListen(int period, int interval) = 0;
+
+    /**
+     * @Description - The interface of stop p2p listen.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode StopP2pListen() = 0;
+
+    /**
+     * @DescriptionCreate - The interface of create group.
+     * @param  config - configure of group.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode CreateGroup(const WifiP2pConfig &config) = 0;
+
+    /**
+     * @Description - The interface of remove current group.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode RemoveGroup() = 0;
+
+    /**
+     * @Description Remove a P2P client of current group.
+     *
+     * @param deviceMac - client deviceMac address
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode RemoveGroupClient(const GcInfo &info) = 0;
+
+    /**
+     * @Description - The interface of delete a saved group.
+     * @param  group - information of group.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode DeleteGroup(const WifiP2pGroupInfo &group) = 0;
+
+    /**
+     * @Description - The interface of p2p connect.
+     * @param  config - configure of connect.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode P2pConnect(const WifiP2pConfig &config) = 0;
+
+    /**
+     * @Description - The interface of canceling a p2p connection.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode P2pCancelConnect() = 0;
+    /**
+     * @Description - Set this device name.
+     *
+     * @param devName - specified device name
+     * @return ErrCode
+     */
+    virtual ErrCode SetP2pDeviceName(const std::string &devName) = 0;
+    /**
+     * @Description - The interface of query p2p information like the group state,device information and ip address.
+     * @param  linkedInfo - struct WifiP2pLinkedInfo.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode QueryP2pLinkedInfo(WifiP2pLinkedInfo &linkedInfo) = 0;
+
+    /**
+     * @DescriptionGet - The interface of get current group information.
+     * @param  group - struct WifiP2pGroupInfo.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode GetCurrentGroup(WifiP2pGroupInfo &group) = 0;
+
+    /**
+     * @Description - The interface of get p2p running status.
+     * @param  status - information of status.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode GetP2pEnableStatus(int &status) = 0;
+
+    /**
+     * @Description - The interface of get p2p discover status.
+     * @param  status - information of status.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode GetP2pDiscoverStatus(int &status) = 0;
+
+    /**
+     * @Description - The interface of get p2p connected status.
+     * @param  status - information of status.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode GetP2pConnectedStatus(int &status) = 0;
+
+    /**
+     * @Description - The interface of query p2p devices information.
+     * @param  devices - information of devices.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode QueryP2pDevices(std::vector<WifiP2pDevice> &devices) = 0;
+
+    /**
+     * @Description - Query the information about own device.
+     * @param  device - own device
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode QueryP2pLocalDevice(WifiP2pDevice &device) = 0;
+
+    /**
+     * @Description - The interface of query p2p group information.
+     * @param  groups - information of groups.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode QueryP2pGroups(std::vector<WifiP2pGroupInfo> &groups) = 0;
+
+    /**
+     * @Description - The interface of query p2p services information.
+     * @param  services - information of services.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode QueryP2pServices(std::vector<WifiP2pServiceInfo> &services) = 0;
+
+    /**
+     * @Description - The interface of register p2p service callbacks,
+     * @param  callbacks - information of callbacks.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode RegisterP2pServiceCallbacks(const IP2pServiceCallbacks &callbacks) = 0;
+
+    /**
+     * @Description - The interface of unregister p2p service callbacks,
+     * @param  callbacks - information of callbacks.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode UnRegisterP2pServiceCallbacks(const IP2pServiceCallbacks &callbacks) = 0;
+
+    /**
+     * @Description set p2p wifi display info
+     *
+     * @param wfdInfo - wifi display info
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode SetP2pWfdInfo(const WifiP2pWfdInfo &wfdInfo) = 0;
+
+    /**
+     * @Description Create hid2d group, used on the GO side.
+     *
+     * @param frequency - frequency
+     * @param type - frequency type
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode Hid2dCreateGroup(const int frequency, FreqType type) = 0;
+
+    /**
+     * @Description Connect to a specified group using hid2d, used on the GC side.
+     *
+     * @param config - connection parameters
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode Hid2dConnect(const Hid2dConnectConfig& config) = 0;
+
+    /**
+     * @Description Set self config info
+     *
+     * @param gcMac - gc mac address
+     * @param ipAddr - allocated ip address
+     * @return ErrCode - operate result
+     */
+    virtual ErrCode Hid2dRequestGcIp(const std::string& gcMac, std::string& ipAddr) = 0;
+
+    /**
+     * @Description Increase the reference count of the hid2d service.
+     *
+     * @param callingUid - the UID of caller
+     */
+    virtual void IncreaseSharedLink(int callingUid) = 0;
+
+    /**
+     * @Description Decrease the reference count of the hid2d service.
+     *
+     * @param callingUid - the UID of caller
+     */
+    virtual void DecreaseSharedLink(int callingUid) = 0;
+
+    /**
+     * @Description Handle the exception of upper-layer business.
+     *
+     * @param systemAbilityId - systemAbilityId of upper-layer business.
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode HandleBusinessSAException(int systemAbilityId) = 0;
+
+    /**
+     * @Description - Get P2P recommended channel.
+     *
+     * @return - int - Recommended channel
+     */
+    virtual int GetP2pRecommendChannel(void) = 0;
+
+    /**
+     * @Description Set the scene of upper layer
+     *
+     * @param ifName - interface name
+     * @param scene - scene
+     * @return ErrCode - operate result
+     */
+    virtual ErrCode Hid2dSetUpperScene(const std::string& ifName, const Hid2dUpperScene& scene) = 0;
+
+    /**
+     * @Description Monitor the wifi configuration change
+     *
+     * @return ErrCode - operate result
+     */
+    virtual ErrCode MonitorCfgChange(void) = 0;
+
+    /**
+     * @Description Remove a P2P Group.
+     *
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode DiscoverPeers(int32_t channelid) = 0;
+
+    /**
+     * @Description Remove a P2P Group.
+     *
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode DisableRandomMac(int setmode) = 0;
+
+    /**
+     * @Description Set gc ip infomation
+     *
+     * @return ErrCode - operate result
+     */
+    virtual ErrCode SetGcIpAddress(const IpAddrInfo& ipInfo) = 0;
+
+    /**
+     * @Description create rpt group
+     *
+     * @return ErrCode - operate result
+     */
+    virtual ErrCode CreateRptGroup(const WifiP2pConfig &config) = 0;
+
+    /**
+     * @Description get station list of rpt
+     *
+     * @return ErrCode - operate result
+     */
+    virtual ErrCode GetRptStationsList(std::vector<StationInfo> &result) = 0;
+
+    /**
+     * @Description Set EnhanceService to p2p service
+     *
+     * @param enhanceService IEnhanceService object
+     * @return success: WIFI_OPT_SUCCESS, failed: WIFI_OPT_FAILED
+     */
+    virtual ErrCode SetEnhanceService(IEnhanceService* enhanceService) = 0;
+
+    /**
+     * @Description Notify user accept result to p2p service
+     *
+     * @param isAccept if user accept to projection screen
+     * @param inputPinCode if user accept to projection screen
+     * @return success: WIFI_OPT_SUCCESS, failed: WIFI_OPT_FAILED
+     */
+    virtual void NotifyWscDialogConfirmResult(bool isAccept, const std::string& inputPinCode) = 0;
+
+     /**
+     * @Description Notify user accept result to p2p service
+     *
+     * @return success: WIFI_OPT_SUCCESS, failed: WIFI_OPT_FAILED
+     */
+    virtual void NotifyWscDisplayConfirmResult() = 0;
+
+#ifdef SUPPORT_P2P_UNTRUST_INVITATION
+    /**
+     * @Description Notify untrust dialog result to p2p service
+     *
+     * @param isAccept if user disallow untrust invitation
+     */
+     virtual void NotifyUntrustInvitationResult(bool isAccept) = 0;
+#endif
+
+    /**
+     * @Description Set miracast sink config
+     *
+     * @param config - miracast config
+     * @return success: WIFI_OPT_SUCCESS, failed: WIFI_OPT_FAILED
+     */
+    virtual ErrCode SetMiracastSinkConfig(const std::string& config) = 0;
+
+    /**
+     * @Description notify remote die for remove p2p group
+     *
+     * @param uid - remote's uid
+     * @return success: WIFI_OPT_SUCCESS, failed: WIFI_OPT_FAILED
+     */
+    virtual ErrCode NotifyRemoteDie(int uid) = 0;
+
+    /**
+     * @Description Set p2p high perf mode
+     *
+     * @param isEnable - enable high perf mode or not
+     * @return success: WIFI_OPT_SUCCESS, failed: WIFI_OPT_FAILED
+     */
+    virtual ErrCode SetP2pHighPerf(bool isEnable) = 0;
+
+    /**
+     * @Description Set p2p group type
+     *
+     * @param groupType - set group keepalive or not
+     * @return ErrCode - operation result
+     */
+    virtual ErrCode Hid2dSetGroupType(GroupLiveType groupType) = 0;
+
+    /**
+     * @Description Handle screen state changed event
+     * @param screenState - MODE_STATE_OPEN (screen on)/MODE_STATE_CLOSE (Screen off)
+     */
+    virtual void OnScreenStateChanged(int screenState) = 0;
+};
+} // namespace Wifi
+} // namespace OHOS
+
+#endif  // OHOS_IP2P_SERVICE_H

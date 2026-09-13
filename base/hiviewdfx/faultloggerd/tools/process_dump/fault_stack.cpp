@@ -1,0 +1,234 @@
+/*
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "decorative_dump_info.h"
+
+#include <algorithm>
+#include <csignal>
+#include <sys/ptrace.h>
+#include <sys/stat.h>
+
+#include "dfx_buffer_writer.h"
+#include "dfx_elf.h"
+#include "dfx_log.h"
+#include "dfx_util.h"
+#include "dump_utils.h"
+#include "process_dump_config.h"
+#include "thread_context.h"
+#include "cppcrash_info_collector.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+REGISTER_DUMP_INFO_CLASS(FaultStack);
+
+void FaultStack::Collect(DfxProcess& process, const ProcessDumpRequest& request, Unwinder& unwinder)
+{
+    std::string prefix = "FaultStack:\n";
+    CollectStackInfo(process.GetKeyThread()->GetThreadInfo().nsTid, process.GetKeyThread()->GetFrames());
+    if (blocks_.empty()) {
+        return;
+    }
+    uintptr_t end = 0;
+    uintptr_t stackStartAddr = blocks_.at(0).startAddr;
+    for (const auto& block : blocks_) {
+        if (end != 0 && end < block.startAddr) {
+            faultStackStr_ += "    ...\n";
+        }
+        end = PrintMemoryBlock(block, stackStartAddr);
+    }
+    if (ProcessDumpConfig::GetInstance().GetConfig().simplifyVmaPrinting ||
+        process.GetCrashLogConfig().simplifyVmaPrinting) {
+        std::set<uintptr_t> memoryValues;
+        GetMemoryValues(memoryValues);
+        process.SetMemoryValues(memoryValues);
+    }
+    CppCrashInfoCollector::Instance().SetFaultStack(faultStackStr_ + "\n");
+    faultStackStr_ = prefix + faultStackStr_;
+}
+
+void FaultStack::Print(DfxProcess& process, const ProcessDumpRequest& request, Unwinder& unwinder)
+{
+    DecorativeDumpInfo::Print(process, request, unwinder);
+    DfxBufferWriter::GetInstance().WriteMsg(faultStackStr_);
+}
+
+const std::vector<uintptr_t>& FaultStack::GetStackValues()
+{
+    for (const auto& block : blocks_) {
+        for (const auto& value : block.content) {
+            stackValues_.emplace_back(StripPac(value, 0));
+        }
+    }
+    return stackValues_;
+}
+
+void FaultStack::GetMemoryValues(std::set<uintptr_t>& memoryValues)
+{
+    DecorativeDumpInfo::GetMemoryValues(memoryValues);
+    for (const auto& block : blocks_) {
+        for (const auto& value : block.content) {
+            memoryValues.emplace(StripPac(value, 0));
+        }
+    }
+}
+
+uintptr_t FaultStack::AdjustAndCreateMemoryBlock(pid_t tid, size_t index, uintptr_t prevSp,
+                                                 uintptr_t prevEndAddr, uintptr_t size)
+{
+    uintptr_t lowAddrLength = ProcessDumpConfig::GetInstance().GetConfig().faultStackLowAddrStep;
+    uintptr_t startAddr = prevSp - lowAddrLength * STEP;
+    if (prevEndAddr != 0 && startAddr <= prevEndAddr) {
+        startAddr = prevEndAddr;
+    } else {
+        size += lowAddrLength;
+    }
+
+    if (size == 0 || index == 0) {
+        return prevEndAddr;
+    }
+
+    std::string name = "sp" + std::to_string(index - 1);
+    MemoryBlockInfo blockInfo = {
+        .startAddr = startAddr,
+        .nameAddr = prevSp,
+        .size = size,
+        .name = name,
+    };
+    CreateMemoryBlock(tid, blockInfo);
+    blocks_.push_back(blockInfo);
+    return startAddr + size * STEP;
+}
+
+static bool IsSpecialMap(const std::string& mapName)
+{
+    // stack trace should end with libc or ffrt or */bin/*
+    if (mapName.find("ld-musl") != std::string::npos ||
+        mapName.find("ffrt") != std::string::npos ||
+        mapName.find("bin") != std::string::npos) {
+        return true;
+    }
+    return false;
+}
+
+void FaultStack::CollectStackInfo(pid_t tid, const std::vector<DfxFrame>& frames, bool needParseStack)
+{
+    if (frames.empty()) {
+        DFXLOGW("null frames.");
+        return;
+    }
+    size_t index = 1;
+    uintptr_t minAddr = 4096;
+    uintptr_t size = 0;
+    uintptr_t prevSp = 0;
+    uintptr_t prevEndAddr = 0;
+    uintptr_t highAddrLength = ProcessDumpConfig::GetInstance().GetConfig().faultStackHighAddrStep;
+    const uint64_t minFaultstackBytes = 1024;  // 1K
+    if (needParseStack) {
+        highAddrLength = 8192; // 8192 : 32k / STEP
+    }
+
+    auto firstFrame = frames.at(0);
+    uintptr_t firstSp = static_cast<uintptr_t>(firstFrame.sp);
+    prevSp = firstSp;
+    constexpr size_t maxFaultStackSz = 4;
+    for (index = 1; index < frames.size(); index++) {
+        if ((index > maxFaultStackSz) && (prevEndAddr - firstSp >= minFaultstackBytes)) {
+            break;
+        }
+
+        auto frame = frames.at(index);
+        if ((frame == frames.back()) && !IsSpecialMap(frame.mapName)) {
+            break;
+        }
+        uintptr_t curSp = static_cast<uintptr_t>(frame.sp);
+
+        size = 0;
+        if (curSp > prevSp) {
+            size = std::min(highAddrLength, static_cast<uintptr_t>((curSp - prevSp) / STEP));
+        } else {
+            break;
+        }
+        if ((index > maxFaultStackSz) && (size * STEP + prevEndAddr > minFaultstackBytes + firstSp)) {
+            size = (firstSp + minFaultstackBytes - prevEndAddr + STEP) / STEP;
+        }
+
+        prevEndAddr = AdjustAndCreateMemoryBlock(tid, index, prevSp, prevEndAddr, size);
+        prevSp = curSp;
+    }
+
+    if ((blocks_.size() < maxFaultStackSz) && (prevSp > minAddr)) {
+        size = highAddrLength;
+        prevEndAddr = AdjustAndCreateMemoryBlock(tid, index, prevSp, prevEndAddr, size);
+    }
+
+    const uintptr_t minCorruptedStackSz = 1024;
+    CreateBlockForCorruptedStack(tid, frames, prevEndAddr, minCorruptedStackSz);
+}
+
+bool FaultStack::CreateBlockForCorruptedStack(pid_t tid, const std::vector<DfxFrame>& frames, uintptr_t prevEndAddr,
+                                              uintptr_t size)
+{
+    const auto& frame = frames.back();
+    if (IsSpecialMap(frame.mapName)) {
+        return false;
+    }
+
+    AdjustAndCreateMemoryBlock(tid, frame.index, frame.sp, prevEndAddr, size);
+    return true;
+}
+
+uintptr_t FaultStack::PrintMemoryBlock(const MemoryBlockInfo& info, uintptr_t stackStartAddr)
+{
+    uintptr_t targetAddr = info.startAddr;
+    for (uint64_t i = 0; i < static_cast<uint64_t>(info.content.size()); i++) {
+        if (targetAddr == info.nameAddr) {
+                faultStackStr_ += StringPrintf("%s:" PRINT_FORMAT " " PRINT_FORMAT "\n",
+                info.name.c_str(),
+                targetAddr,
+                info.content.at(i));
+        } else {
+                faultStackStr_ += StringPrintf("    " PRINT_FORMAT " " PRINT_FORMAT "\n",
+                targetAddr,
+                info.content.at(i));
+        }
+        if (targetAddr - stackStartAddr > STEP * ProcessDumpConfig::GetInstance().GetConfig().faultStackHighAddrStep) {
+            break;
+        }
+        targetAddr += STEP;
+    }
+    return targetAddr;
+}
+
+void FaultStack::CreateMemoryBlock(pid_t tid, MemoryBlockInfo& blockInfo) const
+{
+    uintptr_t targetAddr = blockInfo.startAddr;
+    for (uint64_t i = 0; i < static_cast<uint64_t>(blockInfo.size); i++) {
+        uintptr_t value = 0;
+        bool ret = false;
+        if (isLite_) {
+            ret = LocalThreadContextMix::GetInstance().AccessMem(targetAddr, &value) == 0;
+        } else {
+            ret = DumpUtils::ReadTargetMemory(tid, targetAddr, value);
+        }
+        if (ret) {
+            blockInfo.content.push_back(value);
+        } else {
+            blockInfo.content.push_back(-1);
+        }
+        targetAddr += STEP;
+    }
+}
+} // namespace HiviewDFX
+} // namespace OHOS

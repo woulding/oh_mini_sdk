@@ -1,0 +1,116 @@
+# Copyright (C) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+
+declare_args() {
+  ipc_rust_enable = true
+  if (defined(global_parts_info) &&
+  !defined(global_parts_info.thirdparty_rust_cxx)) {
+    ipc_rust_enable = false
+  }
+}
+
+if (ipc_rust_enable) {
+  rust_cxx("ipc_cxx_gen") {
+    sources = [
+      "src/parcel/wrapper.rs",
+      "src/remote/wrapper.rs",
+      "src/skeleton.rs",
+    ]
+  }
+}
+
+config("libipc_c_private_config") {
+  cflags_cc = [ "-O2" ]
+}
+
+if (ipc_rust_enable) {
+  SUBSYSTEM_DIR = "//foundation/communication/ipc"
+
+  ohos_static_library("ipc_rust_cxx") {
+    branch_protector_ret = "pac_ret"
+    sources = [
+      "src/cxx/parcel_wrapper.cpp",
+      "src/cxx/remote_object_wrapper.cpp",
+      "src/cxx/skeleton_wrapper.cpp",
+    ]
+    sources += get_target_outputs(":ipc_cxx_gen")
+
+    include_dirs = [
+      "include",
+      "${target_gen_dir}/src",
+    ]
+
+    configs = [ ":libipc_c_private_config" ]
+
+    deps = [
+      ":ipc_cxx_gen",
+      "$SUBSYSTEM_DIR/interfaces/innerkits/ipc_single:ipc_single",
+    ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "hilog:libhilog",
+      "rust_cxx:cxx_cppdeps",
+    ]
+
+    if (is_standard_system) {
+      external_deps += [ "c_utils:utils_rust" ]
+    }
+
+    subsystem_name = "communication"
+    part_name = "ipc"
+  }
+
+  ohos_rust_shared_library("ipc_rust") {
+    crate_name = "ipc"
+    edition = "2021"
+
+    sources = [ "src/lib.rs" ]
+
+    rustflags = [ "-Zstack-protector=all" ]
+
+    deps = [
+      ":ipc_rust_cxx",
+    ]
+
+    external_deps = [
+      "hilog:hilog_rust",
+      "ylong_runtime:ylong_runtime",
+      "rust_cxx:lib",
+    ]
+
+    if (is_standard_system) {
+      external_deps += [ "c_utils:utils_rust" ]
+    }
+
+    install_images = [ system_base_dir ]
+    subsystem_name = "communication"
+    part_name = "ipc"
+  }
+} else {
+  # Just to ensure that the vendor's compilation and build pass
+  static_library("ipc_rust") {
+    public_configs = [ ":libipc_c_private_config" ]
+  }
+  # Just to ensure that the vendor's compilation and build pass
+  static_library("ipc_rust_cxx") {
+    public_configs = [ ":libipc_c_private_config" ]
+  }
+}
+
+group("rust_ipc_component") {
+  deps = [ ":ipc_rust" ]
+}

@@ -1,0 +1,130 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+import("//base/hiviewdfx/hiview/plugins/performance/xperf_service/xperf_service.gni")
+
+if (hiview_enable_xperf_perfmonitor) {
+  config("xperf_perfmonitor_config") {
+    visibility = [ "*:*" ]
+
+    include_dirs = [
+      "common",
+      "common/event_builder",
+      "include",
+      "load_complete/include",
+    ]
+
+    cflags_cc = [
+      "-DENABLE_SCREEM",
+      "-fvisibility-inlines-hidden",
+      "-fvisibility=hidden",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-fno-asynchronous-unwind-tables",
+      "-fno-unwind-tables",
+      "-fstack-protector-strong",
+      "-fno-exceptions",
+      "-fno-rtti",
+      "-Os"
+    ]
+
+    ldflags = [
+    "-flto",
+    "-Wl,--gc-sections",
+    ]
+  }
+
+  config("xperf_perfmonitor_public_config") {
+    visibility = [ "*:*" ]
+
+    include_dirs = [ "interfaces/inner_api/include" ]
+  }
+}
+
+ohos_shared_library("libperfmonitor") {
+  if (hiview_enable_xperf_perfmonitor) {
+    part_name = "hiview"
+    subsystem_name = "hiviewdfx"
+
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      cfi_vcall_icall_only = true
+      boundary_sanitize = false
+      integer_overflow = false
+    }
+
+    sources = [
+      "common/perf_model.cpp",
+      "common/perf_trace.cpp",
+      "common/event_builder/xperf_event_builder.cpp",
+      "common/event_builder/xperf_event_reporter.cpp",
+      "interfaces/inner_api/src/perf_monitor_adapter.cpp",
+      "src/animator_monitor.cpp",
+      "src/input_monitor.cpp",
+      "src/jank_frame_monitor.cpp",
+      "src/perf_reporter.cpp",
+      "src/perf_utils.cpp",
+      "src/scene_monitor.cpp",
+      "src/white_block_monitor.cpp",
+      "src/surface_monitor.cpp",
+      "src/load_complete_monitor.cpp",
+      "load_complete/src/collect_states.cpp",
+      "load_complete/src/collect_strategy.cpp",
+    ]
+
+    configs = [ ":xperf_perfmonitor_config" ]
+
+    public_configs = [ ":xperf_perfmonitor_public_config" ]
+
+    defines = []
+
+    deps = [
+      "$hiview_base:hiviewbase",
+      "$xperfservice_client:xperfservice_client"
+    ]
+
+    external_deps = [
+      "eventhandler:libeventhandler",
+      "ffrt:libffrt",
+      "graphic_2d:librender_service_client",
+      "graphic_2d:librender_service_base",
+      "hisysevent:libhisysevent",
+      "hitrace:hitrace_meter",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "init:libbegetutil",
+      "samgr:samgr_proxy"
+    ]
+
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.resourceschedule_resource_schedule_service)) {
+      defines += [ "RESOURCE_SCHEDULE_SERVICE_ENABLE" ]
+      external_deps += [ "resource_schedule_service:ressched_client" ]
+    }
+  }
+}
+
+group("unittest") {
+  testonly = true
+  deps = []
+}
+
+group("moduletest") {
+  testonly = true
+  deps = []
+}

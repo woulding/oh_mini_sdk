@@ -1,0 +1,407 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("ucollection_source_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    "collector/inner_include",
+    "process/include",
+    "decorator/include",
+    "$hiview_interfaces/inner_api/unified_collection",
+    "$hiview_interfaces/inner_api/unified_collection/utility",
+    "$hiview_interfaces/inner_api/unified_collection/resource",
+  ]
+
+  if (hiview_unified_collector_ebpf_enable) {
+    include_dirs += [ "collector/impl/hiebpf" ]
+  } else {
+    include_dirs += [ "collector/empty_impl/hiebpf" ]
+  }
+
+  if (hiview_unified_collector_network_enable) {
+    include_dirs += [ "collector/impl/network" ]
+  } else {
+    include_dirs += [ "collector/empty_impl/network" ]
+  }
+
+  if (has_hiperf && hiview_unified_collector_perf_enable) {
+    include_dirs += [
+      "collector/impl/perf",
+      "collector/config"
+    ]
+  } else {
+    include_dirs += [ "collector/empty_impl/perf" ]
+  }
+
+  if (hiview_unified_collector_graphic_enable) {
+    include_dirs += [ "collector/impl/graphic" ]
+  } else {
+    include_dirs += [ "collector/empty_impl/graphic" ]
+  }
+
+  if (hiview_unified_collector_gpu_enable) {
+    include_dirs += [ "collector/impl/gpu" ]
+  } else {
+    include_dirs += [ "collector/empty_impl/gpu" ]
+  }
+
+  if (hiview_unified_collector_cpu_enable) {
+    include_dirs += [
+      "collector/impl/cpu/include",
+      "collector/impl/cpu/calculator/include",
+      "collector/impl/cpu/device_client/include",
+      "collector/impl/cpu/utils/include",
+    ]
+  } else {
+    include_dirs += [ "collector/empty_impl/cpu" ]
+  }
+
+  if (hiview_unified_collector_io_enable) {
+    include_dirs += [
+      "collector/impl/io",
+      "collector/impl/io/calculator/include",
+    ]
+  } else {
+    include_dirs += [ "collector/empty_impl/io" ]
+  }
+
+  if (hiview_unified_collector_thermal_enable) {
+    include_dirs += [ "collector/impl/thermal" ]
+  } else {
+    include_dirs += [ "collector/empty_impl/thermal" ]
+  }
+
+  if (hiview_unified_collector_memory_enable) {
+    include_dirs += [
+      "collector/impl/memory",
+      "collector/impl/memory/utils",
+    ]
+  } else {
+    include_dirs += [ "collector/empty_impl/memory" ]
+  }
+
+  if (hiview_unified_collector_hilog_enable) {
+    include_dirs += [ "collector/impl/hilog" ]
+  } else {
+    include_dirs += [ "collector/empty_impl/hilog" ]
+  }
+
+  if (hiview_unified_collector_wm_enable) {
+    include_dirs += [ "collector/impl/wm" ]
+  } else {
+    include_dirs += [ "collector/empty_impl/wm" ]
+  }
+
+  if (hiview_unified_collector_process_enable) {
+    include_dirs += [ "collector/impl/process" ]
+  } else {
+    include_dirs += [ "collector/empty_impl/process" ]
+  }
+
+  if (hiview_unified_collector_trace_enable) {
+    include_dirs += [
+      "collector/impl/trace/include",
+      "collector/impl/trace/strategy/include",
+    ]
+  } else {
+    include_dirs += [ "collector/empty_impl/trace" ]
+  }
+
+  defines = [ "PC_APP_STATE_COLLECT_ENABLE = $hiview_unified_collector_PC_app_state_collect_enable" ]
+}
+
+config("ucollection_test_config") {
+
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    "collector/inner_include",
+    "process/include",
+    "decorator/include",
+    "$hiview_interfaces/inner_api/unified_collection",
+    "$hiview_interfaces/inner_api/unified_collection/utility",
+    "$hiview_interfaces/inner_api/unified_collection/resource",
+  ]
+
+  include_dirs += [
+    "collector/empty_impl/cpu",
+    "collector/empty_impl/memory",
+  ]
+}
+
+ohos_source_set("ucollection_source") {
+  cflags_cc = [ "-Os" ]
+  branch_protector_ret = "pac_ret"
+
+  configs = [
+    ":ucollection_source_config",
+    "$hiview_base:logger_config",
+    "$hiview_base/event_report:hiview_event_report_config",
+  ]
+
+  public_configs = [ ":ucollection_source_config" ]
+
+  sources = [
+    "collector/common_util.cpp",
+    "decorator/decorator.cpp",
+    "decorator/decorator_util.cpp",
+    "decorator/unified_collection_stat.cpp",
+    "process/process_status.cpp",
+    "$hiview_interfaces/inner_api/unified_collection/utility/src/memory_collector.cpp",
+    "$hiview_interfaces/inner_api/unified_collection/utility/src/io_collector.cpp",
+  ]
+
+  deps = [ "$hiview_base:hiviewbase" ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_runtime:app_manager",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_single",
+    "samgr:samgr_proxy",
+    "ffrt:libffrt",
+  ]
+
+  defines = []
+
+  if (hiview_unified_collector_ebpf_enable) {
+    sources += [
+      "collector/impl/hiebpf/hiebpf_collector_impl.cpp",
+      "decorator/hiebpf_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_EBPF_ENABLE" ]
+  } else {
+    sources += [ "collector/empty_impl/hiebpf/hiebpf_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_network_enable) {
+    sources += [
+      "collector/impl/network/network_collector_impl.cpp",
+      "decorator/network_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_NETWORK_ENABLE" ]
+
+    if (is_wifi_enable) {
+      external_deps += [ "wifi:wifi_sdk" ]
+      defines += [ "COMMUNICATION_WIFI_ENABLE" ]
+    }
+  } else {
+    sources +=
+        [ "collector/empty_impl/network/network_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_graphic_enable) {
+    sources += [
+      "collector/impl/graphic/graphic_memory_collector_impl.cpp",
+      "decorator/graphic_memory_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_GRAPHIC_ENABLE" ]
+  } else {
+    sources += [
+      "collector/empty_impl/graphic/graphic_memory_collector_empty_impl.cpp",
+    ]
+  }
+
+  if (hiview_unified_collector_gpu_enable) {
+    sources += [
+      "collector/impl/gpu/gpu_collector_impl.cpp",
+      "decorator/gpu_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_GPU_ENABLE" ]
+  } else {
+    sources += [ "collector/empty_impl/gpu/gpu_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_cpu_enable) {
+    sources += [
+      "collector/impl/cpu/calculator/cpu_calculator.cpp",
+      "collector/impl/cpu/src/cpu_collector_impl.cpp",
+      "collector/impl/cpu/src/process_state_info_collector.cpp",
+      "collector/impl/cpu/src/sys_cpu_usage_collector.cpp",
+      "collector/impl/cpu/src/thread_state_info_collector.cpp",
+      "collector/impl/cpu/utils/cpu_util.cpp",
+      "decorator/cpu_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_CPU_ENABLE" ]
+    deps += [ "collector/impl/cpu/device_client:collect_device_client" ]
+  } else {
+    sources += [ "collector/empty_impl/cpu/cpu_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_io_enable) {
+    sources += [
+      "collector/impl/io/calculator/io_calculator.cpp",
+      "collector/impl/io/io_collector_impl.cpp",
+      "decorator/io_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_IO_ENABLE" ]
+  } else {
+    sources += [ "collector/empty_impl/io/io_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_memory_enable) {
+    sources += [
+      "collector/impl/memory/memory_collector_impl.cpp",
+      "collector/impl/memory/utils/memory_utils.cpp",
+      "decorator/memory_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_MEMORY_ENABLE" ]
+  } else {
+    sources += [ "collector/empty_impl/memory/memory_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_hilog_enable) {
+    sources += [
+      "collector/impl/hilog/hilog_collector_impl.cpp",
+      "decorator/hilog_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_HILOG_ENABLE" ]
+  } else {
+    sources += [ "collector/empty_impl/hilog/hilog_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_wm_enable) {
+    sources += [
+      "collector/impl/wm/wm_collector_impl.cpp",
+      "decorator/wm_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_WM_ENABLE" ]
+  } else {
+    sources += [ "collector/empty_impl/wm/wm_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_trace_enable) {
+    sources += [
+      "collector/impl/trace/trace_collector_impl.cpp",
+      "collector/impl/trace/strategy/src/trace_strategy.cpp",
+      "collector/impl/trace/strategy/src/trace_strategy_factory.cpp",
+      "collector/impl/trace/strategy/src/trace_handler.cpp",
+      "collector/impl/trace/trace_utils.cpp",
+      "decorator/trace_decorator.cpp",
+    ]
+    defines += [ "UNIFIED_COLLECTOR_TRACE_ENABLE" ]
+    deps += [ "trace_manager:libtrace_manager" ]
+    external_deps += [
+      "cJSON:cjson",
+      "jsoncpp:jsoncpp",
+      "zlib:libz",
+      "hitrace:hitrace_dump",
+      "relational_store:native_rdb",
+    ]
+  } else {
+    sources += [ "collector/empty_impl/trace/trace_collector_empty_impl.cpp" ]
+  }
+
+  cflags = []
+
+  if (has_hiperf && hiview_unified_collector_perf_enable) {
+    sources += [
+      "collector/impl/perf/perf_collector_impl.cpp",
+      "collector/config/perf_collect_config.cpp",
+      "decorator/perf_decorator.cpp",
+    ]
+    cflags += [ "-DHAS_HIPERF" ]
+    external_deps += [
+      "cJSON:cjson",
+      "config_policy:configpolicy_util",
+      "hiperf:hiperf_client",
+    ]
+  } else {
+    sources += [ "collector/empty_impl/perf/perf_collector_empty_impl.cpp" ]
+  }
+
+  if (hiview_unified_collector_thermal_enable) {
+    sources += [
+      "collector/impl/thermal/thermal_collector_impl.cpp",
+      "decorator/thermal_decorator.cpp",
+    ]
+    if (thermal_manager_enable) {
+      cflags += [ "-DTHERMAL_MANAGER_ENABLE" ]
+      external_deps += [ "thermal_manager:thermalsrv_client" ]
+    }
+    defines += [ "UNIFIED_COLLECTOR_THERMAL_ENABLE" ]
+  } else {
+    sources +=
+        [ "collector/empty_impl/thermal/thermal_collector_empty_impl.cpp" ]
+  }
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_source_set("memory_collector_empty_source") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  public_configs = [ ":ucollection_test_config" ]
+
+  sources = [ "collector/empty_impl/memory/memory_collector_empty_impl.cpp" ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_source_set("cpu_collector_empty_source") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  public_configs = [ ":ucollection_test_config" ]
+
+  sources = [ "collector/empty_impl/cpu/cpu_collector_empty_impl.cpp" ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+group("unittest") {
+  testonly = true
+  deps = [
+    "decorator/test:DecoratorUnitTest",
+    "collector/test:CommonUtilTest",
+  ]
+
+  if (hiview_unified_collector_trace_enable) {
+    deps += [
+      "collector/impl/trace/test:TraceUtilsTest",
+      "collector/impl/trace/test:TraceStrategyTest",
+      "collector/impl/trace/test:TraceStrategyExTest",
+      "collector/impl/trace/test:TraceImplTest",
+      "trace_manager/test:TraceManagerTest",
+    ]
+  }
+
+  if (hiview_unified_collector_graphic_enable) {
+    deps += [ "collector/impl/memory/utils/test/unittest:MemoryUtilsUnitTest" ]
+  }
+
+  if (has_hiperf && hiview_unified_collector_perf_enable) {
+    deps += [ "collector/config/test/unittest:PerfCollectConfigUnitTest" ]
+  }
+}

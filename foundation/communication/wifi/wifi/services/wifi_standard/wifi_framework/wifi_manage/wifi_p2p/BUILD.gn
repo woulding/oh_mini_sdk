@@ -1,0 +1,151 @@
+# Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/wifi/wifi/wifi.gni")
+
+ohos_shared_library("wifi_p2p_service") {
+  branch_protector_ret = "pac_ret"
+  install_enable = true
+  sanitize = {
+    cfi = true  # Enable/disable control flow integrity detection
+    boundary_sanitize = false  # Enable boundary san detection
+    cfi_cross_dso = true  # Cross-SO CFI Checks
+    integer_overflow = false  # Enable integer overflow detection
+    ubsan = false  # Enable some Ubsan options
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  sources = [
+    "authorizing_negotiation_request_state.cpp",
+    "group_formed_state.cpp",
+    "group_negotiation_state.cpp",
+    "hid2d/wifi_hid2d_service_utils.cpp",
+    "invitation_received_state.cpp",
+    "invitation_request_state.cpp",
+    "p2p_chr_reporter.cpp",
+    "p2p_default_state.cpp",
+    "p2p_disabled_state.cpp",
+    "p2p_disabling_state.cpp",
+    "p2p_enabled_state.cpp",
+    "p2p_enabling_state.cpp",
+    "p2p_group_formation_state.cpp",
+    "p2p_group_join_state.cpp",
+    "p2p_group_operating_state.cpp",
+    "p2p_group_remove_state.cpp",
+    "p2p_idle_state.cpp",
+    "p2p_interface.cpp",
+    "p2p_inviting_state.cpp",
+    "p2p_monitor.cpp",
+    "p2p_state_machine.cpp",
+    "provision_discovery_state.cpp",
+    "wifi_p2p_device_manager.cpp",
+    "wifi_p2p_dns_sd_service_info.cpp",
+    "wifi_p2p_dns_sd_service_request.cpp",
+    "wifi_p2p_dns_sd_service_response.cpp",
+    "wifi_p2p_dns_txt_record.cpp",
+    "wifi_p2p_group_info_proxy.cpp",
+    "wifi_p2p_group_manager.cpp",
+    "wifi_p2p_service.cpp",
+    "wifi_p2p_service_manager.cpp",
+    "wifi_p2p_service_request_list.cpp",
+    "wifi_p2p_service_response_list.cpp",
+    "wifi_p2p_temp_disc_event.cpp",
+    "wifi_p2p_upnp_service_info.cpp",
+    "wifi_p2p_upnp_service_request.cpp",
+    "wifi_p2p_upnp_service_response.cpp",
+  ]
+
+  include_dirs = [
+    "./",
+    "$WIFI_ROOT_DIR/base/state_machine/include",
+    "$WIFI_ROOT_DIR/base/cRPC/include",
+    "$WIFI_ROOT_DIR/interfaces/inner_api",
+    "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/common",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/wifi_hal_interface",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client/idl_interface",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan",
+    "$WIFI_ROOT_DIR/utils/inc",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p/hid2d",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common",
+    "$WIFI_ROOT_DIR/services/wifi_standard/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_country_code",
+  ]
+  cflags = memory_optimization_cflags
+  cflags_cc = memory_optimization_cflags_cc
+  ldflags = memory_optimization_ldflags
+  cflags_cc += [
+    "-std=c++17",
+    "-Wall",
+  ]
+
+  ldflags += [
+    "-fPIC",
+    "-Wl,-E",
+  ]
+
+  defines = [ "AP_NOT_DIRECT_USE_DHCP" ]
+  if (wifi_feature_non_seperate_p2p) {
+    defines += [ "NON_SEPERATE_P2P" ]
+  }
+
+  if (wifi_feature_p2p_random_mac_addr) {
+    defines += [ "P2P_RANDOM_MAC_ADDR" ]
+  }
+
+  if (wifi_feature_with_random_mac_addr) {
+    defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+  }
+
+  if (wifi_feature_with_local_random_mac) {
+    defines += [ "SUPPORT_LOCAL_RANDOM_MAC" ]
+  }
+
+  if (wifi_feature_with_p2p_untrust_invitation) {
+    defines += [ "SUPPORT_P2P_UNTRUST_INVITATION" ]
+  }
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "ability_runtime:wantagent_innerkits",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "dhcp:dhcp_sdk",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "netmanager_base:net_conn_manager_if",
+    "samgr:samgr_proxy",
+    "power_manager:powermgr_client",
+  ]
+
+  deps = [
+    "$WIFI_ROOT_DIR/base:wifi_base",
+    "$WIFI_ROOT_DIR/frameworks/native:wifi_sdk",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage:wifi_manager_service",
+    "$WIFI_ROOT_DIR/utils:wifi_utils",
+  ]
+  version_script = "libwifi_p2p_service.map"
+  part_name = "wifi"
+  subsystem_name = "communication"
+}

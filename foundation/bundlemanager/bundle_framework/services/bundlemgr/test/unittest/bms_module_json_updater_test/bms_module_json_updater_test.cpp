@@ -1,0 +1,1085 @@
+/*
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#define private public
+#include <chrono>
+#include <fstream>
+#include <gtest/gtest.h>
+#include <map>
+#include <set>
+#include <sstream>
+#include <string>
+#include <thread>
+
+#include "bundle_mgr_service.h"
+#include "bundle_mgr_service_event_handler.h"
+#include "inner_bundle_info.h"
+#include "module_json_updater.h"
+
+using namespace testing::ext;
+using namespace OHOS;
+using namespace OHOS::AppExecFwk;
+
+namespace OHOS {
+namespace {
+const std::string BUNDLE_A = "com.example.bundleA";
+const std::string BUNDLE_B = "com.example.bundleB";
+const std::string MODULE_A = "moduleA";
+const std::string MODULE_B = "moduleB";
+const std::string ABILITY_A = "abilityA";
+const std::string ABILITY_B = "abilityB";
+const std::string EXTENSION_A = "extensionA";
+const std::string EXTENSION_B = "extensionB";
+const std::string INVALID_HAP_PATH = "/path/not/exist/xxx.hap";
+constexpr const char* OTA_FLAG = "otaFlag";
+const int32_t USER_ID = 100;
+const int32_t WAIT_TIME_SECONDS = 5;
+const int32_t TARGET_MINOR_API_VERSION = 20;
+const int32_t TARGET_PATCH_API_VERSION = 21;
+const int32_t TEST_SIZE_ONE = 1;
+const int32_t TEST_SIZE_TWO = 2;
+const StartMode START_MODE = StartMode::RECENT_TASK;
+const std::vector<std::string> ASSET_ACCESS_GROUPS = {"group1", "group2"};
+const AppPreloadPhase APP_PRELOAD_PHASE = AppPreloadPhase::ABILITY_STAGE_CREATED;
+const bool CLOUD_STRUCTURED_DATA_SYNC_ENABLED = true;
+const std::map<std::string, std::vector<std::string>> REQUIRED_DEVICE_FEATURES = {
+    {BUNDLE_A, {"feature1", "feature2"}},
+    {BUNDLE_B, {"feature3", "feature4"}}
+};
+const std::string SYSTEM_THEME = "systemTheme";
+const std::string CROSS_APP_SHARED_CONFIG = "crossAppSharedConfig";
+const std::string FORM_EXTENSION_MODULE = "formExtensionModule";
+const std::string FORM_WIDGET_MODULE = "formWidgetModule";
+const std::string MODULE_ARK_TS_MODE = "static";
+const std::string ARK_TS_MODE = "static";
+const std::string TEST_STRING_ONE = "test.string.one";
+const std::string TEST_STRING_TWO = "test.string.two";
+const bool RESIZEABLE = true;
+const std::vector<Metadata> METADATA = {
+    {"metaName1", "metaValue1", "metaResource1"},
+    {"metaName2", "metaValue2", "metaResource2"}
+};
+const std::unordered_set<std::string> CONTINUE_BUNDLE_NAMES = {"com.example.bundleC"};
+const std::string START_WINDOW = "startWindow";
+const uint32_t START_WINDOW_ID = 21;
+const ExtensionAbilityType TYPE_LIVE_FORM = ExtensionAbilityType::LIVE_FORM;
+const std::vector<std::string> APP_IDENTIFIER_ALLOW_LIST = {"com.example.bundleA"};
+const bool ISOLATION_PROCESS = true;
+const bool SKIP_ABILITY_STAGE_LIFECYCLE = true;
+const bool PROFILEABLE = true;
+const uint32_t COMPATIBLE_MINOR_VERSION = 22;
+const uint32_t COMPATIBLE_PATCH_VERSION = 23;
+const std::string TEST_BUILD_VERSION = "1.0.0";
+const std::string EASY_GO = "$profile:easy_go";
+const bool ALLOW_SELF_REDIRECT = false;
+const uint32_t SHARED_VERSION_OLD = 1000000;
+const uint32_t SHARED_VERSION_NEW = 2000000;
+}  // namespace
+
+class BmsModuleJsonUpdaterTest : public testing::Test {
+public:
+    BmsModuleJsonUpdaterTest();
+    ~BmsModuleJsonUpdaterTest();
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    static void StartBundleService();
+    static bool UpdateOtaFlag(OTAFlag flag);
+    void SetUp();
+    void TearDown();
+private:
+    static std::shared_ptr<BundleMgrService> bundleMgrService_;
+};
+
+std::shared_ptr<BundleMgrService> BmsModuleJsonUpdaterTest::bundleMgrService_ =
+    DelayedSingleton<BundleMgrService>::GetInstance();
+
+BmsModuleJsonUpdaterTest::BmsModuleJsonUpdaterTest()
+{}
+
+BmsModuleJsonUpdaterTest::~BmsModuleJsonUpdaterTest()
+{}
+
+void BmsModuleJsonUpdaterTest::SetUpTestCase()
+{
+    bundleMgrService_->InitBmsParam();
+    bundleMgrService_->InitBundleDataMgr();
+    bundleMgrService_->GetDataMgr()->AddUserId(USER_ID);
+    bundleMgrService_->GetDataMgr()->LoadDataFromPersistentStorage();
+}
+
+void BmsModuleJsonUpdaterTest::TearDownTestCase()
+{
+    bundleMgrService_->OnStop();
+}
+
+void BmsModuleJsonUpdaterTest::SetUp()
+{}
+
+void BmsModuleJsonUpdaterTest::TearDown()
+{}
+
+void BmsModuleJsonUpdaterTest::StartBundleService()
+{
+    if (!bundleMgrService_->IsServiceReady()) {
+        bundleMgrService_->OnStart();
+        bundleMgrService_->GetDataMgr()->AddUserId(USER_ID);
+        std::this_thread::sleep_for(std::chrono::seconds(WAIT_TIME_SECONDS));
+    }
+}
+
+bool BmsModuleJsonUpdaterTest::UpdateOtaFlag(OTAFlag flag)
+{
+    auto bmsPara = bundleMgrService_->GetBmsParam();
+    if (bmsPara == nullptr) {
+        return false;
+    }
+
+    std::string val;
+    if (!bmsPara->GetBmsParam(OTA_FLAG, val)) {
+        return bmsPara->SaveBmsParam(OTA_FLAG, std::to_string(flag));
+    }
+
+    int32_t valInt = 0;
+    if (!StrToInt(val, valInt)) {
+        return bmsPara->SaveBmsParam(OTA_FLAG, std::to_string(flag));
+    }
+
+    return bmsPara->SaveBmsParam(
+        OTA_FLAG, std::to_string(static_cast<uint32_t>(flag) | static_cast<uint32_t>(valInt)));
+}
+
+/**
+ * @tc.number: UpdateModuleJsonAsync_0100
+ * @tc.name: UpdateModuleJsonAsync
+ * @tc.desc: 1.Test the UpdateModuleJsonAsync function, expect ignoredBundles empty.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateModuleJsonAsync_0100, Function | SmallTest | Level1)
+{
+    ModuleJsonUpdater::SetIgnoreBundleNames({BUNDLE_A, BUNDLE_B});
+    BmsModuleJsonUpdaterTest::UpdateOtaFlag(OTAFlag::UPDATE_MODULE_JSON);
+    BmsModuleJsonUpdaterTest::UpdateOtaFlag(OTAFlag::UPDATE_ALTERNATE_ICONS);
+    BmsModuleJsonUpdaterTest::UpdateOtaFlag(OTAFlag::UPDATE_MODULE_JSON_EXTEND_FIELDS);
+    ModuleJsonUpdater::UpdateModuleJsonAsync();
+    std::set<std::string> ignoredBundles = ModuleJsonUpdater::GetIgnoreBundleNames();
+    EXPECT_TRUE(ignoredBundles.empty());
+}
+
+/**
+ * @tc.number: UpdateModuleJson_0100
+ * @tc.name: UpdateModuleJson
+ * @tc.desc: 1.Test the UpdateModuleJson function, expect ignoredBundles empty.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateModuleJson_0100, Function | SmallTest | Level1)
+{
+    ModuleJsonUpdater::SetIgnoreBundleNames({BUNDLE_A, BUNDLE_B});
+    ModuleJsonUpdater::UpdateModuleJson();
+    std::set<std::string> ignoredBundles = ModuleJsonUpdater::GetIgnoreBundleNames();
+    EXPECT_TRUE(ignoredBundles.empty());
+}
+
+/**
+ * @tc.number: UpdateModuleJson_0200
+ * @tc.name: UpdateModuleJson
+ * @tc.desc: 1.Test the UpdateModuleJson function, expect ignoredBundles empty.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateModuleJson_0200, Function | SmallTest | Level1)
+{
+    auto dataMgr = BmsModuleJsonUpdaterTest::bundleMgrService_->GetDataMgr();
+    EXPECT_NE(dataMgr, nullptr);
+    std::map<std::string, InnerBundleInfo> infos = dataMgr->GetAllInnerBundleInfos();
+    std::set<std::string> ignoredBundles;
+    for (const auto &item : infos) {
+        ignoredBundles.insert(item.first);
+    }
+    ModuleJsonUpdater::SetIgnoreBundleNames(ignoredBundles);
+    ModuleJsonUpdater::UpdateModuleJson();
+    ignoredBundles = ModuleJsonUpdater::GetIgnoreBundleNames();
+    EXPECT_TRUE(ignoredBundles.empty());
+}
+
+/**
+ * @tc.number: ParseBundleModuleJson_0100
+ * @tc.name: ParseBundleModuleJson
+ * @tc.desc: 1.Test the ParseBundleModuleJson function with innerModuleInfos empty, expect return false.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ParseBundleModuleJson_0100, Function | SmallTest | Level1)
+{
+    InnerBundleInfo info;
+    std::map<std::string, InnerBundleInfo> outMap;
+    bool ret = ModuleJsonUpdater::ParseBundleModuleJson(info, outMap);
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(outMap.empty());
+}
+
+/**
+ * @tc.number: ParseBundleModuleJson_0200
+ * @tc.name: ParseBundleModuleJson
+ * @tc.desc: 1.Test the ParseBundleModuleJson function with hapPath empty, expect return false.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ParseBundleModuleJson_0200, Function | SmallTest | Level1)
+{
+    std::map<std::string, InnerModuleInfo> innerModuleInfos;
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfos.try_emplace(BUNDLE_A, innerModuleInfo);
+    InnerBundleInfo info;
+    info.AddInnerModuleInfo(innerModuleInfos);
+    std::map<std::string, InnerBundleInfo> outMap;
+    bool ret = ModuleJsonUpdater::ParseBundleModuleJson(info, outMap);
+    EXPECT_FALSE(ret);
+    EXPECT_TRUE(outMap.empty());
+}
+
+/**
+ * @tc.number: ParseBundleModuleJson_0300
+ * @tc.name: ParseBundleModuleJson
+ * @tc.desc: 1.Test the ParseBundleModuleJson function, expect return true.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ParseBundleModuleJson_0300, Function | SmallTest | Level1)
+{
+    std::map<std::string, InnerBundleInfo> infos =
+        BmsModuleJsonUpdaterTest::bundleMgrService_->GetDataMgr()->GetAllInnerBundleInfos();
+    EXPECT_FALSE(infos.empty());
+    std::map<std::string, InnerBundleInfo> outMap;
+    bool ret = ModuleJsonUpdater::ParseBundleModuleJson(infos.begin()->second, outMap);
+    EXPECT_TRUE(ret);
+    EXPECT_FALSE(outMap.empty());
+}
+
+/**
+ * @tc.number: ParseHapModuleJson_0100
+ * @tc.name: ParseHapModuleJson
+ * @tc.desc: 1.Test the ParseHapModuleJson function with empty hapPath, expect return false.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ParseHapModuleJson_0100, Function | SmallTest | Level1)
+{
+    InnerBundleInfo jsonInfo;
+    bool ret = ModuleJsonUpdater::ParseHapModuleJson("", jsonInfo);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: ParseHapModuleJson_0200
+ * @tc.name: ParseHapModuleJson
+ * @tc.desc: 1.Test the ParseHapModuleJson function with err hapPath, expect return false.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ParseHapModuleJson_0200, Function | SmallTest | Level1)
+{
+    InnerBundleInfo jsonInfo;
+    bool ret = ModuleJsonUpdater::ParseHapModuleJson(INVALID_HAP_PATH, jsonInfo);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: MergeInnerBundleInfo_0100
+ * @tc.name: MergeInnerBundleInfo
+ * @tc.desc: 1.Test the MergeInnerBundleInfo function with empty map, expect return false.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, MergeInnerBundleInfo_0100, Function | SmallTest | Level1)
+{
+    std::map<std::string, InnerBundleInfo> moduleJsonMap;
+    InnerBundleInfo mergedInfo;
+    bool ret = ModuleJsonUpdater::MergeInnerBundleInfo(moduleJsonMap, mergedInfo);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: MergeInnerBundleInfo_0200
+ * @tc.name: MergeInnerBundleInfo
+ * @tc.desc: 1.Test the MergeInnerBundleInfo function with not empty map, expect return true.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, MergeInnerBundleInfo_0200, Function | SmallTest | Level1)
+{
+    std::map<std::string, InnerBundleInfo> moduleJsonMap;
+    moduleJsonMap.try_emplace(BUNDLE_A, InnerBundleInfo());
+    InnerBundleInfo mergedInfo;
+    bool ret = ModuleJsonUpdater::MergeInnerBundleInfo(moduleJsonMap, mergedInfo);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: MergeInnerBundleInfo_0300
+ * @tc.name: MergeInnerBundleInfo
+ * @tc.desc: 1.Test the MergeInnerBundleInfo function, expect baseBundleInfo merged from the entry module.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, MergeInnerBundleInfo_0300, Function | SmallTest | Level1)
+{
+    // MODULE_A sorts first but is not the entry module, so the entry branch is what must supply buildVersion
+    InnerBundleInfo featureInfo;
+    std::map<std::string, InnerModuleInfo> featureModuleInfos;
+    featureModuleInfos.try_emplace(MODULE_A, InnerModuleInfo());
+    featureInfo.AddInnerModuleInfo(featureModuleInfos);
+
+    InnerBundleInfo entryInfo;
+    std::map<std::string, InnerModuleInfo> entryModuleInfos;
+    InnerModuleInfo entryModuleInfo;
+    entryModuleInfo.isEntry = true;
+    entryModuleInfos.try_emplace(MODULE_B, entryModuleInfo);
+    entryInfo.AddInnerModuleInfo(entryModuleInfos);
+    entryInfo.baseBundleInfo_->buildVersion = TEST_BUILD_VERSION;
+
+    std::map<std::string, InnerBundleInfo> moduleJsonMap;
+    moduleJsonMap.try_emplace(MODULE_A, featureInfo);
+    moduleJsonMap.try_emplace(MODULE_B, entryInfo);
+    InnerBundleInfo mergedInfo;
+    bool ret = ModuleJsonUpdater::MergeInnerBundleInfo(moduleJsonMap, mergedInfo);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(mergedInfo.baseBundleInfo_->buildVersion, TEST_BUILD_VERSION);
+}
+
+/**
+ * @tc.number: MergeInnerBundleInfo_0400
+ * @tc.name: MergeInnerBundleInfo
+ * @tc.desc: 1.Test the parsed buildVersion is written through and never degrades to an empty string.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, MergeInnerBundleInfo_0400, Function | SmallTest | Level1)
+{
+    InnerBundleInfo jsonInfo;
+    std::map<std::string, InnerModuleInfo> innerModuleInfos;
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.isEntry = true;
+    innerModuleInfos.try_emplace(MODULE_A, innerModuleInfo);
+    jsonInfo.AddInnerModuleInfo(innerModuleInfos);
+    jsonInfo.baseBundleInfo_->buildVersion = TEST_BUILD_VERSION;
+
+    std::map<std::string, InnerBundleInfo> moduleJsonMap;
+    moduleJsonMap.try_emplace(MODULE_A, jsonInfo);
+    InnerBundleInfo mergedInfo;
+    EXPECT_TRUE(ModuleJsonUpdater::MergeInnerBundleInfo(moduleJsonMap, mergedInfo));
+
+    InnerBundleInfo curInfo;
+    curInfo.baseBundleInfo_->buildVersion = TEST_STRING_ONE;
+    curInfo.UpdatePartialInnerBundleInfo(mergedInfo);
+    EXPECT_EQ(curInfo.baseBundleInfo_->buildVersion, TEST_BUILD_VERSION);
+}
+
+/**
+ * @tc.number: MergeInnerBundleInfo_0500
+ * @tc.name: MergeInnerBundleInfo
+ * @tc.desc: 1.Test that with no entry module, baseBundleInfo falls back to the first map element.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, MergeInnerBundleInfo_0500, Function | SmallTest | Level1)
+{
+    // neither module is the entry module, so the loop never overwrites the begin() fallback
+    InnerBundleInfo firstInfo;
+    std::map<std::string, InnerModuleInfo> firstModuleInfos;
+    firstModuleInfos.try_emplace(MODULE_A, InnerModuleInfo());
+    firstInfo.AddInnerModuleInfo(firstModuleInfos);
+    firstInfo.baseBundleInfo_->buildVersion = TEST_BUILD_VERSION;
+
+    InnerBundleInfo secondInfo;
+    std::map<std::string, InnerModuleInfo> secondModuleInfos;
+    secondModuleInfos.try_emplace(MODULE_B, InnerModuleInfo());
+    secondInfo.AddInnerModuleInfo(secondModuleInfos);
+    secondInfo.baseBundleInfo_->buildVersion = TEST_STRING_TWO;
+
+    std::map<std::string, InnerBundleInfo> moduleJsonMap;
+    moduleJsonMap.try_emplace(MODULE_A, firstInfo);
+    moduleJsonMap.try_emplace(MODULE_B, secondInfo);
+    InnerBundleInfo mergedInfo;
+    EXPECT_TRUE(ModuleJsonUpdater::MergeInnerBundleInfo(moduleJsonMap, mergedInfo));
+    EXPECT_EQ(mergedInfo.baseBundleInfo_->buildVersion, TEST_BUILD_VERSION);
+}
+
+/**
+ * @tc.number: UpdateExtensionType_0100
+ * @tc.name: UpdateExtensionType
+ * @tc.desc: 1.Test the UpdateExtensionType function, expect innerExtensionInfos empty.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateExtensionType_0100, Function | SmallTest | Level1)
+{
+    InnerBundleInfo curInfo;
+    InnerBundleInfo mergedInfo;
+    ModuleJsonUpdater::UpdateExtensionType(curInfo, mergedInfo);
+    EXPECT_TRUE(mergedInfo.FetchInnerExtensionInfos().empty());
+}
+
+/**
+ * @tc.number: CanUsePrivilegeExtension_0100
+ * @tc.name: CanUsePrivilegeExtension
+ * @tc.desc: 1.Test the CanUsePrivilegeExtension function with invalid param, expect return false.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, CanUsePrivilegeExtension_0100, Function | SmallTest | Level1)
+{
+    bool ret = ModuleJsonUpdater::CanUsePrivilegeExtension("", "");
+    EXPECT_FALSE(ret);
+    ret = ModuleJsonUpdater::CanUsePrivilegeExtension("", BUNDLE_A);
+    EXPECT_FALSE(ret);
+    ret = ModuleJsonUpdater::CanUsePrivilegeExtension(INVALID_HAP_PATH, "");
+    EXPECT_FALSE(ret);
+    ret = ModuleJsonUpdater::CanUsePrivilegeExtension(INVALID_HAP_PATH, BUNDLE_A);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: SetIgnoreBundleNames_0100
+ * @tc.name: SetIgnoreBundleNames
+ * @tc.desc: 1.Test the SetIgnoreBundleNames function.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, SetIgnoreBundleNames_0100, Function | SmallTest | Level1)
+{
+    ModuleJsonUpdater::SetIgnoreBundleNames({BUNDLE_A, BUNDLE_B});
+    std::set<std::string> ignoredBundles = ModuleJsonUpdater::GetIgnoreBundleNames();
+    EXPECT_FALSE(ignoredBundles.empty());
+}
+
+/**
+ * @tc.number: GetIgnoreBundleNames_0100
+ * @tc.name: GetIgnoreBundleNames
+ * @tc.desc: 1.Test the GetIgnoreBundleNames function.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, GetIgnoreBundleNames_0100, Function | SmallTest | Level1)
+{
+    ModuleJsonUpdater::SetIgnoreBundleNames({});
+    std::set<std::string> ignoredBundles = ModuleJsonUpdater::GetIgnoreBundleNames();
+    EXPECT_TRUE(ignoredBundles.empty());
+}
+
+/**
+ * @tc.number: ClearIgnoreBundleNames_0100
+ * @tc.name: ClearIgnoreBundleNames
+ * @tc.desc: 1.Test the ClearIgnoreBundleNames function.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ClearIgnoreBundleNames_0100, Function | SmallTest | Level1)
+{
+    ModuleJsonUpdater::SetIgnoreBundleNames({BUNDLE_A, BUNDLE_B});
+    std::set<std::string> ignoredBundles = ModuleJsonUpdater::GetIgnoreBundleNames();
+    EXPECT_FALSE(ignoredBundles.empty());
+    ModuleJsonUpdater::ClearIgnoreBundleNames();
+    ignoredBundles = ModuleJsonUpdater::GetIgnoreBundleNames();
+    EXPECT_TRUE(ignoredBundles.empty());
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0100
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test the UpdatePartialInnerBundleInfo function.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0100, Function | SmallTest | Level1)
+{
+    auto dataMgr = BmsModuleJsonUpdaterTest::bundleMgrService_->GetDataMgr();
+    EXPECT_NE(dataMgr, nullptr);
+    InnerBundleInfo info;
+    bool ret = dataMgr->UpdatePartialInnerBundleInfo(info);
+    EXPECT_FALSE(ret);
+    info.baseApplicationInfo_->bundleName = BUNDLE_A;
+    ret = dataMgr->UpdatePartialInnerBundleInfo(info);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0200
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test the UpdatePartialInnerBundleInfo function with ApplicationInfo and BundleInfo.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0200, Function | SmallTest | Level1)
+{
+    InnerBundleInfo jsonInfo;
+    jsonInfo.baseApplicationInfo_->targetMinorApiVersion = TARGET_MINOR_API_VERSION;
+    jsonInfo.baseApplicationInfo_->targetPatchApiVersion = TARGET_PATCH_API_VERSION;
+    jsonInfo.baseApplicationInfo_->startMode = START_MODE;
+    jsonInfo.baseApplicationInfo_->assetAccessGroups = ASSET_ACCESS_GROUPS;
+    jsonInfo.baseApplicationInfo_->appPreloadPhase = APP_PRELOAD_PHASE;
+    jsonInfo.baseApplicationInfo_->cloudStructuredDataSyncEnabled = CLOUD_STRUCTURED_DATA_SYNC_ENABLED;
+    jsonInfo.baseApplicationInfo_->profileable = PROFILEABLE;
+    jsonInfo.baseApplicationInfo_->compatibleMinorVersion = COMPATIBLE_MINOR_VERSION;
+    jsonInfo.baseApplicationInfo_->compatiblePatchVersion = COMPATIBLE_PATCH_VERSION;
+    jsonInfo.baseBundleInfo_->buildVersion = TEST_BUILD_VERSION;
+    InnerBundleInfo infoA;
+    infoA.UpdatePartialInnerBundleInfo(jsonInfo);
+    EXPECT_EQ(infoA.baseApplicationInfo_->targetMinorApiVersion, TARGET_MINOR_API_VERSION);
+    EXPECT_EQ(infoA.baseApplicationInfo_->targetPatchApiVersion, TARGET_PATCH_API_VERSION);
+    EXPECT_EQ(infoA.baseApplicationInfo_->startMode, START_MODE);
+    EXPECT_TRUE(infoA.baseApplicationInfo_->assetAccessGroups.empty());
+    EXPECT_NE(infoA.baseApplicationInfo_->appPreloadPhase, APP_PRELOAD_PHASE);
+    EXPECT_EQ(infoA.baseApplicationInfo_->cloudStructuredDataSyncEnabled, CLOUD_STRUCTURED_DATA_SYNC_ENABLED);
+    EXPECT_EQ(infoA.baseApplicationInfo_->profileable, PROFILEABLE);
+    EXPECT_EQ(infoA.baseApplicationInfo_->compatibleMinorVersion, COMPATIBLE_MINOR_VERSION);
+    EXPECT_EQ(infoA.baseApplicationInfo_->compatiblePatchVersion, COMPATIBLE_PATCH_VERSION);
+    EXPECT_EQ(infoA.baseBundleInfo_->compatibleMinorVersion, COMPATIBLE_MINOR_VERSION);
+    EXPECT_EQ(infoA.baseBundleInfo_->compatiblePatchVersion, COMPATIBLE_PATCH_VERSION);
+    EXPECT_EQ(infoA.baseBundleInfo_->buildVersion, TEST_BUILD_VERSION);
+
+    std::map<std::string, InnerModuleInfo> innerModuleInfos;
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.isEntry = true;
+    innerModuleInfos.try_emplace(MODULE_A, innerModuleInfo);
+    jsonInfo.AddInnerModuleInfo(innerModuleInfos);
+    InnerBundleInfo infoB;
+    infoB.UpdatePartialInnerBundleInfo(jsonInfo);
+    EXPECT_EQ(infoB.baseApplicationInfo_->targetMinorApiVersion, TARGET_MINOR_API_VERSION);
+    EXPECT_EQ(infoB.baseApplicationInfo_->targetPatchApiVersion, TARGET_PATCH_API_VERSION);
+    EXPECT_EQ(infoB.baseApplicationInfo_->startMode, START_MODE);
+    EXPECT_EQ(infoB.baseApplicationInfo_->assetAccessGroups, ASSET_ACCESS_GROUPS);
+    EXPECT_EQ(infoB.baseApplicationInfo_->appPreloadPhase, APP_PRELOAD_PHASE);
+    EXPECT_EQ(infoB.baseApplicationInfo_->cloudStructuredDataSyncEnabled, CLOUD_STRUCTURED_DATA_SYNC_ENABLED);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0300
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test the UpdatePartialInnerBundleInfo function with ApplicationInfo and BundleInfo.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0300, Function | SmallTest | Level1)
+{
+    InnerBundleInfo jsonInfoA;
+    jsonInfoA.baseApplicationInfo_ = nullptr;
+    InnerBundleInfo infoA;
+    infoA.UpdatePartialInnerBundleInfo(jsonInfoA);
+    EXPECT_NE(infoA.baseApplicationInfo_->targetMinorApiVersion, TARGET_MINOR_API_VERSION);
+    EXPECT_NE(infoA.baseApplicationInfo_->targetPatchApiVersion, TARGET_PATCH_API_VERSION);
+    EXPECT_NE(infoA.baseApplicationInfo_->startMode, START_MODE);
+    EXPECT_TRUE(infoA.baseApplicationInfo_->assetAccessGroups.empty());
+    EXPECT_NE(infoA.baseApplicationInfo_->appPreloadPhase, APP_PRELOAD_PHASE);
+    EXPECT_NE(infoA.baseApplicationInfo_->cloudStructuredDataSyncEnabled, CLOUD_STRUCTURED_DATA_SYNC_ENABLED);
+
+    InnerBundleInfo jsonInfoB;
+    InnerBundleInfo infoB;
+    infoB.baseApplicationInfo_ = nullptr;
+    infoB.baseBundleInfo_ = nullptr;
+    infoB.UpdatePartialInnerBundleInfo(jsonInfoB);
+    EXPECT_EQ(infoB.baseApplicationInfo_, nullptr);
+    EXPECT_EQ(infoB.baseBundleInfo_, nullptr);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0400
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test the UpdatePartialInnerBundleInfo function with innerModuleInfo.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0400, Function | SmallTest | Level1)
+{
+    std::map<std::string, InnerModuleInfo> innerModuleInfos;
+    innerModuleInfos.try_emplace(MODULE_A, InnerModuleInfo());
+    innerModuleInfos.try_emplace(MODULE_B, InnerModuleInfo());
+    InnerBundleInfo info;
+    info.AddInnerModuleInfo(innerModuleInfos);
+
+    innerModuleInfos.clear();
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.requiredDeviceFeatures = REQUIRED_DEVICE_FEATURES;
+    innerModuleInfo.systemTheme = SYSTEM_THEME;
+    innerModuleInfo.crossAppSharedConfig = CROSS_APP_SHARED_CONFIG;
+    innerModuleInfo.formExtensionModule = FORM_EXTENSION_MODULE;
+    innerModuleInfo.formWidgetModule = FORM_WIDGET_MODULE;
+    innerModuleInfo.moduleArkTSMode = MODULE_ARK_TS_MODE;
+    innerModuleInfo.arkTSMode = ARK_TS_MODE;
+    innerModuleInfo.resizeable = RESIZEABLE;
+    innerModuleInfo.metadata = METADATA;
+    innerModuleInfo.easyGo = EASY_GO;
+    innerModuleInfos.try_emplace(MODULE_A, innerModuleInfo);
+    InnerBundleInfo jsonInfo;
+    jsonInfo.AddInnerModuleInfo(innerModuleInfos);
+
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    std::map<std::string, InnerModuleInfo> updatedInnerModuleInfos = info.GetInnerModuleInfos();
+    auto item = updatedInnerModuleInfos.find(MODULE_A);
+    EXPECT_TRUE(item != updatedInnerModuleInfos.end());
+    EXPECT_FALSE(item->second.requiredDeviceFeatures.empty());
+    EXPECT_EQ(item->second.systemTheme, SYSTEM_THEME);
+    EXPECT_EQ(item->second.crossAppSharedConfig, CROSS_APP_SHARED_CONFIG);
+    EXPECT_EQ(item->second.formExtensionModule, FORM_EXTENSION_MODULE);
+    EXPECT_EQ(item->second.formWidgetModule, FORM_WIDGET_MODULE);
+    EXPECT_EQ(item->second.moduleArkTSMode, MODULE_ARK_TS_MODE);
+    EXPECT_EQ(item->second.arkTSMode, ARK_TS_MODE);
+    EXPECT_EQ(item->second.resizeable, RESIZEABLE);
+    EXPECT_FALSE(item->second.metadata.empty());
+    EXPECT_EQ(item->second.easyGo, EASY_GO);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0500
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test the UpdatePartialInnerBundleInfo function with innerSharedModuleInfo.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0500, Function | SmallTest | Level1)
+{
+    InnerBundleInfo info;
+    info.InsertInnerSharedModuleInfo(MODULE_A, InnerModuleInfo());
+    info.InsertInnerSharedModuleInfo(MODULE_B, InnerModuleInfo());
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.requiredDeviceFeatures = REQUIRED_DEVICE_FEATURES;
+    innerModuleInfo.systemTheme = SYSTEM_THEME;
+    innerModuleInfo.crossAppSharedConfig = CROSS_APP_SHARED_CONFIG;
+    innerModuleInfo.formExtensionModule = FORM_EXTENSION_MODULE;
+    innerModuleInfo.formWidgetModule = FORM_WIDGET_MODULE;
+    innerModuleInfo.moduleArkTSMode = MODULE_ARK_TS_MODE;
+    innerModuleInfo.arkTSMode = ARK_TS_MODE;
+    innerModuleInfo.resizeable = RESIZEABLE;
+    innerModuleInfo.metadata = METADATA;
+    innerModuleInfo.easyGo = EASY_GO;
+    std::map<std::string, InnerModuleInfo> innerModuleInfos;
+    innerModuleInfos.try_emplace(MODULE_A, innerModuleInfo);
+    InnerBundleInfo jsonInfo;
+    jsonInfo.AddInnerModuleInfo(innerModuleInfos);
+
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos =
+        info.GetInnerSharedModuleInfos();
+    auto item = innerSharedModuleInfos.find(MODULE_A);
+    EXPECT_TRUE(item != innerSharedModuleInfos.end());
+    EXPECT_FALSE(item->second.empty());
+    EXPECT_FALSE(item->second[0].requiredDeviceFeatures.empty());
+    EXPECT_EQ(item->second[0].systemTheme, SYSTEM_THEME);
+    EXPECT_EQ(item->second[0].crossAppSharedConfig, CROSS_APP_SHARED_CONFIG);
+    EXPECT_EQ(item->second[0].formExtensionModule, FORM_EXTENSION_MODULE);
+    EXPECT_EQ(item->second[0].formWidgetModule, FORM_WIDGET_MODULE);
+    EXPECT_EQ(item->second[0].moduleArkTSMode, MODULE_ARK_TS_MODE);
+    EXPECT_EQ(item->second[0].arkTSMode, ARK_TS_MODE);
+    EXPECT_EQ(item->second[0].resizeable, RESIZEABLE);
+    EXPECT_FALSE(item->second[0].metadata.empty());
+    EXPECT_EQ(item->second[0].easyGo, EASY_GO);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0600
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test the UpdatePartialInnerBundleInfo function with AbilityInfo.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0600, Function | SmallTest | Level1)
+{
+    InnerBundleInfo info;
+    std::map<std::string, InnerAbilityInfo> innerAbilityInfos;
+    InnerAbilityInfo tmpInnerAbilityInfo;
+    tmpInnerAbilityInfo.moduleName = MODULE_A;
+    tmpInnerAbilityInfo.name = ABILITY_A;
+    innerAbilityInfos.try_emplace(ABILITY_A, tmpInnerAbilityInfo);
+    innerAbilityInfos.try_emplace(ABILITY_B, InnerAbilityInfo());
+    info.AddModuleAbilityInfo(innerAbilityInfos);
+
+    InnerBundleInfo jsonInfo;
+    innerAbilityInfos.clear();
+    InnerAbilityInfo innerAbilityInfo;
+    innerAbilityInfo.moduleName = MODULE_A;
+    innerAbilityInfo.name = ABILITY_A;
+    innerAbilityInfo.continueBundleNames = CONTINUE_BUNDLE_NAMES;
+    innerAbilityInfo.startWindow = START_WINDOW;
+    innerAbilityInfo.startWindowId = START_WINDOW_ID;
+    innerAbilityInfo.arkTSMode = ARK_TS_MODE;
+    innerAbilityInfo.metadata = METADATA;
+    innerAbilityInfo.allowSelfRedirect = ALLOW_SELF_REDIRECT;
+    innerAbilityInfos.try_emplace(ABILITY_A, innerAbilityInfo);
+    jsonInfo.AddModuleAbilityInfo(innerAbilityInfos);
+
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    std::map<std::string, InnerAbilityInfo> updatedInnerAbilityInfos = info.GetInnerAbilityInfos();
+    auto item = updatedInnerAbilityInfos.find(ABILITY_A);
+    EXPECT_TRUE(item != updatedInnerAbilityInfos.end());
+    EXPECT_EQ(item->second.continueBundleNames, CONTINUE_BUNDLE_NAMES);
+    EXPECT_EQ(item->second.startWindow, START_WINDOW);
+    EXPECT_EQ(item->second.startWindowId, START_WINDOW_ID);
+    EXPECT_EQ(item->second.arkTSMode, ARK_TS_MODE);
+    EXPECT_FALSE(item->second.metadata.empty());
+    // default is true, a declared false must overwrite it
+    EXPECT_EQ(item->second.allowSelfRedirect, ALLOW_SELF_REDIRECT);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0700
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test the UpdatePartialInnerBundleInfo function with ExtensionInfo.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0700, Function | SmallTest | Level1)
+{
+    InnerBundleInfo info;
+    std::map<std::string, InnerExtensionInfo> innerExtensionInfos;
+    InnerExtensionInfo tmpInnerExtensionInfo;
+    tmpInnerExtensionInfo.moduleName = MODULE_A;
+    tmpInnerExtensionInfo.name = ABILITY_A;
+    innerExtensionInfos.try_emplace(EXTENSION_A, tmpInnerExtensionInfo);
+    innerExtensionInfos.try_emplace(EXTENSION_B, InnerExtensionInfo());
+    info.AddModuleExtensionInfos(innerExtensionInfos);
+
+    InnerBundleInfo jsonInfo;
+    innerExtensionInfos.clear();
+    InnerExtensionInfo innerExtensionInfo;
+    innerExtensionInfo.moduleName = MODULE_A;
+    innerExtensionInfo.name = ABILITY_A;
+    innerExtensionInfo.type = TYPE_LIVE_FORM;
+    innerExtensionInfo.appIdentifierAllowList = APP_IDENTIFIER_ALLOW_LIST;
+    innerExtensionInfo.isolationProcess = ISOLATION_PROCESS;
+    innerExtensionInfo.skipAbilityStageLifecycle = SKIP_ABILITY_STAGE_LIFECYCLE;
+    innerExtensionInfo.arkTSMode = ARK_TS_MODE;
+    innerExtensionInfo.metadata = METADATA;
+    innerExtensionInfos.try_emplace(EXTENSION_A, innerExtensionInfo);
+    jsonInfo.AddModuleExtensionInfos(innerExtensionInfos);
+
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    std::map<std::string, InnerExtensionInfo> updatedInnerExtensionInfos = info.GetInnerExtensionInfos();
+    auto item = updatedInnerExtensionInfos.find(EXTENSION_A);
+    EXPECT_TRUE(item != updatedInnerExtensionInfos.end());
+    EXPECT_EQ(item->second.type, TYPE_LIVE_FORM);
+    EXPECT_EQ(item->second.appIdentifierAllowList, APP_IDENTIFIER_ALLOW_LIST);
+    EXPECT_EQ(item->second.isolationProcess, ISOLATION_PROCESS);
+    EXPECT_EQ(item->second.skipAbilityStageLifecycle, SKIP_ABILITY_STAGE_LIFECYCLE);
+    EXPECT_EQ(item->second.arkTSMode, ARK_TS_MODE);
+    EXPECT_FALSE(item->second.metadata.empty());
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0800
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test the buildVersion guard is skipped when the source baseBundleInfo is null.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0800, Function | SmallTest | Level1)
+{
+    InnerBundleInfo jsonInfo;
+    jsonInfo.baseBundleInfo_ = nullptr;
+
+    InnerBundleInfo info;
+    info.baseBundleInfo_->buildVersion = TEST_STRING_ONE;
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    // the guard must skip the assignment instead of dereferencing the null source
+    ASSERT_NE(info.baseBundleInfo_, nullptr);
+    EXPECT_EQ(info.baseBundleInfo_->buildVersion, TEST_STRING_ONE);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_0900
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test ApplicationInfo and BundleInfo fields are untouched when the source ApplicationInfo is null.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_0900, Function | SmallTest | Level1)
+{
+    InnerBundleInfo jsonInfo;
+    jsonInfo.baseApplicationInfo_ = nullptr;
+
+    InnerBundleInfo info;
+    info.baseApplicationInfo_->profileable = PROFILEABLE;
+    info.baseApplicationInfo_->compatibleMinorVersion = COMPATIBLE_MINOR_VERSION;
+    info.baseApplicationInfo_->compatiblePatchVersion = COMPATIBLE_PATCH_VERSION;
+    info.baseBundleInfo_->compatibleMinorVersion = COMPATIBLE_MINOR_VERSION;
+    info.baseBundleInfo_->compatiblePatchVersion = COMPATIBLE_PATCH_VERSION;
+
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    // both blocks are guarded on the source ApplicationInfo, so nothing may be overwritten
+    EXPECT_EQ(info.baseApplicationInfo_->profileable, PROFILEABLE);
+    EXPECT_EQ(info.baseApplicationInfo_->compatibleMinorVersion, COMPATIBLE_MINOR_VERSION);
+    EXPECT_EQ(info.baseApplicationInfo_->compatiblePatchVersion, COMPATIBLE_PATCH_VERSION);
+    EXPECT_EQ(info.baseBundleInfo_->compatibleMinorVersion, COMPATIBLE_MINOR_VERSION);
+    EXPECT_EQ(info.baseBundleInfo_->compatiblePatchVersion, COMPATIBLE_PATCH_VERSION);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_1000
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test easyGo is preserved when the module is absent from the parsed module map.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_1000, Function | SmallTest | Level1)
+{
+    std::map<std::string, InnerModuleInfo> innerModuleInfos;
+    InnerModuleInfo existingModuleInfo;
+    existingModuleInfo.easyGo = TEST_STRING_ONE;
+    innerModuleInfos.try_emplace(MODULE_A, existingModuleInfo);
+    InnerBundleInfo info;
+    info.AddInnerModuleInfo(innerModuleInfos);
+
+    // the parsed side only carries MODULE_B, so MODULE_A takes the "not found" branch
+    innerModuleInfos.clear();
+    InnerModuleInfo parsedModuleInfo;
+    parsedModuleInfo.easyGo = EASY_GO;
+    innerModuleInfos.try_emplace(MODULE_B, parsedModuleInfo);
+    InnerBundleInfo jsonInfo;
+    jsonInfo.AddInnerModuleInfo(innerModuleInfos);
+
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    std::map<std::string, InnerModuleInfo> updatedInnerModuleInfos = info.GetInnerModuleInfos();
+    auto item = updatedInnerModuleInfos.find(MODULE_A);
+    ASSERT_TRUE(item != updatedInnerModuleInfos.end());
+    EXPECT_EQ(item->second.easyGo, TEST_STRING_ONE);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_1100
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test only the matching shared module version gets easyGo updated.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_1100, Function | SmallTest | Level1)
+{
+    InnerBundleInfo info;
+    InnerModuleInfo oldVersionInfo;
+    oldVersionInfo.versionCode = SHARED_VERSION_OLD;
+    oldVersionInfo.easyGo = TEST_STRING_ONE;
+    info.InsertInnerSharedModuleInfo(MODULE_A, oldVersionInfo);
+    InnerModuleInfo newVersionInfo;
+    newVersionInfo.versionCode = SHARED_VERSION_NEW;
+    newVersionInfo.easyGo = TEST_STRING_ONE;
+    info.InsertInnerSharedModuleInfo(MODULE_A, newVersionInfo);
+    // MODULE_B is absent from the parsed map and must take the "not found" branch
+    InnerModuleInfo untouchedInfo;
+    untouchedInfo.versionCode = SHARED_VERSION_NEW;
+    untouchedInfo.easyGo = TEST_STRING_ONE;
+    info.InsertInnerSharedModuleInfo(MODULE_B, untouchedInfo);
+
+    // the parsed side only describes the new version of MODULE_A
+    std::map<std::string, InnerModuleInfo> innerModuleInfos;
+    InnerModuleInfo parsedModuleInfo;
+    parsedModuleInfo.versionCode = SHARED_VERSION_NEW;
+    parsedModuleInfo.easyGo = EASY_GO;
+    innerModuleInfos.try_emplace(MODULE_A, parsedModuleInfo);
+    InnerBundleInfo jsonInfo;
+    jsonInfo.AddInnerModuleInfo(innerModuleInfos);
+
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos = info.GetInnerSharedModuleInfos();
+    auto item = innerSharedModuleInfos.find(MODULE_A);
+    ASSERT_TRUE(item != innerSharedModuleInfos.end());
+    ASSERT_EQ(item->second.size(), TEST_SIZE_TWO);
+    for (const auto &sharedModuleInfo : item->second) {
+        if (sharedModuleInfo.versionCode == SHARED_VERSION_NEW) {
+            EXPECT_EQ(sharedModuleInfo.easyGo, EASY_GO);
+        } else {
+            // version mismatch branch, the old version must keep its original value
+            EXPECT_EQ(sharedModuleInfo.easyGo, TEST_STRING_ONE);
+        }
+    }
+    auto untouchedItem = innerSharedModuleInfos.find(MODULE_B);
+    ASSERT_TRUE(untouchedItem != innerSharedModuleInfos.end());
+    ASSERT_EQ(untouchedItem->second.size(), TEST_SIZE_ONE);
+    EXPECT_EQ(untouchedItem->second[0].easyGo, TEST_STRING_ONE);
+}
+
+/**
+ * @tc.number: UpdatePartialInnerBundleInfo_1200
+ * @tc.name: UpdatePartialInnerBundleInfo
+ * @tc.desc: 1.Test allowSelfRedirect is preserved on every ability key mismatch branch.
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdatePartialInnerBundleInfo_1200, Function | SmallTest | Level1)
+{
+    InnerBundleInfo info;
+    std::map<std::string, InnerAbilityInfo> innerAbilityInfos;
+    // ABILITY_A: same key on both sides but the module name differs
+    InnerAbilityInfo moduleMismatchInfo;
+    moduleMismatchInfo.moduleName = MODULE_A;
+    moduleMismatchInfo.name = ABILITY_A;
+    innerAbilityInfos.try_emplace(ABILITY_A, moduleMismatchInfo);
+    // ABILITY_B: same key on both sides but the ability name differs
+    InnerAbilityInfo nameMismatchInfo;
+    nameMismatchInfo.moduleName = MODULE_A;
+    nameMismatchInfo.name = ABILITY_B;
+    innerAbilityInfos.try_emplace(ABILITY_B, nameMismatchInfo);
+    // EXTENSION_A: a key the parsed side does not carry at all
+    InnerAbilityInfo missingKeyInfo;
+    missingKeyInfo.moduleName = MODULE_A;
+    missingKeyInfo.name = ABILITY_A;
+    innerAbilityInfos.try_emplace(EXTENSION_A, missingKeyInfo);
+    info.AddModuleAbilityInfo(innerAbilityInfos);
+
+    innerAbilityInfos.clear();
+    InnerAbilityInfo parsedModuleMismatch;
+    parsedModuleMismatch.moduleName = MODULE_B;
+    parsedModuleMismatch.name = ABILITY_A;
+    parsedModuleMismatch.allowSelfRedirect = ALLOW_SELF_REDIRECT;
+    innerAbilityInfos.try_emplace(ABILITY_A, parsedModuleMismatch);
+    InnerAbilityInfo parsedNameMismatch;
+    parsedNameMismatch.moduleName = MODULE_A;
+    parsedNameMismatch.name = ABILITY_A;
+    parsedNameMismatch.allowSelfRedirect = ALLOW_SELF_REDIRECT;
+    innerAbilityInfos.try_emplace(ABILITY_B, parsedNameMismatch);
+    InnerBundleInfo jsonInfo;
+    jsonInfo.AddModuleAbilityInfo(innerAbilityInfos);
+
+    info.UpdatePartialInnerBundleInfo(jsonInfo);
+    std::map<std::string, InnerAbilityInfo> updatedInnerAbilityInfos = info.GetInnerAbilityInfos();
+    // none of the three may be overwritten, all keep the default true
+    for (const auto &abilityKey : {ABILITY_A, ABILITY_B, EXTENSION_A}) {
+        auto item = updatedInnerAbilityInfos.find(abilityKey);
+        ASSERT_TRUE(item != updatedInnerAbilityInfos.end());
+        EXPECT_TRUE(item->second.allowSelfRedirect);
+    }
+}
+
+/**
+ * @tc.number: UpdateExtensionType_0200
+ * @tc.name: test UpdateExtensionType
+ * @tc.desc: test UpdateExtensionType of ModuleJsonUpdater
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateExtensionType_0200, Function | SmallTest | Level1)
+{
+    InnerBundleInfo curInfo;
+    InnerBundleInfo mergedInfo;
+    std::string key = TEST_STRING_ONE;
+    InnerExtensionInfo extensionInfo;
+    extensionInfo.type = ExtensionAbilityType::CRYPTO;
+    curInfo.InsertExtensionInfo(key, extensionInfo);
+    ModuleJsonUpdater::UpdateExtensionType(curInfo, mergedInfo);
+    EXPECT_TRUE(mergedInfo.FetchInnerExtensionInfos().empty());
+}
+
+/**
+ * @tc.number: UpdateExtensionType_0300
+ * @tc.name: test UpdateExtensionType
+ * @tc.desc: test UpdateExtensionType of ModuleJsonUpdater
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateExtensionType_0300, Function | SmallTest | Level1)
+{
+    InnerBundleInfo curInfo;
+    InnerBundleInfo mergedInfo;
+    std::string key = TEST_STRING_ONE;
+    InnerExtensionInfo extensionInfo;
+    extensionInfo.type = ExtensionAbilityType::CRYPTO;
+    extensionInfo.moduleName = TEST_STRING_ONE;
+    curInfo.InsertExtensionInfo(key, extensionInfo);
+    extensionInfo.moduleName = TEST_STRING_TWO;
+    mergedInfo.InsertExtensionInfo(key, extensionInfo);
+    ModuleJsonUpdater::UpdateExtensionType(curInfo, mergedInfo);
+    auto baseExtensionInfos = mergedInfo.FetchInnerExtensionInfos();
+    ASSERT_EQ(baseExtensionInfos.size(), TEST_SIZE_ONE);
+    EXPECT_NE(baseExtensionInfos.begin()->second.type, ExtensionAbilityType::UNSPECIFIED);
+}
+
+/**
+ * @tc.number: UpdateExtensionType_0400
+ * @tc.name: test UpdateExtensionType
+ * @tc.desc: test UpdateExtensionType of ModuleJsonUpdater
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateExtensionType_0400, Function | SmallTest | Level1)
+{
+    InnerBundleInfo curInfo;
+    InnerBundleInfo mergedInfo;
+    std::string key = TEST_STRING_ONE;
+    InnerExtensionInfo extensionInfo;
+    extensionInfo.type = ExtensionAbilityType::CRYPTO;
+    extensionInfo.moduleName = TEST_STRING_ONE;
+    extensionInfo.name = TEST_STRING_ONE;
+    curInfo.InsertExtensionInfo(key, extensionInfo);
+    extensionInfo.name = TEST_STRING_TWO;
+    mergedInfo.InsertExtensionInfo(key, extensionInfo);
+    ModuleJsonUpdater::UpdateExtensionType(curInfo, mergedInfo);
+    auto baseExtensionInfos = mergedInfo.FetchInnerExtensionInfos();
+    ASSERT_EQ(baseExtensionInfos.size(), TEST_SIZE_ONE);
+    EXPECT_NE(baseExtensionInfos.begin()->second.type, ExtensionAbilityType::UNSPECIFIED);
+}
+
+/**
+ * @tc.number: UpdateExtensionType_0500
+ * @tc.name: test UpdateExtensionType
+ * @tc.desc: test UpdateExtensionType of ModuleJsonUpdater
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateExtensionType_0500, Function | SmallTest | Level1)
+{
+    InnerBundleInfo curInfo;
+    InnerBundleInfo mergedInfo;
+    std::string key = TEST_STRING_ONE;
+    InnerExtensionInfo extensionInfo;
+    extensionInfo.type = ExtensionAbilityType::CRYPTO;
+    extensionInfo.moduleName = TEST_STRING_ONE;
+    extensionInfo.name = TEST_STRING_ONE;
+    curInfo.InsertExtensionInfo(key, extensionInfo);
+    mergedInfo.InsertExtensionInfo(key, extensionInfo);
+    ModuleJsonUpdater::UpdateExtensionType(curInfo, mergedInfo);
+    auto baseExtensionInfos = mergedInfo.FetchInnerExtensionInfos();
+    ASSERT_EQ(baseExtensionInfos.size(), TEST_SIZE_ONE);
+    EXPECT_NE(baseExtensionInfos.begin()->second.type, ExtensionAbilityType::UNSPECIFIED);
+}
+
+/**
+ * @tc.number: UpdateExtensionType_0600
+ * @tc.name: test UpdateExtensionType
+ * @tc.desc: test UpdateExtensionType of ModuleJsonUpdater
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, UpdateExtensionType_0600, Function | SmallTest | Level1)
+{
+    InnerBundleInfo curInfo;
+    InnerBundleInfo mergedInfo;
+    InnerExtensionInfo extensionInfo;
+    extensionInfo.type = ExtensionAbilityType::SERVICE;
+    extensionInfo.moduleName = TEST_STRING_ONE;
+    extensionInfo.name = TEST_STRING_ONE;
+    extensionInfo.hapPath = TEST_STRING_ONE;
+    curInfo.InsertExtensionInfo(TEST_STRING_ONE, extensionInfo);
+    curInfo.InsertExtensionInfo(TEST_STRING_TWO, extensionInfo);
+    mergedInfo.InsertExtensionInfo(TEST_STRING_ONE, extensionInfo);
+    mergedInfo.InsertExtensionInfo(TEST_STRING_TWO, extensionInfo);
+    ModuleJsonUpdater::UpdateExtensionType(curInfo, mergedInfo);
+    auto baseExtensionInfos = mergedInfo.FetchInnerExtensionInfos();
+    ASSERT_EQ(baseExtensionInfos.size(), TEST_SIZE_TWO);
+    EXPECT_NE(baseExtensionInfos.begin()->second.type, ExtensionAbilityType::UNSPECIFIED);
+}
+
+/**
+ * @tc.number: ExecutableBinaryPaths_001
+ * @tc.name: test ExecutableBinaryPaths parsing from json
+ * @tc.desc: 1. create InnerModuleInfo with executableBinaryPaths
+ *           2. verify from_json parses correctly
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ExecutableBinaryPaths_001, Function | SmallTest | Level0)
+{
+    nlohmann::json jsonObject;
+    jsonObject["name"] = MODULE_A;
+
+    nlohmann::json binPath1;
+    binPath1["path"] = "/libs/test1.bin";
+    nlohmann::json binPath2;
+    binPath2["path"] = "/libs/test2.bin";
+
+    nlohmann::json binPathsArray = nlohmann::json::array();
+    binPathsArray.push_back(binPath1);
+    binPathsArray.push_back(binPath2);
+    jsonObject["executableBinaryPaths"] = binPathsArray;
+
+    InnerModuleInfo moduleInfo;
+    from_json(jsonObject, moduleInfo);
+
+    EXPECT_EQ(moduleInfo.executableBinaryPaths.size(), static_cast<size_t>(2));
+    EXPECT_EQ(moduleInfo.executableBinaryPaths[0].path, "/libs/test1.bin");
+    EXPECT_EQ(moduleInfo.executableBinaryPaths[1].path, "/libs/test2.bin");
+}
+
+/**
+ * @tc.number: ExecutableBinaryPaths_002
+ * @tc.name: test ExecutableBinaryPaths with empty array
+ * @tc.desc: 1. executableBinaryPaths is empty array
+ *           2. verify parsing handles empty array
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ExecutableBinaryPaths_002, Function | SmallTest | Level0)
+{
+    nlohmann::json jsonObject;
+    jsonObject["name"] = MODULE_A;
+    jsonObject["executableBinaryPaths"] = nlohmann::json::array();
+
+    InnerModuleInfo moduleInfo;
+    from_json(jsonObject, moduleInfo);
+
+    EXPECT_TRUE(moduleInfo.executableBinaryPaths.empty());
+}
+
+/**
+ * @tc.number: ExecutableBinaryPaths_to_json_001
+ * @tc.name: test to_json for ExecutableBinaryPaths
+ * @tc.desc: 1. create InnerModuleInfo with executableBinaryPaths
+ *           2. verify to_json generates correct json
+ */
+HWTEST_F(BmsModuleJsonUpdaterTest, ExecutableBinaryPaths_to_json_001, Function | SmallTest | Level0)
+{
+    InnerModuleInfo moduleInfo;
+    moduleInfo.name = MODULE_A;
+
+    ExecutableBinaryPath binPath1;
+    binPath1.path = "/libs/test1.bin";
+    ExecutableBinaryPath binPath2;
+    binPath2.path = "/libs/test2.bin";
+    moduleInfo.executableBinaryPaths.push_back(binPath1);
+    moduleInfo.executableBinaryPaths.push_back(binPath2);
+
+    nlohmann::json jsonObject;
+    to_json(jsonObject, moduleInfo);
+
+    ASSERT_TRUE(jsonObject.contains("executableBinaryPaths"));
+    EXPECT_EQ(jsonObject["executableBinaryPaths"].size(), static_cast<size_t>(2));
+    EXPECT_EQ(jsonObject["executableBinaryPaths"][0]["path"], "/libs/test1.bin");
+    EXPECT_EQ(jsonObject["executableBinaryPaths"][1]["path"], "/libs/test2.bin");
+}
+}

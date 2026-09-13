@@ -1,0 +1,63 @@
+{
+  "subsystems": [
+    {
+      "subsystem": "hiviewdfx",
+      "components": [
+        { "component": "hilog_lite" },
+        { "component": "hievent_lite" },
+        { "component": "hiview_lite" }
+      ]
+    },
+    {
+      "subsystem": "startup",
+      "components": [
+        { "component": "bootstrap_lite" },
+        { "component": "init" }
+      ]
+    },
+    {
+      "subsystem": "communication",
+      "components": [
+        { "component": "dsoftbus" }
+      ]
+    },
+    {
+      "subsystem": "security",
+      "components": [
+        { "component": "device_auth" },
+        { "component": "huks" }
+      ]
+    },
+    {
+      "subsystem": "commonlibrary",
+      "components": [
+         { "component": "utils_lite" }
+      ]
+    },
+    {
+      "subsystem": "updater",
+      "components": [
+        { "component": "sys_installer_lite" }
+      ]
+    },
+      {
+      "subsystem": "thirdparty",
+      "components": [
+        { "component": "libcoap" },
+        { "component": "littlefs" },
+        { "component": "optimized_routines" },
+        { "component": "libunwind" },
+        { "component": "jerryscript" },
+        { "component": "cJSON" },
+        { "component": "bounds_checking_function" },
+        { "component": "FatFs" }
+      ]
+    },
+      {
+      "subsystem": "communication",
+      "components": [
+        { "component": "ipc" }
+      ]
+    }
+  ]
+}

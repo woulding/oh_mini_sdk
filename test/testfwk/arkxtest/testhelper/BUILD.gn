@@ -1,0 +1,142 @@
+#
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//test/testfwk/arkxtest/arkxtest_config.gni")
+
+ohos_static_library("testhelper_core") {
+  branch_protector_ret = "pac_ret"
+  sources = [
+    "./src/testhelper_core.cpp",
+    "./src/common_utils.cpp",
+    "./src/gpx_parser.cpp",
+  ]
+  include_dirs = [ "./include" ]
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"TestHelper\"",
+  ]
+  external_deps = [
+    "hilog:libhilog",
+    "c_utils:utils",
+    "time_service:time_client",
+    "ability_runtime:wantagent_innerkits",
+    "libxml2:libxml2",
+    "ability_base:configuration",
+  ]
+  if ((arkxtest_product_feature == "pc" ||
+       arkxtest_product_feature == "tablet" ||
+       arkxtest_product_feature == "phone") &&
+      (defined(global_parts_info) && defined(global_parts_info.graphic_graphic_2d))) {
+    external_deps += [
+      "graphic_2d:rosen_text",
+      "graphic_2d:2d_graphics",
+    ]
+    defines += [ "ARKXTEST_FONT_ENABLE"]
+  }
+  if (defined(global_parts_info) && defined(global_parts_info.distributeddatamgr_pasteboard)) {
+    external_deps += [
+      "pasteboard:pasteboard_client",
+      "pasteboard:pasteboard_data",
+    ]
+    defines += [ "ARKXTEST_PASTEBOARD_ENABLE"]
+  }
+  deps = [
+    "../testserver/src:test_server_client",
+  ]
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}
+
+ohos_executable("testhelper") {
+  branch_protector_ret = "pac_ret" 
+  sources = [
+    "./src/testhelper_main.cpp",
+  ]
+  include_dirs = [ "./include" ]
+  deps = [
+    ":testhelper_core",
+    "../testserver/src:test_server_client",
+  ]
+  external_deps = [
+    "hilog:libhilog",
+    "c_utils:utils",
+    "ipc:ipc_core",
+    "common_event_service:cesfwk_innerkits",
+    "libxml2:libxml2",
+  ]
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+  output_name = "testhelper"
+  install_enable = true
+  if (arkxtest_product_feature == "watch" || arkxtest_product_feature == "glasses") {
+    install_enable = false
+  }
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"TestHelper\"",
+  ]
+}
+
+group("testhelperkit") {
+  deps = [
+    ":testhelper",
+  ]
+}
+
+import("//build/test.gni")
+
+ohos_unittest("testhelper_unittest") {
+  sources = [
+    "./test/unittest/common_utils_test.cpp",
+    "./test/unittest/testhelper_core_test.cpp",
+    "./src/testhelper_core.cpp",
+    "./src/common_utils.cpp",
+  ]
+  include_dirs = [
+    "./include",
+  ]
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"TestHelper\"",
+  ]
+  deps = [
+    "../testserver/src:test_server_client",
+  ]
+  external_deps = [
+    "hilog:libhilog",
+    "c_utils:utils",
+    "time_service:time_client",
+    "ability_runtime:wantagent_innerkits",
+    "libxml2:libxml2",
+    "ability_base:configuration",
+  ]
+  if ((arkxtest_product_feature == "pc" ||
+       arkxtest_product_feature == "tablet" ||
+       arkxtest_product_feature == "phone") &&
+       (defined(global_parts_info) && defined(global_parts_info.graphic_graphic_2d))) {
+    external_deps += [
+      "graphic_2d:rosen_text",
+      "graphic_2d:2d_graphics",
+    ]
+    defines += [ "ARKXTEST_FONT_ENABLE"]
+  }
+  cflags = [ "-g" ]
+  cflags_cc = [ "-g" ]
+  use_exceptions = true
+  module_out_path = "arkxtest/testhelper"
+  testonly = true
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}

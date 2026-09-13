@@ -1,0 +1,353 @@
+/*
+ * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "napi_link_enhance_server.h"
+
+#include "napi_link_enhance_error_code.h"
+#include "napi_link_enhance_utils.h"
+#include "softbus_error_code.h"
+#include "softbus_connection.h"
+
+namespace Communication {
+namespace OHOS::Softbus {
+
+thread_local napi_ref NapiLinkEnhanceServer::consRef_ = nullptr;
+
+std::unordered_map<std::string, NapiLinkEnhanceServer *> NapiLinkEnhanceServer::enhanceServerMap_;
+std::mutex NapiLinkEnhanceServer::serverMapMutex_;
+
+static napi_status CheckCreateServerParams(napi_env env, napi_callback_info info, napi_value &outResult)
+{
+    size_t argc = ARGS_SIZE_ONE;
+    napi_value argv[ARGS_SIZE_ONE] = { 0 };
+
+    NAPI_SOFTBUS_CALL_RETURN(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    NAPI_SOFTBUS_RETURN_IF(
+        argc != ARGS_SIZE_ONE, "expect 1 args", napi_invalid_arg);
+
+    std::string name {};
+    if (!ParseString(env, name, argv[ARGS_SIZE_ZERO])) {
+        COMM_LOGE(COMM_SDK, "unexpect string");
+        return napi_string_expected;
+    }
+    if (name.length() == 0) {
+        COMM_LOGE(COMM_SDK, "invalid name");
+        return napi_invalid_arg;
+    }
+    napi_value constructor = nullptr;
+    if (NapiLinkEnhanceServer::consRef_ == nullptr) {
+        return napi_string_expected;
+    }
+    NAPI_SOFTBUS_CALL_RETURN(napi_get_reference_value(env, NapiLinkEnhanceServer::consRef_, &constructor));
+    NAPI_SOFTBUS_CALL_RETURN(napi_new_instance(env, constructor, argc, argv, &outResult));
+    return napi_ok;
+}
+
+napi_value NapiLinkEnhanceServer::Create(napi_env env, napi_callback_info info)
+{
+    if (!CheckAccessToken()) {
+        HandleSyncErr(env, LINK_ENHANCE_PERMISSION_DENIED);
+        return NapiGetUndefinedRet(env);
+    }
+    napi_value result;
+    auto status = CheckCreateServerParams(env, info, result);
+    if (status != napi_ok) {
+        HandleSyncErr(env, LINK_ENHANCE_PARAMETER_INVALID);
+        return NapiGetUndefinedRet(env);
+    }
+    return result;
+}
+
+void NapiLinkEnhanceServer::DefineJSClass(napi_env env)
+{
+    napi_property_descriptor serverDesc[] = {
+        DECLARE_NAPI_FUNCTION("start", Start),
+        DECLARE_NAPI_FUNCTION("stop", Stop),
+        DECLARE_NAPI_FUNCTION("close", Close),
+        DECLARE_NAPI_FUNCTION("on", On),
+        DECLARE_NAPI_FUNCTION("off", Off),
+    };
+
+    napi_value constructor = nullptr;
+    napi_define_class(env, "Server", NAPI_AUTO_LENGTH, Constructor, nullptr,
+        sizeof(serverDesc) / sizeof(serverDesc[0]), serverDesc, &constructor);
+    napi_create_reference(env, constructor, 1, &consRef_);
+}
+
+void NapiLinkEnhanceServer::ReleaseServerResource(napi_env env, NapiLinkEnhanceServer* server)
+{
+    if (server == nullptr) {
+        return;
+    }
+    {
+        std::lock_guard<std::recursive_timed_mutex> guard(server->lock_);
+        if (server->acceptConnectRef_ != nullptr) {
+            napi_delete_reference(env, server->acceptConnectRef_);
+            server->acceptConnectRef_ = nullptr;
+        }
+        if (server->serverStopRef_ != nullptr) {
+            napi_delete_reference(env, server->serverStopRef_);
+            server->serverStopRef_ = nullptr;
+        }
+    }
+    std::lock_guard<std::mutex> guard(serverMapMutex_);
+    auto it = enhanceServerMap_.find(server->name_);
+    if (it != enhanceServerMap_.end() && it->second == server) {
+        COMM_LOGI(COMM_SDK, "Server %{public}s removed from map in finalizer",
+            server->name_.c_str());
+        enhanceServerMap_.erase(it);
+    }
+}
+
+napi_value NapiLinkEnhanceServer::Constructor(napi_env env, napi_callback_info info)
+{
+    napi_value thisVar = nullptr;
+
+    size_t argc = ARGS_SIZE_ONE;
+    napi_value argv[ARGS_SIZE_ONE] = {0};
+
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    if (argc != ARGS_SIZE_ONE) {
+        COMM_LOGE(COMM_SDK, "expect one args");
+        return NapiGetUndefinedRet(env);
+    }
+    std::string name = "";
+    if (!ParseString(env, name, argv[PARAM0])) {
+        COMM_LOGE(COMM_SDK, "Parse name fail");
+        return NapiGetUndefinedRet(env);
+    }
+    {
+        std::lock_guard<std::mutex> guard(serverMapMutex_);
+        if (enhanceServerMap_.find(name) != enhanceServerMap_.end()) {
+            HandleSyncErr(env, LINK_ENHANCE_DUPLICATE_SERVER_NAME);
+            return NapiGetUndefinedRet(env);
+        }
+    }
+    NapiLinkEnhanceServer* enhanceServer = new NapiLinkEnhanceServer(name);
+    if (enhanceServer == nullptr) {
+        COMM_LOGE(COMM_SDK, "new enhanceServer fail");
+        return NapiGetUndefinedRet(env);
+    }
+    auto status = napi_wrap(
+        env, thisVar, enhanceServer,
+        [](napi_env env, void* data, void* hint) {
+            NapiLinkEnhanceServer* server = static_cast<NapiLinkEnhanceServer*>(data);
+            if (server) {
+                ReleaseServerResource(env, server);
+                (void)GeneralRemoveServer(PKG_NAME.c_str(), server->name_.c_str());
+                delete server;
+            }
+        },
+        nullptr, nullptr);
+    if (status != napi_ok) {
+        COMM_LOGE(COMM_SDK, "napi_wrap fail");
+        delete enhanceServer;
+        enhanceServer = nullptr;
+        return thisVar;
+    }
+    enhanceServer->env_ = env;
+    {
+        std::lock_guard<std::mutex> guard(serverMapMutex_);
+        enhanceServerMap_[name] = enhanceServer;
+    }
+
+    return thisVar;
+}
+
+static NapiLinkEnhanceServer *NapiGetEnhanceServer(napi_env env, napi_value thisVar)
+{
+    NapiLinkEnhanceServer *enhanceServer = nullptr;
+    auto status = napi_unwrap(env, thisVar, reinterpret_cast<void **>(&enhanceServer));
+    if (status != napi_ok) {
+        return nullptr;
+    }
+    return enhanceServer;
+}
+
+static NapiLinkEnhanceServer *NapiGetEnhanceServer(napi_env env, napi_callback_info info)
+{
+    size_t argc = 0;
+    napi_value thisVar = nullptr;
+    if (napi_get_cb_info(env, info, &argc, nullptr, &thisVar, nullptr) != napi_ok) {
+        return nullptr;
+    }
+    return NapiGetEnhanceServer(env, thisVar);
+}
+
+napi_value NapiLinkEnhanceServer::On(napi_env env, napi_callback_info info)
+{
+    std::string funcName = "";
+    if (!CheckAccessTokenAndParams(env, info, funcName, true)) {
+        return NapiGetUndefinedRet(env);
+    }
+    NapiLinkEnhanceServer *enhanceServer = NapiGetEnhanceServer(env, info);
+    size_t argc = ARGS_SIZE_TWO;
+    napi_value args[ARGS_SIZE_TWO];
+    napi_status status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    if (status != napi_ok || argc != ARGS_SIZE_TWO || enhanceServer == nullptr) {
+        HandleSyncErr(env, LINK_ENHANCE_PARAMETER_INVALID);
+        return NapiGetUndefinedRet(env);
+    }
+
+    if (strcmp(funcName.c_str(), "connectionAccepted") == 0) {
+        COMM_LOGI(COMM_SDK, "register connectionAccepted");
+        enhanceServer->SetAcceptedEnable(true, env, args[ARGS_SIZE_ONE]);
+    } else if (strcmp(funcName.c_str(), "serverStopped") == 0) {
+        COMM_LOGI(COMM_SDK, "register serverStopped");
+        enhanceServer->SetStopEnable(true, env, args[ARGS_SIZE_ONE]);
+    } else {
+        COMM_LOGE(COMM_SDK, "unknown str, name=%{public}s", funcName.c_str());
+        HandleSyncErr(env, LINK_ENHANCE_PARAMETER_INVALID);
+        return NapiGetUndefinedRet(env);
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+napi_value NapiLinkEnhanceServer::Off(napi_env env, napi_callback_info info)
+{
+    std::string funcName = "";
+    if (!CheckAccessTokenAndParams(env, info, funcName, false)) {
+        return NapiGetUndefinedRet(env);
+    }
+
+    NapiLinkEnhanceServer *enhanceServer = NapiGetEnhanceServer(env, info);
+    if (enhanceServer == nullptr) {
+        HandleSyncErr(env, LINK_ENHANCE_PARAMETER_INVALID);
+        return NapiGetUndefinedRet(env);
+    }
+    if (strcmp(funcName.c_str(), "connectionAccepted") == 0) {
+        enhanceServer->SetAcceptedEnable(false, env);
+    } else if (strcmp(funcName.c_str(), "serverStopped") == 0) {
+        enhanceServer->SetStopEnable(false, env);
+    } else {
+        COMM_LOGE(COMM_SDK, "unknown str, name=%{public}s", funcName.c_str());
+        HandleSyncErr(env, LINK_ENHANCE_PARAMETER_INVALID);
+        return NapiGetUndefinedRet(env);
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+napi_value NapiLinkEnhanceServer::Start(napi_env env, napi_callback_info info)
+{
+    if (!CheckAccessToken()) {
+        HandleSyncErr(env, LINK_ENHANCE_PERMISSION_DENIED);
+        return NapiGetUndefinedRet(env);
+    }
+    size_t argc = 0;
+    napi_status status = napi_get_cb_info(env, info, &argc, nullptr, nullptr, nullptr);
+    if (status != napi_ok || argc > ARGS_SIZE_ZERO) {
+        HandleSyncErr(env, LINK_ENHANCE_INTERNAL_ERR);
+        return NapiGetUndefinedRet(env);
+    }
+    NapiLinkEnhanceServer *enhanceServer = NapiGetEnhanceServer(env, info);
+    if (enhanceServer == nullptr) {
+        HandleSyncErr(env, LINK_ENHANCE_INTERNAL_ERR);
+        return NapiGetUndefinedRet(env);
+    }
+    int32_t ret = GeneralCreateServer(PKG_NAME.c_str(), enhanceServer->name_.c_str());
+    if (ret != 0) {
+        COMM_LOGE(COMM_SDK, "create server fail, ret=%{public}d", ret);
+        int32_t errCode = ConvertToJsErrcode(ret);
+        if (errCode == LINK_ENHANCE_PARAMETER_INVALID) {
+            napi_throw_error(env, std::to_string(errCode).c_str(),
+                "check whether the length of the name input when calling the createServer interface is valid");
+            return NapiGetUndefinedRet(env);
+        }
+        HandleSyncErr(env, errCode);
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+napi_value NapiLinkEnhanceServer::Stop(napi_env env, napi_callback_info info)
+{
+    if (!CheckAccessToken()) {
+        HandleSyncErr(env, LINK_ENHANCE_PERMISSION_DENIED);
+        return NapiGetUndefinedRet(env);
+    }
+    size_t argc = 0;
+    napi_status status = napi_get_cb_info(env, info, &argc, nullptr, nullptr, nullptr);
+    if (status != napi_ok || argc > ARGS_SIZE_ZERO) {
+        COMM_LOGE(COMM_SDK, "no needed arguments");
+        return NapiGetUndefinedRet(env);
+    }
+    NapiLinkEnhanceServer *enhanceServer = NapiGetEnhanceServer(env, info);
+    if (enhanceServer == nullptr) {
+        COMM_LOGE(COMM_SDK, "get server fail");
+        return NapiGetUndefinedRet(env);
+    }
+    enhanceServer->lock_.lock();
+    enhanceServer->isAcceptedEnable_ = false;
+    enhanceServer->isStopEnable_ = false;
+    enhanceServer->lock_.unlock();
+
+    int32_t ret = GeneralRemoveServer(PKG_NAME.c_str(), enhanceServer->name_.c_str());
+    if (ret != 0) {
+        COMM_LOGE(COMM_SDK, "remove server fail, ret=%{public}d", ret);
+        if (ConvertToJsErrcode(ret) == LINK_ENHANCE_PERMISSION_DENIED) {
+            HandleSyncErr(env, LINK_ENHANCE_PERMISSION_DENIED);
+        }
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+napi_value NapiLinkEnhanceServer::Close(napi_env env, napi_callback_info info)
+{
+    COMM_LOGI(COMM_SDK, "enter");
+    if (!CheckAccessToken()) {
+        HandleSyncErr(env, LINK_ENHANCE_PERMISSION_DENIED);
+        return NapiGetUndefinedRet(env);
+    }
+    size_t argc = 0;
+    napi_status status = napi_get_cb_info(env, info, &argc, nullptr, nullptr, nullptr);
+    if (status != napi_ok || argc > ARGS_SIZE_ZERO) {
+        COMM_LOGE(COMM_SDK, "no needed arguments");
+        return NapiGetUndefinedRet(env);
+    }
+    NapiLinkEnhanceServer *enhanceServer = NapiGetEnhanceServer(env, info);
+    if (enhanceServer == nullptr) {
+        COMM_LOGE(COMM_SDK, "get server fail");
+        return NapiGetUndefinedRet(env);
+    }
+    enhanceServer->lock_.lock();
+    enhanceServer->isAcceptedEnable_ = false;
+    enhanceServer->isStopEnable_ = false;
+    enhanceServer->lock_.unlock();
+    ReleaseServerResource(env, enhanceServer);
+    int32_t ret = GeneralRemoveServer(PKG_NAME.c_str(), enhanceServer->name_.c_str());
+    if (ret != 0) {
+        COMM_LOGE(COMM_SDK, "remove server fail, ret=%{public}d", ret);
+        if (ConvertToJsErrcode(ret) == LINK_ENHANCE_PERMISSION_DENIED) {
+            HandleSyncErr(env, LINK_ENHANCE_PERMISSION_DENIED);
+        }
+    }
+    return NapiGetUndefinedRet(env);
+}
+
+bool NapiLinkEnhanceServer::IsAcceptedEnable()
+{
+    this->lock_.lock();
+    bool isEnable = this->isAcceptedEnable_;
+    this->lock_.unlock();
+    return isEnable;
+}
+
+bool NapiLinkEnhanceServer::IsStopEnable()
+{
+    this->lock_.lock();
+    bool isEnable = this->isStopEnable_;
+    this->lock_.unlock();
+    return isEnable;
+}
+} // namespace SoftBus
+} // namespace Communication

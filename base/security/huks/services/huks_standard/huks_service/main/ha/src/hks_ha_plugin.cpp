@@ -1,0 +1,395 @@
+/*
+ * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "hks_ha_plugin.h"
+
+#include <cstring>
+
+#include "securec.h"
+#include "hks_ha_event_queue.h"
+#include "hks_mem.h"
+#include "hks_log.h"
+#include "hks_plugin_adapter.h"
+#include "hks_plugin_def.h"
+#include "hks_template.h"
+
+HksHaPlugin::HksHaPlugin() : queue(), stopFlag(false) {}
+
+HksHaPlugin::~HksHaPlugin()
+{
+    Destroy();
+}
+
+void HksHaPlugin::Destroy()
+{
+    queue.Stop();
+
+    StopWorkerThread();
+
+    for (auto &pair : businessCacheMap) {
+        pair.second.RemoveFront(pair.second.GetSize());
+    }
+    businessCacheMap.clear();
+}
+
+void HksHaPlugin::StartWorkerThread()
+{
+    workerThread = std::thread(&HksHaPlugin::WorkerThread, this);
+}
+
+void HksHaPlugin::StopWorkerThread()
+{
+    stopFlag = true;
+}
+
+bool HksHaPlugin::Enqueue(uint32_t eventId, struct HksParamSet *paramSet)
+{
+    return queue.Enqueue(eventId, paramSet);
+}
+
+bool HksHaPlugin::IsValidEventProcMap(const struct HksEventProcMap *procMap) const
+{
+    HKS_IF_TRUE_LOGE_RETURN(procMap == nullptr, false, "IsValidEventProcMap: procMap is null")
+
+    if (procMap->eventInfoCreate == nullptr || procMap->needReport == nullptr || procMap->eventInfoEqual == nullptr ||
+        procMap->eventInfoAdd == nullptr || procMap->eventInfoToMap == nullptr) {
+        HKS_LOG_E("IsValidEventProcMap: Invalid function pointers in procMap for eventId %" LOG_PUBLIC "u",
+            procMap->eventId);
+        return false;
+    }
+
+    return true;
+}
+
+int32_t HksHaPlugin::RegisterEventProc(const struct HksEventProcMap *procMap)
+{
+    HKS_IF_NOT_TRUE_RETURN(IsValidEventProcMap(procMap), HKS_ERROR_NULL_POINTER);
+
+    std::lock_guard<std::mutex> lock(eventProcMutex);
+
+    auto it = std::find_if(eventProcList.begin(), eventProcList.end(),
+        [procMap](const struct HksEventProcMap &item) {
+            return item.eventId == procMap->eventId;
+        });
+    HKS_IF_TRUE_RETURN(it != eventProcList.end(), HKS_SUCCESS)
+
+    eventProcList.push_back(*procMap);
+
+    return HKS_SUCCESS;
+}
+
+int32_t HksHaPlugin::RegisterEventProcs(const struct HksEventProcMap *procMaps, uint32_t count)
+{
+    HKS_IF_TRUE_LOGE_RETURN((procMaps == nullptr || count == 0), HKS_ERROR_INVALID_ARGUMENT,
+        "RegisterEventProcs: Invalid input parameters")
+
+    uint32_t successCount = 0;
+    int32_t lastError = HKS_SUCCESS;
+
+    for (uint32_t i = 0; i < count; ++i) {
+        int32_t ret = RegisterEventProc(&procMaps[i]);
+        if (ret == HKS_SUCCESS) {
+            ++successCount;
+        } else {
+            lastError = ret;
+            HKS_LOG_E("RegisterEventProcs: Failed to register event processor for eventId %" LOG_PUBLIC "u,"
+                "ret = %" LOG_PUBLIC "d", procMaps[i].eventId, ret);
+        }
+    }
+    HKS_LOG_I("RegisterEventProcs: Successfully registered %" LOG_PUBLIC "u out of %" LOG_PUBLIC "u event processors",
+        successCount, count);
+
+    return (successCount == count) ? HKS_SUCCESS : lastError;
+}
+
+HksEventProcMap *HksHaPlugin::HksEventProcFind(uint32_t eventId)
+{
+    std::lock_guard<std::mutex> lock(eventProcMutex);
+
+    auto it = std::find_if(eventProcList.begin(), eventProcList.end(),
+        [eventId](const struct HksEventProcMap &item) {
+            return item.eventId == eventId;
+        });
+    HKS_IF_TRUE_RETURN(it != eventProcList.end(), &(*it)) // eventProcList无删除操作，因此此处返回指针是安全的
+    return nullptr;
+}
+
+static void AddAncoCallTagToEventMap(const struct HksParamSet *paramSet,
+    std::unordered_map<std::string, std::string> &eventMap)
+{
+    HKS_IF_NULL_LOGE_RETURN_VOID(paramSet, "AddAncoCallTagToEventMap: paramSet is null");
+    struct HksParam *ancoUidParam = nullptr;
+    int32_t ret = HksGetParam(paramSet, HKS_TAG_ANCO_APP_UID, &ancoUidParam);
+    HKS_IF_NOT_SUCC_RETURN_VOID(ret)
+    HKS_LOG_I("AddAncoCallTagToEventMap: anco uid found, add anco_call=true to eventMap");
+    eventMap["anco_call"] = "true";
+}
+
+void HksHaPlugin::HandlerReport(HksEventQueueItem &item)
+{
+    HKS_IF_NULL_LOGE_RETURN_VOID(item.paramSet, "HandlerReport: paramSet is"
+        "null for eventId %" LOG_PUBLIC "u", item.eventId);
+
+    uint32_t eventId = item.eventId;
+    auto procMap = HksEventProcFind(eventId);
+    HKS_IF_NULL_LOGE_RETURN_VOID(procMap, "HandlerReport: Event ID %" LOG_PUBLIC "u not found in"
+        "the eventProcMap", eventId);
+
+    struct HksEventInfo *eventInfo = (struct HksEventInfo *)HksMalloc(sizeof(struct HksEventInfo));
+    HKS_IF_NULL_LOGE_RETURN_VOID(eventInfo, "Failed to allocate HksEventInfo");
+
+    int32_t ret = procMap->eventInfoCreate(item.paramSet, eventInfo);
+    if (ret != HKS_SUCCESS) {
+        HKS_LOG_E("Failed to create HksEventInfo for eventId %" LOG_PUBLIC "u", eventId);
+        HksFreeEventInfo(&eventInfo);
+        HKS_FREE(eventInfo);
+        return;
+    }
+
+    bool needReport = procMap->needReport(eventInfo);
+    bool isAncoCall = false;
+    if (item.paramSet != nullptr) {
+        struct HksParam *ancoUidParam = nullptr;
+        int32_t ancoRet = HksGetParam(item.paramSet, HKS_TAG_ANCO_APP_UID, &ancoUidParam);
+        HKS_IF_TRUE_EXCU(ancoRet == HKS_SUCCESS, isAncoCall = true);
+    }
+    HKS_IF_NOT_TRUE_RETURN(needReport, HandleStatisticEvent(eventInfo, eventId, procMap, isAncoCall))
+
+    std::unordered_map<std::string, std::string> eventMap;
+    ret = procMap->eventInfoToMap(eventInfo, eventMap);
+    HKS_IF_NOT_SUCC_LOGE(ret, "Failed to convert HksEventInfo to map"
+        "for eventId %" LOG_PUBLIC "u", eventId);
+
+    AddAncoCallTagToEventMap(item.paramSet, eventMap);
+
+    HandleFaultEvent(&eventInfo->common, eventMap);
+
+    HksFreeEventInfo(&eventInfo);
+    HKS_FREE(eventInfo);
+}
+
+void HksHaPlugin::WorkerThread()
+{
+    while (!stopFlag) {
+        HksEventQueueItem item;
+        bool success = queue.Dequeue(item);
+        HKS_IF_TRUE_CONTINUE(!success)
+
+        HandlerReport(item);
+        HksFreeParamSet(&item.paramSet);
+    }
+}
+
+void HksHaPlugin::HandleFaultEvent(
+    HksEventCommonInfo *commonInfo, std::unordered_map<std::string, std::string> &eventMap)
+{
+    int32_t ret = HksPluginOnLocalRequest(CODE_FAULT_METRICS, commonInfo, &eventMap);
+    HKS_IF_NOT_SUCC_LOGE_RETURN_VOID(ret, "Failed to call OnSingleEventRequest: error code %" LOG_PUBLIC "d", ret);
+}
+
+static uint32_t GetCurrentTimestamp()
+{
+    return static_cast<uint32_t>(time(nullptr));
+}
+
+uint32_t HksHaPlugin::GetCacheWeightByEventId(uint32_t eventId) const
+{
+    switch (eventId) {
+        case HKS_EVENT_CRYPTO:
+        case HKS_EVENT_MAC:
+            return CACHE_WEIGHT_HIGH;
+        case HKS_EVENT_SIGN_VERIFY:
+        case HKS_EVENT_DERIVE:
+        case HKS_EVENT_AGREE:
+        case HKS_EVENT_GENERATE_KEY:
+        case HKS_EVENT_ATTEST:
+        case HKS_EVENT_DELETE_KEY:
+        case HKS_EVENT_IMPORT_KEY:
+            return CACHE_WEIGHT_MID;
+        case HKS_EVENT_DATA_SIZE_STATISTICS:
+            return CACHE_WEIGHT_SYSTEM;
+        default:
+            return CACHE_WEIGHT_LOW;
+    }
+}
+
+uint32_t HksHaPlugin::GetTotalCacheWeight() const
+{
+    uint32_t totalWeight = 0;
+    std::lock_guard<std::mutex> lock(eventProcMutex);
+    for (const auto &item : eventProcList) {
+        totalWeight += GetCacheWeightByEventId(item.eventId);
+    }
+    return totalWeight;
+}
+
+uint32_t HksHaPlugin::GetCacheSizeByEventId(uint32_t eventId) const
+{
+    uint32_t weight = GetCacheWeightByEventId(eventId);
+    uint32_t totalWeight = GetTotalCacheWeight();
+    if (totalWeight == 0) {
+        return CACHE_SIZE_MIN;
+    }
+    uint32_t size = CACHE_SIZE_TOTAL * weight / totalWeight;
+    return (size < CACHE_SIZE_MIN) ? CACHE_SIZE_MIN : size;
+}
+
+void HksHaPlugin::HandleStatisticEvent(struct HksEventInfo *eventInfo, uint32_t eventId,
+    HksEventProcMap *procMap, bool isAncoCall)
+{
+    HKS_IF_NULL_LOGE_RETURN_VOID(eventInfo, "HandleStatisticEvent: Invalid eventInfo parameters");
+    HKS_IF_NULL_LOGE_RETURN_VOID(procMap, "HandleStatisticEvent: Invalid procMap parameters");
+
+    HksEventCacheList &cacheList = businessCacheMap[eventId];
+    bool found = cacheList.FindAndUpdate(eventInfo, procMap);
+    if (!found) {
+        AddEventCache(eventId, eventInfo, isAncoCall);
+    } else {
+        HksFreeEventInfo(&eventInfo);
+        HKS_FREE(eventInfo);
+    }
+
+    uint32_t currentSize = cacheList.GetSize();
+    HKS_IF_TRUE_RETURN_VOID(currentSize <= 0)
+
+    HKS_IF_TRUE_RETURN_VOID(cacheList.cacheList.empty())
+    const HksEventCacheNode &firstNode = cacheList.cacheList.front();
+    uint32_t reportCount = 0;
+    time_t currentTime = GetCurrentTimestamp();
+    uint32_t maxCacheSize = GetCacheSizeByEventId(eventId);
+
+    HKS_IF_TRUE_RETURN_VOID((currentTime - firstNode.timestamp) <= MAX_CACHE_DURATION && currentSize < maxCacheSize)
+    reportCount = currentSize;
+    HKS_LOG_I("HksHaPlugin::HandleStatisticEvent:reportCount is %" LOG_PUBLIC "u", reportCount);
+    BatchReportEvents(eventId, reportCount);
+}
+
+void HksHaPlugin::AddEventCache(uint32_t eventId, struct HksEventInfo *eventInfo, bool isAncoCall)
+{
+    HksEventCacheNode newNode{eventId, GetCurrentTimestamp(), eventInfo, isAncoCall};
+    businessCacheMap[eventId].Add(newNode);
+}
+
+int32_t HksHaPlugin::FillEventInfos(uint32_t eventId, uint32_t reportCount, HksEventWithMap *eventsWithMap)
+{
+    auto it = businessCacheMap.find(eventId);
+    HKS_IF_TRUE_LOGI_RETURN(it == businessCacheMap.end(), HKS_ERROR_INVALID_ARGUMENT,
+        "FillEventInfos: eventId %" LOG_PUBLIC "u not found in cache", eventId)
+
+    uint32_t count = 0;
+    HksEventCacheList &cacheList = it->second;
+
+    for (auto cacheIt = cacheList.cacheList.begin(); cacheIt != cacheList.cacheList.end() && count < reportCount;
+         ++cacheIt) {
+        if (cacheIt->data) {
+            struct HksEventInfo *eventInfo = cacheIt->data;
+            eventsWithMap[count].common = eventInfo->common;
+
+            HksEventProcMap *procMap = HksEventProcFind(eventsWithMap[count].common.eventId);
+            HKS_IF_NULL_LOGI_RETURN(procMap, HKS_ERROR_NULL_POINTER, "procMap is null");
+
+            int32_t ret = procMap->eventInfoToMap(eventInfo, eventsWithMap[count].eventMap);
+            HKS_IF_TRUE_LOGE_CONTINUE(ret != HKS_SUCCESS,
+                "FillEventInfos: Failed to convert HksEventInfo to map for eventId %" LOG_PUBLIC "u",
+                eventsWithMap[count].common.eventId)
+            if (cacheIt->isAncoCall) {
+                eventsWithMap[count].eventMap["anco_call"] = "true";
+            }
+        }
+        ++count;
+    }
+
+    return HKS_SUCCESS;
+}
+
+int32_t HksHaPlugin::CallBatchReport(uint32_t reportCount, HksEventWithMap *eventsWithMap)
+{
+    int32_t ret = HksPluginOnLocalRequest(CODE_STATISTICS_METRICS, (const void *)eventsWithMap, (void *)&reportCount);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, HKS_ERROR_BAD_STATE, "CallBatchReport: HksHaPlugin_OnBatchEventRequest failed,"
+        "error code: %" LOG_PUBLIC "d", ret);
+
+    return HKS_SUCCESS;
+}
+
+void HksHaPlugin::RemoveReportedEvents(uint32_t eventId, uint32_t reportCount)
+{
+    auto it = businessCacheMap.find(eventId);
+    if (it != businessCacheMap.end()) {
+        it->second.RemoveFront(reportCount);
+    }
+}
+
+int32_t HksHaPlugin::BatchReportEvents(uint32_t eventId, uint32_t reportCount)
+{
+    auto it = businessCacheMap.find(eventId);
+    HKS_IF_TRUE_LOGI_RETURN(it == businessCacheMap.end(), HKS_ERROR_INVALID_ARGUMENT,
+        "HksHaPlugin::BatchReportEvents:eventId not found in cache")
+    HKS_IF_TRUE_LOGI_RETURN(reportCount > it->second.GetSize(), HKS_ERROR_INVALID_ARGUMENT,
+        "HksHaPlugin::BatchReportEvents:reportCount > queueSize")
+    HksEventWithMap *eventsWithMap = new (std::nothrow) HksEventWithMap[reportCount];
+    HKS_IF_NULL_LOGI_RETURN(eventsWithMap, HKS_ERROR_NULL_POINTER, "eventsWithMap is null");
+
+    int32_t ret = HKS_SUCCESS;
+    do {
+        ret = FillEventInfos(eventId, reportCount, eventsWithMap);
+        HKS_IF_NOT_SUCC_LOGI_BREAK(ret, "HksHaPlugin::BatchReportEvents:FillEventInfos fail");
+        ret = CallBatchReport(reportCount, eventsWithMap);
+        HKS_IF_NOT_SUCC_LOGI_BREAK(ret, "HksHaPlugin::BatchReportEvents:CallBatchReport fail");
+    } while (0);
+
+    RemoveReportedEvents(eventId, reportCount);
+    delete[] eventsWithMap;
+
+    return HKS_SUCCESS;
+}
+
+int32_t HksHaPluginInit(void)
+{
+    HksHaPlugin::GetInstance().StartWorkerThread();
+    return HKS_SUCCESS;
+}
+
+void HksHaPluginDestroy()
+{
+    HksHaPlugin::GetInstance().Destroy();
+}
+
+int32_t HksRegisterEventProcWrapper(const void *procMap)
+{
+    HKS_IF_NULL_LOGE_RETURN(procMap, HKS_ERROR_NULL_POINTER, "HksRegisterEventProcWrapper: procMap is null");
+    const HksEventProcMap *eventProcMap = static_cast<const HksEventProcMap *>(procMap);
+    return HksHaPlugin::GetInstance().RegisterEventProc(eventProcMap);
+}
+
+int32_t HksRegisterEventProcs(const void *procMaps, uint32_t count)
+{
+    if (procMaps == nullptr || count == 0) {
+        HKS_LOG_E("HksRegisterEventProcs: Invalid input parameters");
+        return HKS_ERROR_INVALID_ARGUMENT;
+    }
+    const HksEventProcMap *eventProcMaps = static_cast<const HksEventProcMap *>(procMaps);
+    return HksHaPlugin::GetInstance().RegisterEventProcs(eventProcMaps, count);
+}
+
+int32_t HksEnqueueEventWrapper(uint32_t eventId, struct HksParamSet *paramSet)
+{
+    HKS_IF_NULL_LOGE_RETURN(paramSet, HKS_ERROR_NULL_POINTER, "HksEnqueueEventWrapper: paramSet is null");
+
+    bool enqueueSuccess = HksHaPlugin::GetInstance().Enqueue(eventId, paramSet);
+    HKS_IF_NOT_TRUE_LOGE_RETURN(enqueueSuccess, HKS_ERROR_BAD_STATE,
+        "HksEnqueueEventWrapper: Failed to enqueue eventId %" LOG_PUBLIC "u", eventId);
+
+    return HKS_SUCCESS;
+}

@@ -1,0 +1,254 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+
+module_output_path = hiview_module + "/event_store"
+
+group("unittest") {
+  testonly = true
+  deps = [
+    ":EventStoreConfigTest",
+    ":SysEventBackupTest",
+    ":SysEventDaoTest",
+    ":SysEventDatabaseTest",
+    ":SysEventDocLruCacheTest",
+    ":SysEventDocTest",
+    ":SysEventRepeatTest",
+    ":SysEventSequenceMgrTest",
+    ":SysEventStoreUtilityTest",
+  ]
+}
+
+config("sys_event_dao_config_test") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "unittest/common",
+    "$hiview_base/event_store/store/include",
+  ]
+
+  cflags = []
+}
+
+ohos_unittest("EventStoreConfigTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_dao_config_test" ]
+
+  sources = [ "unittest/common/event_store_config_test.cpp" ]
+
+  deps = [ "$hiview_base/event_store/config:event_store_config_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hisysevent:libhisysevent",
+  ]
+}
+
+ohos_unittest("SysEventDocLruCacheTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_dao_config_test" ]
+
+  sources = [ "unittest/common/event_store_config_test.cpp" ]
+
+  deps = [ "$hiview_base/event_store/config:event_store_config_source" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hisysevent:libhisysevent",
+  ]
+}
+
+ohos_unittest("SysEventDaoTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_dao_config_test" ]
+
+  sources = [ "unittest/common/sys_event_dao_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_core:hiview_core_for_test",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file =
+      "//base/hiviewdfx/hiview/base/event_store/test/resource/ohos_test.xml"
+}
+
+ohos_unittest("SysEventRepeatTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_dao_config_test" ]
+
+  sources = [ "unittest/common/sys_event_repeat_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_base/event_store:event_store_source",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "relational_store:native_rdb",
+  ]
+}
+
+ohos_unittest("SysEventDatabaseTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_dao_config_test" ]
+
+  sources = [ "unittest/common/sys_event_database_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_base/event_store:event_store_source",
+    "$hiview_base/event_store/utility:event_store_utility_source",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "relational_store:native_rdb",
+  ]
+}
+
+config("sys_event_store_utility_test_config_test") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "unittest/common",
+    "$hiview_base/event_raw/include",
+    "$hiview_base/event_store/include",
+    "$hiview_base/utility/include",
+    "$hiview_base/include",
+    "$hiview_root/include",
+    "$hiview_base/event_store/utility/base/include",
+    "$hiview_base/event_store/utility/reader/include",
+    "$hiview_base/event_store/utility/writer/include",
+  ]
+
+  cflags = []
+}
+
+ohos_unittest("SysEventStoreUtilityTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_store_utility_test_config_test" ]
+
+  sources = [ "unittest/common/sys_event_store_utility_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_core:hiview_core",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file =
+      "//base/hiviewdfx/hiview/base/event_store/test/resource/ohos_test.xml"
+}
+
+ohos_unittest("SysEventDocTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_dao_config_test" ]
+
+  sources = [ "unittest/common/sys_event_doc_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_base/event_store:event_store_source",
+    "//base/hiviewdfx/hiview/base/event_store/utility:event_store_utility_source",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file =
+      "//base/hiviewdfx/hiview/base/event_store/test/resource/ohos_test.xml"
+}
+
+ohos_unittest("SysEventSequenceMgrTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_dao_config_test" ]
+
+  sources = [ "unittest/common/sys_event_sequence_mgr_test.cpp" ]
+
+  deps = [ "$hiview_base:hiviewbase_static_lib_for_tdd" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file =
+      "//base/hiviewdfx/hiview/base/event_store/test/resource/ohos_test.xml"
+}
+
+config("sys_event_backup_test_config") {
+  visibility = [ ":*" ]
+  include_dirs = [ "$hiview_base/event_store/store/include" ]
+  cflags = []
+}
+
+ohos_unittest("SysEventBackupTest") {
+  module_out_path = module_output_path
+  configs = [ ":sys_event_backup_test_config" ]
+
+  sources = [ "unittest/common/sys_event_backup_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_base/event_store:event_store_source",
+    "$hiview_core:hiview_core_for_test",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file =
+      "//base/hiviewdfx/hiview/base/event_store/test/resource/ohos_test.xml"
+}

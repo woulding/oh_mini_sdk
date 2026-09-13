@@ -1,0 +1,14 @@
+{
+  "description": "The broadcast plugin is functioning properly",
+  "environment": [
+    {
+      "type": "device"
+    }
+  ],
+  "driver": {
+    "type": "DeviceTest",
+    "py_file": [
+      "testcases/level0/case06_commonevent001.py"
+    ]
+  }
+}

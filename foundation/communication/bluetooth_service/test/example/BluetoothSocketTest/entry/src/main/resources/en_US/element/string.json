@@ -1,0 +1,28 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Socket应用"
+    },
+    {
+      "name": "Socket_test",
+      "value": "bluetooth socket test"
+    },
+    {
+      "name": "Socket_client",
+      "value": "socket client"
+    },
+    {
+      "name": "Socket_server",
+      "value": "socket server"
+    }
+  ]
+}

@@ -1,0 +1,271 @@
+# Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import("//foundation/multimedia/media_foundation/config.gni")
+
+declare_args() {
+  if (hst_is_mini_sys) {
+    plugin_dynamic_register = false
+  } else {
+    plugin_dynamic_register = true
+  }
+}
+
+config("hst_plugin_intf_config") {
+  include_dirs = [
+    "//foundation/multimedia/media_foundation/engine/include",
+    "//foundation/multimedia/media_foundation/engine/scene/standard",
+  ]
+  if (hst_is_lite_sys) {
+    include_dirs +=
+        [ "//foundation/multimedia/media_utils_lite/interfaces/kits" ]
+  } else {
+    include_dirs +=
+        [ "//foundation/multimedia/media_foundation/engine/scene/standard" ]
+  }
+}
+
+if (hst_is_lite_sys) {
+  source_set("histreamer_plugin_intf") {
+    sources = [
+      "common/media_sink.cpp",
+      "common/media_source.cpp",
+      "common/plugin_buffer.cpp",
+    ]
+    public_configs = [
+      ":hst_plugin_intf_config",
+      "//foundation/multimedia/media_foundation:histreamer_presets",
+    ]
+    if (hst_is_mini_sys) {
+      public_deps = [ "//third_party/bounds_checking_function:libsec_static" ]
+    } else {
+      public_external_deps = [ "bounds_checking_function:libsec_shared" ]
+    }
+  }
+} else {
+  ohos_source_set("histreamer_plugin_intf") {
+    subsystem_name = "multimedia"
+    part_name = "media_foundation"
+    sources = [
+      "common/media_sink.cpp",
+      "common/media_source.cpp",
+      "common/plugin_buffer.cpp",
+    ]
+    public_configs = [
+      ":hst_plugin_intf_config",
+      "//foundation/multimedia/media_foundation:histreamer_presets",
+    ]
+    public_external_deps = [ "player_framework:media_client" ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "hitrace:hitrace_meter",
+    ]
+    if (media_foundation_enable_video) {
+      public_external_deps += [
+        "c_utils:utilsbase",
+        "drivers_interface_display:libdisplay_composer_proxy_1.0",
+        "drivers_interface_display:libdisplay_composer_proxy_1.1",
+        "drivers_interface_display:libdisplay_composer_proxy_1.2",
+        "graphic_surface:surface",
+        "graphic_surface:sync_fence",
+      ]
+      sources += [
+        "common/share_allocator.cpp",
+        "common/share_memory.cpp",
+        "common/surface_allocator.cpp",
+        "common/surface_memory.cpp",
+      ]
+      external_deps += [
+        "c_utils:utils",
+        "graphic_surface:sync_fence",
+        "hilog:libhilog",
+        "ipc:ipc_single",
+      ]
+    }
+  }
+}
+
+ohos_source_set("plugin_base") {
+  subsystem_name = "multimedia"
+  part_name = "media_foundation"
+  sources = []
+  public_deps = [
+    ":histreamer_plugin_intf",
+    "//foundation/multimedia/media_foundation/engine/foundation:histreamer_foundation",
+  ]
+  public_configs =
+      [ "//foundation/multimedia/media_foundation:histreamer_presets" ]
+  if (hst_is_standard_sys) {
+    external_deps = [
+      "hitrace:hitrace_meter",
+    ]
+  }
+}
+
+config("histreamer_plugin_base_external_config") {
+  include_dirs = [
+    "//foundation/multimedia/media_foundation/engine",
+    "//foundation/multimedia/media_foundation/engine/include",
+    "//foundation/multimedia/media_foundation/engine/include/plugin/common",
+    "//foundation/multimedia/media_foundation/engine/include/plugin/core",
+    "//foundation/multimedia/media_foundation/engine/scene/standard",
+  ]
+}
+
+if (hst_is_lite_sys) {
+  import("//build/lite/config/component/lite_component.gni")
+  lite_library("histreamer_plugin_base") {
+    if (hst_is_mini_sys) {
+      target_type = "static_library"
+    } else {
+      target_type = "shared_library"
+    }
+    sources = []
+    deps = [ ":plugin_base" ]
+  }
+} else {
+  import("//build/ohos.gni")
+  ohos_shared_library("histreamer_plugin_base") {
+    subsystem_name = "multimedia"
+    part_name = "media_foundation"
+    public_configs = [ ":histreamer_plugin_base_external_config" ]
+    deps = [ ":plugin_base" ]
+    external_deps = [ "hilog:libhilog" ]
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+    }
+  }
+}
+
+ohos_source_set("ffmpeg_convert") {
+  subsystem_name = "multimedia"
+  part_name = "media_foundation"
+  include_dirs = [ "//foundation/multimedia/media_foundation/engine/include" ]
+  sources = [ "convert/ffmpeg_convert.cpp" ]
+  public_configs =
+      [ "//foundation/multimedia/media_foundation:histreamer_presets" ]
+  public_deps = [
+    "//foundation/multimedia/media_foundation/engine/foundation:histreamer_foundation",
+    "//foundation/multimedia/media_foundation/engine/pipeline:histreamer_base",
+  ]
+
+  if (hst_is_standard_sys) {
+    public_external_deps = [ "ffmpeg:libohosffmpeg" ]
+    external_deps = [ 
+      "hilog:libhilog",
+      "hitrace:hitrace_meter",
+    ]
+  } else {
+    include_dirs += [ "//third_party/ffmpeg" ]
+  }
+}
+
+if (hst_is_lite_sys) {
+  import("//build/lite/config/component/lite_component.gni")
+  lite_library("histreamer_ffmpeg_convert") {
+    if (hst_is_mini_sys) {
+      target_type = "static_library"
+    } else {
+      target_type = "shared_library"
+    }
+    sources = []
+    deps = [ ":ffmpeg_convert" ]
+  }
+} else {
+  import("//build/ohos.gni")
+  ohos_shared_library("histreamer_ffmpeg_convert") {
+    subsystem_name = "multimedia"
+    part_name = "media_foundation"
+    include_dirs = [ "//foundation/multimedia/media_foundation/engine/include" ]
+    deps = [ ":ffmpeg_convert" ]
+    external_deps = [
+      "ffmpeg:libohosffmpeg",
+      "hilog:libhilog",
+    ]
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+    }
+  }
+}
+
+ohos_source_set("histreamer_plugin_core") {
+  subsystem_name = "multimedia"
+  part_name = "media_foundation"
+  include_dirs = [ "//foundation/multimedia/media_foundation/engine/include" ]
+  sources = [
+    "core/audio_sink.cpp",
+    "core/base.cpp",
+    "core/codec.cpp",
+    "core/demuxer.cpp",
+    "core/muxer.cpp",
+    "core/output_sink.cpp",
+    "core/plugin_core_utils.cpp",
+    "core/plugin_manager.cpp",
+    "core/plugin_register.cpp",
+    "core/plugin_wrapper.cpp",
+    "core/source.cpp",
+    "core/video_sink.cpp",
+  ]
+  defines = []
+  if (plugin_dynamic_register) {
+    sources += [ "core/plugin_loader.cpp" ]
+    defines += [ "DYNAMIC_PLUGINS" ]
+  }
+  public_configs =
+      [ "//foundation/multimedia/media_foundation:histreamer_presets" ]
+  public_deps = [
+    ":histreamer_plugin_base",
+    "plugins:gen_plugin_static_header",
+    "//foundation/multimedia/media_foundation/engine/foundation:histreamer_foundation",
+  ]
+  if (hst_is_lite_sys) {
+    defines += [
+      "HST_PLUGIN_PATH=\"/usr/lib\"",
+      "HST_PLUGIN_FILE_TAIL=\".so\"",
+    ]
+    include_dirs += [
+      "//foundation/multimedia/media_utils_lite/interfaces/kits",
+      "//drivers/peripheral/display/interfaces/include",
+    ]
+    if (hst_is_mini_sys) {
+      public_deps += [ "//third_party/bounds_checking_function:libsec_static" ]
+    } else {
+      public_external_deps = [ "bounds_checking_function:libsec_shared" ]
+    }
+  } else {
+    if (target_cpu == "arm64" || is_emulator) {
+      hst_plugin_path = "\"/system/lib64/media/histreamer_plugins\""
+    } else {
+      hst_plugin_path = "\"/system/lib/media/histreamer_plugins\""
+    }
+    defines += [
+      "HST_PLUGIN_PATH=${hst_plugin_path}",
+      "HST_PLUGIN_FILE_TAIL=\".z.so\"",
+    ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utilsbase",
+      "graphic_surface:surface",
+      "hilog:libhilog",
+      "hitrace:hitrace_meter",
+      "ipc:ipc_single",
+      "player_framework:media_client",
+    ]
+  }
+}

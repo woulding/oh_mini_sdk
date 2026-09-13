@@ -1,0 +1,73 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+/system/lib64/platformsdk/libdfx_signalhandler.z.so
+/system/lib64/platformsdk/libsystem_ability_fwk.z.so
+/system/lib64/chipset-sdk-sp/libutils.z.so
+/system/lib64/platformsdk/libhilog.so
+/system/lib64/chipset-sdk-sp/libbegetutil.z.so
+/system/lib64/platformsdk/libsamgr_common.z.so
+/system/lib64/chipset-sdk-sp/libsec_shared.z.so
+/system/lib64/chipset-sdk-sp/libc++.so
+/system/lib64/chipset-sdk/libaccesstoken_sdk.z.so
+/system/lib64/ndk/libffrt.so
+/system/lib64/chipset-sdk-sp/libhitrace_meter.so
+/system/lib64/chipset-sdk-sp/libsamgr_proxy.z.so
+/system/lib64/platformsdk/libipc_single.z.so
+/system/lib64/chipset-sdk-sp/libclang_rt.ubsan_minimal.so
+/system/lib64/libhilog_inner.so
+/system/lib64/chipset-sdk-sp/libconfigpolicy_util.z.so
+/system/lib64/chipset-sdk-sp/libhisysevent.z.so
+/system/lib64/chipset-sdk-sp/libhicollie.z.so
+/system/lib64/chipset-sdk/libaccesstoken_communication_adapter_cxx.z.so
+/system/lib64/chipset-sdk/libaccesstoken_common_cxx.z.so
+/system/lib64/chipset-sdk-sp/libbacktrace_local.so
+/system/lib64/chipset-sdk-sp/libfaultloggerd.z.so
+/system/lib64/chipset-sdk-sp/libunwinder.z.so
+/system/lib64/chipset-sdk-sp/libhitracechain.so
+/system/lib64/platformsdk/libipc_common.z.so
+/system/lib64/chipset-sdk-sp/libselinux.z.so
+/system/lib64/chipset-sdk-sp/libcjson.z.so
+/system/lib64/chipset-sdk-sp/libhilog_encode.so
+/system/lib64/chipset-sdk-sp/libsystemparam.z.so
+/system/lib64/chipset-sdk-sp/libucollection_client.z.so
+/system/lib64/chipset-sdk-sp/libstorage_manager_acl.z.so
+/system/lib64/chipset-sdk-sp/libeventhandler.z.so
+/system/lib64/chipset-sdk-sp/libdfx_procinfo.z.so
+/system/lib64/chipset-sdk-sp/liblzma.z.so
+/system/lib64/chipset-sdk-sp/libpcre2.z.so
+/system/lib64/chipset-sdk-sp/libressched_client.z.so
+/system/lib64/platformsdk/libwant.z.so
+/system/lib64/chipset-sdk-sp/libpub_utils.z.so
+/system/lib64/platformsdk/libaccount_common.z.so
+/system/lib64/platformsdk/libaccountkits.z.so
+/system/lib64/chipset-sdk-sp/libhdf_ipc_adapter.z.so
+/system/lib64/chipset-sdk-sp/libjsoncpp.z.so
+/system/lib64/platformsdk/libbase.z.so
+/system/lib64/platformsdk/libcesfwk_core.z.so
+/system/lib64/platformsdk/libdistributeddata_mgr.z.so
+/system/lib64/platformsdk/libtokenid_sdk.z.so
+/system/lib64/platformsdk/libos_account_innerkits.z.so
+/system/lib64/platformsdk/libutd_client.z.so
+/system/lib64/platformsdk/libzuri.z.so
+/system/lib64/platformsdk/libdomain_account_innerkits.z.so
+/system/lib64/platformsdk/librestorecon.z.so
+/system/lib64/lib_kccllockopt.so
+/system/lib64/libfdleak_tracker.so
+/system/lib64/chipset-sdk-sp/libbeget_proxy.z.so
+/system/lib64/chipset-sdk-sp/libcrypto_openssl.z.so
+/system/lib64/chipset-sdk-sp/libhdi.z.so
+/system/lib64/chipset-sdk-sp/libhdi_base.z.so
+/system/lib64/platformsdk/libappexecfwk_base.z.so
+/system/lib64/platformsdk/libcesfwk_innerkits.z.so
+/system/lib64/platformsdk/libfwmark_client.z.so

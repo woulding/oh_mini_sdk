@@ -1,0 +1,117 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "lnn_ohos_account_adapter.h"
+#include "softbus_adapter_mem.h"
+#include "softbus_error_code.h"
+#define ACCOUNT_ID 1
+
+int32_t GetOsAccountId(char *id, uint32_t idLen, uint32_t *len)
+{
+    (void)id;
+    (void)idLen;
+    (void)len;
+    return SOFTBUS_OK;
+}
+
+int32_t GetOsAccountIdByUserId(int32_t userId, char **id, uint32_t *len)
+{
+    (void)userId;
+    (void)id;
+    (void)len;
+    return SOFTBUS_OK;
+}
+
+int32_t GetCurrentAccount(int64_t *account)
+{
+    (void)account;
+    return SOFTBUS_OK;
+}
+
+int32_t GetActiveOsAccountIds(void)
+{
+    return ACCOUNT_ID;
+}
+
+bool IsActiveOsAccountUnlocked(void)
+{
+    return true;
+}
+
+int32_t GetOsAccountUid(char *id, uint32_t idLen, uint32_t *len)
+{
+    (void)id;
+    (void)idLen;
+    (void)len;
+    return SOFTBUS_NOT_IMPLEMENT;
+}
+
+int32_t GetOsAccountUidByUserId(char *id, uint32_t idLen, uint32_t *len, int32_t userId)
+{
+    (void)id;
+    (void)idLen;
+    (void)len;
+    (void)userId;
+    return SOFTBUS_OK;
+}
+
+int32_t JudgeDeviceTypeAndGetOsAccountIds(void)
+{
+    return ACCOUNT_ID;
+}
+
+int32_t GetOsAccountLocalIdFromUid(int32_t uid, int32_t *userId)
+{
+    (void)uid;
+    (void)userId;
+    return SOFTBUS_OK;
+}
+int32_t LnnInitOsAccountAdapter(void)
+{
+    return SOFTBUS_OK;
+}
+
+void LnnDeinitOsAccountAdapter(void)
+{
+}
+
+void LnnClearOsAccountAdapterStatus(void)
+{
+}
+
+#ifndef ENABLE_OS_ACCOUNT_CONSTRAINT
+bool LnnIsOsAccountConstraint(void)
+{
+    return false;
+}
+#endif
+
+void LnnUpdateConstraintMapForCurrentAccount(void)
+{
+}
+
+int32_t GetAllForegroundAccountIds(int32_t **userIds, uint32_t *userIdsLen)
+{
+    if (userIds == nullptr || userIdsLen == nullptr) {
+        return SOFTBUS_INVALID_PARAM;
+    }
+    *userIdsLen = 1;
+    *userIds = static_cast<int32_t *>(SoftBusCalloc((*userIdsLen) * sizeof(int32_t)));
+    if (*userIds == nullptr) {
+        return SOFTBUS_MALLOC_ERR;
+    }
+    (*userIds)[0] = ACCOUNT_ID;
+    return SOFTBUS_OK;
+}

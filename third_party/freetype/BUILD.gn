@@ -1,0 +1,218 @@
+# Copyright (c) 2020 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//third_party/freetype/freetype.gni")
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+} else {
+  import("//build/ohos.gni")
+}
+config("freetype_config") {
+  defines = [ "FT2_BUILD_LIBRARY" ]
+  include_dirs = [ "${target_gen_dir}/freetype/include" ]
+}
+
+action("freetype_action") {
+  script = "//third_party/freetype/install.py"
+  outputs = [
+    "${target_gen_dir}/freetype/src/autofit/autofit.c",
+    "${target_gen_dir}/freetype/src/base/ftbase.c",
+    "${target_gen_dir}/freetype/src/base/ftbbox.c",
+    "${target_gen_dir}/freetype/src/base/ftbdf.c",
+    "${target_gen_dir}/freetype/src/base/ftbitmap.c",
+    "${target_gen_dir}/freetype/src/base/ftcid.c",
+    "${target_gen_dir}/freetype/src/base/ftdebug.c",
+    "${target_gen_dir}/freetype/src/base/ftfstype.c",
+    "${target_gen_dir}/freetype/src/base/ftgasp.c",
+    "${target_gen_dir}/freetype/src/base/ftglyph.c",
+    "${target_gen_dir}/freetype/src/base/ftgxval.c",
+    "${target_gen_dir}/freetype/src/base/ftinit.c",
+    "${target_gen_dir}/freetype/src/base/ftmm.c",
+    "${target_gen_dir}/freetype/src/base/ftotval.c",
+    "${target_gen_dir}/freetype/src/base/ftpatent.c",
+    "${target_gen_dir}/freetype/src/base/ftpfr.c",
+    "${target_gen_dir}/freetype/src/base/ftstroke.c",
+    "${target_gen_dir}/freetype/src/base/ftsynth.c",
+    "${target_gen_dir}/freetype/src/base/ftsystem.c",
+    "${target_gen_dir}/freetype/src/base/fttype1.c",
+    "${target_gen_dir}/freetype/src/base/ftwinfnt.c",
+    "${target_gen_dir}/freetype/src/bdf/bdf.c",
+    "${target_gen_dir}/freetype/src/cache/ftcache.c",
+    "${target_gen_dir}/freetype/src/cff/cff.c",
+    "${target_gen_dir}/freetype/src/cid/type1cid.c",
+    "${target_gen_dir}/freetype/src/gzip/ftgzip.c",
+    "${target_gen_dir}/freetype/src/lzw/ftlzw.c",
+    "${target_gen_dir}/freetype/src/pcf/pcf.c",
+    "${target_gen_dir}/freetype/src/pfr/pfr.c",
+    "${target_gen_dir}/freetype/src/psaux/psaux.c",
+    "${target_gen_dir}/freetype/src/pshinter/pshinter.c",
+    "${target_gen_dir}/freetype/src/psnames/psmodule.c",
+    "${target_gen_dir}/freetype/src/raster/raster.c",
+    "${target_gen_dir}/freetype/src/sdf/ftbsdf.c",
+    "${target_gen_dir}/freetype/src/sdf/ftsdf.c",
+    "${target_gen_dir}/freetype/src/sdf/ftsdfcommon.c",
+    "${target_gen_dir}/freetype/src/sdf/ftsdfrend.c",
+    "${target_gen_dir}/freetype/src/sfnt/sfnt.c",
+    "${target_gen_dir}/freetype/src/smooth/smooth.c",
+    "${target_gen_dir}/freetype/src/svg/ftsvg.c",
+    "${target_gen_dir}/freetype/src/truetype/truetype.c",
+    "${target_gen_dir}/freetype/src/type1/type1.c",
+    "${target_gen_dir}/freetype/src/type42/type42.c",
+    "${target_gen_dir}/freetype/src/winfonts/winfnt.c",
+  ]
+
+  inputs = [ "//third_party/freetype/freetype-2.13.3.tar.xz" ]
+  inputs += [
+    "backport-freetype-2.10.0-internal-outline.patch",
+    "backport-freetype-2.10.1-debughook.patch",
+    "backport-freetype-2.12.1-enable-funcs.patch",
+    "backport-freetype-2.2.1-enable-valid.patch",
+    "backport-freetype-2.3.0-enable-spr.patch",
+    "backport-freetype-2.6.5-libtool.patch",
+    "backport-freetype-2.8-multilib.patch"
+  ]
+
+  if (freetype_feature_cfp_enable) {
+    outputs += [ "${target_gen_dir}/freetype/src/cfp/cfp.c" ]
+    inputs += [ "backport-freetype-enable-cfp.patch" ]
+  }
+
+  freetype_path = rebase_path("${target_gen_dir}", root_build_dir)
+  freetype_source_path = rebase_path("//third_party/freetype", root_build_dir)
+  args = [
+    "--gen-dir",
+    "$freetype_path",
+    "--source-dir",
+    "$freetype_source_path",
+  ]
+
+  if (freetype_feature_cfp_enable) {
+    args += [
+      "--cfp-enable",
+      "$freetype_feature_cfp_enable"
+    ]
+  }
+}
+
+if (defined(ohos_lite)) {
+  lite_library("freetype") {
+    if (ohos_kernel_type == "liteos_m") {
+      target_type = "static_library"
+    } else {
+      target_type = "shared_library"
+    }
+
+    freetype_sources = get_target_outputs(":freetype_action")
+
+    deps = [ "//third_party/libpng:libpng" ]
+    sources = freetype_sources
+    include_dirs = [
+      "${target_gen_dir}/freetype/src/base",
+      "//third_party/libpng",
+    ]
+
+    public_configs = [ ":freetype_config" ]
+    defines = [ "FT_CONFIG_OPTION_USE_PNG" ]
+
+    if (target_type == "static_library") {
+      visibility = [
+        ":*",
+        "//foundation/arkui/ui_ext_lite/ext/updater:libupdater_layout",
+        "//foundation/arkui/ui_ext_lite/tools/ide:graphic_lite",
+        "//foundation/arkui/ui_lite:ui",
+        "//foundation/arkui/ui_lite/ext/home_host:libhome_host_layout",
+        "//foundation/arkui/ui_lite/ext/ide:ui_ide",
+        "//foundation/arkui/ui_lite/ext/updater:libupdater_layout",
+        "//foundation/arkui/ui_lite/test/unittest/*",
+        "//foundation/graphic/graphic_3d/lume/LumeFont:lume_font_src",
+        "//foundation/graphic/graphic_2d/rosen/modules/2d_engine/ddgr:ddgr_src_set",
+        "//foundation/graphic/graphic_2d/rosen/modules/2d_engine/ddgr:libddgr",
+        "//foundation/graphic/graphic_2d/rosen/modules/2d_graphics:2d_graphics_source_ohos",
+        "//foundation/graphic/graphic_2d_ext/ddgr/test/*",
+        "//foundation/graphic/spatial_recon/spatial_text/SpatialText:libspatialtextplugin",
+        "//foundation/graphic/spatial_recon/spatial_text/test/api_unit_test:spatial_text_test",
+        "//vendor/huawei/foundation/graphic/graphic_wear/config:freetype_inner_kits",
+        "//vendor/huawei/base/update/updater_ext/test/unittest/ui_ext:ui_ext_unittest",
+        "//vendor/hisi/confidential/contexthub/src/framework/hisi/ui/third_party/*",
+        "//third_party/skia/m133:typeface_freetype",
+        "//third_party/skia/m133:typeface_freetype_tests",
+        "//out/*",
+      ]
+
+      deps += [ "//build/lite/config/component/zlib:zlib_static" ]
+      defines += [ "FT_CONFIG_OPTION_SYSTEM_ZLIB" ]
+    }
+    deps += [ ":freetype_action" ]
+    if (defined(board_toolchain_type) && board_toolchain_type == "iccarm") {
+      cflags = [
+        "--diag_suppress",
+        "Pa082,Pa084,Pa128,Pe128,Pa134,Pa137,Pe550",
+      ]
+      cflags_cc = cflags
+    }
+  }
+
+  lite_component("freetype_shared") {
+    features = [ ":freetype" ]
+  }
+} else {
+  ohos_static_library("freetype_static") {
+    visibility = [
+      ":*",
+      "//foundation/arkui/ui_ext_lite/ext/updater:libupdater_layout",
+      "//foundation/arkui/ui_ext_lite/tools/ide:graphic_lite",
+      "//foundation/arkui/ui_lite:ui",
+      "//foundation/arkui/ui_lite/ext/home_host:libhome_host_layout",
+      "//foundation/arkui/ui_lite/ext/ide:ui_ide",
+      "//foundation/arkui/ui_lite/ext/updater:libupdater_layout",
+      "//foundation/arkui/ui_lite/test/unittest/*",
+      "//foundation/graphic/graphic_3d/lume/LumeFont:lume_font_src",
+      "//foundation/graphic/graphic_2d/rosen/modules/2d_engine/ddgr:ddgr_src_set",
+      "//foundation/graphic/graphic_2d/rosen/modules/2d_engine/ddgr:libddgr",
+      "//foundation/graphic/graphic_2d/rosen/modules/2d_graphics:2d_graphics_source_ohos",
+      "//foundation/graphic/graphic_2d_ext/ddgr/test/*",
+      "//foundation/graphic/graphic_2d_ext/ddgr/tools/playbackengine:libplaybackengine",
+      "//foundation/graphic/graphic_2d_ext/ddgr/tools/playbackengine:playbackengine_debugger",
+      "//foundation/graphic/spatial_recon/spatial_text/SpatialText:libspatialtextplugin",
+      "//foundation/graphic/spatial_recon/spatial_text/test/api_unit_test:spatial_text_test",
+      "//vendor/huawei/foundation/graphic/graphic_wear/config:freetype_inner_kits",
+      "//vendor/huawei/base/update/updater_ext/test/unittest/ui_ext:ui_ext_unittest",
+      "//vendor/hisi/confidential/contexthub/src/framework/hisi/ui/third_party/*",
+      "//third_party/skia/m133:typeface_freetype",
+      "//third_party/skia/m133:typeface_freetype_tests",
+      "//out/*",
+    ]
+
+    sources = get_target_outputs(":freetype_action")
+    include_dirs = [ "${target_gen_dir}/freetype/src/base" ]
+    public_configs = [ ":freetype_config" ]
+    deps = [ ":freetype_action" ]
+    external_deps = [ "zlib:libz" ]
+    defines = [ "FT_CONFIG_OPTION_SYSTEM_ZLIB" ]
+    if (freetype_feature_cfp_enable) {
+      visibility += [ "//vendor/thirdparty/*" ]
+      defines += [ "FT_CONFIG_OPTION_ENABLE_CFP" ]
+    }
+    if (current_os == "ohos") {
+      defines += [ "FT_CONFIG_OPTION_USE_PNG" ]
+      external_deps += [ "libpng:libpng" ]
+    } else if (is_arkui_x) {
+      defines += [ "FT_CONFIG_OPTION_USE_PNG" ]
+      deps += [ "//third_party/skia/m133/third_party/libpng" ]
+    } else if (product_name == "ohos-sdk") {
+      defines += [ "FT_CONFIG_OPTION_USE_PNG" ]
+      external_deps += [ "libpng:libpng_static" ]
+    }
+    part_name = "freetype"
+    subsystem_name = "thirdparty"
+  }
+}

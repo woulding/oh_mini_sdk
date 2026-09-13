@@ -1,0 +1,532 @@
+/*
+ * Copyright (c) 2020-2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+/**
+ * @addtogroup UI_Utils
+ * @{
+ *
+ * @brief Defines basic UI utils.
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+
+/**
+ * @file style.h
+ *
+ * @brief Defines the attributes and common functions of style.
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+
+#ifndef GRAPHIC_LITE_STYLE_H
+#define GRAPHIC_LITE_STYLE_H
+
+#include "gfx_utils/color.h"
+
+#ifndef RADIAL_GRADIENT_COLOR_NUM
+#define RADIAL_GRADIENT_COLOR_NUM 3
+#endif
+
+namespace OHOS {
+/**
+ * @brief Enumerates keys of styles.
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+enum : uint8_t {
+    /** Background color */
+    STYLE_BACKGROUND_COLOR,
+    /** Background gradient color */
+    STYLE_GRADIENT_BACKGROUND_COLOR,
+    /** Background opacity */
+    STYLE_BACKGROUND_OPA,
+    /** Border radius */
+    STYLE_BORDER_RADIUS,
+    /** Border color */
+    STYLE_BORDER_COLOR,
+    /** Border opacity */
+    STYLE_BORDER_OPA,
+    /** Border width */
+    STYLE_BORDER_WIDTH,
+    /** Left padding */
+    STYLE_PADDING_LEFT,
+    /** Right padding */
+    STYLE_PADDING_RIGHT,
+    /** Top padding */
+    STYLE_PADDING_TOP,
+    /** Bottom padding */
+    STYLE_PADDING_BOTTOM,
+    /** Left margin */
+    STYLE_MARGIN_LEFT,
+    /** Right margin */
+    STYLE_MARGIN_RIGHT,
+    /** Top margin */
+    STYLE_MARGIN_TOP,
+    /** Bottom margin */
+    STYLE_MARGIN_BOTTOM,
+    /** Image opacity */
+    STYLE_IMAGE_OPA,
+    /** Text color */
+    STYLE_TEXT_COLOR,
+    /** Text font */
+    STYLE_TEXT_FONT,
+    /** line space */
+    STYLE_LINE_SPACE,
+    /** Letter spacing */
+    STYLE_LETTER_SPACE,
+    /** Line height */
+    STYLE_LINE_HEIGHT,
+    /** Text opacity */
+    STYLE_TEXT_OPA,
+    /** Text stroke color */
+    STYLE_TEXT_STROKR_COLOR,
+    /** Text stroke width */
+    STYLE_TEXT_STROKR_WIDTH,
+    /** Line color */
+    STYLE_LINE_COLOR,
+    /** Line width */
+    STYLE_LINE_WIDTH,
+    /** Line opacity */
+    STYLE_LINE_OPA,
+    /** Line cap style */
+    STYLE_LINE_CAP,
+    /** Background radial gradient color */
+    STYLE_RADIAL_GRADIENT_BACKGROUND_COLOR
+};
+
+/**
+ * @brief Enumerates cap styles.
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+enum CapType : uint8_t {
+    /** No cap style */
+    CAP_NONE,
+    /** Round cap style */
+    CAP_ROUND,
+    CAP_ROUND_UNSHOW,
+};
+
+/**
+ * @brief GradientColorDirections.
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+enum GradientDirection : uint8_t {
+    DIRECTION_TOP_TO_BOTTOM,
+    DIRECTION_TOP_RIGHT_TO_BOTTOM_LEFT,
+    DIRECTION_RIGHT_TO_LEFT,
+    DIRECTION_BOTTOM_RIGHT_TO_TOP_LEFT,
+    DIRECTION_BOTTOM_TO_TOP,
+    DIRECTION_BOTTOM_LEFT_TO_TOP_RIGHT,
+    DIRECTION_LEFT_TO_RIGHT,
+    DIRECTION_TOP_LEFT_TO_BOTTOM_RIGHT
+};
+
+/**
+ * @brief union to describe gradient color attribute.
+ *
+ * @param type Indicates the type of gradient style. Include:
+ *             linear-gradient(with different direction) and radial-gradient(with different direction).
+ *             Reserved. Detail description will defined when used.
+ * @param colorBegin Indicates gradient begin color.
+ * @param colorEnd Indicates gradient end color.
+ * @param position Indicates the positon of radial-gradient.
+                   Only use in radial-gradient, high 16 bytes indicates x position,
+                   low 16 bytes indicates y position.
+ * @param num colors num and offsets num of the radial gradient.
+ * @param radius radius of the radial gradient.
+ * @param center_x center x position of the radial gradient
+ * @param center_y center y position of the radial gradient
+ * @param colors colors of the radial gradient
+ * @param offsets offsets of the radial gradient
+ */
+union GradientColor {
+    struct {
+        uint8_t direction;
+        ColorType colorBegin;
+        ColorType colorEnd;
+        uint32_t position;
+    };
+    struct {
+        uint8_t num;
+        uint16_t radius;
+        uint16_t center_x;
+        uint16_t center_y;
+        ColorType colors[RADIAL_GRADIENT_COLOR_NUM];
+        float offsets[RADIAL_GRADIENT_COLOR_NUM];
+    };
+    GradientColor()
+    {
+        num = 0;
+        radius = 0;
+        center_x = 0;
+        center_y = 0;
+        for (uint8_t i = 0; i < RADIAL_GRADIENT_COLOR_NUM; i++) {
+            colors[i].full = 0;
+            offsets[i] = 0;
+        }
+    }
+};
+
+/**
+ * @brief Defines the basic attributes and functions of a style. You can use this class to set different styles.
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+class Style : public HeapBase {
+public:
+    /**
+     * @brief A constructor used to create a <b>Style</b> instance.
+     *
+     * @since 1.0
+     * @version 1.0
+     */
+    Style();
+
+    /**
+     * @brief A destructor used to delete the <b>Style</b> instance.
+     *
+     * @since 1.0
+     * @version 1.0
+     */
+    virtual ~Style() {}
+
+    /**
+     * @brief Sets a style.
+     *
+     * @param key Indicates the key of the style to set.
+     * @param value Indicates the value matching the key.
+     * @since 1.0
+     * @version 1.0
+     */
+    void SetStyle(uint8_t key, int64_t value);
+
+    /**
+     * @brief Sets a style for gradientColor.
+     *
+     * @param key Indicates the different type of gradient color, now only support background.
+     * @param value Indicates the value matching the key.
+     * @since 1.0
+     * @version 1.0
+     */
+    void SetStyle(uint8_t key, GradientColor &gradientColor);
+
+    /**
+     * @brief Obtains the value of a style.
+     *
+     * @param key Indicates the key of the style.
+     * @return Returns the value of the style.
+     * @since 1.0
+     * @version 1.0
+     */
+    int64_t GetStyle(uint8_t key) const;
+
+    /* background style */
+    ColorType bgColor_;
+    GradientColor bgGradientColor_;
+    uint8_t enableGradient_;
+    uint8_t enableRadialGradient_;
+    uint8_t bgOpa_;
+    /* border style */
+    uint8_t borderOpa_;
+    int16_t borderWidth_;
+    int16_t borderRadius_;
+    ColorType borderColor_;
+    /* padding style */
+    uint16_t paddingLeft_;
+    uint16_t paddingRight_;
+    uint16_t paddingTop_;
+    uint16_t paddingBottom_;
+    /* margin style */
+    int16_t marginLeft_;
+    int16_t marginRight_;
+    int16_t marginTop_;
+    int16_t marginBottom_;
+    /* image style */
+    uint8_t imageOpa_;
+    /*
+     * text style
+     * style.lineSpace_ can be negative, and shall not be enabled with only one line.
+     */
+    uint8_t textOpa_;
+    uint16_t font_;
+    int8_t lineSpace_;
+    int16_t letterSpace_;
+    int16_t lineHeight_;
+    ColorType textColor_;
+    ColorType textStrokeColor_;
+    int16_t textStrokeWidth_;
+    /* line style */
+    ColorType lineColor_;
+    uint8_t lineOpa_;
+    uint8_t lineCap_;
+    int16_t lineWidth_;
+};
+
+/**
+ * @brief Define some default style for {@link UIView}.
+ *
+ * @since 1.0
+ * @version 1.0
+ */
+class StyleDefault : public HeapBase {
+public:
+    /**
+     * @brief A constructor used to create a <b>StyleDefault</b> instance.
+     *
+     * @since 1.0
+     * @version 1.0
+     */
+    StyleDefault() {}
+
+    /**
+     * @brief A destructor used to delete the <b>StyleDefault</b> instance.
+     *
+     * @since 1.0
+     * @version 1.0
+     */
+    ~StyleDefault() {}
+
+    static void Init();
+
+    /**
+     * @brief Obtains the default style.
+     *
+     * @return Returns the default style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetDefaultStyle()
+    {
+        return defaultStyle_;
+    }
+
+    /**
+     * @brief Obtains the bright style.
+     *
+     * @return Returns the bright style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetBrightStyle()
+    {
+        return brightStyle_;
+    }
+
+    /**
+     * @brief Obtains the bright color style.
+     *
+     * @return Returns the bright color style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetBrightColorStyle()
+    {
+        return brightColorStyle_;
+    }
+
+    /**
+     * @brief Obtains the button pressed style.
+     *
+     * @return Returns the button pressed style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetButtonPressedStyle()
+    {
+        return buttonPressedStyle_;
+    }
+
+    /**
+     * @brief Obtains the button released style.
+     *
+     * @return Returns the button released style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetButtonReleasedStyle()
+    {
+        return buttonReleasedStyle_;
+    }
+
+    /**
+     * @brief Obtains the button inactive style.
+     *
+     * @return Returns the button inactive style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetButtonInactiveStyle()
+    {
+        return buttonInactiveStyle_;
+    }
+
+    /**
+     * @brief Obtains the label style.
+     *
+     * @return Returns the label style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetLabelStyle()
+    {
+        return labelStyle_;
+    }
+
+    /**
+     * @brief Obtains the edit text style.
+     *
+     * @return Returns the edit text style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetEditTextStyle()
+    {
+        return editTextStyle_;
+    }
+
+    /**
+     * @brief Obtains the background transparent style.
+     *
+     * @return Returns the background transparent style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetBackgroundTransparentStyle()
+    {
+        return backgroundTransparentStyle_;
+    }
+
+    /**
+     * @brief Obtains the progress background style.
+     *
+     * @return Returns the progress background style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetProgressBackgroundStyle()
+    {
+        return progressBackgroundStyle_;
+    }
+
+    /**
+     * @brief Obtains the progress foreground style.
+     *
+     * @return Returns the progress foreground style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetProgressForegroundStyle()
+    {
+        return progressForegroundStyle_;
+    }
+
+    /**
+     * @brief Obtains the slider knob style.
+     *
+     * @return Returns the slider knob style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetSliderKnobStyle()
+    {
+        return sliderKnobStyle_;
+    }
+
+    /**
+     * @brief Obtains the picker background style.
+     *
+     * @return Returns the picker background style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetPickerBackgroundStyle()
+    {
+        return pickerBackgroundStyle_;
+    }
+
+    /**
+     * @brief Obtains the picker highlight style.
+     *
+     * @return Returns the picker highlight style.
+     * @since 1.0
+     * @version 1.0
+     */
+    static Style& GetPickerHighlightStyle()
+    {
+        return pickerHighlightStyle_;
+    }
+
+    /**
+     * @brief Obtains the scroll bar background style.
+     *
+     * @return Returns the scroll bar background style.
+     * @since 6
+     */
+    static Style& GetScrollBarBackgroundStyle()
+    {
+        return scrollBarBackgroundStyle_;
+    }
+
+    /**
+     * @brief Obtains the scroll bar foreground style.
+     *
+     * @return Returns the scroll bar foreground style.
+     * @since 6
+     */
+    static Style& GetScrollBarForegroundStyle()
+    {
+        return scrollBarForegroundStyle_;
+    }
+
+private:
+    static Style defaultStyle_;
+    static Style brightStyle_;
+    static Style brightColorStyle_;
+
+    static Style buttonPressedStyle_;
+    static Style buttonReleasedStyle_;
+    static Style buttonInactiveStyle_;
+    static Style labelStyle_;
+    static Style editTextStyle_;
+    static Style backgroundTransparentStyle_;
+    static Style progressBackgroundStyle_;
+    static Style progressForegroundStyle_;
+    static Style sliderKnobStyle_;
+
+    static Style pickerBackgroundStyle_;
+    static Style pickerHighlightStyle_;
+
+    static Style scrollBarBackgroundStyle_;
+    static Style scrollBarForegroundStyle_;
+
+    static void InitStyle();
+    static void InitButtonStyle();
+    static void InitLabelStyle();
+    static void InitEditTextStyle();
+    static void InitBackgroundTransparentStyle();
+    static void InitProgressStyle();
+    static void InitPickerStyle();
+    static void InitScrollBarStyle();
+};
+} // namespace OHOS
+#endif // GRAPHIC_LITE_STYLE_H

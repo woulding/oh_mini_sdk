@@ -1,0 +1,58 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("appexecfwk.gni")
+
+group("bms_target") {
+  deps = [
+    "common:common_target",
+    "interfaces/inner_api/appexecfwk_base:appexecfwk_base",
+    "interfaces/inner_api/appexecfwk_core:appexecfwk_core",
+    "interfaces/inner_api/appexecfwk_core:appexecfwk_core_headers",
+    "interfaces/inner_api/appexecfwk_core:bundlemgr_mini",
+    "interfaces/inner_api/bundlemgr_extension:bundlemgr_extension",
+    "interfaces/kits/cj:cj_bundle_manager_ffi",
+    "interfaces/kits/js:napi_packages",
+    "interfaces/kits/native/app_detail_ability:app_detail_ability",
+    "interfaces/kits/native/bundle:bundle_ndk",
+    "sa_profile:appexecfwk_sa_profile",
+    "services/bundlemgr:bms_target",
+  ]
+  if (bundle_framework_graphics) {
+    deps += [
+      "interfaces/inner_api/bundlemgr_graphics:bundlemgr_graphics",
+      "interfaces/kits/native/bundle:bundle_ndk_drawable",
+    ]
+  }
+}
+
+group("test_target") {
+  testonly = true
+
+  deps = [ "test/fuzztest:fuzztest" ]
+
+  if (!use_libfuzzer) {
+    deps += [
+      "common/test:unittest",
+      "interfaces/inner_api/test/unittest:unittest",
+      "interfaces/kits/js/zip/test:unittest",
+      "services/bundlemgr/test:unittest",
+      "services/test/moduletest/common/bms:moduletest",
+      "test/benchmarktest:benchmarktest",
+      "test/resource/bmssystemtestability/abilitySrc:bms_system_test_app",
+      "test/sceneProject:test_hap",
+      "test/systemtest/common/bms:systemtest_bms",
+    ]
+  }
+}

@@ -1,0 +1,116 @@
+# Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2020-2021 Huawei Device Co., Ltd. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+#    conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list
+#    of conditions and the following disclaimer in the documentation and/or other materials
+#    provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used
+#    to endorse or promote products derived from this software without specific prior written
+#    permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import("//kernel/liteos_a/liteos.gni")
+
+module_switch = defined(LOSCFG_FS_JFFS)
+module_name = get_path_info(rebase_path("."), "name")
+linux_path = rebase_path("$KERNEL_LINUX_DIR")
+out_path = rebase_path(target_out_dir)
+
+kernel_module(module_name) {
+  patch_path = rebase_path(".")
+  cmd = "if [ -d ${out_path}/jffs2_build ]; then rm -r ${out_path}/jffs2_build; fi && mkdir -p ${out_path}/jffs2_build/fs"
+  cmd += " && cp ${linux_path}/fs/jffs2 ${out_path}/jffs2_build/fs/. -r"
+  cmd += " && pushd ${out_path}/jffs2_build/"
+  cmd += " && patch -p1 < ${patch_path}/jffs2.patch && popd"
+  exec_script("//build/lite/run_shell_cmd.py", [ cmd ])
+
+  sources = [
+    "src/jffs2_hash.c",
+    "src/vfs_jffs2.c",
+  ]
+
+  sources += [
+    "${out_path}/jffs2_build/fs/jffs2/background.c",
+    "${out_path}/jffs2_build/fs/jffs2/build.c",
+    "${out_path}/jffs2_build/fs/jffs2/compr.c",
+    "${out_path}/jffs2_build/fs/jffs2/compr_rtime.c",
+    "${out_path}/jffs2_build/fs/jffs2/compr_rubin.c",
+    "${out_path}/jffs2_build/fs/jffs2/compr_zlib.c",
+    "${out_path}/jffs2_build/fs/jffs2/debug.c",
+    "${out_path}/jffs2_build/fs/jffs2/dir.c",
+    "${out_path}/jffs2_build/fs/jffs2/erase.c",
+    "${out_path}/jffs2_build/fs/jffs2/file.c",
+    "${out_path}/jffs2_build/fs/jffs2/fs.c",
+    "${out_path}/jffs2_build/fs/jffs2/gc.c",
+    "${out_path}/jffs2_build/fs/jffs2/malloc.c",
+    "${out_path}/jffs2_build/fs/jffs2/nodelist.c",
+    "${out_path}/jffs2_build/fs/jffs2/nodemgmt.c",
+    "${out_path}/jffs2_build/fs/jffs2/read.c",
+    "${out_path}/jffs2_build/fs/jffs2/readinode.c",
+    "${out_path}/jffs2_build/fs/jffs2/scan.c",
+    "${out_path}/jffs2_build/fs/jffs2/summary.c",
+    "${out_path}/jffs2_build/fs/jffs2/super.c",
+    "${out_path}/jffs2_build/fs/jffs2/write.c",
+    "${out_path}/jffs2_build/fs/jffs2/writev.c",
+  ]
+
+  include_dirs = [
+    "${out_path}/jffs2_build/fs",
+    "${out_path}/jffs2_build/fs/jffs2",
+  ]
+
+  public_configs = [ ":public" ]
+
+  deps = [ ":cp_jffs2_src" ]
+}
+
+config("public") {
+  include_dirs = [ "include" ]
+}
+
+action("cp_jffs2_src") {
+  script = "//build/lite/run_shell_cmd.py"
+
+  outputs = [
+    "${target_out_dir}/jffs2_build/fs/jffs2/background.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/build.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/compr.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/compr_rtime.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/compr_rubin.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/compr_zlib.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/debug.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/dir.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/erase.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/file.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/fs.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/gc.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/malloc.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/nodelist.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/nodemgmt.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/read.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/readinode.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/scan.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/summary.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/super.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/write.c",
+    "${target_out_dir}/jffs2_build/fs/jffs2/writev.c",
+  ]
+}

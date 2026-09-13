@@ -1,0 +1,408 @@
+/*
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_INSTALLD_CLIENT_H
+#define FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_INSTALLD_CLIENT_H
+
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <string>
+#include <thread>
+
+#include "nocopyable.h"
+#include "singleton.h"
+
+#include "app_log_wrapper.h"
+#include "appexecfwk_errors.h"
+#include "bundle_constants.h"
+#include "ipc/installd_interface.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+class InstalldClient : public DelayedSingleton<InstalldClient> {
+public:
+    /**
+     * @brief Create a bundle code directory through an installd proxy object.
+     * @param bundleName Indicates the bundle name for path validation.
+     * @param scene Indicates the scene code for path validation.
+     * @param bundleDir Indicates the bundle code directory path that to be created.
+     * @return Returns ERR_OK if the bundle directory created successfully; returns error code otherwise.
+     */
+    ErrCode CreateBundleDir(const std::string &bundleName, BundleDirScene scene, const std::string &bundleDir);
+    /**
+     * @brief Extract the files of a HAP module to the code directory.
+     * @param srcModulePath Indicates the HAP file path.
+     * @param targetPath normal files decompression path.
+     * @param targetSoPath so files decompression path.
+     * @param cpuAbi cpuAbi.
+     * @return Returns ERR_OK if the HAP file extracted successfully; returns error code otherwise.
+     */
+    ErrCode ExtractModuleFiles(const std::string &srcModulePath, const std::string &targetPath,
+        const std::string &targetSoPath, const std::string &cpuAbi, const bool needFakeDecompression,
+        const bool isSystemApp);
+    /**
+     * @brief Rename the module directory from temporaily path to the real path.
+     * @param oldPath Indicates the old path name.
+     * @param newPath Indicates the new path name.
+     * @param bundleName Indicates the bundle name for path validation.
+     * @param scene Indicates the scene code for path validation.
+     * @return Returns ERR_OK if the module directory renamed successfully; returns error code otherwise.
+     */
+    ErrCode RenameModuleDir(const std::string &oldPath, const std::string &newPath, const std::string &bundleName,
+        BundleDirScene scene);
+    /**
+     * @brief Create a bundle data directory.
+     * @param createDirParam Indicates param to be set to the directory.
+     * @return Returns ERR_OK if the bundle data directory created successfully; returns error code otherwise.
+     */
+    ErrCode CreateBundleDataDir(const CreateDirParam &createDirParam);
+
+    ErrCode CreateBundleDataDirWithVector(const std::vector<CreateDirParam> &createDirParams);
+
+    /**
+     * @brief Remove a bundle data directory.
+     * @param bundleName Indicates the bundleName data directory path that to be created.
+     * @param userid Indicates userid to be set to the directory.
+     * @return Returns ERR_OK if the bundle data directory created successfully; returns error code otherwise.
+     */
+    ErrCode RemoveBundleDataDir(const std::string &bundleName, const int32_t userId,
+        bool isAtomicService = false, const bool async = false);
+    /**
+     * @brief Remove a module data directory.
+     * @param ModuleDir Indicates the module data directory path that to be created.
+     * @param userid Indicates userid to be set to the directory.
+     * @return Returns ERR_OK if the data directories created successfully; returns error code otherwise.
+     */
+    ErrCode RemoveModuleDataDir(const std::string &ModuleDir, const int userid);
+    /**
+     * @brief Remove a directory.
+     * @param dir Indicates the directory path that to be removed.
+     * @param scene Indicates the scene code for path validation.
+     * @param bundleName Indicates the bundle name for path validation.
+     * @return Returns ERR_OK if the  directory removed successfully; returns error code otherwise.
+     */
+    ErrCode RemoveDir(const std::string &dir, BundleDirScene scene, const std::string &bundleName = "",
+        bool async = false);
+    /**
+     * @brief Get disk usage for dir.
+     * @param dir Indicates the directory.
+     * @param isRealPath Indicates isRealPath.
+     * @return Returns true if successfully; returns false otherwise.
+     */
+    int64_t GetDiskUsage(const std::string &dir, bool isRealPath = false);
+    /**
+     * @brief Get disk usage for dir.
+     * @param path Indicates the directory vector.
+     * @param bundleName Indicates the bundle name for path validation.
+     * @param scene Indicates the scene code for path validation.
+     * @param statSize Indicates size of path.
+     * @param timeoutMs Indicates the timeout time.
+     * @return Returns true if successfully; returns false otherwise.
+     */
+    ErrCode GetDiskUsageFromPath(const std::vector<std::string> &path, const std::string &bundleName,
+        BundleDirScene scene, int64_t &statSize, int64_t timeoutMs = -1);
+    /**
+     * @brief Get bundle inode count for UID.
+     * @param uid The user ID of the application).
+     * @param inodeCount Output parameter for inode count.
+     * @return Returns ERR_OK if successfully; returns false otherwise.
+     */
+    ErrCode GetBundleInodeCount(int32_t uid, uint64_t &inodeCount);
+
+    /**
+     * @brief Clean all files in a bundle data directory.
+     * @param bundleDir Indicates the data directory path that to be cleaned.
+     * @return Returns ERR_OK if the data directory cleaned successfully; returns error code otherwise.
+     */
+    ErrCode CleanBundleDataDir(const std::string &bundleDir, const std::string &bundleName, int32_t userId);
+    /**
+     * @brief Clean a bundle data directory.
+     * @param bundleName Indicates the bundleName data directory path that to be cleaned.
+     * @param userid Indicates userid to be set to the directory.
+     * @param appIndex Indicates app index to be set to the directory.
+     * @return Returns ERR_OK if the bundle data directory cleaned successfully; returns error code otherwise.
+     */
+    ErrCode CleanBundleDataDirByName(const std::string &bundleName, const int userid, const int appIndex = 0,
+        const bool isAtomicService = false);
+    /**
+     * @brief Get bundle Stats.
+     * @param bundleName Indicates the bundle name.
+     * @param userId Indicates the user Id.
+     * @param bundleStats Indicates the bundle Stats.
+     * @return Returns ERR_OK if get stats successfully; returns error code otherwise.
+     */
+    ErrCode GetBundleStats(const std::string &bundleName, const int32_t userId,
+        std::vector<int64_t> &bundleStats, const std::unordered_set<int32_t> &uids,
+        const int32_t appIndex = 0, const uint32_t statFlag = 0,
+        const std::vector<std::string> &moduleNameList = {});
+
+    ErrCode BatchGetBundleStats(const std::vector<std::string> &bundleNames,
+        const std::unordered_map<std::string, std::unordered_set<int32_t>> &uidMap,
+        std::vector<BundleStorageStats> &bundleStats);
+
+    ErrCode GetAllBundleStats(std::vector<int64_t> &bundleStats, const std::vector<int32_t> &uids);
+
+    ErrCode MigrateData(const std::vector<std::string> &sourcePaths, const std::string &destinationPath);
+
+    /**
+     * @brief Reset the installd proxy object when installd service died.
+     * @return
+     */
+    void ResetInstalldProxy();
+
+    /**
+     * @brief Set dir apl.
+     * @param dir Indicates the data dir.
+     * @param bundleName Indicates the bundle name.
+     * @param apl Indicates the apl type.
+     * @param isPreInstallApp Indicates the bundle install type.
+     * @param debug Indicates the bundle debug mode.
+     * @param uid Indicates the uid.
+     * @return Returns ERR_OK if set apl successfully; returns error code otherwise.
+     */
+    ErrCode SetDirApl(const std::string &dir, const std::string &bundleName, const std::string &apl,
+        bool isPreInstallApp, bool debug, int32_t uid);
+
+    ErrCode SetDirsApl(const CreateDirParam &createDirParam, bool isExtensionDir);
+
+    ErrCode SetFileConForce(const std::vector<std::string> &paths, const CreateDirParam &createDirParam);
+
+    ErrCode StopSetFileCon(const CreateDirParam &createDirParam, int32_t reason);
+
+    /**
+     * @brief Set dir apl.
+     * @param dir Indicates the data dir.
+     * @return Returns ERR_OK if set apl successfully; returns error code otherwise.
+     */
+    ErrCode SetArkStartupCacheApl(const std::string &bundleName, const std::string &dir);
+
+    /**
+     * @brief Get all cache file path.
+     * @param dir Indicates the data dir.
+     * @param cachesPath Indicates the cache file path.
+     * @return Returns ERR_OK if get cache file path successfully; returns error code otherwise.
+     */
+    ErrCode GetBundleCachePath(const std::string &dir, std::vector<std::string> &cachePath);
+
+    ErrCode ScanDir(
+        const std::string &dir, ScanMode scanMode, ResultMode resultMode, std::vector<std::string> &paths);
+
+    ErrCode MoveFile(
+        const std::string &oldPath, const std::string &newPath, BundleDirScene scene, const std::string &bundleName);
+
+    ErrCode RenameFile(const std::string &oldPath, const std::string &newPath);
+
+    ErrCode CopyFile(const std::string &oldPath, const std::string &newPath, BundleDirScene scene,
+        const std::string &signatureFilePath = "");
+
+    ErrCode Mkdir(const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid,
+        const CreateDirParam &createDirParam);
+
+    ErrCode GetFileStat(const std::string &file, BundleDirScene scene, FileStat &fileStat);
+
+    ErrCode ChangeFileStat(const std::string &file, FileStat &fileStat, BundleDirScene scene);
+
+    ErrCode ExtractDiffFiles(const std::string &filePath, const std::string &targetPath,
+        const std::string &cpuAbi);
+
+    ErrCode ApplyDiffPatch(const std::string &oldSoPath, const std::string &diffFilePath,
+        const std::string &newSoPath, int32_t uid = Constants::INVALID_UID);
+
+    ErrCode IsExistDir(const std::string &dir, bool &isExist);
+
+    ErrCode IsExistFile(const std::string &path, bool &isExist);
+
+    ErrCode IsExistApFile(const std::string &path, bool &isExist);
+
+    ErrCode IsDirEmpty(const std::string &dir, bool &isDirEmpty);
+
+    ErrCode ObtainQuickFixFileDir(const std::string &dir, std::vector<std::string> &dirVec);
+
+    ErrCode CopyFiles(const std::string &sourceDir, const std::string &destinationDir, const std::string &bundleName,
+        BundleDirScene scene);
+
+    ErrCode ExtractFiles(const ExtractParam &extractParam);
+
+    ErrCode ExtractHnpFiles(const std::map<std::string, std::string> &hnpPackageMap, const ExtractParam &extractParam);
+
+    ErrCode ProcessBundleInstallNative(const InstallHnpParam &installHnpParam);
+
+    ErrCode ProcessBundleUnInstallNative(const std::string &userId, const std::string &bundleName);
+
+    ErrCode GetNativeLibraryFileNames(const std::string &filePath, const std::string &cpuAbi,
+        std::vector<std::string> &fileNames);
+
+    ErrCode ExecuteAOT(const AOTArgs &aotArgs, std::vector<uint8_t> &pendSignData);
+
+    ErrCode PendSignAOT(const std::string &anFileName, const std::vector<uint8_t> &signData);
+
+    ErrCode StopAOT();
+
+    ErrCode DeleteUninstallTmpDirs(const std::vector<std::string> &dirs);
+
+    ErrCode VerifyCodeSignature(const CodeSignatureParam &codeSignatureParam);
+
+    ErrCode VerifyCodeSignatureForHap(const CodeSignatureParam &codeSignatureParam);
+
+    ErrCode CheckEncryption(const CheckEncryptionParam &checkEncryptionParam, bool &isEncryption);
+
+    ErrCode MoveFiles(const std::string &srcDir, const std::string &desDir, const std::string &bundleName,
+        BundleDirScene scene);
+
+    ErrCode ExtractDriverSoFiles(const std::string &srcPath,
+        const std::unordered_multimap<std::string, std::string> &dirMap);
+
+    void OnLoadSystemAbilitySuccess(const sptr<IRemoteObject> &remoteObject);
+
+    void OnLoadSystemAbilityFail();
+
+    bool StartInstalldService();
+
+    ErrCode ExtractEncryptedSoFiles(const std::string &hapPath, const std::string &realSoFilesPath,
+        const std::string &cpuAbi, const std::string &tmpSoPath, int32_t uid);
+
+    ErrCode DeliverySignProfile(const std::string &bundleName, int32_t profileBlockLength,
+        const unsigned char *profileBlock);
+
+    ErrCode RemoveSignProfile(const std::string &bundleName);
+
+    ErrCode AddCertAndEnableKey(const std::string &certPath, const std::string &certContent);
+
+    ErrCode SetEncryptionPolicy(const EncryptionParam &encryptionParam, std::string &keyId);
+
+    ErrCode DeleteEncryptionKeyId(const EncryptionParam &encryptionParam);
+
+    ErrCode RemoveExtensionDir(int32_t userId, const std::vector<std::string> &extensionBundleDirs);
+
+    ErrCode IsExistExtensionDir(int32_t userId, const std::string &extensionBundleDir, bool &isExist);
+
+    ErrCode CreateExtensionDataDir(const CreateDirParam &createDirParam);
+
+    ErrCode GetExtensionSandboxTypeList(std::vector<std::string> &typeList);
+
+    ErrCode AddUserDirDeleteDfx(int32_t userId);
+
+    ErrCode MoveHapToCodeDir(const std::string &originPath, const std::string &targetPath);
+
+    ErrCode CreateDataGroupDirs(const std::vector<CreateDirParam> &params);
+
+    ErrCode DeleteDataGroupDirs(const std::vector<std::string> &uuidList, int32_t userId);
+
+    ErrCode LoadInstalls();
+
+    ErrCode ClearDir(const std::string &dir, BundleDirScene scene);
+
+    ErrCode RestoreconPath(const std::string &path, const std::string &bundleName, BundleDirScene scene);
+
+    ErrCode ProcessBinFiles(const VerifyBinParam &verifyBinParam);
+
+    ErrCode CheckExternalSourcePluginSwitch(int32_t &outSwitchStatus);
+
+    ErrCode CheckHspPluginCertValidity(const std::string &bundleName, int32_t sessionId);
+
+    ErrCode HashSoFile(const std::string& soPath, uint32_t catchSoNum, uint64_t catchSoMaxSize,
+        std::vector<std::string> &soName, std::vector<std::string> &soHash);
+
+    ErrCode HashFiles(const std::vector<std::string> &files, std::vector<std::string> &filesHash);
+    
+    ErrCode ResetBmsDBSecurity();
+
+    /**
+     * @brief Clean a bundle data directory.
+     * @param dirs Indicates the directory path that to be cleaned.
+     * @param bundleName Indicates the bundle name for path validation.
+     * @param scene Indicates the scene code for path validation.
+     * @return Returns ERR_OK if the bundle dirs cleaned successfully; returns error code otherwise.
+     */
+    ErrCode CleanBundleDirs(const std::vector<std::string> &dirs, bool keepParent,
+        const std::string &bundleName, BundleDirScene scene);
+
+    ErrCode CopyDir(const std::string &sourceDir, const std::string &destinationDir, const std::string &bundleName,
+        BundleDirScene scene);
+
+    ErrCode DeleteCertAndRemoveKey(const std::vector<std::string> &certPaths);
+
+    /**
+     * @brief Extract skills package with validation.
+     * @param param Contains bundleName, moduleName, hspPath and skillNameList.
+     * @param skillInfoList Output parameter containing skill extraction results with description.
+     * @return Returns ERR_OK if extracted successfully; returns error code otherwise.
+     */
+    ErrCode ExtractSkillsPackage(const SkillsPackageParam &param,
+        std::vector<SkillsPackageInfo> &skillInfoList);
+
+    /**
+     * @brief Get top N largest items in app data directory.
+     * @param bundleName Indicates the bundle name.
+     * @param appIndex Indicates the app index.
+     * @param userId Indicates the user ID.
+     * @param timeout Indicates the maximum scan time in seconds.
+     * @param largestItems Output parameter containing JSON string of largest items with path and size.
+     * @return Returns ERR_OK if get largest items successfully; returns error code otherwise.
+     */
+    ErrCode GetTopNLargestItemsInAppDataDir(const std::string &bundleName, const int32_t appIndex,
+        const int32_t userId, const int32_t timeout, std::string &largestItems);
+
+    /**
+     * @brief Delete older cache files until the desired cache size is achieved.
+     * @param paths Indicates the paths of cache files to be deleted.
+     * @param cacheSize Indicates the size of cache files that need to be deleted.
+     * @param cleanedSize Output parameter indicating the size of deleted cache files.
+     * @return Returns ERR_OK if delete old cache files successfully; returns error code otherwise.
+     */
+    ErrCode DeleteOldCacheFiles(const std::vector<std::string> &paths, const uint64_t cacheSize, uint64_t &cleanedSize);
+
+    ErrCode GetCacheDiskUsageFromPath(const std::vector<std::string> &paths, int64_t &statSize, int64_t timeoutMs = -1);
+
+private:
+    sptr<IInstalld> GetInstalldProxy();
+    bool LoadInstalldService();
+
+    template<typename F, typename... Args>
+    ErrCode CallService(F func, Args&&... args)
+    {
+        int32_t maxRetryTimes = 2;
+        int32_t retryInterval = 50;
+        ErrCode errCode = ERR_APPEXECFWK_INSTALLD_SERVICE_DIED;
+        for (int32_t retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
+            auto proxy = GetInstalldProxy();
+            if (proxy == nullptr) {
+                errCode = ERR_APPEXECFWK_INSTALLD_GET_PROXY_ERROR;
+                continue;
+            }
+            errCode = (proxy->*func)(std::forward<Args>(args)...);
+            if (errCode == ERR_APPEXECFWK_INSTALLD_SERVICE_DIED) {
+                APP_LOGE("CallService failed, retry times: %{public}d", retryTimes + 1);
+                ResetInstalldProxy();
+                std::this_thread::sleep_for(std::chrono::milliseconds(retryInterval));
+            } else {
+                return errCode;
+            }
+        }
+        return errCode;
+    }
+
+private:
+    std::mutex mutex_;
+    std::mutex getProxyMutex_;
+    std::condition_variable loadSaCondition_;
+    sptr<IInstalld> installdProxy_;
+    sptr<IRemoteObject::DeathRecipient> recipient_;
+};
+}  // namespace AppExecFwk
+}  // namespace OHOS
+#endif  // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_INCLUDE_INSTALLD_CLIENT_H

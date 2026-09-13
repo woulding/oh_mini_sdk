@@ -1,0 +1,5 @@
+{
+    "description": "Runs a STS plan from a pre-existing STS installation",
+    "kits": [
+    ]
+}

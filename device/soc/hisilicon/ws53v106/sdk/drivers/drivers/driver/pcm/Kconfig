@@ -1,0 +1,22 @@
+#===============================================================================
+# @brief    Kconfig file.
+# Copyright (c) HiSilicon (Shanghai) Technologies Co., Ltd. 2022-2022. All rights reserved.
+#===============================================================================
+
+config PCM_SUPPORT_LOOPBACK
+    bool
+    prompt "PCM Support LOOPBACK"
+    default n
+    depends on DRIVER_SUPPORT_PCM
+
+config PCM_RX_THRESHOLD
+    hex
+    prompt "Threshold of the PCM RX channel"
+    default 0xC
+    depends on DRIVER_SUPPORT_PCM
+
+config PCM_TX_THRESHOLD
+    hex
+    prompt "Threshold of the PCM TX channel"
+    default 0xC
+    depends on DRIVER_SUPPORT_PCM

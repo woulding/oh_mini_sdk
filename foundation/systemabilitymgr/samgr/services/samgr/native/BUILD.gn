@@ -1,0 +1,178 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/ohos_var.gni")
+import("../../../config.gni")
+import("../var.gni")
+
+config("distributed_store_config") {
+  visibility = [ ":*" ]
+  include_dirs =
+      [ "//foundation/systemabilitymgr/samgr/services/samgr/native/include" ]
+}
+
+config("sam_config") {
+  # header file path
+  include_dirs = [
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/include",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/include/collect",
+    "//foundation/systemabilitymgr/samgr/services/dfx/include",
+    "//foundation/systemabilitymgr/samgr/utils/native/include",
+    "//foundation/systemabilitymgr/samgr/services/lsamgr/include",
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/common/include",
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/samgr_proxy/include",
+  ]
+}
+
+ohos_executable("samgr") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    cfi_no_nvcall = true
+    blocklist = "../../../cfi_blocklist.txt"
+  }
+  branch_protector_ret = "pac_ret"
+
+  install_enable = true
+  sources = [
+    "//foundation/systemabilitymgr/samgr/frameworks/native/source/system_ability_load_callback_stub.cpp",
+    "//foundation/systemabilitymgr/samgr/services/dfx/source/hisysevent_adapter.cpp",
+    "//foundation/systemabilitymgr/samgr/services/lsamgr/src/local_ability_manager_proxy.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/ability_death_recipient.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/device_param_collect.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/device_status_collect_manager.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/device_timed_collect.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/icollect_plugin.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/ref_count_collect.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/ffrt_handler.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/main.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/memory_guard.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/rpc_callback_imp.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/samgr_time_handler.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/schedule/system_ability_event_handler.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/schedule/system_ability_state_machine.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/schedule/system_ability_state_scheduler.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/system_ability_load_callback_proxy.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/base_system_ability_manager.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/system_ability_manager.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/system_ability_manager_dumper.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/system_ability_manager_stub.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/system_ability_manager_util.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/system_ability_status_change_proxy.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/system_process_status_change_proxy.cpp",
+    "//foundation/systemabilitymgr/samgr/utils/native/source/tools.cpp",
+  ]
+
+  deps = [
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/common:samgr_common",
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/dynamic_cache:dynamic_cache",
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/samgr_proxy:samgr_proxy",
+  ]
+
+  configs = [
+    ":sam_config",
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/common:config_samgr_common",
+    "//foundation/systemabilitymgr/samgr/test/resource:coverage_flags",
+    ":distributed_store_config",
+  ]
+  defines = []
+  if (use_musl) {
+    if (musl_use_jemalloc && musl_use_jemalloc_dfx_intf) {
+      defines += [ "CONFIG_USE_JEMALLOC_DFX_INTF" ]
+    }
+  }
+  defines += ["SAMGR_USE_FFRT"]
+  if (is_standard_system) {
+    external_deps = [
+      "access_token:libaccesstoken_sdk",
+      "c_utils:utils",
+      "config_policy:configpolicy_util",
+      "ffrt:libffrt",
+      "hilog:libhilog",
+      "hisysevent:libhisysevent",
+      "hitrace:hitrace_meter",
+      "init:libbeget_proxy",
+      "init:libbegetutil",
+      "ipc:ipc_core",
+      "ipc:libdbinder",
+      "json:nlohmann_json_static",
+      "safwk:system_ability_ondemand_reason",
+      "qos_manager:qos",
+      "qos_manager:concurrent_task_client",
+    ]
+
+    if (build_selinux) {
+      external_deps += [ "selinux_adapter:libservice_checker" ]
+      defines += [ "WITH_SELINUX" ]
+    }
+
+    if (hicollie_able) {
+      external_deps += [ "hicollie:libhicollie" ]
+      defines += [ "HICOLLIE_ENABLE" ]
+    }
+
+    if (support_device_manager) {
+      sources += [ "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/device_networking_collect.cpp" ]
+      external_deps += [ "device_manager:devicemanagersdk" ]
+      defines += [ "SUPPORT_DEVICE_MANAGER" ]
+    }
+
+    if (support_common_event) {
+      sources += [
+        "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/common_event_collect.cpp",
+        "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/device_switch_collect.cpp",
+      ]
+      external_deps += [
+        "ability_base:want",
+        "common_event_service:cesfwk_innerkits",
+      ]
+      defines += [
+        "SUPPORT_COMMON_EVENT",
+        "SUPPORT_SWITCH_COLLECT",
+      ]
+    }
+
+    if (preferences_enable) {
+      sources += [ "//foundation/systemabilitymgr/samgr/services/samgr/native/source/collect/device_timed_collect_tool.cpp" ]
+      external_deps += [ "preferences:native_preferences" ]
+      defines += [ "PREFERENCES_ENABLE" ]
+    }
+
+    if (samgr_enable_extend_load_timeout) {
+      defines += [ "SAMGR_ENABLE_EXTEND_LOAD_TIMEOUT" ]
+    }
+
+    if (samgr_enable_delay_dbinder) {
+      defines += [ "SAMGR_ENABLE_DELAY_DBINDER" ]
+    }
+
+    if (support_penglai_mode) {
+      defines += [ "SUPPORT_PENGLAI_MODE" ]
+    }
+
+    if (samgr_support_multi_instance) {
+      defines += [ "SUPPORT_MULTI_INSTANCE" ]
+    }
+    part_name = "samgr"
+  }
+  if (use_musl) {
+    external_deps += [ "toybox:toybox" ]
+    if (samgr_mksh_enable) {
+      external_deps += [ "mksh:sh" ]
+    }
+  }
+
+  subsystem_name = "systemabilitymgr"
+}

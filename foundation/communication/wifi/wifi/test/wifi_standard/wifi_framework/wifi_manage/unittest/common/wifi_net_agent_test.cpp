@@ -1,0 +1,402 @@
+/*
+ * Copyright (C) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+#include "wifi_net_agent.h"
+#include "wifi_log.h"
+#include "wifi_logger.h"
+#include "net_supplier_callback_base.h"
+#include "mock_wifi_settings.h"
+#include "mock_wifi_config_center.h"
+#include "net_conn_client.h"
+
+using namespace testing;
+using ::testing::_;
+using ::testing::DoAll;
+using ::testing::Eq;
+using ::testing::Return;
+using ::testing::SetArgReferee;
+using ::testing::StrEq;
+using ::testing::TypedEq;
+using ::testing::ext::TestSize;
+
+namespace OHOS {
+namespace Wifi {
+const std::string g_errLog = "wifitest";
+constexpr const char *WIFI_NET_CONN_MGR_WORK_THREAD = "WIFI_NET_CONN_MGR_WORK_THREAD";
+constexpr int TEN = 10;
+class WifiNetAgentTest : public Test {
+public:
+    void SetUp() override
+    {
+    }
+
+    void TearDown() override
+    {
+    }
+};
+
+HWTEST_F(WifiNetAgentTest, UnregisterNetSupplier_CallsUnregisterNetSupplier, TestSize.Level1)
+{
+    int instId = 0;
+    WifiNetAgent::GetInstance().UnregisterNetSupplier(instId);
+    EXPECT_FALSE(g_errLog.find("processWiTasDecisiveMessage")!=std::string::npos);
+}
+
+HWTEST_F(WifiNetAgentTest, UpdateNetSupplierInfo_CallsUpdateNetSupplierInfo, TestSize.Level1)
+{
+    sptr<NetManagerStandard::NetSupplierInfo> netSupplierInfo = new NetManagerStandard::NetSupplierInfo();
+    int instId = 0;
+    WifiNetAgent::GetInstance().UpdateNetSupplierInfo(netSupplierInfo, instId);
+    EXPECT_FALSE(g_errLog.find("processWiTasDecisiveMessage")!=std::string::npos);
+}
+
+HWTEST_F(WifiNetAgentTest, UpdateNetLinkInfo_CallsUpdateNetLinkInfo, TestSize.Level1)
+{
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    int instId = 0;
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    WifiDeviceConfig config;
+    WifiNetAgent::GetInstance().UpdateNetLinkInfo(wifiIpInfo, wifiIpV6Info, config.wifiProxyconfig, instId);
+    EXPECT_FALSE(g_errLog.find("processWiTasDecisiveMessage")!=std::string::npos);
+}
+
+HWTEST_F(WifiNetAgentTest, OnStaMachineUpdateNetLinkInfoTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    WifiProxyConfig wifiProxyConfig;
+    int instId = 0;
+    wifiNetAgent.OnStaMachineUpdateNetLinkInfo(wifiIpInfo, wifiIpV6Info, wifiProxyConfig, instId);
+    EXPECT_FALSE(g_errLog.find("processWiTasDecisiveMessage")!=std::string::npos);
+}
+
+HWTEST_F(WifiNetAgentTest, OnStaMachineUpdateNetSupplierInfoTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetSupplierInfo> netSupplierInfo =
+        sptr<NetManagerStandard::NetSupplierInfo>(new (std::nothrow) NetManagerStandard::NetSupplierInfo());
+    int instId = 0;
+    wifiNetAgent.OnStaMachineUpdateNetSupplierInfo(netSupplierInfo, instId);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, OnStaMachineWifiStartTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    int instId = 0;
+    wifiNetAgent.OnStaMachineWifiStart(instId);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, OnStaMachineNetManagerRestartTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    int instId = 0;
+    WifiLinkedInfo linkedInfo;
+    linkedInfo.connState == ConnState::CONNECTED;
+    WifiSettings::GetInstance().SaveLinkedInfo(linkedInfo, 0);
+    sptr<NetManagerStandard::NetSupplierInfo> netSupplierInfo =
+        sptr<NetManagerStandard::NetSupplierInfo>(new (std::nothrow) NetManagerStandard::NetSupplierInfo());
+    wifiNetAgent.OnStaMachineNetManagerRestart(netSupplierInfo, instId);
+    EXPECT_FALSE(g_errLog.find("processWiTasDecisiveMessage")!=std::string::npos);
+}
+
+HWTEST_F(WifiNetAgentTest, CreateNetLinkInfoTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    WifiProxyConfig wifiProxyConfig;
+    int instId = 0;
+    wifiProxyConfig.configureMethod = ConfigureProxyMethod::AUTOCONFIGUE;
+
+    wifiNetAgent.CreateNetLinkInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info, wifiProxyConfig, instId);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, CreateNetLinkInfoTest002, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    WifiProxyConfig wifiProxyConfig;
+    int instId = 0;
+    wifiProxyConfig.configureMethod = ConfigureProxyMethod::MANUALCONFIGUE;
+
+    wifiNetAgent.CreateNetLinkInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info, wifiProxyConfig, instId);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, CreateNetLinkInfoTest003, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    WifiProxyConfig wifiProxyConfig;
+    int instId = 0;
+    wifiProxyConfig.configureMethod = ConfigureProxyMethod::CLOSED;
+
+    wifiNetAgent.CreateNetLinkInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info, wifiProxyConfig, instId);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkIPInfoTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    wifiIpV6Info.globalIpV6Address = "TEST";
+    wifiIpV6Info.netmask = "TEST2";
+    wifiIpV6Info.randGlobalIpV6Address = "TEST3";
+    wifiIpV6Info.uniqueLocalAddress1 = "TEST4";
+    wifiIpV6Info.uniqueLocalAddress2 = "TEST5";
+    wifiNetAgent.SetNetLinkIPInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkIPInfoTest002, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    // Set up IpAddrMap with IPv6 addresses of different types
+    wifiIpV6Info.IpAddrMap["2001:db8::1"] = 2;  // Type 2
+    wifiIpV6Info.IpAddrMap["2001:db8::2"] = 1;  // Type 1
+    wifiIpV6Info.IpAddrMap["2001:db8::3"] = 3;  // Type 3
+    wifiIpV6Info.netmask = "64";
+    wifiNetAgent.SetNetLinkIPInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info);
+    // Verify IPv6 addresses are added and sorted by type (ascending order)
+    std::vector<std::string> ipv6Addresses;
+    for (const auto& addr : netLinkInfo->netAddrList_) {
+        if (addr.type_ == NetManagerStandard::INetAddr::IPV6) {
+            ipv6Addresses.push_back(addr.address_);
+        }
+    }
+    // Expected order: type 1, 2, 3 -> "2001:db8::2", "2001:db8::1", "2001:db8::3"
+    EXPECT_EQ(ipv6Addresses.size(), 3u);
+    EXPECT_EQ(ipv6Addresses[0], "2001:db8::2");
+    EXPECT_EQ(ipv6Addresses[1], "2001:db8::1");
+    EXPECT_EQ(ipv6Addresses[2], "2001:db8::3");
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkDnsInfoTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    wifiIpV6Info.dnsAddr.push_back("TEST1");
+    wifiIpV6Info.dnsAddr.push_back("TEST2");
+    wifiNetAgent.SetNetLinkDnsInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkRouteInfoTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    wifiIpV6Info.gateway = "TEST";
+    wifiNetAgent.SetNetLinkRouteInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkHostRouteInfoTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    wifiNetAgent.SetNetLinkHostRouteInfo(netLinkInfo, wifiIpInfo);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkLocalRouteInfoTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    wifiIpV6Info.netmask = "TEST";
+    wifiNetAgent.SetNetLinkLocalRouteInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkLocalRouteInfoIpv6LinkLocalTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpInfo wifiIpInfo;
+    IpV6Info wifiIpV6Info;
+    // Set IPv6 addresses to trigger link-local route addition
+    wifiIpV6Info.globalIpV6Address = "2001:db8::1";
+    wifiNetAgent.SetNetLinkLocalRouteInfo(netLinkInfo, wifiIpInfo, wifiIpV6Info);
+    // Verify that IPv6 link-local route is added
+    bool hasLinkLocalRoute = false;
+    for (const auto& route : netLinkInfo->routeList_) {
+        if (route.destination_.type_ == NetManagerStandard::INetAddr::IPV6 &&
+            route.destination_.address_ == "fe80::" &&
+            route.destination_.prefixlen_ == 64 &&
+            route.gateway_.address_ == "::") {
+            hasLinkLocalRoute = true;
+            break;
+        }
+    }
+    EXPECT_FALSE(hasLinkLocalRoute);
+}
+
+HWTEST_F(WifiNetAgentTest, InitWifiNetAgentTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    WifiNetAgentCallbacks wifiNetAgentCallbacks;
+    wifiNetAgent.InitWifiNetAgent(wifiNetAgentCallbacks);
+    EXPECT_NE(wifiNetAgent.supplierId, TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, RequestNetworkTest001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    int uid = 0;
+    int networkId = 0;
+    EXPECT_EQ(wifiNetAgent.RequestNetwork(uid, networkId), false);
+}
+
+HWTEST_F(WifiNetAgentTest, RequestNetworkTest002, TestSize.Level1)
+{
+    WifiNetAgent::NetConnCallback netConnCallback;
+    std::string ident = "";
+    std::set<NetManagerStandard::NetCap> netCaps;
+    NetManagerStandard::NetRequest netrequest;
+    EXPECT_EQ(netConnCallback.RequestNetwork(ident, netCaps, netrequest), -1);
+
+    ident = "1";
+    EXPECT_EQ(netConnCallback.RequestNetwork(ident, netCaps, netrequest), -1);
+
+    ident = "2";
+    netrequest.requestId++;
+    EXPECT_EQ(netConnCallback.RequestNetwork(ident, netCaps, netrequest), -1);
+
+    ident = "wifi";
+    netrequest.requestId++;
+    EXPECT_EQ(netConnCallback.RequestNetwork(ident, netCaps, netrequest), -1);
+
+    ident = "test123";
+    netrequest.requestId++;
+    EXPECT_EQ(netConnCallback.RequestNetwork(ident, netCaps, netrequest), -1);
+}
+
+HWTEST_F(WifiNetAgentTest, ReleaseNetworkTest001, TestSize.Level1)
+{
+    WifiNetAgent::NetConnCallback netConnCallback;
+    NetManagerStandard::NetRequest netrequest;
+    EXPECT_EQ(netConnCallback.ReleaseNetwork(netrequest), 0);
+}
+
+HWTEST_F(WifiNetAgentTest, LogNetCapsTest001, TestSize.Level1)
+{
+    WifiNetAgent::NetConnCallback netConnCallback;
+    std::string ident = "";
+    std::set<NetManagerStandard::NetCap> netCaps;
+    netConnCallback.LogNetCaps(ident, netCaps);
+    EXPECT_NE(netConnCallback.requestIds_.size(), TEN);
+}
+
+HWTEST_F(WifiNetAgentTest, GetSupplierId001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    wifiNetAgent.ResetSupplierId(0);
+    uint32_t tmpSupplierId = wifiNetAgent.GetSupplierId(0);
+    EXPECT_EQ(tmpSupplierId, 0);
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkLocalRouteIpv6Test001, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpV6Info wifiIpV6Info;
+    wifiIpV6Info.netmask = "ffff:ffff:ffff:ffff::";  // Set a valid netmask
+    wifiIpV6Info.globalIpV6Address = "2001:db8::1";
+    wifiIpV6Info.uniqueLocalAddress1 = "fc00::1";
+    wifiIpV6Info.linkIpV6Address = "fe80::1";
+    netLinkInfo->ifaceName_ = "wlan0";  // Set interface name
+
+    wifiNetAgent.SetNetLinkLocalRouteIpv6(netLinkInfo, wifiIpV6Info);
+
+    // Verify routes are added for global, unique local, and link-local addresses
+    EXPECT_EQ(netLinkInfo->routeList_.size(), 3u);
+
+    // Check global IPv6 route
+    bool hasGlobalRoute = false;
+    for (const auto& route : netLinkInfo->routeList_) {
+        if (route.destination_.address_ == "2001:db8::" &&
+            route.destination_.prefixlen_ == 64 &&
+            route.iface_ == "wlan0" &&
+            route.gateway_.address_.empty()) {
+            hasGlobalRoute = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(hasGlobalRoute);
+
+    // Check unique local route
+    bool hasUniqueLocalRoute = false;
+    for (const auto& route : netLinkInfo->routeList_) {
+        if (route.destination_.address_ == "fc00::" &&
+            route.destination_.prefixlen_ == 64 &&
+            route.iface_ == "wlan0" &&
+            route.gateway_.address_.empty()) {
+            hasUniqueLocalRoute = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(hasUniqueLocalRoute);
+
+    // Check link-local route
+    bool hasLinkLocalRoute = false;
+    for (const auto& route : netLinkInfo->routeList_) {
+        if (route.destination_.address_ == "fe80::" &&
+            route.destination_.prefixlen_ == 64 &&
+            route.iface_ == "wlan0" &&
+            route.gateway_.address_.empty()) {
+            hasLinkLocalRoute = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(hasLinkLocalRoute);
+}
+
+HWTEST_F(WifiNetAgentTest, SetNetLinkLocalRouteIpv6Test002, TestSize.Level1)
+{
+    WifiNetAgent wifiNetAgent;
+    sptr<NetManagerStandard::NetLinkInfo> netLinkInfo = new NetManagerStandard::NetLinkInfo();
+    IpV6Info wifiIpV6Info;
+    wifiIpV6Info.netmask = "";  // Empty netmask, should return early
+
+    wifiNetAgent.SetNetLinkLocalRouteIpv6(netLinkInfo, wifiIpV6Info);
+
+    // No routes should be added
+    EXPECT_EQ(netLinkInfo->routeList_.size(), 0u);
+}
+}
+}

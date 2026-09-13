@@ -1,0 +1,103 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/lite/config/component/lite_component.gni")
+import("//test/xts/device_attest_lite/build/devattestconfig.gni")
+
+if (os_level != "mini") {
+  CFLAGS_COMMON = [
+    "-ftrapv",
+    "-Werror",
+    "-Wextra",
+    "-Wshadow",
+    "-fstack-protector-all",
+    "-Wformat=2",
+    "-Wfloat-equal",
+    "-Wdate-time",
+  ]
+
+  INCLUDE_COMMON = [
+    "small/include",
+    "${devattest_path}/common",
+    "${devattest_path}/common/log",
+    "${devattest_path}/services/core/include",
+    "${devattest_path}/interfaces/innerkits",
+    "//utils/native/lite/include",
+    "//foundation/systemabilitymgr/samgr_lite/interfaces/kits/samgr",
+    "//foundation/communication/ipc/interfaces/innerkits/c/ipc/include",
+    "//base/hiviewdfx/hilog_lite/interfaces/native/innerkits",
+  ]
+
+  # L1 server
+  shared_library("devattest_server") {
+    sources = [
+      "small/src/service/attest_framework_feature.c",
+      "small/src/service/attest_framework_server.c",
+    ]
+    cflags = CFLAGS_COMMON
+    cflags += [ "-fPIC" ]
+    ldflags = [ "-pthread" ]
+    include_dirs = INCLUDE_COMMON
+    include_dirs += [ "${devattest_path}/services/core" ]
+    deps = [
+      "${devattest_path}/services/core:devattest_core",
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//foundation/systemabilitymgr/samgr_lite/samgr:samgr",
+    ]
+  }
+
+  # L1 client
+  shared_library("devattest_client") {
+    sources = [ "small/src/client/attest_framework_client_proxy.c" ]
+    cflags = CFLAGS_COMMON
+    cflags += [ "-fPIC" ]
+    ldflags = [ "-pthread" ]
+    include_dirs = INCLUDE_COMMON
+    deps = [
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//foundation/systemabilitymgr/samgr_lite/samgr:samgr",
+    ]
+  }
+
+  # L1 service bin
+  executable("devattest_service") {
+    sources = [ "small/src/service/attest_framework_service.c" ]
+    cflags = CFLAGS_COMMON
+    ldflags = [ "-pthread" ]
+    include_dirs = INCLUDE_COMMON
+    include_dirs += [ "${devattest_path}/services/core/include/utils" ]
+    deps = [
+      ":devattest_server",
+      "${devattest_path}/services/core:devattest_core",
+      "//foundation/systemabilitymgr/samgr_lite/samgr:samgr",
+    ]
+  }
+} else {
+  #L0 Empty module
+  group("devattest_client") {
+  }
+
+  # L0 interface
+  static_library("devattest_sdk") {
+    if (os_level == "mini") {
+      sources = [ "mini/src/attest_framework_client_mini.c" ]
+      include_dirs = [
+        "${devattest_path}/common",
+        "${devattest_path}/common/mini",
+        "${devattest_path}/interfaces/innerkits",
+        "${devattest_path}/services/core",
+      ]
+      deps = [ "${devattest_path}/services/core:devattest_core" ]
+    }
+  }
+}

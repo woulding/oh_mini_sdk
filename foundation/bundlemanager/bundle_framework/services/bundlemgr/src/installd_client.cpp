@@ -1,0 +1,841 @@
+/*
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "installd_client.h"
+
+#include "bundle_constants.h"
+#include "installd/installd_load_callback.h"
+#include "installd_death_recipient.h"
+#include "iservice_registry.h"
+#include "system_ability_definition.h"
+#include "system_ability_helper.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+#ifdef VERIFY_PLAT_FPGA  //Used only for chip platform, do not modify.
+constexpr int32_t LOAD_SA_TIMEOUT_MS = 80 * 1000;
+#else
+constexpr int16_t LOAD_SA_TIMEOUT_MS = 4 * 1000;
+#endif
+} // namespace
+
+ErrCode InstalldClient::CreateBundleDir(
+    const std::string &bundleName, BundleDirScene scene, const std::string &bundleDir)
+{
+    if (bundleName.empty() || bundleDir.empty()) {
+        APP_LOGE("bundleName or bundleDir is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::CreateBundleDir, bundleName, scene, bundleDir);
+}
+
+ErrCode InstalldClient::ExtractModuleFiles(const std::string &srcModulePath, const std::string &targetPath,
+    const std::string &targetSoPath, const std::string &cpuAbi, const bool needFakeDecompression,
+    const bool isSystemApp)
+{
+    if (srcModulePath.empty() || targetPath.empty()) {
+        APP_LOGE("src module path or target path is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::ExtractModuleFiles, srcModulePath, targetPath, targetSoPath, cpuAbi,
+        needFakeDecompression, isSystemApp);
+}
+
+ErrCode InstalldClient::ExtractFiles(const ExtractParam &extractParam)
+{
+    if (extractParam.srcPath.empty() || extractParam.targetPath.empty()) {
+        APP_LOGE("src path or target path is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::ExtractFiles, extractParam);
+}
+
+ErrCode InstalldClient::ExtractHnpFiles(const std::map<std::string, std::string> &hnpPackageMap,
+    const ExtractParam &extractParam)
+{
+    if (extractParam.srcPath.empty() || extractParam.targetPath.empty() || hnpPackageMap.empty()) {
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::ExtractHnpFiles, hnpPackageMap, extractParam);
+}
+
+ErrCode InstalldClient::ProcessBundleInstallNative(const InstallHnpParam &installHnpParam)
+{
+    return CallService(&IInstalld::ProcessBundleInstallNative, installHnpParam);
+}
+
+ErrCode InstalldClient::ProcessBundleUnInstallNative(const std::string &userId, const std::string &packageName)
+{
+    return CallService(&IInstalld::ProcessBundleUnInstallNative, userId, packageName);
+}
+
+ErrCode InstalldClient::ExecuteAOT(const AOTArgs &aotArgs, std::vector<uint8_t> &pendSignData)
+{
+    return CallService(&IInstalld::ExecuteAOT, aotArgs, pendSignData);
+}
+
+ErrCode InstalldClient::PendSignAOT(const std::string &anFileName, const std::vector<uint8_t> &signData)
+{
+    return CallService(&IInstalld::PendSignAOT, anFileName, signData);
+}
+
+ErrCode InstalldClient::StopAOT()
+{
+    return CallService(&IInstalld::StopAOT);
+}
+
+ErrCode InstalldClient::DeleteUninstallTmpDirs(const std::vector<std::string> &dirs)
+{
+    if (dirs.empty()) {
+        APP_LOGE("dirs empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::DeleteUninstallTmpDirs, dirs);
+}
+
+ErrCode InstalldClient::RenameModuleDir(
+    const std::string &oldPath, const std::string &newPath, const std::string &bundleName, BundleDirScene scene)
+{
+    if (oldPath.empty() || newPath.empty() || bundleName.empty()) {
+        APP_LOGE("rename path or bundleName is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::RenameModuleDir, oldPath, newPath, bundleName, scene);
+}
+
+ErrCode InstalldClient::CreateBundleDataDir(const CreateDirParam &createDirParam)
+{
+    if (createDirParam.bundleName.empty() || createDirParam.userId < 0
+        || createDirParam.uid < 0 || createDirParam.gid < 0) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::CreateBundleDataDir, createDirParam);
+}
+
+ErrCode InstalldClient::CreateBundleDataDirWithVector(const std::vector<CreateDirParam> &createDirParams)
+{
+    return CallService(&IInstalld::CreateBundleDataDirWithVector, createDirParams);
+}
+
+ErrCode InstalldClient::RemoveBundleDataDir(
+    const std::string &bundleName, const int32_t userId, bool isAtomicService, const bool async)
+{
+    if (bundleName.empty() || userId < 0) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::RemoveBundleDataDir, bundleName, userId, isAtomicService, async);
+}
+
+ErrCode InstalldClient::RemoveModuleDataDir(const std::string &ModuleName, const int userid)
+{
+    if (ModuleName.empty() || userid < 0) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::RemoveModuleDataDir, ModuleName, userid);
+}
+
+ErrCode InstalldClient::RemoveDir(const std::string &dir, BundleDirScene scene, const std::string &bundleName,
+    bool async)
+{
+    if (dir.empty()) {
+        APP_LOGE("dir removed is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::RemoveDir, dir, scene, bundleName, async);
+}
+
+int64_t InstalldClient::GetDiskUsage(const std::string &dir, bool isRealPath)
+{
+    if (dir.empty()) {
+        APP_LOGE("bundle dir is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::GetDiskUsage, dir, isRealPath);
+}
+
+ErrCode InstalldClient::GetDiskUsageFromPath(const std::vector<std::string> &path, const std::string &bundleName,
+    BundleDirScene scene, int64_t &statSize, int64_t timeoutMs)
+{
+    if (path.empty()) {
+        APP_LOGE("path is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::GetDiskUsageFromPath, path, bundleName, scene, statSize, timeoutMs);
+}
+
+ErrCode InstalldClient::GetBundleInodeCount(int32_t uid, uint64_t &inodeCount)
+{
+    if (uid < 0) {
+        APP_LOGE_NOFUNC("Invalid uid: %{public}d", uid);
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::GetBundleInodeCount, uid, inodeCount);
+}
+
+ErrCode InstalldClient::CleanBundleDataDir(const std::string &bundleDir,
+    const std::string &bundleName, int32_t userId)
+{
+    if (bundleDir.empty()) {
+        APP_LOGE("bundle dir is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    if (bundleName.empty()) {
+        APP_LOGE("bundle name is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    if (userId < 0) {
+        APP_LOGE("userId is invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::CleanBundleDataDir, bundleDir, bundleName, userId);
+}
+
+ErrCode InstalldClient::CleanBundleDataDirByName(const std::string &bundleName, const int userid, const int appIndex,
+    const bool isAtomicService)
+{
+    if (bundleName.empty() || userid < 0 || appIndex < 0 ||
+        (appIndex > Constants::INITIAL_SANDBOX_APP_INDEX && appIndex < Constants::CLI_SANDBOX_APP_INDEX_MIN) ||
+        appIndex > Constants::CLI_SANDBOX_APP_INDEX_MAX) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::CleanBundleDataDirByName, bundleName, userid, appIndex, isAtomicService);
+}
+
+ErrCode InstalldClient::CleanBundleDirs(const std::vector<std::string> &dirs, bool keepParent,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    if (dirs.empty()) {
+        APP_LOGE("dirs is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::CleanBundleDirs, dirs, keepParent, bundleName, scene);
+}
+
+ErrCode InstalldClient::GetBundleStats(const std::string &bundleName, const int32_t userId,
+    std::vector<int64_t> &bundleStats, const std::unordered_set<int32_t> &uids, const int32_t appIndex,
+    const uint32_t statFlag, const std::vector<std::string> &moduleNameList)
+{
+    if (bundleName.empty()) {
+        APP_LOGE("bundleName is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::GetBundleStats, bundleName, userId, bundleStats,
+        uids, appIndex, statFlag, moduleNameList);
+}
+
+ErrCode InstalldClient::BatchGetBundleStats(const std::vector<std::string> &bundleNames,
+    const std::unordered_map<std::string, std::unordered_set<int32_t>> &uidMap,
+    std::vector<BundleStorageStats> &bundleStats)
+{
+    if (bundleNames.empty() || uidMap.empty()) {
+        APP_LOGE("bundleNames or uidMap is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::BatchGetBundleStats, bundleNames, uidMap, bundleStats);
+}
+
+ErrCode InstalldClient::GetAllBundleStats(std::vector<int64_t> &bundleStats, const std::vector<int32_t> &uids)
+{
+    if (uids.empty()) {
+        APP_LOGE("uids is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::GetAllBundleStats, bundleStats, uids);
+}
+
+ErrCode InstalldClient::SetDirApl(const std::string &dir, const std::string &bundleName, const std::string &apl,
+    bool isPreInstallApp, bool debug, int32_t uid)
+{
+    if (dir.empty() || bundleName.empty() || apl.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::SetDirApl, dir, bundleName, apl, isPreInstallApp, debug, uid);
+}
+
+ErrCode InstalldClient::SetDirsApl(const CreateDirParam &createDirParam, bool isExtensionDir)
+{
+    if (createDirParam.bundleName.empty() || createDirParam.userId < 0
+        || createDirParam.uid < 0 || createDirParam.extensionDirs.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::SetDirsApl, createDirParam, isExtensionDir);
+}
+
+ErrCode InstalldClient::SetFileConForce(const std::vector<std::string> &paths, const CreateDirParam &createDirParam)
+{
+    if (paths.empty()) {
+        APP_LOGE("paths are empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::SetFileConForce, paths, createDirParam);
+}
+
+ErrCode InstalldClient::StopSetFileCon(const CreateDirParam &createDirParam, int32_t reason)
+{
+    return CallService(&IInstalld::StopSetFileCon, createDirParam, reason);
+}
+
+ErrCode InstalldClient::SetArkStartupCacheApl(const std::string &bundleName, const std::string &dir)
+{
+    if (bundleName.empty() || dir.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::SetArkStartupCacheApl, bundleName, dir);
+}
+
+ErrCode InstalldClient::GetBundleCachePath(const std::string &dir, std::vector<std::string> &cachePath)
+{
+    if (dir.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::GetBundleCachePath, dir, cachePath);
+}
+
+void InstalldClient::ResetInstalldProxy()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if ((installdProxy_ != nullptr) && (installdProxy_->AsObject() != nullptr)) {
+        installdProxy_->AsObject()->RemoveDeathRecipient(recipient_);
+    }
+    installdProxy_ = nullptr;
+}
+
+bool InstalldClient::LoadInstalldService()
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    auto systemAbilityMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemAbilityMgr == nullptr) {
+        APP_LOGE("Failed to get SystemAbilityManager");
+        return false;
+    }
+    sptr<InstalldLoadCallback> loadCallback = new (std::nothrow) InstalldLoadCallback();
+    if (loadCallback == nullptr) {
+        APP_LOGE("Create load callback failed");
+        return false;
+    }
+    auto ret = systemAbilityMgr->LoadSystemAbility(INSTALLD_SERVICE_ID, loadCallback);
+    if (ret != 0) {
+        APP_LOGE("Load system ability %{public}d failed with %{public}d", INSTALLD_SERVICE_ID, ret);
+        return false;
+    }
+
+    auto waitStatus = loadSaCondition_.wait_for(lock, std::chrono::milliseconds(LOAD_SA_TIMEOUT_MS),
+        [this]() {
+            return installdProxy_ != nullptr;
+        });
+    if (!waitStatus) {
+        APP_LOGE("Wait for load sa timeout");
+        return false;
+    }
+    return true;
+}
+
+sptr<IInstalld> InstalldClient::GetInstalldProxy()
+{
+    std::lock_guard<std::mutex> lockProxy(getProxyMutex_);
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (installdProxy_ != nullptr) {
+            APP_LOGD("installd ready");
+            return installdProxy_;
+        }
+    }
+
+    APP_LOGI("try to get installd proxy");
+    if (!LoadInstalldService()) {
+        APP_LOGE("load installd service failed");
+        return nullptr;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if ((installdProxy_ == nullptr) || (installdProxy_->AsObject() == nullptr)) {
+        APP_LOGE("the installd proxy or remote object is null");
+        return nullptr;
+    }
+
+    recipient_ = new (std::nothrow) InstalldDeathRecipient();
+    if (recipient_ == nullptr) {
+        APP_LOGE("the death recipient is nullptr");
+        return nullptr;
+    }
+    installdProxy_->AsObject()->AddDeathRecipient(recipient_);
+    return installdProxy_;
+}
+
+ErrCode InstalldClient::ScanDir(
+    const std::string &dir, ScanMode scanMode, ResultMode resultMode, std::vector<std::string> &paths)
+{
+    if (dir.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::ScanDir, dir, scanMode, resultMode, paths);
+}
+
+ErrCode InstalldClient::MoveFile(
+    const std::string &oldPath, const std::string &newPath, BundleDirScene scene, const std::string &bundleName)
+{
+    if (oldPath.empty() || newPath.empty() || bundleName.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::MoveFile, oldPath, newPath, scene, bundleName);
+}
+
+ErrCode InstalldClient::RenameFile(const std::string &oldPath, const std::string &newPath)
+{
+    if (oldPath.empty() || newPath.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::RenameFile, oldPath, newPath);
+}
+
+ErrCode InstalldClient::CopyFile(const std::string &oldPath, const std::string &newPath, BundleDirScene scene,
+    const std::string &signatureFilePath)
+{
+    if (oldPath.empty() || newPath.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::CopyFile, oldPath, newPath, scene, signatureFilePath);
+}
+
+ErrCode InstalldClient::Mkdir(const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid,
+    const CreateDirParam &createDirParam)
+{
+    if (dir.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::Mkdir, dir, mode, uid, gid, createDirParam);
+}
+
+ErrCode InstalldClient::GetFileStat(const std::string &file, BundleDirScene scene, FileStat &fileStat)
+{
+    if (file.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::GetFileStat, file, scene, fileStat);
+}
+
+ErrCode InstalldClient::ChangeFileStat(const std::string &file, FileStat &fileStat, BundleDirScene scene)
+{
+    if (file.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::ChangeFileStat, file, fileStat, scene);
+}
+
+ErrCode InstalldClient::ExtractDiffFiles(const std::string &filePath, const std::string &targetPath,
+    const std::string &cpuAbi)
+{
+    if (filePath.empty() || targetPath.empty() || cpuAbi.empty()) {
+        APP_LOGE("file path or target path or cpuAbi is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::ExtractDiffFiles, filePath, targetPath, cpuAbi);
+}
+
+ErrCode InstalldClient::ApplyDiffPatch(const std::string &oldSoPath, const std::string &diffFilePath,
+    const std::string &newSoPath, int32_t uid)
+{
+    if (oldSoPath.empty() || diffFilePath.empty() || newSoPath.empty()) {
+        APP_LOGE("old path or diff file path or new so path is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::ApplyDiffPatch, oldSoPath, diffFilePath, newSoPath, uid);
+}
+
+ErrCode InstalldClient::IsExistDir(const std::string &dir, bool &isExist)
+{
+    return CallService(&IInstalld::IsExistDir, dir, isExist);
+}
+
+ErrCode InstalldClient::IsExistFile(const std::string &path, bool &isExist)
+{
+    return CallService(&IInstalld::IsExistFile, path, isExist);
+}
+
+ErrCode InstalldClient::IsExistApFile(const std::string &path, bool &isExist)
+{
+    return CallService(&IInstalld::IsExistApFile, path, isExist);
+}
+
+ErrCode InstalldClient::IsDirEmpty(const std::string &dir, bool &isDirEmpty)
+{
+    return CallService(&IInstalld::IsDirEmpty, dir, isDirEmpty);
+}
+
+ErrCode InstalldClient::ObtainQuickFixFileDir(const std::string &dir, std::vector<std::string> &dirVec)
+{
+    return CallService(&IInstalld::ObtainQuickFixFileDir, dir, dirVec);
+}
+
+ErrCode InstalldClient::CopyFiles(const std::string &sourceDir, const std::string &destinationDir,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    return CallService(&IInstalld::CopyFiles, sourceDir, destinationDir, bundleName, scene);
+}
+
+ErrCode InstalldClient::GetNativeLibraryFileNames(const std::string &filePath, const std::string &cpuAbi,
+    std::vector<std::string> &fileNames)
+{
+    return CallService(&IInstalld::GetNativeLibraryFileNames, filePath, cpuAbi, fileNames);
+}
+
+ErrCode InstalldClient::VerifyCodeSignature(const CodeSignatureParam &codeSignatureParam)
+{
+    if (codeSignatureParam.modulePath.empty()) {
+        APP_LOGE("module path is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::VerifyCodeSignature, codeSignatureParam);
+}
+
+ErrCode InstalldClient::CheckEncryption(const CheckEncryptionParam &checkEncryptionParam, bool &isEncryption)
+{
+    if (checkEncryptionParam.modulePath.empty()) {
+        APP_LOGE("module path is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::CheckEncryption, checkEncryptionParam, isEncryption);
+}
+
+ErrCode InstalldClient::MoveFiles(const std::string &srcDir, const std::string &desDir, const std::string &bundleName,
+    BundleDirScene scene)
+{
+    if (srcDir.empty() || desDir.empty() || bundleName.empty()) {
+        APP_LOGE("src dir or des dir or bundle name is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::MoveFiles, srcDir, desDir, bundleName, scene);
+}
+
+ErrCode InstalldClient::ExtractDriverSoFiles(const std::string &srcPath,
+    const std::unordered_multimap<std::string, std::string> &dirMap)
+{
+    if (srcPath.empty() || dirMap.empty()) {
+        APP_LOGE("src path or dir map is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::ExtractDriverSoFiles, srcPath, dirMap);
+}
+
+ErrCode InstalldClient::VerifyCodeSignatureForHap(const CodeSignatureParam &codeSignatureParam)
+{
+    if (codeSignatureParam.modulePath.empty()) {
+        APP_LOGE("module path is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::VerifyCodeSignatureForHap, codeSignatureParam);
+}
+
+ErrCode InstalldClient::DeliverySignProfile(const std::string &bundleName, int32_t profileBlockLength,
+    const unsigned char *profileBlock)
+{
+    if (bundleName.empty() || profileBlock == nullptr) {
+        APP_LOGE("bundle name or profile block is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::DeliverySignProfile, bundleName, profileBlockLength, profileBlock);
+}
+
+ErrCode InstalldClient::RemoveSignProfile(const std::string &bundleName)
+{
+    if (bundleName.empty()) {
+        APP_LOGE("bundle name is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::RemoveSignProfile, bundleName);
+}
+
+ErrCode InstalldClient::AddCertAndEnableKey(const std::string &certPath, const std::string &certContent)
+{
+    if (certPath.empty() || certContent.empty()) {
+        APP_LOGE("cert path or cert content is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::AddCertAndEnableKey, certPath, certContent);
+}
+
+void InstalldClient::OnLoadSystemAbilitySuccess(const sptr<IRemoteObject> &remoteObject)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    installdProxy_ = iface_cast<IInstalld>(remoteObject);
+    loadSaCondition_.notify_one();
+}
+
+void InstalldClient::OnLoadSystemAbilityFail()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    installdProxy_ = nullptr;
+    loadSaCondition_.notify_one();
+}
+
+bool InstalldClient::StartInstalldService()
+{
+    return GetInstalldProxy() != nullptr;
+}
+
+ErrCode InstalldClient::ExtractEncryptedSoFiles(const std::string &hapPath, const std::string &realSoFilesPath,
+    const std::string &cpuAbi, const std::string &tmpSoPath, int32_t uid)
+{
+    if (hapPath.empty() || tmpSoPath.empty() || cpuAbi.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::ExtractEncryptedSoFiles, hapPath, realSoFilesPath, cpuAbi, tmpSoPath, uid);
+}
+
+ErrCode InstalldClient::SetEncryptionPolicy(const EncryptionParam &encryptionParam, std::string &keyId)
+{
+    if (encryptionParam.bundleName.empty() && encryptionParam.groupId.empty()) {
+        APP_LOGE("param error");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::SetEncryptionPolicy, encryptionParam, keyId);
+}
+
+ErrCode InstalldClient::MigrateData(const std::vector<std::string> &sourcePaths, const std::string &destinationPath)
+{
+    if (sourcePaths.empty()) {
+        APP_LOGE("sourcePaths param is invalid");
+        return ERR_BUNDLE_MANAGER_MIGRATE_DATA_SOURCE_PATH_INVALID;
+    }
+    if (destinationPath.empty()) {
+        APP_LOGE("destinationPath param is invalid");
+        return ERR_BUNDLE_MANAGER_MIGRATE_DATA_DESTINATION_PATH_INVALID;
+    }
+    return CallService(&IInstalld::MigrateData, sourcePaths, destinationPath);
+}
+
+ErrCode InstalldClient::DeleteEncryptionKeyId(const EncryptionParam &encryptionParam)
+{
+    if (encryptionParam.bundleName.empty() && encryptionParam.groupId.empty()) {
+        APP_LOGE("param error");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::DeleteEncryptionKeyId, encryptionParam);
+}
+
+ErrCode InstalldClient::RemoveExtensionDir(int32_t userId, const std::vector<std::string> &extensionBundleDirs)
+{
+    if (extensionBundleDirs.empty() || userId < 0) {
+        APP_LOGI("extensionBundleDirs empty or userId invalid");
+        return ERR_OK;
+    }
+    return CallService(&IInstalld::RemoveExtensionDir, userId, extensionBundleDirs);
+}
+
+ErrCode InstalldClient::IsExistExtensionDir(int32_t userId, const std::string &extensionBundleDir, bool &isExist)
+{
+    if (extensionBundleDir.empty() || userId < 0) {
+        APP_LOGE("extensionBundleDir is empty or userId is invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::IsExistExtensionDir, userId, extensionBundleDir, isExist);
+}
+
+ErrCode InstalldClient::CreateExtensionDataDir(const CreateDirParam &createDirParam)
+{
+    if (createDirParam.bundleName.empty() || createDirParam.userId < 0
+        || createDirParam.uid < 0 || createDirParam.gid < 0 || createDirParam.extensionDirs.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::CreateExtensionDataDir, createDirParam);
+}
+
+ErrCode InstalldClient::GetExtensionSandboxTypeList(std::vector<std::string> &typeList)
+{
+    return CallService(&IInstalld::GetExtensionSandboxTypeList, typeList);
+}
+
+ErrCode InstalldClient::AddUserDirDeleteDfx(int32_t userId)
+{
+    return CallService(&IInstalld::AddUserDirDeleteDfx, userId);
+}
+
+ErrCode InstalldClient::MoveHapToCodeDir(const std::string &originPath, const std::string &targetPath)
+{
+    if (originPath.empty() || targetPath.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    return CallService(&IInstalld::MoveHapToCodeDir, originPath, targetPath);
+}
+
+ErrCode InstalldClient::CreateDataGroupDirs(const std::vector<CreateDirParam> &params)
+{
+    if (params.empty()) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::CreateDataGroupDirs, params);
+}
+
+ErrCode InstalldClient::DeleteDataGroupDirs(const std::vector<std::string> &uuidList, int32_t userId)
+{
+    if (uuidList.empty() || userId < 0) {
+        APP_LOGE("params are invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::DeleteDataGroupDirs, uuidList, userId);
+}
+
+ErrCode InstalldClient::LoadInstalls()
+{
+    return CallService(&IInstalld::LoadInstalls);
+}
+
+ErrCode InstalldClient::ClearDir(const std::string &dir, BundleDirScene scene)
+{
+    return CallService(&IInstalld::ClearDir, dir, scene);
+}
+
+ErrCode InstalldClient::HashSoFile(const std::string& soPath, uint32_t catchSoNum, uint64_t catchSoMaxSize,
+    std::vector<std::string> &soName, std::vector<std::string> &soHash)
+{
+    return CallService(&IInstalld::HashSoFile, soPath, catchSoNum, catchSoMaxSize, soName, soHash);
+}
+
+ErrCode InstalldClient::HashFiles(const std::vector<std::string> &files, std::vector<std::string> &filesHash)
+{
+    return CallService(&IInstalld::HashFiles, files, filesHash);
+}
+
+ErrCode InstalldClient::RestoreconPath(const std::string &path, const std::string &bundleName, BundleDirScene scene)
+{
+    return CallService(&IInstalld::RestoreconPath, path, bundleName, scene);
+}
+
+ErrCode InstalldClient::ProcessBinFiles(const VerifyBinParam &verifyBinParam)
+{
+    return CallService(&IInstalld::ProcessBinFiles, verifyBinParam);
+}
+
+ErrCode InstalldClient::CheckExternalSourcePluginSwitch(int32_t &outSwitchStatus)
+{
+    return CallService(&IInstalld::CheckExternalSourcePluginSwitch, outSwitchStatus);
+}
+
+ErrCode InstalldClient::CheckHspPluginCertValidity(const std::string &bundleName, int32_t sessionId)
+{
+    if (sessionId == 0) {
+        APP_LOGE("sessionId is 0, refused");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::CheckHspPluginCertValidity, bundleName, sessionId);
+}
+
+ErrCode InstalldClient::ResetBmsDBSecurity()
+{
+    return CallService(&IInstalld::ResetBmsDBSecurity);
+}
+
+ErrCode InstalldClient::CopyDir(const std::string &sourceDir, const std::string &destinationDir,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    return CallService(&IInstalld::CopyDir, sourceDir, destinationDir, bundleName, scene);
+}
+
+ErrCode InstalldClient::DeleteCertAndRemoveKey(const std::vector<std::string> &certPaths)
+{
+    if (certPaths.empty() || certPaths.size() > ServiceConstants::MAX_ENTERPRISE_RESIGN_CERT_NUM) {
+        APP_LOGE("certPaths is empty or exceed max cert num:%{public}zu", certPaths.size());
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::DeleteCertAndRemoveKey, certPaths);
+}
+
+ErrCode InstalldClient::ExtractSkillsPackage(const SkillsPackageParam &param,
+    std::vector<SkillsPackageInfo> &skillInfoList)
+{
+    if (param.bundleName.empty() || param.moduleName.empty() || param.hspPath.empty()) {
+        APP_LOGE("bundleName, moduleName or hspPath is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::ExtractSkillsPackage, param, skillInfoList);
+}
+
+ErrCode InstalldClient::GetTopNLargestItemsInAppDataDir(const std::string &bundleName, const int32_t appIndex,
+    const int32_t userId, const int32_t timeout, std::string &largestItems)
+{
+    if (bundleName.empty()) {
+        APP_LOGE("bundleName is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::GetTopNLargestItemsInAppDataDir, bundleName, appIndex, userId,
+        timeout, largestItems);
+}
+
+ErrCode InstalldClient::DeleteOldCacheFiles(
+    const std::vector<std::string> &paths, const uint64_t cacheSize, uint64_t &cleanedSize)
+{
+    if (paths.empty()) {
+        APP_LOGE("paths is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::DeleteOldCacheFiles, paths, cacheSize, cleanedSize);
+}
+
+ErrCode InstalldClient::GetCacheDiskUsageFromPath(const std::vector<std::string> &paths,
+    int64_t &statSize, int64_t timeoutMs)
+{
+    if (paths.empty()) {
+        APP_LOGE("paths is empty");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    return CallService(&IInstalld::GetCacheDiskUsageFromPath, paths, statSize, timeoutMs);
+}
+}  // namespace AppExecFwk
+}  // namespace OHOS

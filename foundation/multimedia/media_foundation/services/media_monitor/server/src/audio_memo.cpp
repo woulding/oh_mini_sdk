@@ -1,0 +1,372 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "audio_memo.h"
+#include "log.h"
+#include "audio_stream_info.h"
+#include "audio_source_type.h"
+#include "audio_info.h"
+#include "monitor_error.h"
+
+namespace {
+constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {LOG_CORE, LOG_DOMAIN_FOUNDATION, "AudioMemo"};
+constexpr int32_t EXCLUDED = 0;
+constexpr int32_t UNEXCLUDED = 1;
+constexpr int32_t ADD = 1;
+constexpr int32_t SERVICE_STATUS_STOP = 2;
+}
+
+namespace OHOS {
+namespace Media {
+namespace MediaMonitor {
+
+void AudioMemo::UpdataRouteInfo(std::shared_ptr<EventBean> &bean)
+{
+    MEDIA_LOG_D("Begin updata preferred device");
+    if (bean == nullptr) {
+        MEDIA_LOG_E("eventBean is nullptr");
+        return;
+    }
+    bool isInDeviceMap = false;
+    PreferredType preferredType = GetPreferredType(bean);
+    std::map<PreferredType, std::shared_ptr<MonitorDeviceInfo>>::iterator iter;
+    std::lock_guard<std::mutex> lockEventMap(preferredDeviceMutex_);
+    for (iter = preferredDevices_.begin(); iter != preferredDevices_.end(); iter++) {
+        if (iter->first == preferredType) {
+            iter->second->deviceType_ = bean->GetIntValue("DEVICE_TYPE");
+            iter->second->deviceName_ = bean->GetIntValue("DEVICE_NAME");
+            iter->second->address_ = bean->GetIntValue("ADDRESS");
+            iter->second->deviceCategory_ = bean->GetIntValue("BT_TYPE");
+            iter->second->usageOrSourceType_ = bean->GetIntValue("STREAM_TYPE");
+            isInDeviceMap = true;
+        }
+    }
+    if (!isInDeviceMap) {
+        std::shared_ptr<MonitorDeviceInfo> deviceInfo = std::make_shared<MonitorDeviceInfo>();
+        deviceInfo->deviceType_ = bean->GetIntValue("DEVICE_TYPE");
+        deviceInfo->deviceName_ = bean->GetIntValue("DEVICE_NAME");
+        deviceInfo->address_ = bean->GetIntValue("ADDRESS");
+        deviceInfo->deviceCategory_ = bean->GetIntValue("BT_TYPE");
+        deviceInfo->usageOrSourceType_ = bean->GetIntValue("STREAM_TYPE");
+        preferredDevices_.emplace(preferredType, deviceInfo);
+    }
+}
+
+int32_t AudioMemo::GetAudioRouteMsg(std::map<PreferredType, std::shared_ptr<MonitorDeviceInfo>> &preferredDevices)
+{
+    MEDIA_LOG_D("Begin get preferred device");
+    std::lock_guard<std::mutex> lockEventMap(preferredDeviceMutex_);
+    preferredDevices = preferredDevices_;
+    return SUCCESS;
+}
+
+PreferredType AudioMemo::GetPreferredType(std::shared_ptr<EventBean> &bean)
+{
+    if (bean->GetIntValue("IS_PLAYBACK")) {
+        return GetPreferredRenderType(bean->GetIntValue("STREAM_TYPE"));
+    } else {
+        return GetPreferredCaptureType(bean->GetIntValue("AUDIO_SCENE"));
+    }
+}
+
+PreferredType AudioMemo::GetPreferredRenderType(int32_t streamUsage)
+{
+    if (streamUsage == AudioStandard::STREAM_USAGE_VOICE_COMMUNICATION ||
+        streamUsage == AudioStandard::STREAM_USAGE_VOICE_MODEM_COMMUNICATION ||
+        streamUsage == AudioStandard::STREAM_USAGE_VIDEO_COMMUNICATION) {
+        return CALL_RENDER;
+    } else {
+        return MEDIA_RENDER;
+    }
+}
+
+PreferredType AudioMemo::GetPreferredCaptureType(int32_t audioScene)
+{
+    if (audioScene == AudioStandard::AUDIO_SCENE_PHONE_CALL ||
+        audioScene == AudioStandard::AUDIO_SCENE_PHONE_CHAT ||
+        audioScene == AudioStandard::SOURCE_TYPE_VOICE_COMMUNICATION) {
+        return CALL_CAPTURE;
+    } else {
+        return RECORD_CAPTURE;
+    }
+}
+
+void AudioMemo::WriteInfo(int32_t fd, std::string &dumpString)
+{
+    if (fd != -1) {
+        std::lock_guard<std::mutex> lockEventMap(preferredDeviceMutex_);
+        if (preferredDevices_.size() == 0) {
+            dumpString += "No preferred device set.\n";
+            return;
+        }
+        dumpString += "Preferred Device\n";
+        for (auto &it : preferredDevices_) {
+            dumpString += "    preferred type: " + GetPreferredNameFromType(it.first) + "\n";
+            dumpString += "    device type: " + std::to_string(it.second->deviceType_) + "\n";
+            dumpString += "\n";
+        }
+    }
+}
+
+std::string AudioMemo::GetPreferredNameFromType(const PreferredType &type)
+{
+    std::string preferredName = "";
+    switch (type) {
+        case CALL_RENDER:
+            preferredName = "call render";
+            break;
+        case MEDIA_RENDER:
+            preferredName = "media render";
+            break;
+        case CALL_CAPTURE:
+            preferredName = "call capture";
+            break;
+        case RECORD_CAPTURE:
+            preferredName = "record capture";
+            break;
+        default:
+            break;
+    }
+    return preferredName;
+}
+
+int32_t AudioMemo::ErasePreferredDeviceByType(const PreferredType &preferredType)
+{
+    MEDIA_LOG_D("Erase preferred device by type");
+    std::lock_guard<std::mutex> lockEventMap(preferredDeviceMutex_);
+    auto iter = preferredDevices_.find(preferredType);
+    if (iter != preferredDevices_.end()) {
+        preferredDevices_.erase(iter);
+        return SUCCESS;
+    }
+    return ERROR;
+}
+
+void AudioMemo::UpdateExcludedDevice(std::shared_ptr<EventBean> &bean)
+{
+    MEDIA_LOG_D("Begin updata excluded device");
+    if (bean == nullptr) {
+        MEDIA_LOG_E("eventBean is nullptr");
+        return;
+    }
+    AudioDeviceUsage audioDeviceUsage = static_cast<AudioDeviceUsage>(bean->GetIntValue("AUDIO_DEVICE_USAGE"));
+    std::map<AudioDeviceUsage, std::vector<std::shared_ptr<MonitorDeviceInfo>>>::iterator iter;
+    std::lock_guard<std::mutex> lockEventMap(excludedDeviceMutex_);
+    std::shared_ptr<MonitorDeviceInfo> deviceInfo = std::make_shared<MonitorDeviceInfo>();
+    deviceInfo->deviceType_ = bean->GetIntValue("DEVICE_TYPE");
+    deviceInfo->deviceCategory_ = bean->GetIntValue("BT_TYPE");
+    deviceInfo->usageOrSourceType_ = bean->GetIntValue("STREAM_TYPE");
+    deviceInfo->audioDeviceUsage_ = bean->GetIntValue("AUDIO_DEVICE_USAGE");
+    deviceInfo->deviceName_ = bean->GetStringValue("DEVICE_NAME");
+    deviceInfo->address_ = bean->GetStringValue("ADDRESS");
+    deviceInfo->networkId_ = bean->GetStringValue("NETWORKID");
+    int32_t exclusionStatus = bean->GetIntValue("EXCLUSION_STATUS");
+    UpdateExcludedDeviceInner(audioDeviceUsage, deviceInfo, exclusionStatus);
+}
+
+void AudioMemo::UpdateExcludedDeviceInner(AudioDeviceUsage audioDevUsage,
+    std::shared_ptr<MonitorDeviceInfo> &deviceInfo, int32_t exclusionStatus)
+{
+    auto isPresent = [&deviceInfo](const std::shared_ptr<MonitorDeviceInfo> &device) {
+        return device->deviceType_ == deviceInfo->deviceType_ &&
+            device->address_ == deviceInfo->address_ &&
+            device->networkId_ == deviceInfo->networkId_;
+    };
+    auto updateExcludedDevices = [&isPresent](AudioDeviceUsage usage,
+        std::shared_ptr<MonitorDeviceInfo> &deviceInfo, int32_t exclusionStatus,
+        std::map<AudioDeviceUsage, std::vector<std::shared_ptr<MonitorDeviceInfo>>> &excludedDevices) {
+        if (exclusionStatus == EXCLUDED) {
+            auto it = find_if(excludedDevices[usage].begin(), excludedDevices[usage].end(), isPresent);
+            if (it == excludedDevices[usage].end()) {
+                excludedDevices[usage].push_back(deviceInfo);
+            }
+        } else if (exclusionStatus == UNEXCLUDED) {
+            auto it = find_if(excludedDevices[usage].begin(), excludedDevices[usage].end(), isPresent);
+            if (it != excludedDevices[usage].end()) {
+                excludedDevices[usage].erase(it);
+            }
+        }
+    };
+    if (audioDevUsage & MEDIA_OUTPUT_DEVICES) {
+        updateExcludedDevices(MEDIA_OUTPUT_DEVICES, deviceInfo, exclusionStatus, excludedDevices_);
+    }
+    if (audioDevUsage & CALL_OUTPUT_DEVICES) {
+        updateExcludedDevices(CALL_OUTPUT_DEVICES, deviceInfo, exclusionStatus, excludedDevices_);
+    }
+}
+
+int32_t AudioMemo::GetAudioExcludedDevicesMsg(std::map<AudioDeviceUsage,
+    std::vector<std::shared_ptr<MonitorDeviceInfo>>> &excludedDevices)
+{
+    MEDIA_LOG_I("Begin get excluded device");
+    std::lock_guard<std::mutex> lockEventMap(excludedDeviceMutex_);
+    excludedDevices = excludedDevices_;
+    return SUCCESS;
+}
+
+void AudioMemo::UpdateAppSessionStateInner(int32_t pid, bool hasSession, bool isAdd)
+{
+    MEDIA_LOG_I("pid %{public}d is add %{public}d, hasSession %{public}d", pid, isAdd, hasSession);
+    if (isAdd) {
+        appSessionMap_[pid] = hasSession;
+    } else {
+        auto iter = appSessionMap_.find(pid);
+        if (iter != appSessionMap_.end()) {
+            appSessionMap_.erase(iter);
+        }
+    }
+}
+
+void AudioMemo::UpdateAppBackTaskStateInner(int32_t pid, bool hasBackTask, bool isAdd)
+{
+    MEDIA_LOG_I("pid %{public}d is add %{public}d, hasBackTask %{public}d", pid, isAdd, hasBackTask);
+    if (isAdd) {
+        appBackTaskMap_[pid] = hasBackTask;
+    } else {
+        auto iter = appBackTaskMap_.find(pid);
+        if (iter != appBackTaskMap_.end()) {
+            appBackTaskMap_.erase(iter);
+        }
+    }
+}
+
+void AudioMemo::UpdateAppSessionState(std::shared_ptr<EventBean> &bean)
+{
+    FALSE_RETURN_MSG(bean != nullptr, "event bean is null");
+    std::lock_guard<std::mutex> lockEventMap(appSessionMutex_);
+    int32_t pid = bean->GetIntValue("PID");
+    bool hasSession = bean->GetIntValue("HAS_SESSION");
+    bool isAdd = bean->GetIntValue("IS_ADD");
+    UpdateAppSessionStateInner(pid, hasSession, isAdd);
+}
+
+void AudioMemo::UpdateAppBackTaskState(std::shared_ptr<EventBean> &bean)
+{
+    FALSE_RETURN_MSG(bean != nullptr, "event bean is null");
+    std::lock_guard<std::mutex> lockEventMap(appBackTaskMutex_);
+    int32_t pid = bean->GetIntValue("PID");
+    bool hasBackTask = bean->GetIntValue("HAS_BACK_TASK");
+    bool isAdd = bean->GetIntValue("IS_ADD");
+    UpdateAppBackTaskStateInner(pid, hasBackTask, isAdd);
+}
+
+int32_t AudioMemo::GetAudioAppSessionMsg(std::unordered_map<int32_t, bool> &avSessionMap)
+{
+    std::lock_guard<std::mutex> lockEventMap(appSessionMutex_);
+    avSessionMap = appSessionMap_;
+    return SUCCESS;
+}
+
+int32_t AudioMemo::GetAudioAppBackTaskMsg(std::unordered_map<int32_t, bool> &backTaskMap)
+{
+    std::lock_guard<std::mutex> lockEventMap(appBackTaskMutex_);
+    backTaskMap = appBackTaskMap_;
+    return SUCCESS;
+}
+
+void AudioMemo::UpdateCollaborativeDeviceState(std::shared_ptr<EventBean> &bean)
+{
+    MEDIA_LOG_D("Begin update collaborative device state");
+    if (bean == nullptr) {
+        MEDIA_LOG_E("eventBean is nullptr");
+        return;
+    }
+    std::string deviceAddress_ = bean->GetStringValue("ADDRESS");
+    uint32_t state = static_cast<uint32_t>(bean->GetIntValue("COLLABORATIVE_STATE"));
+    std::lock_guard<std::mutex> lockEventMap(collaborativeMutex_);
+    addressToCollaborativeEnabledMap_[deviceAddress_] = state;
+}
+
+int32_t AudioMemo::GetCollaborativeDeviceState(std::map<std::string, uint32_t> &addressToCollaborativeEnabledMap)
+{
+    MEDIA_LOG_D("Begin get collaborative device state");
+    std::lock_guard<std::mutex> lockEventMap(collaborativeMutex_);
+    addressToCollaborativeEnabledMap = addressToCollaborativeEnabledMap_;
+    return SUCCESS;
+}
+
+void AudioMemo::UpdateDistributedSceneInfo(std::shared_ptr<EventBean> &bean)
+{
+    FALSE_RETURN_MSG(bean != nullptr, "event bean is null");
+    std::lock_guard<std::mutex> lock(distributedInfoMutex_);
+    distributedSceneInfo_ = bean->GetStringValue("SCENE_INFO");
+}
+
+int32_t AudioMemo::GetDistributedSceneInfo(std::string &distributedSceneInfo)
+{
+    std::lock_guard<std::mutex> lock(distributedInfoMutex_);
+    distributedSceneInfo = distributedSceneInfo_;
+    return SUCCESS;
+}
+
+void AudioMemo::UpdateDistributedDeviceInfo(std::shared_ptr<EventBean> &bean)
+{
+    FALSE_RETURN_MSG(bean != nullptr, "event bean is null");
+
+    std::lock_guard<std::mutex> lock(distributedInfoMutex_);
+    int32_t serviceStatus = bean->GetIntValue("SERVICE_STATUS");
+    if (serviceStatus == SERVICE_STATUS_STOP) {
+        distributedDeviceInfos_.clear();
+        return;
+    }
+
+    int32_t isAdd = bean->GetIntValue("IS_ADD");
+    std::string networkID = bean->GetStringValue("NETWORK_ID");
+    int32_t hdiPin = bean->GetIntValue("HDI_PIN");
+    std::string originalInfo = bean->GetStringValue("ORIGINAL_INFO");
+    std::string key = networkID + std::to_string(hdiPin);
+
+    if (isAdd == ADD) {
+        distributedDeviceInfos_[key] = originalInfo;
+    } else {
+        distributedDeviceInfos_.erase(key);
+    }
+}
+
+int32_t AudioMemo::GetDistributedDeviceInfo(std::vector<std::string> &distributedDeviceInfos)
+{
+    std::lock_guard<std::mutex> lock(distributedInfoMutex_);
+    std::transform(distributedDeviceInfos_.begin(), distributedDeviceInfos_.end(),
+        std::back_inserter(distributedDeviceInfos), [](const auto &pair) { return pair.second; });
+    return SUCCESS;
+}
+
+void AudioMemo::UpdateDmDeviceInfo(std::shared_ptr<EventBean> &bean)
+{
+    FALSE_RETURN_MSG(bean != nullptr, "event bean is null");
+    int32_t isAdd = bean->GetIntValue("IS_ADD");
+    MonitorDmDeviceInfo dmDevice;
+    dmDevice.deviceName_ = bean->GetStringValue("DEVICE_NAME");
+    dmDevice.networkId_ = bean->GetStringValue("NETWORK_ID");
+    dmDevice.dmDeviceType_ = static_cast<uint16_t>(bean->GetIntValue("DM_DEVICE_TYPE"));
+    std::lock_guard<std::mutex> lock(distributedInfoMutex_);
+    if (isAdd == ADD) {
+        dmDeviceInfos_[dmDevice.networkId_] = dmDevice;
+    } else {
+        dmDeviceInfos_.erase(dmDevice.networkId_);
+    }
+}
+
+int32_t AudioMemo::GetDmDeviceInfo(std::vector<MonitorDmDeviceInfo> &dmDeviceInfos)
+{
+    std::lock_guard<std::mutex> lock(distributedInfoMutex_);
+    std::transform(dmDeviceInfos_.begin(), dmDeviceInfos_.end(),
+        std::back_inserter(dmDeviceInfos), [](const auto &pair) { return pair.second; });
+    return SUCCESS;
+}
+
+} // namespace MediaMonitor
+} // namespace Media
+} // namespace OHOS

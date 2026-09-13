@@ -1,0 +1,198 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef FRAMEWORK_NATIVE_UNIFIED_COLLECTION_COLLECTOR_TRACE_STRATEGY_H
+#define FRAMEWORK_NATIVE_UNIFIED_COLLECTION_COLLECTOR_TRACE_STRATEGY_H
+#include <string>
+#include <vector>
+
+#include "trace_flow_controller.h"
+#include "trace_handler.h"
+
+namespace OHOS::HiviewDFX {
+struct DumpEvent {
+    std::string caller;
+    int32_t errorCode = 0;
+    uint64_t ipcTime = 0;
+    uint64_t reqTime = 0;
+    int32_t reqDuration = 0;
+    uint64_t execTime = 0;
+    int32_t execDuration = 0;
+    int32_t coverDuration = 0;
+    int32_t coverRatio = 0;
+    std::vector<std::string> tags;
+    int64_t fileSize = 0;
+    int32_t sysMemTotal = 0;
+    int32_t sysMemFree = 0;
+    int32_t sysMemAvail = 0;
+    int32_t sysCpu = 0;
+    uint8_t traceMode = 0;
+    uint64_t startTime;
+};
+
+struct StrategyParam {
+    uint32_t maxDuration = 0;
+    uint64_t happenTime = 0;
+    std::string caller;
+    std::string dbPath;
+    std::string configPath;
+    std::string outputPath;
+};
+
+class TraceStrategy {
+public:
+    TraceStrategy(StrategyParam strategyParam, std::shared_ptr<TraceHandler> traceHandler)
+        : maxDuration_(strategyParam.maxDuration),
+          happenTime_(strategyParam.happenTime),
+          caller_(strategyParam.caller),
+          dbPath_(strategyParam.dbPath),
+          configPath_(strategyParam.configPath),
+          outputPath_(std::move(strategyParam.outputPath)),
+          traceHandler_(traceHandler),
+          scenarioName_(ScenarioName::COMMON_BETA) {}
+
+    TraceStrategy(StrategyParam strategyParam, const std::string& scenarioName)
+        : maxDuration_(strategyParam.maxDuration),
+          happenTime_(strategyParam.happenTime),
+          caller_(strategyParam.caller),
+          dbPath_(strategyParam.dbPath),
+          configPath_(strategyParam.configPath),
+          outputPath_(std::move(strategyParam.outputPath)),
+          scenarioName_(scenarioName) {}
+
+    virtual ~TraceStrategy() = default;
+    virtual TraceRet DoDump(std::vector<std::string> &outputFiles, TraceRetInfo &traceRetInfo);
+
+protected:
+    virtual TraceRet DumpTrace(DumpEvent &dumpEvent, TraceRetInfo &traceRetInfo, const std::string &scenarioName) const;
+
+    uint32_t maxDuration_;
+    uint64_t happenTime_;
+    std::string caller_;
+    std::string dbPath_;
+    std::string configPath_;
+    std::string outputPath_;
+    std::shared_ptr<TraceHandler> traceHandler_;
+    std::shared_ptr<TraceFlowController> traceFlowController_;
+
+private:
+    std::string scenarioName_;
+};
+
+class TraceFlowControlStrategy : public TraceStrategy {
+public:
+    TraceFlowControlStrategy(StrategyParam strategyParam, const std::string& flowControlName,
+        std::shared_ptr<TraceHandler> traceHandler)
+        : TraceStrategy(strategyParam, traceHandler), flowControlName_(flowControlName)
+    {
+        traceFlowController_ = std::make_shared<TraceFlowController>(flowControlName_, dbPath_, configPath_);
+    }
+
+    TraceRet DoDump(std::vector<std::string> &outputFiles, TraceRetInfo &traceRetInfo) override;
+
+private:
+    std::string flowControlName_;
+};
+
+class TraceDevStrategy : public TraceStrategy {
+public:
+    TraceDevStrategy(StrategyParam strategyParam, const std::string& flowControlName,
+         std::shared_ptr<TraceHandler> traceHandler, std::shared_ptr<TraceZipHandler> zipHandler)
+        : TraceStrategy(strategyParam, traceHandler), flowControlName_(flowControlName), zipHandler_(zipHandler)
+    {
+        traceFlowController_ = std::make_shared<TraceFlowController>(flowControlName_, dbPath_, configPath_);
+    }
+    TraceRet DoDump(std::vector<std::string> &outputFiles, TraceRetInfo &traceRetInfo) override;
+
+private:
+    std::string flowControlName_;
+    std::shared_ptr<TraceZipHandler> zipHandler_;
+};
+
+/*
+ * TraceAsyncStrategy: dump trace asynchronously, no need to wait dump result of hitrace
+ * only Reliability adopts this strategy currently
+*/
+class TraceAsyncStrategy : public TraceStrategy, public std::enable_shared_from_this<TraceAsyncStrategy> {
+public:
+    TraceAsyncStrategy(StrategyParam strategyParam, const std::string& flowControlName,
+         std::shared_ptr<TraceHandler> traceHandler, std::shared_ptr<TraceZipHandler> zipHandler)
+        : TraceStrategy(strategyParam, traceHandler), flowControlName_(flowControlName), zipHandler_(zipHandler)
+    {
+        traceFlowController_ = std::make_shared<TraceFlowController>(flowControlName_, dbPath_, configPath_);
+    }
+
+    TraceRet DoDump(std::vector<std::string> &outputFiles, TraceRetInfo &traceRetInfo) override;
+
+protected:
+    TraceRet DumpTrace(DumpEvent &dumpEvent, TraceRetInfo &traceRetInfo,
+        const std::string &scenarioName) const override;
+
+private:
+    void SetResultCopyFiles(std::vector<std::string> &outputFiles, const std::vector<std::string>& traceFiles) const
+    {
+        if (traceHandler_ == nullptr) {
+            return;
+        }
+        outputFiles.clear();
+        for (const auto &file : traceFiles) {
+            outputFiles.emplace_back(traceHandler_->GetTraceFinalPath(file, ""));
+        }
+    }
+
+    void SetResultZipFiles(std::vector<std::string> &outputFiles, const std::vector<std::string>& traceFiles) const
+    {
+        if (zipHandler_ == nullptr) {
+            return;
+        }
+        outputFiles.clear();
+        for (const auto &file : traceFiles) {
+            outputFiles.emplace_back(zipHandler_->GetTraceFinalPath(file, ""));
+        }
+    }
+
+    std::string flowControlName_;
+    std::shared_ptr<TraceZipHandler> zipHandler_;
+};
+
+class TelemetryStrategy : public TraceStrategy, public std::enable_shared_from_this<TelemetryStrategy> {
+public:
+    TelemetryStrategy(StrategyParam strategyParam, std::shared_ptr<TraceHandler> traceHandler)
+        : TraceStrategy(strategyParam, traceHandler)
+    {
+        traceFlowController_ = std::make_shared<TraceFlowController>(FlowControlName::TELEMETRY, dbPath_, configPath_);
+    }
+
+    TraceRet DoDump(std::vector<std::string> &outputFiles, TraceRetInfo &traceRetInfo) override;
+};
+
+class TraceAppStrategy {
+public:
+    TraceAppStrategy(std::shared_ptr<TraceAppHandler> appHandler, const std::string& dbPath) : appHandler_(appHandler)
+    {
+        traceFlowController_ = std::make_shared<TraceFlowController>(FlowControlName::APP, dbPath, "");
+    }
+    TraceRet DoDump(const UCollectClient::AppCaller& appCaller, TraceRetInfo &traceRetInfo, std::string& outputFile);
+
+private:
+    void CleanOldAppTrace();
+    bool MakeAppEventTask(const UCollectClient::AppCaller& appCaller, int64_t traceOpenTime, int64_t traceDumpTime,
+        const std::string &resourcePath, AppEventTask& appEventTask);
+
+    std::shared_ptr<TraceFlowController> traceFlowController_;
+    std::shared_ptr<TraceAppHandler> appHandler_;
+};
+}
+#endif

@@ -1,0 +1,146 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/faultloggerd/faultloggerd.gni")
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  import("//build/lite/config/test.gni")
+
+  if (ohos_build_type == "debug") {
+    unittest("test_common") {
+      output_extension = "bin"
+      output_dir = "$root_out_dir/test/unittest/faultloggerd/faultloggerd"
+
+      include_dirs = [
+        "$c_utils_include_path",
+        "$hilog_lite_include_path",
+        "$faultloggerd_interfaces_path/common",
+        "$faultloggerd_path/common/dfxlog",
+        "$faultloggerd_path/common/dfxutil",
+        "$faultloggerd_path/test/utils",
+      ]
+
+      sources = [ "common_test.cpp" ]
+
+      deps = [
+        "$faultloggerd_path/common/dfxlog:dfx_hilog",
+        "$faultloggerd_path/common/dfxutil:dfx_util",
+        "$faultloggerd_path/interfaces/innerkits/faultloggerd_client:libfaultloggerd",
+        "$faultloggerd_path/test/utils:dfx_test_util",
+        "$hilog_lite_deps_path",
+      ]
+    }
+  }
+
+  group("unittest") {
+    if (ohos_build_type == "debug") {
+      deps = [ ":test_common" ]
+    }
+  }
+} else {
+  import("//build/config/features.gni")
+  import("//build/test.gni")
+
+  config("module_private_config") {
+    visibility = [ ":*" ]
+
+    include_dirs = [
+      "$faultloggerd_interfaces_path/common",
+      "$faultloggerd_path/common/cutil",
+      "$faultloggerd_path/common/dfxlog",
+      "$faultloggerd_path/common/dfxutil",
+      "$faultloggerd_path/common/trace/include",
+      "$faultloggerd_path/test/utils",
+    ]
+    defines = [
+      "is_ohos=${is_ohos}",
+      "is_mingw=${is_mingw}",
+    ]
+  }
+
+  module_output_path = "faultloggerd/faultloggerd/common"
+
+  ohos_unittest("test_common") {
+    module_out_path = module_output_path
+    sources = [
+      "common_cutil_test.cpp",
+      "common_test.cpp",
+      "proc_util_test.cpp",
+    ]
+    defines = [ "DFX_ENABLE_TRACE" ]
+    configs = [ ":module_private_config" ]
+    resource_config_file = "$faultloggerd_path/test/resource/ohos_test.xml"
+
+    deps = [
+      "$faultloggerd_common_path/trace:dfx_trace_dlsym",
+      "$faultloggerd_path/common/cutil:dfx_cutil",
+      "$faultloggerd_path/common/dfxutil:dfx_util",
+      "$faultloggerd_path/test/utils:dfx_test_util",
+    ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "googletest:gmock_main",
+      "googletest:gtest_main",
+      "hilog:libhilog",
+    ]
+  }
+
+  ohos_unittest("test_param") {
+    module_out_path = module_output_path
+    sources = [
+      "$faultloggerd_path/common/trace/dfx_trace.cpp",
+      "param_test.cpp",
+    ]
+    configs = [ ":module_private_config" ]
+
+    defines = [
+      "DFX_ENABLE_TRACE",
+      "ENABLE_PARAMETER",
+    ]
+
+    deps = [ "$faultloggerd_path/common/dfxutil:dfx_util" ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "googletest:gmock_main",
+      "googletest:gtest_main",
+      "hitrace:hitrace_meter",
+      "init:libbegetutil",
+    ]
+  }
+
+  ohos_unittest("test_smartfd") {
+    module_out_path = module_output_path
+    sources = [ "smart_fd_test.cpp" ]
+    configs = [ ":module_private_config" ]
+
+    external_deps = [
+      "c_utils:utils",
+      "googletest:gmock_main",
+      "googletest:gtest_main",
+      "init:libbegetutil",
+    ]
+  }
+  group("unittest") {
+    testonly = true
+    deps = [
+      ":test_common",
+      ":test_smartfd",
+    ]
+    if (!defined(ohos_lite)) {
+      deps += [ ":test_param" ]
+    }
+  }
+}

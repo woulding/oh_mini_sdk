@@ -1,0 +1,488 @@
+/*
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "installd/installd_host_impl.h"
+
+#include "app_log_wrapper.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+InstalldHostImpl::InstalldHostImpl()
+{
+    APP_LOGI("installd service instance is created");
+}
+
+InstalldHostImpl::~InstalldHostImpl()
+{
+    APP_LOGI("installd service instance is destroyed");
+}
+
+ErrCode InstalldHostImpl::CreateBundleDir(
+    const std::string &bundleName, BundleDirScene scene, const std::string &bundleDir)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ExtractModuleFiles(const std::string &srcModulePath, const std::string &targetPath,
+    const std::string &targetSoPath, const std::string &cpuAbi, const bool needFakeDecompression,
+    const bool isSystemApp)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ExtractHnpFiles(const std::map<std::string, std::string> &hnpPackageMap,
+    const ExtractParam &extractParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ProcessBundleInstallNative(const InstallHnpParam &installHnpParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ProcessBundleUnInstallNative(const std::string &userId, const std::string &packageName)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::RenameModuleDir(
+    const std::string &oldPath, const std::string &newPath, const std::string &bundleName, BundleDirScene scene)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CreateBundleDataDir(const CreateDirParam &createDirParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CreateSharefilesDataDirEl2(const CreateDirParam &createDirParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CreateBundleDataDirWithVector(const std::vector<CreateDirParam> &createDirParams)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::RemoveBundleDataDir(
+    const std::string &bundleName, const int userId, bool isAtomicService, const bool async)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::RemoveModuleDataDir(const std::string &ModuleDir, const int userid)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::RemoveDir(
+    const std::string &dir, BundleDirScene scene, const std::string &bundleName, bool async)
+{
+    return ERR_OK;
+}
+
+int64_t InstalldHostImpl::GetDiskUsage(const std::string &dir, bool isRealPath)
+{
+    return 0;
+}
+
+ErrCode InstalldHostImpl::GetDiskUsageFromPath(const std::vector<std::string> &path, const std::string &bundleName,
+    BundleDirScene scene, int64_t &statSize, int64_t timeoutMs)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CleanBundleDataDir(const std::string &dataDir, const std::string &bundleName, int32_t userId)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CleanBundleDirs(const std::vector<std::string> &dirs, bool keepParent,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CleanBundleDataDirByName(const std::string &bundleName, const int userid,
+    const int appIndex, const bool isAtomicService)
+{
+    return ERR_OK;
+}
+
+std::string InstalldHostImpl::GetBundleDataDir(const std::string &el, const int userid) const
+{
+    return "";
+}
+
+ErrCode InstalldHostImpl::GetBundleInodeCount(int32_t uid, uint64_t &inodeCount)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::GetBundleStats(
+    const std::string &bundleName, const int32_t userId, std::vector<int64_t> &bundleStats,
+    const std::unordered_set<int32_t> &uids, const int32_t appIndex, const uint32_t statFlag,
+    const std::vector<std::string> &moduleNameList)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::BatchGetBundleStats(const std::vector<std::string> &bundleNames,
+    const std::unordered_map<std::string, std::unordered_set<int32_t>> &uidMap,
+    std::vector<BundleStorageStats> &bundleStats)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::GetAllBundleStats(std::vector<int64_t> &bundleStats, const std::vector<int32_t> &uids)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::SetFileConForce(const std::vector<std::string> &paths, const CreateDirParam &createDirParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::StopSetFileCon(const CreateDirParam &createDirParam, int32_t reason)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::SetDirApl(const std::string &dir, const std::string &bundleName, const std::string &apl,
+    bool isPreInstallApp, bool debug, int32_t uid)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::SetDirsApl(const CreateDirParam &createDirParam, bool isExtensionDir)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::SetArkStartupCacheApl(const std::string &bundleName, const std::string &dir)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::GetBundleCachePath(const std::string &dir, std::vector<std::string> &cachePath)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ScanDir(
+    const std::string &dir, ScanMode scanMode, ResultMode resultMode, std::vector<std::string> &paths)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::MoveFile(
+    const std::string &oldPath, const std::string &newPath, BundleDirScene scene, const std::string &bundleName)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::RenameFile(const std::string &oldPath, const std::string &newPath)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CopyFile(const std::string &oldPath, const std::string &newPath, BundleDirScene scene,
+    const std::string &signatureFilePath)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::Mkdir(const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid,
+    const CreateDirParam &createDirParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::GetFileStat(const std::string &file, BundleDirScene scene, FileStat &fileStat)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ChangeFileStat(const std::string &file, FileStat &fileStat, BundleDirScene scene)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ExtractDiffFiles(const std::string &filePath, const std::string &targetPath,
+    const std::string &cpuAbi)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ApplyDiffPatch(const std::string &oldSoPath, const std::string &diffFilePath,
+    const std::string &newSoPath, int32_t uid)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::IsExistDir(const std::string &dir, bool &isExist)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::IsExistFile(const std::string &path, bool &isExist)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::IsExistApFile(const std::string &path, bool &isExist)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::IsDirEmpty(const std::string &dir, bool &isDirEmpty)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ObtainQuickFixFileDir(const std::string &dir, std::vector<std::string> &dirVec)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CopyFiles(const std::string &sourceDir, const std::string &destinationDir,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ExtractFiles(const ExtractParam &extractParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ExecuteAOT(const AOTArgs &aotArgs, std::vector<uint8_t> &pendSignData)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::PendSignAOT(const std::string &anFileName, const std::vector<uint8_t> &signData)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::StopAOT()
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::DeleteUninstallTmpDirs(const std::vector<std::string> &dirs)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::GetNativeLibraryFileNames(const std::string &filePath, const std::string &cpuAbi,
+    std::vector<std::string> &fileNames)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::VerifyCodeSignature(const CodeSignatureParam &codeSignatureParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CheckEncryption(const CheckEncryptionParam &checkEncryptionParam, bool &isEncryption)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::MoveFiles(const std::string &srcDir, const std::string &desDir,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ExtractDriverSoFiles(const std::string &srcPath,
+    const std::unordered_multimap<std::string, std::string> &dirMap)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ExtractEncryptedSoFiles(const std::string &hapPath, const std::string &realSoFilesPath,
+    const std::string &cpuAbi, const std::string &tmpSoPath, int32_t uid)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::VerifyCodeSignatureForHap(const CodeSignatureParam &codeSignatureParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::DeliverySignProfile(const std::string &bundleName, int32_t profileBlockLength,
+    const unsigned char *profileBlock)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::RemoveSignProfile(const std::string &bundleName)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::AddCertAndEnableKey(const std::string &certPath, const std::string &certContent)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::SetEncryptionPolicy(const EncryptionParam &encryptionParam, std::string &keyId)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::DeleteEncryptionKeyId(const EncryptionParam &encryptionParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::RemoveExtensionDir(int32_t userId, const std::vector<std::string> &extensionBundleDirs)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::IsExistExtensionDir(int32_t userId, const std::string &extensionBundleDir, bool &isExist)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CreateExtensionDataDir(const CreateDirParam &createDirParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::GetExtensionSandboxTypeList(std::vector<std::string> &typeList)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::MigrateData(const std::vector<std::string> &sourcePaths, const std::string &destinationPath)
+{
+    if (sourcePaths.empty()) {
+        return ERR_BUNDLE_MANAGER_MIGRATE_DATA_SOURCE_PATH_INVALID;
+    }
+    if (destinationPath.empty()) {
+        return ERR_BUNDLE_MANAGER_MIGRATE_DATA_DESTINATION_PATH_INVALID;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::AddUserDirDeleteDfx(int32_t userId)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::MoveHapToCodeDir(const std::string &originPath, const std::string &targetPath)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CreateDataGroupDirs(const std::vector<CreateDirParam> &params)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::DeleteDataGroupDirs(const std::vector<std::string> &uuidList, int32_t userId)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ClearDir(const std::string &dir, BundleDirScene scene)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::HashSoFile(const std::string& soPath, uint32_t catchSoNum, uint64_t catchSoMaxSize,
+    std::vector<std::string> &soName, std::vector<std::string> &soHash)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::HashFiles(const std::vector<std::string> &files, std::vector<std::string> &filesHash)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::RestoreconPath(const std::string &path, const std::string &bundleName, BundleDirScene scene)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ResetBmsDBSecurity()
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CopyDir(const std::string &sourceDir, const std::string &destinationDir,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::DeleteCertAndRemoveKey(const std::vector<std::string> &certPaths)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CheckExternalSourcePluginSwitch(int32_t &outSwitchStatus)
+{
+    outSwitchStatus = 0;
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::CheckHspPluginCertValidity(const std::string &bundleName, int32_t sessionId)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ProcessBinFiles(const VerifyBinParam &verifyBinParam)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::ExtractSkillsPackage(const SkillsPackageParam &param,
+    std::vector<SkillsPackageInfo> &skillInfoList)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::GetTopNLargestItemsInAppDataDir(const std::string &bundleName, const int32_t appIndex,
+    const int32_t userId, const int32_t timeout, std::string &largestItems)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::DeleteOldCacheFiles(
+    const std::vector<std::string> &paths, const uint64_t cacheSize, uint64_t &cleanedSize)
+{
+    return ERR_OK;
+}
+
+ErrCode InstalldHostImpl::GetCacheDiskUsageFromPath(const std::vector<std::string> &paths,
+    int64_t &statSize, int64_t timeoutMs)
+{
+    return ERR_OK;
+}
+}  // namespace AppExecFwk
+}  // namespace OHOS

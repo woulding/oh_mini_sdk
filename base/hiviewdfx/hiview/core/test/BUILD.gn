@@ -1,0 +1,181 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/build/hiview_var.gni")
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+module_output_path = "hiview/hiview/core"
+group("unittest") {
+  testonly = true
+  deps = [
+    ":EventDispatchQueueTest",
+    ":HiviewPlatformConfigTest",
+    ":ParamUpdateTest",
+    ":PlatformConfigTest",
+    ":PluginBundleTest",
+    ":PluginPlatformTest",
+  ]
+}
+
+config("unittest_config") {
+  include_dirs = [
+    "../",
+    "unittest/common",
+  ]
+
+  cflags_cc = [
+    "-D__UNITTEST__",
+    "-D__HIVIEW_OHOS__",
+  ]
+}
+
+ohos_unittest("PlatformConfigTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/platform_config_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_core:hiview_core",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file = "$hiview_test/resource/ohos_test.xml"
+}
+
+ohos_unittest("PluginPlatformTest") {
+  testonly = true
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  cflags_cc = [ "-DTEST_LOCAL_SRC" ]
+
+  sources = [
+    "unittest/common/platform_test_result_listener.cpp",
+    "unittest/common/plugin_platform_test.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_core:hiview_core_for_test",
+    "$hiview_root/test/plugins/examples/dynamic_load_plugin_example:dynamicloadpluginexample",
+    "$hiview_root/test/plugins/examples/event_processor_example1:event_processor_example1",
+    "$hiview_root/test/plugins/examples/event_processor_example2:event_processor_example2",
+    "$hiview_root/test/plugins/examples/event_processor_example3:event_processor_example3",
+    "$hiview_root/test/plugins/examples/event_processor_example4:event_processor_example4",
+    "$hiview_root/test/plugins/examples/event_source_example:event_source_example",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file = "$hiview_test/resource/ohos_test.xml"
+}
+
+ohos_unittest("PluginBundleTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+  sources = [
+    "unittest/common/platform_test_result_listener.cpp",
+    "unittest/common/plugin_bundle_test.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_core:hiview_core_for_test",
+    "$hiview_root/test/plugins/examples:bundletest",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file = "$hiview_test/resource/ohos_test.xml"
+}
+
+ohos_unittest("EventDispatchQueueTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/event_dispatch_queue_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiview_base",
+    "$hiview_core:hiview_core",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file = "$hiview_test/resource/ohos_test.xml"
+}
+
+ohos_unittest("HiviewPlatformConfigTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/hiview_platform_config_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiview_base",
+    "$hiview_core:hiview_core",
+    "../platform_config:hiviewplatform_config",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "jsoncpp:jsoncpp",
+  ]
+}
+
+ohos_unittest("ParamUpdateTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/param_update_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase_static_lib_for_tdd",
+    "$hiview_core:hiview_core",
+    "$hiview_core/param_update:hiview_param_update",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  resource_config_file = "$hiview_test/resource/ohos_test.xml"
+}

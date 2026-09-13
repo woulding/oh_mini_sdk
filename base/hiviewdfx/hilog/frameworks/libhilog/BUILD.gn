@@ -1,0 +1,131 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hilog/hilog.gni")
+import("//build/ohos.gni")
+
+framework_root = "//base/hiviewdfx/hilog/frameworks"
+libhilog_root = "$framework_root/libhilog"
+ioctl_root = "$libhilog_root/ioctl"
+param_root = "$libhilog_root/param"
+socket_root = "$libhilog_root/socket"
+utils_root = "$libhilog_root/utils"
+vsnprintf_root = "$libhilog_root/vsnprintf"
+
+config("libhilog_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    "include",
+    "$framework_root/include",
+    "$libhilog_root/include",
+    "$ioctl_root/include",
+    "$param_root/include",
+    "$socket_root/include",
+    "$utils_root/include",
+    "$vsnprintf_root/include",
+    "//base/hiviewdfx/hilog/interfaces/native/innerkits/include",
+  ]
+}
+
+template("libhilog_source") {
+  forward_variables_from(invoker, "*")
+  ohos_source_set(target_name) {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    if (platform != "windows" && platform != "mac" && platform != "linux") {
+      param_sources = [ "$param_root/properties.cpp" ]
+      ioctl_sources = [ "$ioctl_root/log_ioctl.cpp" ]
+
+      socket_sources = [
+        "$socket_root/dgram_socket_client.cpp",
+        "$socket_root/dgram_socket_server.cpp",
+        "$socket_root/hilog_input_socket_client.cpp",
+        "$socket_root/hilog_input_socket_server.cpp",
+        "$socket_root/seq_packet_socket_client.cpp",
+        "$socket_root/seq_packet_socket_server.cpp",
+        "$socket_root/socket.cpp",
+        "$socket_root/socket_client.cpp",
+        "$socket_root/socket_server.cpp",
+      ]
+    }
+
+    utils_sources = [
+      "$utils_root/log_print.cpp",
+      "$utils_root/log_utils.cpp",
+    ]
+
+    vsnprintf_sources = [ "$vsnprintf_root/vsnprintf_s_p.c" ]
+
+    sources = [
+      "hilog.cpp",
+      "hilog_printf.cpp",
+    ]
+    if (is_host_product) {
+      sources += [ "../../platform/hilog_utils.cpp" ]
+    }
+    if (platform != "windows" && platform != "mac" && platform != "linux") {
+      sources += param_sources
+      sources += ioctl_sources
+      sources += socket_sources
+    }
+    sources += utils_sources
+    sources += vsnprintf_sources
+
+    defines = []
+    if (platform == "windows") {
+      cflags_cc = [ "-std=c++17" ]
+      defines += [ "__WINDOWS__" ]
+    } else if (platform == "mac") {
+      cflags_cc = [
+        "-std=c++17",
+        "-Wno-deprecated-declarations",
+      ]
+      defines += [ "__MAC__" ]
+    } else if (platform == "linux") {
+      cflags_cc = [ "-std=c++17" ]
+      defines += [ "__LINUX__" ]
+    } else {
+      defines = [ "__RECV_MSG_WITH_UCRED_" ]
+      if (use_musl) {
+        defines += [ "HILOG_USE_MUSL" ]
+      }
+      if (platform == "ohos") {
+        defines += [ "__OHOS__" ]
+      }
+    }
+    cflags = [ "-Wno-deprecated-declarations" ]
+    public_configs = [ ":libhilog_config" ]
+    configs = [ ":libhilog_config" ]
+
+    external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+    if (platform != "windows" && platform != "mac" && platform != "linux" && !is_host_product) {
+      external_deps += [ "init:libbegetutil" ]
+      deps = [ "../../interfaces/sandbox_log:libsandboxlog" ]
+    }
+
+    part_name = "hilog"
+    subsystem_name = "hiviewdfx"
+  }
+}
+
+foreach(item, platforms) {
+  libhilog_source("libhilog_source_" + item) {
+    platform = item
+  }
+}

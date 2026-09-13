@@ -1,0 +1,49 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef TEST_SERVER_ERROR_CODE_H
+#define TEST_SERVER_ERROR_CODE_H
+
+namespace OHOS::testserver {
+    enum {
+        TEST_SERVER_OK = 0,
+        TEST_SERVER_GET_INTERFACE_FAILED = -1,
+        TEST_SERVER_ADD_DEATH_RECIPIENT_FAILED = 19000001,
+        TEST_SERVER_CREATE_PASTE_DATA_FAILED = 19000002,
+        TEST_SERVER_SET_PASTE_DATA_FAILED = 19000003,
+        TEST_SERVER_PUBLISH_EVENT_FAILED = 19000004,
+        TEST_SERVER_SPDAEMON_PROCESS_FAILED = 19000005,
+        TEST_SERVER_COLLECT_PROCESS_INFO_FAILED = 19000006,
+        TEST_SERVER_OPERATE_WINDOW_FAILED = 19000007,
+        TEST_SERVER_DATASHARE_FAILED = 19000008,
+        TEST_SERVER_TIME_SERVICE_FAILED = 19000009,
+        TEST_SERVER_NOT_SUPPORTED = 19000010,
+        TEST_SERVER_INVALID_TIMEZONE_ID = 19000011,
+        TEST_SERVER_PASTEBOARD_FAILED = 19000012,
+        TEST_SERVER_CLEAR_PASTE_DATA_FAILED = 19000013,
+        TEST_SERVER_HIDE_KEYBOARD_FAILED = 19000014,
+        TEST_SERVER_NO_ACTIVE_IME = 19000015,
+        TEST_SERVER_ACCOUNTOP_FAILED = 19000016,
+        TEST_SERVER_INSTALL_FONT_FAILED = 19000017,
+        TEST_SERVER_UNINSTALL_FONT_FAILED = 19000018,
+        TEST_SERVER_FONT_NOT_FOUND = 19000019,
+        TEST_SERVER_SET_VIEW_MODE_FAILED = 19000020,
+        TEST_SERVER_FONT_ALREADY_INSTALLED = 19000021,
+        TEST_SERVER_LOCATION_MOCK_FAILED = 19000022,
+        TEST_SERVER_SET_LOCATIONS_FAILED = 19000023,
+    };
+} //OHOS::testserver
+
+#endif // TEST_SERVER_ERROR_CODE_H

@@ -1,0 +1,55 @@
+{
+    "name": "@ohos/optimized_routines",
+    "description": "Optimized implementations of various library functions for ARM architecture processors",
+    "version": "3.1",
+    "license": "MIT OR Apache-2.0 WITH LLVM-exception",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "third_party/optimized-routines"
+    },
+    "dirs": {},
+    "scripts": {},
+    "readmePath": {
+        "en": "README"
+    },
+    "component": {
+        "name": "optimized_routines",
+        "subsystem": "thirdparty",
+        "syscap": [],
+        "features": [],
+        "adapted_system_type": [
+            "mini",
+            "small",
+            "standard"
+        ],
+        "rom": "36KB",
+        "ram": "72KB",
+        "deps": {
+            "components": [],
+            "third_party": []
+        },
+        "build": {
+            "sub_component": [
+                "//third_party/optimized-routines:optimized_static",
+                "//third_party/optimized-routines:optimize_math"
+            ],
+            "inner_kits": [
+                {
+                    "header": {
+                        "header_base": "//third_party/optimized-routines/math",
+                        "header_files": []
+                    },
+                    "name": "//third_party/optimized-routines:optimized_static"
+                },
+                {
+                    "header": {
+                        "header_base": "//third_party/optimized-routines/math",
+                        "header_files": []
+                    },
+                    "name": "//third_party/optimized-routines:optimize_math"
+                }
+            ],
+            "test": []
+        }
+    }
+}

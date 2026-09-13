@@ -1,0 +1,787 @@
+/*
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "meta/meta.h"
+#include <functional>
+#include <mutex>
+#include "common/log.h"
+#include "meta.h"
+
+/**
+ * Steps of Adding New Tag
+ *
+ * 1. In meta_key.h, Add a Tag.
+ * 2. In meta.h, Register Tag key Value mapping.
+ *    Example: DEFINE_INSERT_GET_FUNC(tagCharSeq == Tag::TAGNAME, TAGTYPE, AnyValueType::VALUETYPE)
+ * 3. In meta.cpp, Register default value to g_metadataDefaultValueMap ({Tag::TAGNAME, defaultTAGTYPE}).
+ * 4. In order to support Enum/Bool Value Getter Setter from AVFormat,
+ *    In meta.cpp, Register Tag key getter setter function mapping.
+ *    Example: DEFINE_METADATA_SETTER_GETTER_FUNC(SrcTAGNAME, int32_t/int64_t)
+ *    For Int32/Int64 Type, update g_metadataGetterSetterMap/g_metadataGetterSetterInt64Map.
+ *    For Bool Type, update g_metadataBoolVector.
+ * 5. Update meta_func_unit_test.cpp to add the testcase of new added Tag Type.
+ *
+ * Theory:
+ * App --> AVFormat(ndk) --> Meta --> Parcel(ipc) --> Meta
+ * AVFormat only support: int, int64(Long), float, double, string, buffer
+ * Parcel only support: bool, int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, double, pointer, buffer
+ * Meta (based on any) support : all types in theory.
+ *
+ * Attention: Use AVFormat with Meta, with or without ipc, be care of the difference of supported types.
+ * Currently, The ToParcel/FromParcel function(In Any.h) supports single value convert to/from parcel.
+ * you can use meta's helper functions to handle the key and the correct value type:
+ *    GetDefaultAnyValue: get the specified key's default value, It can get the value type.
+ *    SetMetaData/GetMetaData: AVFormat use them to set/get enum/bool/int values,
+ *    It can convert the integer to/from enum/bool automatically.
+ **/
+
+namespace {
+constexpr OHOS::HiviewDFX::HiLogLabel LABEL = { LOG_CORE, LOG_DOMAIN_FOUNDATION, "Meta" };
+}
+
+namespace OHOS {
+namespace Media {
+using namespace Plugins;
+
+#define DEFINE_METADATA_SETTER_GETTER_FUNC(EnumTypeName, ExtTypeName)                       \
+static bool Set##EnumTypeName(Meta& meta, const TagType& tag, ExtTypeName& value)           \
+{                                                                                           \
+    if (__is_enum(EnumTypeName)) {                                                          \
+        meta.SetData(tag, EnumTypeName(value));                                             \
+    } else {                                                                                \
+        meta.SetData(tag, value);                                                           \
+    }                                                                                       \
+    return true;                                                                            \
+}                                                                                           \
+                                                                                            \
+static bool Get##EnumTypeName(const Meta& meta, const TagType& tag, ExtTypeName& value)     \
+{                                                                                           \
+    EnumTypeName tmpValue;                                                                  \
+    if (meta.GetData(tag, tmpValue)) {                                                      \
+        value = static_cast<ExtTypeName>(tmpValue);                                         \
+        return true;                                                                        \
+    }                                                                                       \
+    return false;                                                                           \
+}
+
+DEFINE_METADATA_SETTER_GETTER_FUNC(SrcInputType, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(AudioSampleFormat, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(VideoPixelFormat, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(MediaType, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(VideoH264Profile, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(VideoRotation, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(VideoOrientationType, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(ColorPrimary, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(HDRType, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(TransferCharacteristic, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(MatrixCoefficient, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(HEVCProfile, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(HEVCLevel, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(ChromaLocation, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(FileType, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(DemuxerMode, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(VideoEncodeBitrateMode, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(TemporalGopReferenceMode, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(VideoEncodeBFrameGopMode, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(AudioChannelLayout, int64_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(GraphicPixelFormat, int32_t)
+DEFINE_METADATA_SETTER_GETTER_FUNC(VideoCodecScenario, int32_t)
+
+#define  DEFINE_METADATA_SETTER_GETTER(tag, EnumType) {tag, std::make_pair(Set##EnumType, Get##EnumType)}
+
+using  MetaSetterFunction = std::function<bool(Meta&, const TagType&, int32_t&)>;
+using  MetaGetterFunction = std::function<bool(const Meta&, const TagType&, int32_t&)>;
+
+static std::map<TagType, std::pair<MetaSetterFunction, MetaGetterFunction>> g_metadataGetterSetterMap = {
+    DEFINE_METADATA_SETTER_GETTER(Tag::SRC_INPUT_TYPE, SrcInputType),
+    DEFINE_METADATA_SETTER_GETTER(Tag::AUDIO_SAMPLE_FORMAT, AudioSampleFormat),
+    DEFINE_METADATA_SETTER_GETTER(Tag::AUDIO_RAW_SAMPLE_FORMAT, AudioSampleFormat),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_PIXEL_FORMAT, VideoPixelFormat),
+    DEFINE_METADATA_SETTER_GETTER(Tag::MEDIA_TYPE, MediaType),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_H264_PROFILE, VideoH264Profile),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_ROTATION, VideoRotation),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_ORIENTATION_TYPE, VideoOrientationType),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_COLOR_PRIMARIES, ColorPrimary),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_HDR_TYPE, HDRType),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_COLOR_TRC, TransferCharacteristic),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_COLOR_MATRIX_COEFF, MatrixCoefficient),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_H265_PROFILE, HEVCProfile),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_H265_LEVEL, HEVCLevel),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_CHROMA_LOCATION, ChromaLocation),
+    DEFINE_METADATA_SETTER_GETTER(Tag::MEDIA_FILE_TYPE, FileType),
+    DEFINE_METADATA_SETTER_GETTER(Tag::MEDIA_DEMUXER_MODE, DemuxerMode),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_ENCODE_BITRATE_MODE, VideoEncodeBitrateMode),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_ENCODE_B_FRAME_GOP_MODE, VideoEncodeBFrameGopMode),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_ENCODER_TEMPORAL_GOP_REFERENCE_MODE, TemporalGopReferenceMode),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_GRAPHIC_PIXEL_FORMAT, GraphicPixelFormat),
+    DEFINE_METADATA_SETTER_GETTER(Tag::VIDEO_CODEC_SCENARIO, VideoCodecScenario),
+};
+
+using  MetaSetterInt64Function = std::function<bool(Meta&, const TagType&, int64_t&)>;
+using  MetaGetterInt64Function = std::function<bool(const Meta&, const TagType&, int64_t&)>;
+static std::map<TagType, std::pair<MetaSetterInt64Function, MetaGetterInt64Function>> g_metadataGetterSetterInt64Map = {
+        DEFINE_METADATA_SETTER_GETTER(Tag::AUDIO_CHANNEL_LAYOUT, AudioChannelLayout),
+        DEFINE_METADATA_SETTER_GETTER(Tag::AUDIO_OUTPUT_CHANNEL_LAYOUT, AudioChannelLayout),
+        DEFINE_METADATA_SETTER_GETTER(Tag::AUDIO_SOUNDBED_LAYOUT, AudioChannelLayout)
+};
+
+static std::vector<TagType> g_metadataBoolVector = {
+    Tag::VIDEO_COLOR_RANGE,
+    Tag::VIDEO_REQUEST_I_FRAME,
+    Tag::VIDEO_IS_HDR_VIVID,
+    Tag::MEDIA_HAS_VIDEO,
+    Tag::MEDIA_HAS_AUDIO,
+    Tag::MEDIA_HAS_SUBTITLE,
+    Tag::MEDIA_HAS_TIMEDMETA,
+    Tag::MEDIA_HAS_AUXILIARY,
+    Tag::MEDIA_END_OF_STREAM,
+    Tag::MEDIA_IS_HARDWARE,
+    Tag::VIDEO_FRAME_RATE_ADAPTIVE_MODE,
+    Tag::VIDEO_ENCODER_ENABLE_TEMPORAL_SCALABILITY,
+    Tag::AV_CODEC_ENABLE_SYNC_MODE,
+    Tag::VIDEO_ENCODER_PER_FRAME_MARK_LTR,
+    Tag::VIDEO_PER_FRAME_IS_LTR,
+    Tag::VIDEO_PER_FRAME_IS_SKIP,
+    Tag::VIDEO_ENABLE_LOW_LATENCY,
+    Tag::VIDEO_ENCODER_ENABLE_SURFACE_INPUT_CALLBACK,
+    Tag::VIDEO_BUFFER_CAN_DROP,
+    Tag::AUDIO_RENDER_SET_FLAG,
+    Tag::SCREEN_CAPTURE_USER_AGREE,
+    Tag::SCREEN_CAPTURE_REQURE_MIC,
+    Tag::SCREEN_CAPTURE_ENABLE_MIC,
+    Tag::AV_PLAYER_IS_DRM_PROTECTED,
+    Tag::AV_PLAYER_DOWNLOAD_TIME_OUT,
+    Tag::VIDEO_ENCODER_PER_FRAME_DISCARD,
+    Tag::VIDEO_ENCODER_ENABLE_WATERMARK,
+    Tag::VIDEO_ENCODER_ENABLE_PARAMS_FEEDBACK,
+    Tag::VIDEO_ENCODER_ENABLE_QP_MAP,
+    Tag::VIDEO_ENCODER_ENABLE_PTS_BASED_RATECONTROL,
+    Tag::VIDEO_DECODER_BLANK_FRAME_ON_SHUTDOWN,
+    Tag::VIDEO_DECODER_OUTPUT_IN_DECODING_ORDER,
+    Tag::VIDEO_ENCODER_REPEAT_HEADER_BEFORE_SYNC_FRAMES,
+    Tag::VIDEO_ENABLE_LOCAL_RELEASE,
+    Tag::IS_GLTF,
+    Tag::AUDIO_ENCODER_ENABLE_SAMPLE_FORMAT_CONVERT,
+};
+
+bool SetMetaData(Meta& meta, const TagType& tag, int32_t value)
+{
+    auto iter = g_metadataGetterSetterMap.find(tag);
+    if (iter == g_metadataGetterSetterMap.end()) {
+        if (std::find(g_metadataBoolVector.begin(), g_metadataBoolVector.end(), tag) != g_metadataBoolVector.end()) {
+            meta.SetData(tag, value != 0 ? true : false);
+            return true;
+        }
+        meta.SetData(tag, value);
+        return true;
+    }
+    return iter->second.first(meta, tag, value);
+}
+
+bool GetMetaData(const Meta& meta, const TagType& tag, int32_t& value)
+{
+    auto iter = g_metadataGetterSetterMap.find(tag);
+    if (iter == g_metadataGetterSetterMap.end()) {
+        if (std::find(g_metadataBoolVector.begin(), g_metadataBoolVector.end(), tag) != g_metadataBoolVector.end()) {
+            bool valueBool = false;
+            FALSE_RETURN_V(meta.GetData(tag, valueBool), false);
+            value = valueBool ? 1 : 0;
+            return true;
+        }
+        return meta.GetData(tag, value);
+    }
+    return iter->second.second(meta, tag, value);
+}
+
+bool SetMetaData(Meta& meta, const TagType& tag, uint32_t value)
+{
+    auto iter = g_metadataGetterSetterMap.find(tag);
+    if (iter == g_metadataGetterSetterMap.end()) {
+        if (std::find(g_metadataBoolVector.begin(), g_metadataBoolVector.end(), tag) != g_metadataBoolVector.end()) {
+            meta.SetData(tag, value != 0 ? true : false);
+            return true;
+        }
+        meta.SetData<uint32_t>(tag, value);
+        return true;
+    }
+    return false;
+}
+
+bool GetMetaData(const Meta& meta, const TagType& tag, uint32_t& value)
+{
+    auto iter = g_metadataGetterSetterMap.find(tag);
+    if (iter == g_metadataGetterSetterMap.end()) {
+        if (std::find(g_metadataBoolVector.begin(), g_metadataBoolVector.end(), tag) != g_metadataBoolVector.end()) {
+            bool valueBool = false;
+            FALSE_RETURN_V(meta.GetData(tag, valueBool), false);
+            value = valueBool ? 1 : 0;
+            return true;
+        }
+        return meta.GetData<uint32_t>(tag, value);
+    }
+    return false;
+}
+
+bool SetMetaData(Meta& meta, const TagType& tag, int64_t value)
+{
+    auto iter = g_metadataGetterSetterInt64Map.find(tag);
+    if (iter == g_metadataGetterSetterInt64Map.end()) {
+        meta.SetData(tag, value);
+        return true;
+    }
+    return iter->second.first(meta, tag, value);
+}
+
+bool GetMetaData(const Meta& meta, const TagType& tag, int64_t& value)
+{
+    auto iter = g_metadataGetterSetterInt64Map.find(tag);
+    if (iter == g_metadataGetterSetterInt64Map.end()) {
+        return meta.GetData(tag, value);
+    }
+    return iter->second.second(meta, tag, value);
+}
+
+bool IsIntEnum(const TagType &tag)
+{
+    return (g_metadataGetterSetterMap.find(tag) != g_metadataGetterSetterMap.end());
+}
+
+bool IsLongEnum(const TagType &tag)
+{
+    return g_metadataGetterSetterInt64Map.find(tag) != g_metadataGetterSetterInt64Map.end();
+}
+
+static Any defaultString = std::string();
+static Any defaultInt8 = (int8_t)0;
+static Any defaultUInt8 = (uint8_t)0;
+static Any defaultInt32 = (int32_t)0;
+static Any defaultUInt32 = (uint32_t)0;
+static Any defaultInt64 = (int64_t)0;
+static Any defaultUInt64 = (uint64_t)0;
+static Any defaultFloat = 0.0f;
+static Any defaultDouble = (double)0.0;
+static Any defaultBool = (bool) false;
+static Any defaultSrcInputType = SrcInputType::UNKNOWN;
+static Any defaultAudioSampleFormat = AudioSampleFormat::INVALID_WIDTH;
+static Any defaultVideoPixelFormat = VideoPixelFormat::UNKNOWN;
+static Any defaultMediaType = MediaType::UNKNOWN;
+static Any defaultVideoH264Profile = VideoH264Profile::UNKNOWN;
+static Any defaultVideoRotation = VideoRotation::VIDEO_ROTATION_0;
+static Any defaultVideoOrientationType = VideoOrientationType::ROTATE_NONE;
+static Any defaultColorPrimary = ColorPrimary::BT2020;
+static Any defaultHdrType = HDRType::HLG;
+static Any defaultTransferCharacteristic = TransferCharacteristic::BT1361;
+static Any defaultMatrixCoefficient = MatrixCoefficient::BT2020_CL;
+static Any defaultHEVCProfile = HEVCProfile::HEVC_PROFILE_UNKNOW;
+static Any defaultHEVCLevel = HEVCLevel::HEVC_LEVEL_UNKNOW;
+static Any defaultChromaLocation = ChromaLocation::BOTTOM;
+static Any defaultFileType = FileType::UNKNOW;
+static Any defaultVideoEncodeBitrateMode = VideoEncodeBitrateMode::CBR;
+static Any defaultVideoEncodeBFrameGopMode = VideoEncodeBFrameGopMode::VIDEO_ENCODE_GOP_ADAPTIVE_B_MODE;
+static Any defaultTemporalGopReferenceMode = TemporalGopReferenceMode::ADJACENT_REFERENCE;
+static Any defaultAudioChannelLayout = AudioChannelLayout::UNKNOWN;
+static Any defaultAudioAacProfile = AudioAacProfile::ELD;
+static Any defaultAudioAacStreamFormat = AudioAacStreamFormat::ADIF;
+static Any defaultGraphicPixelFormat = GraphicPixelFormat::GRAPHIC_PIXEL_FMT_YCBCR_420_SP;
+static Any defaultVideoCodecScenario = VideoCodecScenario::SCENARIO_RECORDING;
+static Any defaultVectorUInt8 = std::vector<uint8_t>();
+static Any defaultVectorUInt32 = std::vector<uint32_t>();
+static Any defaultVectorInt32 = std::vector<int32_t>();
+static Any defaultVectorInt64 = std::vector<int64_t>();
+static Any defaultVectorVideoBitStreamFormat = std::vector<VideoBitStreamFormat>();
+static Any defaultDemuxerMode = DemuxerMode::FULL_PARSE;
+static std::map<TagType, const Any &> g_metadataDefaultValueMap = {
+    {Tag::SRC_INPUT_TYPE, defaultSrcInputType},
+    {Tag::AUDIO_SAMPLE_FORMAT, defaultAudioSampleFormat},
+    {Tag::AUDIO_RAW_SAMPLE_FORMAT, defaultAudioSampleFormat},
+    {Tag::VIDEO_PIXEL_FORMAT, defaultVideoPixelFormat},
+    {Tag::MEDIA_TYPE, defaultMediaType},
+    {Tag::VIDEO_H264_PROFILE, defaultVideoH264Profile},
+    {Tag::VIDEO_ROTATION, defaultVideoRotation},
+    {Tag::VIDEO_ORIENTATION_TYPE, defaultVideoOrientationType},
+    {Tag::VIDEO_COLOR_PRIMARIES, defaultColorPrimary},
+    {Tag::VIDEO_HDR_TYPE, defaultHdrType},
+    {Tag::VIDEO_COLOR_TRC, defaultTransferCharacteristic},
+    {Tag::VIDEO_COLOR_MATRIX_COEFF, defaultMatrixCoefficient},
+    {Tag::VIDEO_H265_PROFILE, defaultHEVCProfile},
+    {Tag::VIDEO_H265_LEVEL, defaultHEVCLevel},
+    {Tag::VIDEO_CHROMA_LOCATION, defaultChromaLocation},
+    {Tag::MEDIA_FILE_TYPE, defaultFileType},
+    {Tag::VIDEO_ENCODE_BITRATE_MODE, defaultVideoEncodeBitrateMode},
+    {Tag::VIDEO_ENCODE_B_FRAME_GOP_MODE, defaultVideoEncodeBFrameGopMode},
+    {Tag::VIDEO_ENCODER_TEMPORAL_GOP_REFERENCE_MODE, defaultTemporalGopReferenceMode},
+    {Tag::VIDEO_GRAPHIC_PIXEL_FORMAT, defaultGraphicPixelFormat},
+    {Tag::VIDEO_CODEC_SCENARIO, defaultVideoCodecScenario},
+    // Int8
+    {Tag::RECORDER_HDR_TYPE, defaultInt8},
+    // Uint_8
+    {Tag::SCREEN_CAPTURE_AV_TYPE, defaultUInt8},
+    {Tag::SCREEN_CAPTURE_DATA_TYPE, defaultUInt8},
+    {Tag::SCREEN_CAPTURE_STOP_REASON, defaultUInt8},
+    // Int32
+    {Tag::APP_UID, defaultInt32},
+    {Tag::APP_PID, defaultInt32},
+    {Tag::APP_TOKEN_ID, defaultInt32},
+    {Tag::REQUIRED_IN_BUFFER_CNT, defaultInt32},
+    {Tag::REQUIRED_IN_BUFFER_SIZE, defaultInt32},
+    {Tag::REQUIRED_OUT_BUFFER_CNT, defaultInt32},
+    {Tag::REQUIRED_OUT_BUFFER_SIZE, defaultInt32},
+    {Tag::BUFFERING_SIZE, defaultInt32},
+    {Tag::WATERLINE_HIGH, defaultInt32},
+    {Tag::WATERLINE_LOW, defaultInt32},
+    {Tag::AUDIO_CHANNEL_COUNT, defaultInt32},
+    {Tag::AUDIO_SAMPLE_RATE, defaultInt32},
+    {Tag::AUDIO_SAMPLE_PER_FRAME, defaultInt32},
+    {Tag::AUDIO_OUTPUT_CHANNELS, defaultInt32},
+    {Tag::AUDIO_MPEG_VERSION, defaultInt32},
+    {Tag::AUDIO_MPEG_LAYER, defaultInt32},
+    {Tag::AUDIO_AAC_LEVEL, defaultInt32},
+    {Tag::AUDIO_OBJECT_NUMBER, defaultInt32},
+    {Tag::AUDIO_SOUNDBED_CHANNELS_NUMBER, defaultInt32},
+    {Tag::AUDIO_HOA_ORDER, defaultInt32},
+    {Tag::AUDIO_MAX_INPUT_SIZE, defaultInt32},
+    {Tag::AUDIO_MAX_OUTPUT_SIZE, defaultInt32},
+    {Tag::VIDEO_WIDTH, defaultInt32},
+    {Tag::VIDEO_HEIGHT, defaultInt32},
+    {Tag::VIDEO_DELAY, defaultInt32},
+    {Tag::VIDEO_MAX_SURFACE_NUM, defaultInt32},
+    {Tag::VIDEO_H264_LEVEL, defaultInt32},
+    {Tag::MEDIA_TRACK_COUNT, defaultInt32},
+    {Tag::AUDIO_AAC_IS_ADTS, defaultInt32},
+    {Tag::AUDIO_COMPRESSION_LEVEL, defaultInt32},
+    {Tag::AUDIO_BITS_PER_CODED_SAMPLE, defaultInt32},
+    {Tag::AUDIO_BITS_PER_RAW_SAMPLE, defaultInt32},
+    {Tag::REGULAR_TRACK_ID, defaultInt32},
+    {Tag::VIDEO_SCALE_TYPE, defaultInt32},
+    {Tag::VIDEO_I_FRAME_INTERVAL, defaultInt32},
+    {Tag::MEDIA_PROFILE, defaultInt32},
+    {Tag::VIDEO_ENCODE_QUALITY, defaultInt32},
+    {Tag::AUDIO_AAC_SBR, defaultInt32},
+    {Tag::AUDIO_FLAC_COMPLIANCE_LEVEL, defaultInt32},
+    {Tag::MEDIA_LEVEL, defaultInt32},
+    {Tag::VIDEO_STRIDE, defaultInt32},
+    {Tag::VIDEO_ENCODER_NUMBER_OF_PENDING_FRAMES, defaultInt32},
+    {Tag::VIDEO_DISPLAY_WIDTH, defaultInt32},
+    {Tag::VIDEO_DISPLAY_HEIGHT, defaultInt32},
+    {Tag::VIDEO_PIC_WIDTH, defaultInt32},
+    {Tag::VIDEO_PIC_HEIGHT, defaultInt32},
+    {Tag::VIDEO_ENCODER_TEMPORAL_GOP_SIZE, defaultInt32},
+    {Tag::VIDEO_ENCODER_LTR_FRAME_COUNT, defaultInt32},
+    {Tag::VIDEO_PER_FRAME_POC, defaultInt32},
+    {Tag::VIDEO_ENCODER_PER_FRAME_USE_LTR, defaultInt32},
+    {Tag::VIDEO_CROP_TOP, defaultInt32},
+    {Tag::VIDEO_CROP_BOTTOM, defaultInt32},
+    {Tag::VIDEO_CROP_LEFT, defaultInt32},
+    {Tag::VIDEO_CROP_RIGHT, defaultInt32},
+    {Tag::VIDEO_SLICE_HEIGHT, defaultInt32},
+    {Tag::VIDEO_OPERATING_RATE, defaultDouble},
+    {Tag::VIDEO_ENCODER_QP_MAX, defaultInt32},
+    {Tag::VIDEO_ENCODER_QP_MIN, defaultInt32},
+    {Tag::VIDEO_ENCODER_QP_START, defaultInt32},
+    {Tag::VIDEO_ENCODER_TARGET_QP, defaultInt32},
+    {Tag::FEATURE_PROPERTY_VIDEO_ENCODER_MAX_LTR_FRAME_COUNT, defaultInt32},
+    {Tag::OH_MD_KEY_AUDIO_OBJECT_NUMBER, defaultInt32},
+    {Tag::AV_CODEC_CALLER_PID, defaultInt32},
+    {Tag::AV_CODEC_CALLER_UID, defaultInt32},
+    {Tag::AV_CODEC_FORWARD_CALLER_PID, defaultInt32},
+    {Tag::AV_CODEC_FORWARD_CALLER_UID, defaultInt32},
+    {Tag::VIDEO_DECODER_RATE_UPPER_LIMIT, defaultInt32},
+    {Tag::SCREEN_CAPTURE_ERR_CODE, defaultInt32},
+    {Tag::SCREEN_CAPTURE_DURATION, defaultInt32},
+    {Tag::SCREEN_CAPTURE_START_LATENCY, defaultInt32},
+    {Tag::DRM_ERROR_CODE, defaultInt32},
+    {Tag::RECORDER_ERR_CODE, defaultInt32},
+    {Tag::RECORDER_DURATION, defaultInt32},
+    {Tag::RECORDER_VIDEO_BITRATE, defaultInt32},
+    {Tag::RECORDER_AUDIO_SAMPLE_RATE, defaultInt32},
+    {Tag::RECORDER_AUDIO_CHANNEL_COUNT, defaultInt32},
+    {Tag::RECORDER_AUDIO_BITRATE, defaultInt32},
+    {Tag::RECORDER_START_LATENCY, defaultInt32},
+    {Tag::TIMED_METADATA_SRC_TRACK, defaultInt32},
+    {Tag::VIDEO_ENCODER_FRAME_I_RATIO, defaultInt32},
+    {Tag::VIDEO_ENCODER_FRAME_MADI, defaultInt32},
+    {Tag::VIDEO_ENCODER_FRAME_MADP, defaultInt32},
+    {Tag::VIDEO_ENCODER_SUM_MADI, defaultInt32},
+    {Tag::VIDEO_ENCODER_REAL_BITRATE, defaultInt32},
+    {Tag::VIDEO_ENCODER_FRAME_QP, defaultInt32},
+    {Tag::VIDEO_ENCODER_QP_AVERAGE, defaultInt32},
+    {Tag::VIDEO_ENCODER_FRAME_TEMPORAL_ID, defaultInt32},
+    {Tag::AV_PLAYER_ERR_CODE, defaultInt32},
+    {Tag::AV_PLAYER_PLAY_DURATION, defaultInt32},
+    {Tag::AV_PLAYER_SOURCE_TYPE, defaultInt32},
+    {Tag::AV_PLAYER_AVG_DOWNLOAD_RATE, defaultInt32},
+    {Tag::AV_PLAYER_VIDEO_BITRATE, defaultInt32},
+    {Tag::AV_PLAYER_AUDIO_BITRATE, defaultInt32},
+    {Tag::AV_PLAYER_START_LATENCY, defaultInt32},
+    {Tag::AV_PLAYER_AVG_DOWNLOAD_SPEED, defaultInt32},
+    {Tag::AV_PLAYER_MAX_SEEK_LATENCY, defaultInt32},
+    {Tag::AV_PLAYER_MAX_ACCURATE_SEEK_LATENCY, defaultInt32},
+    {Tag::AV_PLAYER_LAG_TIMES, defaultInt32},
+    {Tag::AV_PLAYER_MAX_LAG_DURATION, defaultInt32},
+    {Tag::AV_PLAYER_AVG_LAG_DURATION, defaultInt32},
+    {Tag::AV_PLAYER_MAX_SURFACESWAP_LATENCY, defaultInt32},
+    {Tag::VIDEO_COORDINATE_X, defaultInt32},
+    {Tag::VIDEO_COORDINATE_Y, defaultInt32},
+    {Tag::VIDEO_COORDINATE_W, defaultInt32},
+    {Tag::VIDEO_COORDINATE_H, defaultInt32},
+    {Tag::VIDEO_ENCODER_REPEAT_PREVIOUS_FRAME_AFTER, defaultInt32},
+    {Tag::VIDEO_ENCODER_REPEAT_PREVIOUS_MAX_COUNT, defaultInt32},
+    {Tag::VIDEO_ENCODER_MAX_FRAME_DELAY_COUNT, defaultInt32},
+    {Tag::VIDEO_DECODER_OUTPUT_COLOR_SPACE, defaultInt32},
+    {Tag::VIDEO_DECODER_OUTPUT_ENABLE_VRR, defaultInt32},
+    {Tag::AV_TRANSCODER_ERR_CODE, defaultInt32},
+    {Tag::AV_TRANSCODER_SOURCE_DURATION, defaultInt32},
+    {Tag::AV_TRANSCODER_TRANSCODER_DURATION, defaultInt32},
+    {Tag::AV_TRANSCODER_SRC_VIDEO_BITRATE, defaultInt32},
+    {Tag::AV_TRANSCODER_SRC_HDR_TYPE, defaultInt32},
+    {Tag::AV_TRANSCODER_SRC_AUDIO_SAMPLE_RATE, defaultInt32},
+    {Tag::AV_TRANSCODER_SRC_AUDIO_CHANNEL_COUNT, defaultInt32},
+    {Tag::AV_TRANSCODER_SRC_AUDIO_BITRATE, defaultInt32},
+    {Tag::AV_TRANSCODER_DST_VIDEO_BITRATE, defaultInt32},
+    {Tag::AV_TRANSCODER_DST_HDR_TYPE, defaultInt32},
+    {Tag::AV_TRANSCODER_DST_COLOR_SPACE, defaultInt32},
+    {Tag::AV_TRANSCODER_ENABLE_B_FRAME, defaultBool},
+    {Tag::AV_TRANSCODER_DST_AUDIO_SAMPLE_RATE, defaultInt32},
+    {Tag::AV_TRANSCODER_DST_AUDIO_CHANNEL_COUNT, defaultInt32},
+    {Tag::AV_TRANSCODER_DST_AUDIO_BITRATE, defaultInt32},
+    {Tag::AV_TRANSCODER_VIDEO_DECODER_DURATION, defaultInt32},
+    {Tag::AV_TRANSCODER_VIDEO_ENCODER_DURATION, defaultInt32},
+    {Tag::AV_TRANSCODER_VIDEO_VPE_DURATION, defaultInt32},
+    {Tag::MEDIA_EDITLIST, defaultInt32},
+    {Tag::MEDIA_ENABLE_MOOV_FRONT, defaultInt32},
+    {Tag::MEDIA_GLTF_VERSION, defaultInt32},
+    {Tag::VIDEO_DECODER_INPUT_STREAM_ERROR, defaultInt32},
+    {Tag::ENABLE_BUFFER_SKIP_SAMPLES, defaultInt32},
+    // String
+    {Tag::MIME_TYPE, defaultString},
+    {Tag::ORIGINAL_CODEC_NAME, defaultString},
+    {Tag::MEDIA_FILE_URI, defaultString},
+    {Tag::MEDIA_TITLE, defaultString},
+    {Tag::MEDIA_ARTIST, defaultString},
+    {Tag::MEDIA_LYRICIST, defaultString},
+    {Tag::MEDIA_ALBUM, defaultString},
+    {Tag::MEDIA_ALBUM_ARTIST, defaultString},
+    {Tag::MEDIA_DATE, defaultString},
+    {Tag::MEDIA_COMMENT, defaultString},
+    {Tag::MEDIA_GENRE, defaultString},
+    {Tag::MEDIA_COPYRIGHT, defaultString},
+    {Tag::MEDIA_LANGUAGE, defaultString},
+    {Tag::MEDIA_DESCRIPTION, defaultString},
+    {Tag::USER_TIME_SYNC_RESULT, defaultString},
+    {Tag::USER_AV_SYNC_GROUP_INFO, defaultString},
+    {Tag::USER_SHARED_MEMORY_FD, defaultString},
+    {Tag::MEDIA_AUTHOR, defaultString},
+    {Tag::MEDIA_COMPOSER, defaultString},
+    {Tag::MEDIA_LYRICS, defaultString},
+    {Tag::MEDIA_CODEC_NAME, defaultString},
+    {Tag::PROCESS_NAME, defaultString},
+    {Tag::MEDIA_CREATION_TIME, defaultString},
+    {Tag::AV_CODEC_CALLER_PROCESS_NAME, defaultString},
+    {Tag::AV_CODEC_FORWARD_CALLER_PROCESS_NAME, defaultString},
+    {Tag::SCREEN_CAPTURE_ERR_MSG, defaultString},
+    {Tag::SCREEN_CAPTURE_VIDEO_RESOLUTION, defaultString},
+    {Tag::DRM_APP_NAME, defaultString},
+    {Tag::DRM_INSTANCE_ID, defaultString},
+    {Tag::DRM_ERROR_MESG, defaultString},
+    {Tag::TIMED_METADATA_SRC_TRACK_MIME, defaultString},
+    {Tag::TIMED_METADATA_KEY, defaultString},
+    {Tag::TIMED_METADATA_LOCALE, defaultString},
+    {Tag::TIMED_METADATA_SETUP, defaultString},
+    {Tag::RECORDER_ERR_MSG, defaultString},
+    {Tag::RECORDER_CONTAINER_MIME, defaultString},
+    {Tag::RECORDER_VIDEO_MIME, defaultString},
+    {Tag::RECORDER_VIDEO_RESOLUTION, defaultString},
+    {Tag::RECORDER_AUDIO_MIME, defaultString},
+    {Tag::AV_PLAYER_ERR_MSG, defaultString},
+    {Tag::AV_PLAYER_CONTAINER_MIME, defaultString},
+    {Tag::AV_PLAYER_VIDEO_MIME, defaultString},
+    {Tag::AV_PLAYER_VIDEO_RESOLUTION, defaultString},
+    {Tag::AV_PLAYER_AUDIO_MIME, defaultString},
+    {Tag::AV_TRANSCODER_ERR_MSG, defaultString},
+    {Tag::AV_TRANSCODER_SRC_FORMAT, defaultString},
+    {Tag::AV_TRANSCODER_SRC_AUDIO_MIME, defaultString},
+    {Tag::AV_TRANSCODER_SRC_VIDEO_MIME, defaultString},
+    {Tag::AV_TRANSCODER_DST_FORMAT, defaultString},
+    {Tag::AV_TRANSCODER_DST_AUDIO_MIME, defaultString},
+    {Tag::AV_TRANSCODER_DST_VIDEO_MIME, defaultString},
+    {Tag::VIDEO_ENCODER_ROI_PARAMS, defaultString},
+    {Tag::TRACK_REFERENCE_TYPE, defaultString},
+    {Tag::TRACK_DESCRIPTION, defaultString},
+    {Tag::TRACK_REF_TYPE, defaultString},
+    {Tag::REF_TRACK_IDS, defaultString},
+    {Tag::MEDIA_GLTF_ITEM_NAME, defaultString},
+    {Tag::MEDIA_GLTF_CONTENT_TYPE, defaultString},
+    {Tag::MEDIA_GLTF_CONTENT_ENCODING, defaultString},
+    {Tag::MEDIA_GLTF_ITEM_TYPE, defaultString},
+    
+    // Float
+    {Tag::MEDIA_LATITUDE, defaultFloat},
+    {Tag::MEDIA_LONGITUDE, defaultFloat},
+    {Tag::MEDIA_ALTITUDE, defaultFloat},
+    {Tag::AV_PLAYER_VIDEO_FRAMERATE, defaultFloat},
+    // Double
+    {Tag::VIDEO_CAPTURE_RATE, defaultDouble},
+    {Tag::VIDEO_FRAME_RATE, defaultDouble},
+    {Tag::VIDEO_SAR, defaultDouble},
+    {Tag::VIDEO_ENCODER_MSE, defaultDouble},
+    {Tag::AV_TRANSCODER_SRC_VIDEO_FRAME_RATE, defaultDouble},
+    {Tag::AV_TRANSCODER_DST_VIDEO_FRAME_RATE, defaultDouble},
+    // Bool
+    {Tag::VIDEO_COLOR_RANGE, defaultBool},
+    {Tag::VIDEO_REQUEST_I_FRAME, defaultBool},
+    {Tag::VIDEO_IS_HDR_VIVID, defaultBool},
+    {Tag::MEDIA_HAS_VIDEO, defaultBool},
+    {Tag::MEDIA_HAS_AUDIO, defaultBool},
+    {Tag::MEDIA_HAS_SUBTITLE, defaultBool},
+    {Tag::MEDIA_HAS_TIMEDMETA, defaultBool},
+    {Tag::MEDIA_HAS_AUXILIARY, defaultBool},
+    {Tag::MEDIA_END_OF_STREAM, defaultBool},
+    {Tag::MEDIA_IS_HARDWARE, defaultBool},
+    {Tag::VIDEO_FRAME_RATE_ADAPTIVE_MODE, defaultBool},
+    {Tag::VIDEO_ENCODER_ENABLE_TEMPORAL_SCALABILITY, defaultBool},
+    {Tag::AV_CODEC_ENABLE_SYNC_MODE, defaultBool},
+    {Tag::VIDEO_ENCODER_PER_FRAME_MARK_LTR, defaultBool},
+    {Tag::VIDEO_PER_FRAME_IS_LTR, defaultBool},
+    {Tag::VIDEO_PER_FRAME_IS_SKIP, defaultBool},
+    {Tag::VIDEO_ENABLE_LOW_LATENCY, defaultBool},
+    {Tag::VIDEO_ENCODER_ENABLE_SURFACE_INPUT_CALLBACK, defaultBool},
+    {Tag::VIDEO_ENCODER_ENABLE_PARAMS_FEEDBACK, defaultBool},
+    {Tag::VIDEO_BUFFER_CAN_DROP, defaultBool},
+    {Tag::AUDIO_RENDER_SET_FLAG, defaultBool},
+    {Tag::SCREEN_CAPTURE_USER_AGREE, defaultBool},
+    {Tag::SCREEN_CAPTURE_REQURE_MIC, defaultBool},
+    {Tag::SCREEN_CAPTURE_ENABLE_MIC, defaultBool},
+    {Tag::AV_PLAYER_IS_DRM_PROTECTED, defaultBool},
+    {Tag::AV_PLAYER_DOWNLOAD_TIME_OUT, defaultBool},
+    {Tag::VIDEO_ENCODER_PER_FRAME_DISCARD, defaultBool},
+    {Tag::VIDEO_ENCODER_ENABLE_WATERMARK, defaultBool},
+    {Tag::VIDEO_ENCODER_ENABLE_QP_MAP, defaultBool},
+    {Tag::VIDEO_ENCODER_PER_FRAME_ABS_QP_MAP, defaultBool},
+    {Tag::VIDEO_ENCODER_ENABLE_PTS_BASED_RATECONTROL, defaultBool},
+    {Tag::VIDEO_DECODER_BLANK_FRAME_ON_SHUTDOWN, defaultBool},
+    {Tag::VIDEO_DECODER_OUTPUT_IN_DECODING_ORDER, defaultBool},
+    {Tag::VIDEO_ENCODER_REPEAT_HEADER_BEFORE_SYNC_FRAMES, defaultBool},
+    {Tag::VIDEO_ENABLE_LOCAL_RELEASE, defaultBool},
+    {Tag::IS_GLTF, defaultBool},
+    {Tag::AUDIO_ENCODER_ENABLE_SAMPLE_FORMAT_CONVERT, defaultBool},
+    // Int64
+    {Tag::MEDIA_FILE_SIZE, defaultUInt64},
+    {Tag::MEDIA_POSITION, defaultUInt64},
+    {Tag::AV_PLAYER_DOWNLOAD_TOTAL_BITS, defaultUInt64},
+    {Tag::APP_FULL_TOKEN_ID, defaultInt64},
+    {Tag::MEDIA_DURATION, defaultInt64},
+    {Tag::MEDIA_BITRATE, defaultInt64},
+    {Tag::MEDIA_START_TIME, defaultInt64},
+    {Tag::USER_FRAME_PTS, defaultInt64},
+    {Tag::USER_PUSH_DATA_TIME, defaultInt64},
+    {Tag::MEDIA_TIME_STAMP, defaultInt64},
+    {Tag::MEDIA_CONTAINER_START_TIME, defaultInt64},
+    {Tag::BUFFER_DECODING_TIMESTAMP, defaultInt64},
+    {Tag::BUFFER_DURATION, defaultInt64},
+    {Tag::VIDEO_DECODER_DESIRED_PRESENT_TIMESTAMP, defaultInt64},
+    {Tag::VIDEO_ENCODE_SET_FRAME_PTS, defaultInt64},
+    {Tag::GLTF_OFFSET, defaultInt64},
+    {Tag::AUDIO_SOUNDBED_BITRATE, defaultInt64},
+    {Tag::AUDIO_OBJECT_BITRATE, defaultInt64},
+    // AudioChannelLayout UINT64_T
+    {Tag::AUDIO_CHANNEL_LAYOUT, defaultAudioChannelLayout},
+    {Tag::AUDIO_OUTPUT_CHANNEL_LAYOUT, defaultAudioChannelLayout},
+    {Tag::AUDIO_SOUNDBED_LAYOUT, defaultAudioChannelLayout},
+    // AudioAacProfile UInt8
+    {Tag::AUDIO_AAC_PROFILE, defaultAudioAacProfile},
+    // AudioAacStreamFormat UInt8
+    {Tag::AUDIO_AAC_STREAM_FORMAT, defaultAudioAacStreamFormat},
+    // vector<uint8_t>
+    {Tag::MEDIA_CODEC_CONFIG, defaultVectorUInt8},
+    {Tag::AUDIO_VIVID_METADATA, defaultVectorUInt8},
+    {Tag::MEDIA_COVER, defaultVectorUInt8},
+    {Tag::AUDIO_VORBIS_IDENTIFICATION_HEADER, defaultVectorUInt8},
+    {Tag::AUDIO_VORBIS_SETUP_HEADER, defaultVectorUInt8},
+    {Tag::OH_MD_KEY_AUDIO_VIVID_METADATA, defaultVectorUInt8},
+    {Tag::BUFFER_SKIP_SAMPLES_INFO, defaultVectorUInt8},
+    // vector<Plugins::VideoBitStreamFormat>
+    {Tag::VIDEO_BIT_STREAM_FORMAT, defaultVectorVideoBitStreamFormat},
+    // vector<uint8_t>
+    {Tag::DRM_CENC_INFO, defaultVectorUInt8},
+    {Tag::MEDIA_AVAILABLE_BITRATES, defaultVectorUInt8},
+    {Tag::VIDEO_ENCODER_PER_FRAME_QP_MAP, defaultVectorUInt8},
+    {Tag::MEDIA_GLTF_DATA, defaultVectorUInt8},
+    {Tag::VIDEO_STATIC_METADATA_SMPT2086, defaultVectorUInt8},
+    {Tag::VIDEO_STATIC_METADATA_CTA861, defaultVectorUInt8},
+    // Uint32
+    {Tag::DRM_DECRYPT_AVG_SIZE, defaultUInt32},
+    {Tag::DRM_DECRYPT_AVG_DURATION, defaultUInt32},
+    {Tag::DRM_DECRYPT_MAX_SIZE, defaultUInt32},
+    {Tag::DRM_DECRYPT_MAX_DURATION, defaultUInt32},
+    {Tag::DRM_DECRYPT_TIMES, defaultUInt32},
+    {Tag::AV_PLAYER_BUFFER_DURATION, defaultUInt32},
+    //int8
+    {Tag::AV_PLAYER_VIDEO_BITDEPTH, defaultInt8},
+    {Tag::AV_PLAYER_HDR_TYPE, defaultInt8},
+    // vector<int32_t>
+    {Tag::REFERENCE_TRACK_IDS, defaultVectorInt32},
+    {Tag::MEDIA_AIGC, defaultString},
+    {Tag::AUDIO_BLOCK_ALIGN, defaultInt32},
+    {Tag::AUDIO_VIVID_SIGNAL_FORMAT, defaultInt32},
+    // vector<int64_t>
+    {Tag::STALLING_TIMESTAMP, defaultVectorInt64},
+    // DemuxerMode
+    {Tag::MEDIA_DEMUXER_MODE, defaultDemuxerMode}
+};
+
+static std::map<AnyValueType, const Any &> g_ValueTypeDefaultValueMap = {
+    {AnyValueType::INVALID_TYPE, defaultString},
+    {AnyValueType::BOOL, defaultBool},
+    {AnyValueType::UINT8_T, defaultUInt8},
+    {AnyValueType::INT32_T, defaultInt32},
+    {AnyValueType::UINT32_T, defaultUInt32},
+    {AnyValueType::INT64_T, defaultInt64},
+    {AnyValueType::UINT64_T, defaultUInt64},
+    {AnyValueType::FLOAT, defaultFloat},
+    {AnyValueType::DOUBLE, defaultDouble},
+    {AnyValueType::VECTOR_UINT8, defaultVectorUInt8},
+    {AnyValueType::VECTOR_UINT32, defaultVectorUInt32},
+    {AnyValueType::STRING, defaultString},
+    {AnyValueType::VECTOR_INT32, defaultVectorInt32},
+    {AnyValueType::VECTOR_INT64, defaultVectorInt64},
+};
+static std::mutex g_metadataDefaultValueMapMutex;
+static std::mutex g_valueTypeDefaultValueMapMutex;
+
+Any GetDefaultAnyValue(const TagType& tag)
+{
+    std::lock_guard<std::mutex> lock(g_metadataDefaultValueMapMutex);
+    auto iter = g_metadataDefaultValueMap.find(tag);
+    FALSE_RETURN_V(iter != g_metadataDefaultValueMap.end(), defaultString);
+    return iter->second;
+}
+
+std::optional<Any> GetDefaultAnyValueOpt(const TagType &tag)
+{
+    std::lock_guard<std::mutex> lock(g_metadataDefaultValueMapMutex);
+    auto iter = g_metadataDefaultValueMap.find(tag);
+    if (iter == g_metadataDefaultValueMap.end()) {
+        return std::nullopt;
+    }
+    return iter->second;
+}
+
+Any GetDefaultAnyValue(const TagType &tag, AnyValueType type)
+{
+    std::lock_guard<std::mutex> lock(g_metadataDefaultValueMapMutex);
+    auto iter = g_metadataDefaultValueMap.find(tag);
+    if (iter == g_metadataDefaultValueMap.end()) {
+        std::lock_guard<std::mutex> lock(g_valueTypeDefaultValueMapMutex);
+        auto typeIter = g_ValueTypeDefaultValueMap.find(type);
+        if (typeIter != g_ValueTypeDefaultValueMap.end()) {
+            return typeIter->second;
+        } else {
+            return defaultString; //Default String type
+        }
+    }
+    return iter->second;
+}
+
+bool Meta::IsDefinedKey(const TagType &tag) const
+{
+    std::lock_guard<std::mutex> lock(g_metadataDefaultValueMapMutex);
+    auto iter = g_metadataDefaultValueMap.find(tag);
+    if (iter == g_metadataDefaultValueMap.end()) {
+        return false;
+    }
+    return true;
+}
+
+AnyValueType Meta::GetValueType(const TagType& key) const
+{
+    auto iter = map_.find(key);
+    if (iter != map_.end()) {
+        if (Any::IsSameTypeWith<int32_t>(iter->second)) {
+            return AnyValueType::INT32_T;
+        } else if (Any::IsSameTypeWith<uint32_t>(iter->second)) {
+            return AnyValueType::UINT32_T;
+        } else if (Any::IsSameTypeWith<bool>(iter->second)) {
+            return AnyValueType::BOOL;
+        } else if (Any::IsSameTypeWith<int64_t>(iter->second)) {
+            return AnyValueType::INT64_T;
+        } else if (Any::IsSameTypeWith<float>(iter->second)) {
+            return AnyValueType::FLOAT;
+        } else if (Any::IsSameTypeWith<double>(iter->second)) {
+            return AnyValueType::DOUBLE;
+        } else if (Any::IsSameTypeWith<std::vector<uint8_t>>(iter->second)) {
+            return AnyValueType::VECTOR_UINT8;
+        } else if (Any::IsSameTypeWith<std::string>(iter->second)) {
+            return AnyValueType::STRING;
+        } else if (Any::IsSameTypeWith<std::vector<int32_t>>(iter->second)) {
+            return AnyValueType::VECTOR_INT32;
+        } else if (Any::IsSameTypeWith<std::vector<int64_t>>(iter->second)) {
+            return AnyValueType::VECTOR_INT64;
+        } else {
+            auto iter = g_metadataGetterSetterInt64Map.find(key);
+            if (iter == g_metadataGetterSetterInt64Map.end()) {
+                return AnyValueType::INT32_T;
+            } else {
+                return AnyValueType::INT64_T;
+            }
+        }
+    }
+    return AnyValueType::INVALID_TYPE;
+}
+
+bool Meta::ToParcel(MessageParcel &parcel) const
+{
+    auto oldPos = parcel.GetWritePosition();
+    auto oldSize = parcel.GetDataSize();
+    bool ret = parcel.WriteInt32(map_.size());
+    for (auto iter = begin(); iter != end(); ++iter) {
+        ret = ret && parcel.WriteString(iter->first);
+        ret = ret && parcel.WriteInt32(static_cast<int32_t>(GetValueType(iter->first)));
+        ret = ret && iter->second.ToParcel(parcel);
+        if (!ret) {
+            MEDIA_LOG_E("fail to Marshalling Key: " PUBLIC_LOG_S, iter->first.c_str());
+            break;
+        }
+    }
+    if (!ret) {
+        parcel.RewindWrite(oldPos);
+        parcel.SetDataSize(oldSize);
+    }
+    return ret;
+}
+
+bool Meta::FromParcel(MessageParcel &parcel)
+{
+    map_.clear();
+    int32_t size = parcel.ReadInt32();
+    if (size < 0 || static_cast<size_t>(size) > parcel.GetRawDataCapacity()) {
+        MEDIA_LOG_E("fail to Unmarshalling size: %{public}d", size);
+        return false;
+    }
+
+    for (int32_t index = 0; index < size; index++) {
+        std::string key = parcel.ReadString();
+        AnyValueType type = static_cast<AnyValueType>(parcel.ReadInt32());
+        Any value = GetDefaultAnyValue(key, type); //Init Default Value
+        if (value.FromParcel(parcel)) {
+            map_[key] = value;
+        } else {
+            MEDIA_LOG_E("fail to Unmarshalling Key: %{public}s", key.c_str());
+            return false;
+        }
+    }
+    return true;
+}
+}
+} // namespace OHOS

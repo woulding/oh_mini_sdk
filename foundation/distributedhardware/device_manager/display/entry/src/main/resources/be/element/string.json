@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_allow_this_time",
+            "value":"Давяраць толькі гэтым разам",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_connect_code",
+            "value":"Код падключэння",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"Праграма «%1$s» на прыладзе %2$s запытвае доступ да гэтай прылады. Давяраць гэтай праграме?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Адмяніць",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Увядзіце код падключэння",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Гэта неабходна для сінхранізацыі даных і ўзаемадзеяння паміж прыладамі.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Гэтым разам давяраць",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Заўсёды давяраць",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s запытвае доступ да сэрвісу «%2$s» на вашай прыладзе. Давяраць гэтай прыладзе?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"Праграма «%2$s» на прыладзе %1$s запытвае доступ да сэрвісу «%3$s» на вашай прыладзе. Вы давяраеце гэтай праграме?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"Прылада %s запытвае падключэнне да сэрвісаў на вашай прыладзе. Выберыце сэрвісы, падключэнне да якіх вы дазваляеце:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

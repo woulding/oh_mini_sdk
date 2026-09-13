@@ -1,0 +1,135 @@
+{
+  "subsystems": [
+    {
+      "subsystem": "hdf",
+      "components": [
+        { "component": "hdf_core" },
+        { "component": "drivers_interface_huks" },
+        { "component": "drivers_peripheral_huks" }
+      ]
+    },
+    {
+      "subsystem": "communication",
+      "components": [
+        { "component": "ipc" },
+        { "component": "dsoftbus" }
+      ]
+    },
+    {
+      "subsystem": "systemabilitymgr",
+      "components": [
+        { "component": "samgr" },
+        { "component": "safwk" }
+      ]
+    },
+    {
+      "subsystem": "hiviewdfx",
+      "components": [
+        { "component": "hilog" },
+        {
+          "component": "hitrace",
+          "features": [
+            "hitrace_support_executable_file = false"
+          ]
+        },
+        { "component": "hisysevent" },
+        { "component": "hicollie" },
+        { "component": "faultloggerd" }
+      ]
+    },
+    {
+      "subsystem": "security",
+      "components": [
+        { "component": "access_token" },
+        { "component": "huks" },
+        { "component": "device_auth" },
+        { "component": "selinux_adapter" },
+        {
+          "component": "certificate_framework",
+          "features": []
+        }
+      ]
+    },
+    {
+        "subsystem": "commonlibrary",
+        "components": [
+          { "component": "c_utils" },
+          { "component": "ylong_http" },
+          { "component": "ylong_json" },
+          { "component": "ylong_runtime" }
+        ]
+      },
+      {
+        "subsystem": "updater",
+        "components": [
+          {
+            "component": "updater",
+            "features": [
+              "updater_feature_use_ptable = false",
+              "updater_feature_updater_gen_executable = true",
+              "updater_feature_sign_on_server = false"
+            ]
+          },
+          { "component": "update_service" }
+        ]
+      },
+      {
+        "subsystem": "developtools",
+        "components": [
+          { "component": "syscap_codec" }
+        ]
+      },
+      {
+        "subsystem": "thirdparty",
+        "components": [
+            { "component": "mbedtls" },
+            { "component": "libcoap" },
+            { "component": "toybox" },
+            { "component": "openssl" },
+            { "component": "musl" },
+            { "component": "lz4" },
+            { "component": "libxml2" },
+            { "component": "libuv"},
+            { "component": "libunwind" },
+            { "component": "jsoncpp" },
+            { "component": "json" },
+            { "component": "icu" },
+            { "component": "e2fsprogs" },
+            { "component": "cJSON" },
+            { "component": "bounds_checking_function" },
+            { "component": "selinux" },
+            { "component": "bzip2" }
+          ]
+      },
+    {
+      "subsystem": "customization",
+      "components": [
+        { "component": "config_policy" }
+      ]
+    },
+    {
+      "subsystem": "resourceschedule",
+      "components": [
+        { "component": "ffrt" }
+      ]
+    },
+    {
+      "subsystem": "build",
+      "components": [
+        { "component": "build_framework" }
+      ]
+    },
+    {
+      "subsystem": "startup",
+      "components": [
+        { "component": "init" }
+      ]
+    },
+    {
+      "subsystem": "notification",
+      "components": [
+        { "component": "eventhandler" }
+      ]
+    }
+  ]
+}

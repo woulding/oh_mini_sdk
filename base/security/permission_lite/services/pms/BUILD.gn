@@ -1,0 +1,67 @@
+# Copyright (c) 2020-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/lite/config/component/lite_component.gni")
+import("//build/ohos.gni")
+import("../../build/config.gni")
+
+if (os_level != "mini") {
+  lite_library("pms_target") {
+    target_type = "shared_library"
+    sources = [
+      "src/perm_operate.c",
+      "src/pms_impl.c",
+      "src/pms_inner.c",
+      "src/pms_server.c",
+      "src/pms_server_internal.c",
+    ]
+
+    include_dirs = [
+      "../../interfaces/kits",
+      "include",
+      "include/hals",
+      "../pms_base/include",
+    ]
+
+    deps = [
+      "${ipc_path}/interfaces/innerkits/c/ipc:ipc_single",
+      "${ohos_product_adapter_dir}/security/permission_lite:hal_pms",
+      "${samgr_lite_path}/samgr:samgr",
+      "../pms_base:pms_base",
+      "//build/lite/config/component/cJSON:cjson_shared",
+      "//third_party/bounds_checking_function:libsec_shared",
+    ]
+  }
+} else {
+  ohos_static_library("pms_target_static") {
+    subsystem_name = "security"
+    part_name = "permission_lite"
+    sources = [
+      "src/perm_operate.c",
+      "src/pms_impl.c",
+    ]
+
+    include_dirs = [
+      "../../interfaces/kits",
+      "include",
+      "include/hals",
+      "//third_party/cJSON",
+      "${hilog_lite_path}/interfaces/native/kits/hilog_lite",
+    ]
+
+    deps = [
+      "${permission_lite_pms_hal_path}:hal_pms_static",
+      "//build/lite/config/component/cJSON:cjson_static",
+    ]
+  }
+}

@@ -1,0 +1,327 @@
+# Copyright (C) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/ohos_var.gni")
+import("//foundation/communication/bluetooth/bluetooth.gni")
+
+SUBSYSTEM_DIR = "//foundation/communication"
+
+FwkCAdapterSrc = [
+  "c_adapter/ohos_bt_adapter_utils.cpp",
+  "c_adapter/ohos_bt_gap.cpp",
+  "c_adapter/ohos_bt_gatt.cpp",
+  "c_adapter/ohos_bt_gatt_utils.cpp",
+  "c_adapter/ohos_bt_gatt_client.cpp",
+  "c_adapter/ohos_bt_gatt_server.cpp",
+  "c_adapter/ohos_bt_spp.cpp",
+  "c_adapter/ohos_bt_socket.cpp",
+]
+
+FwkSrc = [
+  "src/bluetooth_a2dp_snk.cpp",
+  "src/bluetooth_a2dp_src.cpp",
+  "src/bluetooth_avrcp_ct.cpp",
+  "src/bluetooth_avrcp_tg.cpp",
+  "src/bluetooth_address_info.cpp",
+  "src/bluetooth_oob_data.cpp",
+  "src/bluetooth_ble_advertiser.cpp",
+  "src/bluetooth_ble_central_manager.cpp",
+  "src/bluetooth_device_class.cpp",
+  "src/bluetooth_gatt_characteristic.cpp",
+  "src/bluetooth_gatt_client.cpp",
+  "src/bluetooth_gatt_descriptor.cpp",
+  "src/bluetooth_gatt_manager.cpp",
+  "src/bluetooth_gatt_server.cpp",
+  "src/bluetooth_gatt_service.cpp",
+  "src/bluetooth_hfp_ag.cpp",
+  "src/bluetooth_hfp_hf.cpp",
+  "src/bluetooth_hid_host.cpp",
+  "src/bluetooth_hid_device.cpp",
+  "src/bluetooth_host.cpp",
+  "src/bluetooth_map_mse.cpp",
+  "src/bluetooth_opp.cpp",
+  "src/bluetooth_pan.cpp",
+  "src/bluetooth_profile_manager.cpp",
+  "src/bluetooth_pbap_pse.cpp",
+  "src/bluetooth_proxy_manager.cpp",
+  "src/bluetooth_remote_device.cpp",
+  "src/bluetooth_socket.cpp",
+  "src/bluetooth_socket_inputstream.cpp",
+  "src/bluetooth_socket_outputstream.cpp",
+  "src/bluetooth_timer.cpp",
+  "src/bluetooth_utils.cpp",
+  "src/bluetooth_host_load_callback.cpp",
+  "src/bluetooth_audio_manager.cpp",
+  "src/uuid.cpp",
+  "src/bluetooth_switch_module.cpp",
+  "src/bluetooth_bas_host.cpp",
+]
+
+BT_IPCSRC_DIR = "ipc/src"
+FwkIpcSrc = [
+  "$BT_IPCSRC_DIR/bluetooth_a2dp_sink_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_a2dp_sink_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_a2dp_src_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_a2dp_src_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_avrcp_ct_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_avrcp_ct_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_avrcp_tg_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_avrcp_tg_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_ble_advertise_callback_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_ble_advertiser_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_ble_central_manager_callback_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_ble_central_manager_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_ble_peripheral_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_gatt_client_callback_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_gatt_client_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_gatt_server_callback_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_gatt_server_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_hfp_ag_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_hfp_ag_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_hfp_hf_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_hfp_hf_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_hid_host_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_hid_host_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_hid_device_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_hid_device_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_opp_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_opp_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_host_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_host_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_map_mse_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_map_mse_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_pan_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_pan_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_pbap_pse_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_pbap_pse_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_remote_device_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_socket_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_socket_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_audio_manager_proxy.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_resource_manager_observer_stub.cpp",
+  "$BT_IPCSRC_DIR/bluetooth_oob_observer_stub.cpp",
+]
+
+if (bluetooth_bas_feature) {
+  FwkIpcSrc += [
+    "$BT_IPCSRC_DIR/bluetooth_device_battery_observer_stub.cpp",
+    "$BT_IPCSRC_DIR/bluetooth_bas_proxy.cpp",
+  ]
+}
+
+config("btframework_config") {
+  cflags_cc = [
+    "-fPIC",
+    "-Wno-unused-parameter",
+    "-Wno-return-type-c-linkage",
+    "-Wunused-private-field",
+  ]
+  include_dirs = [
+    "include",
+    "ipc/include",
+    "ipc",
+    "$SUBSYSTEM_DIR/bluetooth/interfaces/inner_api/include/c_header",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc/include",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc/common",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/include",
+  ]
+
+  defines = []
+  if (is_asan || use_clang_coverage) {
+    defines += [ "DTFUZZ_TEST" ]
+  }
+  if (bluetooth_pluggable_supported) {
+    defines += [ "BLUETOOTH_PLUGGABLE_SUPPORTED" ]
+  }
+
+  if (bluetooth_bas_feature) {
+    defines += [ "BLUETOOTH_BAS_FEATURE_ENABLE" ]
+  }
+
+  if (bluetooth_hfp_hf_feature_switch) {
+    defines += [ "BLUETOOTH_HFP_HF_FEATURE_ENABLE" ]
+  }
+}
+
+config("btframework_public_config") {
+  visibility = [ "*" ]
+  include_dirs = [
+    "$SUBSYSTEM_DIR/bluetooth/interfaces/inner_api/include",
+    "$SUBSYSTEM_DIR/bluetooth/interfaces/inner_api/include/c_header",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc/include",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc/parcel",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/include",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc/common",
+  ]
+}
+
+ohos_shared_library("btframework") {
+  cflags_cc = [
+    "-Os",
+    "-fno-rtti",
+    "-fno-exceptions",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-fno-unwind-tables",
+    "-fno-asynchronous-unwind-tables",
+    "-fno-merge-all-constants",
+    "-flto",
+  ]
+  ldflags = [
+    "-Wl,--as-needed",
+    "-Wl,--gc-sections",
+  ]
+  branch_protector_ret = "pac_ret"  # Enable PAC CFI
+  configs = [ ":btframework_config" ]
+  public_configs = [ ":btframework_public_config" ]
+  innerapi_tags = [ "platformsdk" ]
+  sources = FwkSrc
+  sources += FwkCAdapterSrc
+  sources += FwkIpcSrc
+
+  deps = [ ":btcommon" ]
+
+  external_deps = [
+    "ability_base:want",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "eventhandler:libeventhandler",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "samgr:samgr_proxy",
+    "ability_runtime:application_image_observer_manager",
+  ]
+
+  sanitize = {
+    cfi = true  # Enable/disable control flow integrity detection
+    boundary_sanitize = true  # Enable boundary san detection
+    cfi_cross_dso = true  # Cross-SO CFI Checks
+    cfi_vcall_icall_only = true  # CFI optimization, restrict CFI detection scope
+    integer_overflow = true  # Enable integer overflow detection
+    ubsan = true  # Enable some Ubsan options
+    debug = false
+  }
+  subsystem_name = "communication"
+  part_name = "bluetooth"
+}
+
+config("btcommon_config") {
+  include_dirs = [
+    "include",
+    "ipc",
+    ]
+}
+
+config("btcommon_public_config") {
+  include_dirs = [
+    "ipc",
+    "ipc/common",
+    "ipc/interface",
+    "ipc/parcel",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/include",
+    "$SUBSYSTEM_DIR/bluetooth/interfaces/inner_api/include",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc/include",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc/parcel",
+    "$SUBSYSTEM_DIR/bluetooth/frameworks/inner/ipc/common",
+  ]
+}
+
+ohos_shared_library("btcommon") {
+  cflags_cc = [
+    "-Os",
+    "-fno-rtti",
+    "-fno-exceptions",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-fno-unwind-tables",
+    "-fno-asynchronous-unwind-tables",
+    "-fno-merge-all-constants",
+    "-flto",
+  ]
+  ldflags = [
+    "-Wl,--as-needed",
+    "-Wl,--gc-sections",
+  ]
+  branch_protector_ret = "pac_ret"  # Enable PAC CFI
+  configs = [ ":btcommon_config" ]
+  public_configs = [ ":btcommon_public_config" ]
+  innerapi_tags = [ "chipsetsdk" ]
+  sanitize = {
+    cfi = true  # Enable/disable control flow integrity detection
+    boundary_sanitize = true  # Enable boundary san detection
+    cfi_cross_dso = true  # Cross-SO CFI Checks
+    cfi_vcall_icall_only = true  # CFI optimization, restrict CFI detection scope
+    integer_overflow = true  # Enable integer overflow detection
+    ubsan = true  # Enable some Ubsan options
+    debug = false
+  }
+  sources = [
+    "ipc/common/avrcp_media.cpp",
+    "ipc/common/ble_parcel_data.cpp",
+    "ipc/common/ble_service_data.cpp",
+    "ipc/common/bt_trust_pair_device.cpp",
+    "ipc/common/bt_uuid.cpp",
+    "ipc/common/gatt_data.cpp",
+    "ipc/common/hid_device_utils.cpp",
+    "ipc/common/hands_free_unit_calls.cpp",
+    "ipc/common/opp_transfer_information.cpp",
+    "ipc/common/raw_address.cpp",
+    "ipc/common/bt_oob_data.cpp",
+    "ipc/parcel/bluetooth_oob_data_parcel.cpp",
+    "ipc/parcel/bluetooth_a2dp_a2dpCodecInfo.cpp",
+    "ipc/parcel/bluetooth_a2dp_a2dpCodecStatus.cpp",
+    "ipc/parcel/bluetooth_avrcp_meItem.cpp",
+    "ipc/parcel/bluetooth_avrcp_mpItem.cpp",
+    "ipc/parcel/bluetooth_ble_advertiser_data.cpp",
+    "ipc/parcel/bluetooth_ble_advertiser_settings.cpp",
+    "ipc/parcel/bluetooth_ble_scan_filter.cpp",
+    "ipc/parcel/bluetooth_ble_scan_result.cpp",
+    "ipc/parcel/bluetooth_ble_scan_settings.cpp",
+    "ipc/parcel/bluetooth_bt_uuid.cpp",
+    "ipc/parcel/bluetooth_device_battery_info.cpp",
+    "ipc/parcel/bluetooth_gatt_characteristic_parcel.cpp",
+    "ipc/parcel/bluetooth_gatt_descriptor_parcel.cpp",
+    "ipc/parcel/bluetooth_gatt_rsp_context_parcel.cpp",
+    "ipc/parcel/bluetooth_gatt_device.cpp",
+    "ipc/parcel/bluetooth_gatt_service_parcel.cpp",
+    "ipc/parcel/bluetooth_hfp_hf_call.cpp",
+    "ipc/parcel/bluetooth_opp_transfer_information.cpp",
+    "ipc/parcel/bluetooth_phone_state.cpp",
+    "ipc/parcel/bluetooth_raw_address.cpp",
+    "ipc/parcel/bluetooth_remote_device_info.cpp",
+    "ipc/parcel/bluetooth_sensing_info.cpp",
+    "ipc/parcel/bluetooth_socket_coc.cpp",
+    "ipc/parcel/bluetooth_trust_pair_device.cpp",
+    "ipc/parcel/parcel_bt_uuid.cpp",
+    "ipc/parcel/bluetooth_hid_device_qos_parcel.cpp",
+    "ipc/parcel/bluetooth_hid_device_sdp_parcel.cpp",
+  ]
+
+  deps = []
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_core",
+    "bounds_checking_function:libsec_shared",
+  ]
+
+  subsystem_name = "communication"
+  part_name = "bluetooth"
+}

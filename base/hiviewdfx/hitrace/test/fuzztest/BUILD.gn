@@ -1,0 +1,103 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hitrace/hitrace.gni")
+import("//build/config/features.gni")
+import("//build/test.gni")
+
+module_output_path = "hitrace/hitrace"
+
+ohos_fuzztest("HitraceCmdFuzzTest") {
+  module_out_path = module_output_path
+  fuzz_config_file = "hitracecmd_fuzzer"
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+  include_dirs = [
+    "common",
+    "hitracecmd_fuzzer",
+  ]
+  sources = [ "hitracecmd_fuzzer/hitrace_fuzzer.cpp" ]
+
+  deps = [ "$hitrace_interfaces_path/native/innerkits:hitrace_meter" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+  ]
+}
+
+ohos_fuzztest("HitraceDumpFuzzTest") {
+  module_out_path = module_output_path
+  fuzz_config_file = "hitracedump_fuzzer"
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+  include_dirs = [
+    "common",
+    "hitracedump_fuzzer",
+  ]
+  sources = [ "hitracedump_fuzzer/hitracedump_fuzzer.cpp" ]
+
+  deps = [
+    "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+  ]
+}
+
+ohos_fuzztest("HitraceMeterFuzzTest") {
+  module_out_path = module_output_path
+  fuzz_config_file = "hitracemeter_fuzzer"
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+  include_dirs = [
+    "common",
+    "hitracemeter_fuzzer",
+    "$hitrace_common_path",
+    "$hitrace_utils_path",
+  ]
+  sources = [ "hitracemeter_fuzzer/hitracemeter_fuzzer.cpp" ]
+
+  deps = [
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_utils_path:hitrace_common_utils",
+  ]
+
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+}
+
+ohos_fuzztest("HitraceOptionFuzzTest") {
+  module_out_path = module_output_path
+  fuzz_config_file = "hitraceoption_fuzzer"
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+  include_dirs = [
+    "common",
+    "hitraceoption_fuzzer",
+    "$hitrace_common_path",
+    "$hitrace_utils_path",
+  ]
+  sources = [ "hitraceoption_fuzzer/hitraceoption_fuzzer.cpp" ]
+
+  deps = [
+    "$hitrace_interfaces_path/native/innerkits:hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
+    "$hitrace_utils_path:hitrace_common_utils",
+  ]
+
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+}

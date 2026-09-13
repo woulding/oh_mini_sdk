@@ -1,0 +1,225 @@
+/*
+ * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <fstream>
+#include <ios>
+#include "parameters.h"
+#include "common_utils.h"
+#include "hitrace_option/hitrace_option.h"
+
+#include <cstring>
+#include <gtest/gtest.h>
+
+#include "hitrace_option_util.h"
+
+using namespace testing::ext;
+using namespace OHOS::HiviewDFX::Hitrace;
+
+namespace OHOS {
+namespace HiviewDFX {
+namespace HitraceTest {
+
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceOptionTest"
+#endif
+
+const std::string TELEMETRY_APP_PARAM = "debug.hitrace.telemetry.app";
+const std::string SET_EVENT_PID = "set_event_pid";
+const std::string NO_FILTER_EVENT = "no_filter_events";
+
+bool WriteStrToFile(const std::string& filename, const std::string& str);
+
+class HitraceOptionTest : public testing::Test {
+public:
+    void SetUp();
+    void TearDown();
+};
+
+void HitraceOptionTest::SetUp()
+{
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
+}
+
+void HitraceOptionTest::TearDown()
+{
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
+}
+
+bool WriteStrToFile(const std::string& filename, const std::string& str)
+{
+    std::ofstream out;
+    out.open(filename, std::ios::out);
+    if (out.fail()) {
+        return false;
+    }
+    out << str;
+    if (out.bad()) {
+        out.close();
+        return false;
+    }
+    out.flush();
+    out.close();
+    return true;
+}
+
+std::string ReadFile(const std::string& filename)
+{
+    std::ifstream fileIn(filename.c_str());
+    if (!fileIn.is_open()) {
+        return "";
+    }
+    std::string str((std::istreambuf_iterator<char>(fileIn)), std::istreambuf_iterator<char>());
+    fileIn.close();
+    return str;
+}
+
+bool ContainsPid(const std::string& filename, pid_t pid)
+{
+    std::string pidStr = std::to_string(pid);
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    bool find = false;
+    while (std::getline(file, line)) {
+        if (line == pidStr) {
+            find = true;
+            break;
+        }
+    }
+
+    file.close();
+    return find;
+}
+
+bool ContainsEvents(const std::string& filename, const std::string& events)
+{
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    bool find = false;
+    while (std::getline(file, line)) {
+        if (line.find(events) != std::string::npos) {
+            find = true;
+            break;
+        }
+    }
+
+    file.close();
+    return find;
+}
+
+HWTEST_F(HitraceOptionTest, SetTelemetryAppNameTest_002, TestSize.Level1)
+{
+    constexpr auto testApp1 = "com.test.app1";
+    constexpr auto testApp2 = "2com.test.app2";
+    std::vector<std::string> appNames({testApp1, testApp2});
+    EXPECT_EQ(SetFilterAppName(appNames), HITRACE_NO_ERROR);
+    std::vector<std::string> appNames2(10, testApp2);
+    EXPECT_EQ(SetFilterAppName(appNames2), HITRACE_SET_PARAM_ERROR);
+    appNames2.emplace_back(testApp2);
+    EXPECT_EQ(SetFilterAppName(appNames2), HITRACE_SET_PARAM_ERROR);
+    EXPECT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""),
+        std::string(testApp1) + "\t" + std::string(testApp2));
+}
+
+HWTEST_F(HitraceOptionTest, AddFilterPid_001, TestSize.Level1)
+{
+    WriteStrToFile(SET_EVENT_PID, "");
+    ASSERT_EQ(ReadFile(GetTraceRootPath() + SET_EVENT_PID), "");
+
+    EXPECT_EQ(AddFilterPid(1), HITRACE_NO_ERROR);
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
+
+    pid_t pid = getpid();
+    EXPECT_EQ(AddFilterPid(pid), HITRACE_NO_ERROR);
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, pid));
+}
+
+HWTEST_F(HitraceOptionTest, FilterAppTrace_001, TestSize.Level1)
+{
+    ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, ""));
+    ASSERT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, "null"), "");
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
+    ASSERT_EQ(ReadFile(GetTraceRootPath() + SET_EVENT_PID), "");
+
+    FilterAppTrace("com.test.app", 1);
+    EXPECT_EQ(ReadFile(GetTraceRootPath() + SET_EVENT_PID), "");
+
+    ASSERT_TRUE(OHOS::system::SetParameter(TELEMETRY_APP_PARAM, "com.test.app"));
+    ASSERT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""), "com.test.app");
+    FilterAppTrace("com.test.app", 1);
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
+}
+
+HWTEST_F(HitraceOptionTest, FilterAppTrace_002, TestSize.Level1)
+{
+    constexpr auto testApp1 = "com.test.app1";
+    constexpr auto testApp2 = "2com.test.app";
+    std::vector<std::string> appNames({testApp1, testApp2});
+    SetFilterAppName(appNames);
+    EXPECT_EQ(OHOS::system::GetParameter(TELEMETRY_APP_PARAM, ""),
+        std::string(testApp1) + "\t" + std::string(testApp2));
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
+    FilterAppTrace("com.test.app", 1);
+    EXPECT_FALSE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
+    constexpr auto testApp3 = "com.test.app";
+    appNames.emplace_back(testApp3);
+    WriteStrToFile(GetTraceRootPath() + SET_EVENT_PID, "");
+    SetFilterAppName(appNames);
+    FilterAppTrace("com.test.app", 1);
+    EXPECT_TRUE(ContainsPid(GetTraceRootPath() + SET_EVENT_PID, 1));
+}
+
+HWTEST_F(HitraceOptionTest, AddNoFilterEvents001, TestSize.Level1)
+{
+    if (IsHmKernel()) {
+        std::vector<std::string> events = {"binder:binder_transaction"};
+        int32_t ret = AddNoFilterEvents(events);
+        EXPECT_EQ(ret, HITRACE_NO_ERROR);
+        EXPECT_TRUE(ContainsEvents(GetTraceRootPath() + NO_FILTER_EVENT, "binder:binder_transaction"));
+        ret = ClearNoFilterEvents();
+        EXPECT_EQ(ret, HITRACE_NO_ERROR);
+    }
+}
+
+HWTEST_F(HitraceOptionTest, AddNoFilterEvents002, TestSize.Level1)
+{
+    if (IsHmKernel()) {
+        std::vector<std::string> events = {"binder:binder_transaction", "binder:binder_transaction_received"};
+        int32_t ret = AddNoFilterEvents(events);
+        EXPECT_EQ(ret, HITRACE_NO_ERROR);
+        EXPECT_TRUE(ContainsEvents(GetTraceRootPath() + NO_FILTER_EVENT, "binder:binder_transaction"));
+        EXPECT_TRUE(ContainsEvents(GetTraceRootPath() + NO_FILTER_EVENT, "binder:binder_transaction_received"));
+        ret = ClearNoFilterEvents();
+        EXPECT_EQ(ret, HITRACE_NO_ERROR);
+        EXPECT_EQ(ReadFile(GetTraceRootPath() + NO_FILTER_EVENT), "");
+    }
+}
+
+} // namespace HitraceTest
+} // namespace HiviewDFX
+} // namespace OHOS

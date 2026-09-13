@@ -1,0 +1,89 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+
+config("trace_manager_test_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    ".",
+    "$hiview_base/include",
+    "$hiview_base/utility/include",
+    "$hiview_base/event_raw/include",
+    "$hiview_base/utility/include",
+    "$hiview_framework/native/unified_collection/trace_manager/include",
+    "$hiview_framework/native/unified_collection/trace_manager/state/include",
+    "$hiview_framework/native/unified_collection/trace_manager/storage/include",
+    "$hiview_framework/native/unified_collection/trace_manager/telemetry/include",
+  ]
+
+  cflags = [
+    "-D__UNITTEST__",
+    "-frtti",
+  ]
+}
+
+ohos_unittest("TraceManagerTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  
+  module_out_path = hiview_module + "/ucollection/trace_manager"
+
+  configs = [ ":trace_manager_test_config" ]
+
+  sources = [
+    "trace_manager_test.cpp",
+    "../src/trace_db_callback.cpp",
+    "../src/trace_flow_controller.cpp",
+    "../src/trace_state_machine.cpp",
+    "../state/trace_app_state.cpp",
+    "../state/trace_base_state.cpp",
+    "../state/trace_command_state.cpp",
+    "../state/trace_common_state.cpp",
+    "../state/trace_dynamic_state.cpp",
+    "../state/trace_telemetry_state.cpp",
+    "../storage/app_event_task_storage.cpp",
+    "../storage/telemetry_storage.cpp",
+    "../storage/trace_behavior_storage.cpp",
+    "../storage/trace_storage.cpp",
+    "../storage/app_storage.cpp",
+    "../telemetry/telemetry_state_machine.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "cJSON:cjson",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "relational_store:native_rdb",
+    "ffrt:libffrt",
+    "hitrace:hitrace_dump",
+    "hitrace:libhitrace_option",
+  ]
+
+  defines = [
+    "TRACE_MANAGER_UNITTEST",
+  ]
+
+  resource_config_file = "$hiview_framework/native/unified_collection/trace_manager/test/resource/ohos_test.xml"
+}

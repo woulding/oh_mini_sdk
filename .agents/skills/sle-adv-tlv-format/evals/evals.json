@@ -1,0 +1,23 @@
+{
+  "skill_name": "sle-adv-tlv-format",
+  "evals": [
+    {
+      "id": 0,
+      "name": "broken-tlv-scan-fail",
+      "prompt": "我在 BS21E 上跑 SLE server（星闪），设备端日志全是成功的：`set announce data success`、`sle announce enable cbk id:01, state:0`，但星闪调试助手怎么都扫描不到设备。日志里两段原始字节是：\nannounce_data: 01 02 01 02 02 00\nseek_rsp_data: 0c 02 06 0b 0b 73 6c 65 5f 73 65 72 76 65 72\n帮我定位原因，并给出修复后的 announce_data / seek_rsp_data 字节。",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "port-sle-uart-adv",
+      "prompt": "我要把 device/soc/hisilicon/bs2xv107/sdk/application/samples/products/sle_uart/sle_uart_server 里的 SLE 广播配置代码，移植成 applications/demo/ohos_bs21e/sle_server 下的一个 OHOS demo，目标是让手机上的星闪调试助手能扫描到并连接。移植广播数据构造部分时有什么坑？请直接给我一段可用的构造代码。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "decode-adv-bytes",
+      "prompt": "帮我解码并检查这段 SLE 扫描响应（seek response）数据：0x0c 0x02 0x06 0x0b 0x0b 0x73 0x6c 0x65 0x5f 0x73 0x65 0x72 0x76 0x65 0x72。我想知道它的 TLV 结构是否正确、设备名是什么。如果不对，请给出正确的字节。",
+      "files": []
+    }
+  ]
+}

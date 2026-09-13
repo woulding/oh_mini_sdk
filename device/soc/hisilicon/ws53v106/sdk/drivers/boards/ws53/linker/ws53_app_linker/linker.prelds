@@ -1,0 +1,791 @@
+/******************************************************************************
+ * @brief    LDS file setting the memory and code locations
+ * Copyright (c) 2021 @CompanyNameMagicTag
+******************************************************************************/
+#include "mconfig.h"
+#include "memory_config.h"
+#include "linker_function.h"
+
+#ifdef _PRE_FEATURE_VENEER_ROM
+#include "function.lds"
+#include "data.lds"
+#include "rom_data.lds"
+#define PLT_ROMTEXT_HOLD_SIZE . += 0x6300;
+#define PLT_ROMBSS_HOLD_SIZE . += 0xa48;
+#else
+#define VENEER_TEXT
+#define VENEER_ROM_RAM_PLAT_D
+#define VENEER_ROM_RAM_WIFI_D
+#define VENEER_ROM_RAM_BTC_D
+#define VENEER_ROM_RAM_BTH_D
+#define PLT_ROMTEXT_HOLD_SIZE
+#define PLT_ROMBSS_HOLD_SIZE
+#endif
+
+#ifdef ROM_CHECK
+#define ADD_ROM_VERIFY_OFFSET . += 0x33;
+#else
+#define ADD_ROM_VERIFY_OFFSET
+#endif
+
+#define CHECK_ALIGN_4(symbol_name) \
+    ASSERT(((symbol_name % 4) == 0), "Error: symbol value is not 4-byte aligned.")
+
+#define CHECK_ALIGN_8(symbol_name) \
+    ASSERT(((symbol_name % 8) == 0), "Error: symbol value is not 8-byte aligned.")
+
+OUTPUT_ARCH(riscv)
+ENTRY(_start)
+
+/* FLASH sector size is 2K */
+/* make this table consistent with the configuration given by the security core */
+MEMORY {
+    ACORE_ROM                     : ORIGIN = ACORE_ROM_START_ADDR,          LENGTH = ACORE_ROM_LENGTH
+    FLASH_STARTUP                 : ORIGIN = APP_FLASH_STARTUP_ORIGIN,      LENGTH = APP_FLASH_STARTUP_LENGTH
+    FLASH_PROGRAM                 : ORIGIN = APP_FLASH_PROGRAM_ORIGIN,      LENGTH = APP_FLASH_PROGRAM_LENGTH
+    APP_ITCM                      : ORIGIN = APP_ITCM_START_ADDR,           LENGTH = APP_ITCM_LENGTH
+#ifdef CONFIG_DIAG_MODE
+    APP_DTCM                      : ORIGIN = APP_DTCM_START_ADDR,           LENGTH = APP_DTCM_LENGTH - ACORE_MUX_RAM_LEN
+#else
+    APP_DTCM                      : ORIGIN = APP_DTCM_START_ADDR,           LENGTH = APP_DTCM_LENGTH
+#endif
+    PRESERVE_SHARE_MEM            : ORIGIN = PRESERVED_REGION_ORIGIN,       LENGTH = PRESERVED_REGION_LENGTH
+    CPUTRACE_RAM                  : ORIGIN = MCPU_TRACE_MEM_REGION_START,   LENGTH = CPU_TRACE_MEM_REGION_LENGTH
+#ifdef CONFIG_MCU_MODE_3
+    EM_RAM                        : ORIGIN = EM_RAM_REGION,   LENGTH = EM_RAM_LEN
+#endif
+}
+
+SECTIONS {
+    /* Vectors */
+    __CODE_START__ = ORIGIN(FLASH_STARTUP);
+    startup : ALIGN(8) {
+        ADD_ROM_VERIFY_OFFSET
+        . = ALIGN(8);
+        KEEP(*(.text.entry))
+        KEEP(*(.text.runtime.init))
+    } > FLASH_STARTUP
+
+    .version_str : ALIGN(8) {
+        . = ALIGN(8);
+        KEEP (*(.flash_version))
+    } > FLASH_STARTUP
+
+    __program_size__ =.;
+}
+
+/* rom */
+SECTIONS
+{
+    .acore_romtext : ALIGN(8) {
+        . = ALIGN(8);
+        __romtext_load__ = LOADADDR(.acore_romtext);
+        __romtext_begin__ = .;
+        __plt_romtext_start__ = .;
+        PLT_ROM_NO_KEEP(.text .text* .rodata .rodata* .srodata .srodata*)
+        PLT_ROM_KEEP(.text .text* .rodata .rodata* .srodata .srodata*)
+        PLT_ROMTEXT_HOLD_SIZE
+        __plt_romtext_end__ = .;
+
+        __wifi_romtext_start__ = .;
+        WIFI_ROM_KEEP(.text .text* .rodata .rodata* .srodata .srodata*)
+        WIFI_ROM_NO_KEEP(.text .text* .rodata .rodata* .srodata .srodata*)
+        __wifi_romtext_end__ = .;
+
+        __btc_romtext_start__ = .;
+        BTC_ROM_KEEP(.text .text* .rodata .rodata* .srodata .srodata*)
+        BTC_ROM_NO_KEEP(.text .text* .rodata .rodata* .srodata .srodata*)
+        __btc_romtext_end__ = .;
+
+        __bth_romtext_start__ = .;
+        BTH_ROM_KEEP(.text .text* .rodata .rodata* .srodata .srodata*)
+        BTH_ROM_NO_KEEP(.text .text* .rodata .rodata* .srodata .srodata*)
+        __bth_romtext_end__ = .;
+        __romtext_end__ = .;
+    } > ACORE_ROM
+    __plt_romtext_size__ = __plt_romtext_end__ - __plt_romtext_start__;
+    __wifi_romtext_size__ = __wifi_romtext_end__ - __wifi_romtext_start__;
+    __btc_romtext_size__ = __btc_romtext_end__ - __btc_romtext_start__;
+    __bth_romtext_size__ = __bth_romtext_end__ - __bth_romtext_start__;
+    __romtext_size__ = __romtext_end__ - __romtext_begin__;
+
+    /* patch remap table & patch cmp table & rom-ram-cb, need to copy from falsh to sram */
+    .patch : ALIGN(8) {
+        . = ALIGN(8);
+        __patch_load__ = LOADADDR(.patch);
+        __patch_begin__ = .;
+        CHECK_ALIGN_4(__patch_load__);
+        CHECK_ALIGN_4(__patch_begin__);
+        KEEP(*(.patch_remap))
+        KEEP(*(.patch_cmp))
+        . = ALIGN(8);
+        KEEP(*(.jumper.init.text))
+        . = ALIGN(8);
+        __patch_end__ = .;
+        CHECK_ALIGN_4(__patch_end__);
+    } > APP_ITCM AT > FLASH_PROGRAM
+    __patch_size__ = __patch_end__ - __patch_begin__;
+
+    /* rom data, need to copy from falsh to SRAM */
+    .romdata (0x200f0) : ALIGN(8) {
+        . = ALIGN(8);
+        __romdata_load__ = LOADADDR(.romdata);
+        __romdata_begin__ = .;
+        CHECK_ALIGN_4(__romdata_load__);
+        CHECK_ALIGN_4(__romdata_begin__);
+
+        __plt_romdata_start__ = .;
+        PLT_ROM_KEEP(.data .data* .sdata .sdata*)
+        PLT_ROM_NO_KEEP(.data .data* .sdata .sdata*)
+        VENEER_ROM_RAM_PLAT_D
+        __plt_romdata_end__ = .;
+
+        __wifi_romdata_start__ = .;
+        WIFI_ROM_KEEP(.data .data* .sdata .sdata*)
+        WIFI_ROM_NO_KEEP(.data .data* .sdata .sdata*)
+        VENEER_ROM_RAM_WIFI_D
+        __wifi_romdata_end__ = .;
+
+        __btc_romdata_start__ = .;
+        BTC_ROM_KEEP(.data .data* .sdata .sdata*)
+        BTC_ROM_NO_KEEP(.data .data* .sdata .sdata*)
+        VENEER_ROM_RAM_BTC_D
+        __btc_romdata_end__ = .;
+
+        __bth_romdata_start__ = .;
+        BTH_ROM_KEEP(.data .data* .sdata .sdata*)
+        BTH_ROM_NO_KEEP(.data .data* .sdata .sdata*)
+        VENEER_ROM_RAM_BTH_D
+        __bth_romdata_end__ = .;
+
+        . = ALIGN(4);
+        __romdata_end__ = .;
+        CHECK_ALIGN_4(__romdata_end__);
+    } > APP_ITCM AT > FLASH_PROGRAM
+    __plt_romdata_size__ = __plt_romdata_end__ - __plt_romdata_start__;
+    __wifi_romdata_size__ = __wifi_romdata_end__ - __wifi_romdata_start__;
+    __btc_romdata_size__ = __btc_romdata_end__ - __btc_romdata_start__;
+    __bth_romdata_size__ = __bth_romdata_end__ - __bth_romdata_start__;
+    __romdata_size__ = __romdata_end__ - __romdata_begin__;
+
+    /* rom bss */
+    .rombss (0x20268) (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        __rombss_begin__ = .;
+        CHECK_ALIGN_4(__rombss_begin__);
+
+        __plt_rombss_start__ = .;
+        PLT_ROM_KEEP(.bss .bss* .sbss .sbss*)
+        PLT_ROM_NO_KEEP(.bss .bss* .sbss .sbss*)
+        PLT_ROMBSS_HOLD_SIZE
+        __plt_rombss_end__ = .;
+
+        __wifi_rombss_start__ = .;
+        WIFI_ROM_KEEP(.bss .bss* .sbss .sbss*)
+        WIFI_ROM_NO_KEEP(.bss .bss* .sbss .sbss*)
+        __wifi_rombss_end__ = .;
+
+        __btc_rombss_start__ = .;
+        BTC_ROM_KEEP(.bss .bss* .sbss .sbss*)
+        BTC_ROM_NO_KEEP(.bss .bss* .sbss .sbss*)
+        __btc_rombss_end__ = .;
+
+        __bth_rombss_start__ = .;
+        BTH_ROM_KEEP(.bss .bss* .sbss .sbss*)
+        BTH_ROM_NO_KEEP(.bss .bss* .sbss .sbss*)
+        __bth_rombss_end__ = .;
+
+        . = ALIGN(4);
+        __rombss_end__ = .;
+        CHECK_ALIGN_4(__rombss_end__);
+    } > APP_ITCM
+    __plt_rombss_size__ = __plt_rombss_end__ - __plt_rombss_start__;
+    __wifi_rombss_size__ = __wifi_rombss_end__ - __wifi_rombss_start__;
+    __btc_rombss_size__ = __btc_rombss_end__ - __btc_rombss_start__;
+    __bth_rombss_size__ = __bth_rombss_end__ - __bth_rombss_start__;
+    __rombss_size__ = __rombss_end__ - __rombss_begin__;
+
+    .rom_ram_cb_text : ALIGN(8) {
+        . = ALIGN(8);
+        __rom_ram_cb_load__ = LOADADDR(.rom_ram_cb_text);
+        __rom_ram_cb_begin__ = .;
+        CHECK_ALIGN_4(__rom_ram_cb_load__);
+        CHECK_ALIGN_4(__rom_ram_cb_begin__);
+        VENEER_TEXT
+        . = ALIGN(8);
+        *(.got)
+        *(.got*)
+        *(.igot)
+        *(.igot*)
+        . = ALIGN(4);
+        __rom_ram_cb_end__ = .;
+        CHECK_ALIGN_4(__rom_ram_cb_end__);
+    } > APP_ITCM AT > FLASH_PROGRAM
+    __rom_ram_cb_size__ = __rom_ram_cb_end__ - __rom_ram_cb_begin__;
+
+    .stacks (NOLOAD): ALIGN(16) {
+        ADD_ROM_VERIFY_OFFSET
+#ifdef __LITEOS__
+        . += APP_EXCP_STACK_LEN;
+        . = ALIGN(16);
+        __stack_top__ = .;
+        __exc_stack_top = .;
+        __nmi_stack_top = .;
+#else
+        . += APP_EXCP_STACK_LEN;
+        . = ALIGN(16);
+        __excp_stack_top__ = .;
+        . += APP_NMI_STACK_LEN;
+        . = ALIGN(16);
+        __nmi_stack_top__ = .;
+#endif
+    } > APP_ITCM
+
+#ifdef WS53_APP_VERSION
+#ifdef CONFIG_MCU_MODE_3
+    .plt_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        __itcm_bss_begin__ = .;
+        PLT_FLASH(.bss*)
+    } > APP_DTCM
+
+    .bth_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        BTH_FLASH(.bss*)
+        __itcm_bss_end__ = .;
+    } > APP_DTCM
+#else
+    .plt_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        __itcm_bss_begin__ = .;
+        PLT_FLASH(.bss*)
+        SORT(*libpartition.a:partition.c.obj)(.bss.g_partition_info)
+        SORT(*libpwm.a:pwm.c.obj)(.bss.g_pwm_cfg_record)
+        SORT(*libwifi_at.a:at_register.c.obj)(.bss.g_ip_link_ctl)
+    } > APP_ITCM
+
+    /* wifi_itcm_flashbss bss */
+    .wifi_itcm_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        SORT(*libwifi_drv_ws53.a:mac_regdomain.c.obj)(.bss.g_mac_regdomain)
+        SORT(*libwifi_drv_ws53.a:hmac_feature_interface.c.obj)(.bss.g_feature_fhook_tb)
+        SORT(*libwifi_drv_ws53.a:wal_customize.c.obj)(.bss.g_al_priv_cust_params)
+        SORT(*libwifi_drv_ws53.a:hmac_sta_channel_scoring.c.obj)(.bss.g_hmac_channel_scoring_record)
+        SORT(*libnv.a:)(.bss*)
+        SORT(*libwifi_auto_adjust_freq.a:)(.bss*)
+        SORT(*libwifi_service.a:soc_wifi_service_api.c.obj)(.bss.g_softap_config)
+        SORT(*libwifi_driver_tcm.a:frw_util_notifier.c.obj)(.bss.g_event_list_head)
+        SORT(*libwifi_alg_temp_protect.a:alg_temp_protect.c.obj)(.bss.g_hmac_temp_protect)
+        SORT(*libwifi_apf.a:hmac_apf.c.obj)(.bss.g_hmac_st_apf)
+        SORT(*liblwip.a:dns.c.obj)(.bss.dns_table)
+        SORT(*liblwip_tcm.a:memp.c.obj)(.bss.memp_memory_NETDB_base)
+        SORT(*libwifi_alg_anti_interference.a:alg_anti_interference.c.obj)(.bss.g_anti_intf)
+    } > APP_ITCM
+
+    .bth_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        BTH_FLASH(.bss*)
+        __itcm_bss_end__ = .;
+    } > APP_ITCM
+#endif
+#endif
+}
+
+/* stack */
+SECTIONS {
+    .stacks (NOLOAD): ALIGN(16) {
+        ADD_ROM_VERIFY_OFFSET
+        __system_stack_begin__ = .;
+        . += APP_IRQ_STACK_LEN;
+        . = ALIGN(16);
+        __irq_stack_top = .;
+        __system_stack_end__ = .;
+    } > APP_DTCM
+    __system_stack_size__ = __system_stack_end__ - __system_stack_begin__;
+
+    /* log_oml_exception.c 中用到该符号。如果是ROM的代码，要用 mem.S 中的 _g_stack_system 变量 */
+    g_stack_system = __system_stack_size__;
+}
+
+/* ram text SECTIONS: plt, wifi, btc, bth */
+SECTIONS {
+
+    .sramtext : ALIGN(8) {
+        ADD_ROM_VERIFY_OFFSET
+        . = ALIGN(8);
+        __sramtext_load__ = LOADADDR(.sramtext);
+        __sramtext_begin__ = .;
+
+        __hcc_ram_start__ = .;
+        HCC_SRAM_TEXT
+
+        __liteos_ram_start__ = .;
+        LITEOS_SRAM_TEXT
+
+        __plat_sramtext_start__ = .;
+        PLT_SRAM(.text .text* .rodata .rodata* .srodata .srodata*)
+        *(.plat.tcm.text)
+        __plat_sramtext_end__ = .;
+
+        __hcc_rom_start__ = .;
+        HCC_ROM_TEXT
+        __hcc_rom_end__ = .;
+
+        *(.syschannel.tcm.text)
+        *(.itcm.text)
+        . = ALIGN(4);
+        __zinitcall_app_run_start = .;
+        KEEP(*(.zinitcall.app_run*.init))
+        __zinitcall_app_run_end = .;
+
+        __wifi_sramtext_start__ = .;
+        WIFI_SRAM(.text .text* .rodata .rodata* .srodata .srodata*)
+        __wifi_sramtext_end__ = .;
+
+        __lwip_text_start__ = .;
+        LWIP_TCM_SECTION
+
+        __wifi_hmac_text_start__ = .;
+        *(.wifi.tcm.text)
+        __wifi_hmac_text_end__ = .;
+
+        __btc_sramtext_start__ = .;
+        BTC_SRAM(.text .text* .rodata .rodata* .srodata .srodata*)
+        __btc_sramtext_end__ = .;
+
+        __bth_sramtext_start__ = .;
+        BTH_SRAM(.text .text* .rodata .rodata* .srodata .srodata*)
+        __bth_sramtext_end__ = .;
+
+        . = ALIGN(4);
+        *(.text.__riscv_*)
+
+        . = ALIGN(4);
+        KEEP(*(.patch.text.on.sram .patch.rodata.on.sram))
+        /* patch 默认放在RAM */
+        KEEP(*(.patch.text .patch.rodata))
+
+        . = ALIGN(4);
+        __sramtext_end__ = .;
+        CHECK_ALIGN_4(__sramtext_end__);
+    } > APP_ITCM AT > FLASH_PROGRAM
+    __hcc_ram_size__ = __liteos_ram_start__ - __hcc_ram_start__;
+    __liteos_ram_size__ = __plat_sramtext_start__ - __liteos_ram_start__;
+    __hcc_rom_size__ = __hcc_rom_end__ - __hcc_rom_start__;
+    __lwip_text_size__ = __wifi_hmac_text_start__ - __lwip_text_start__;
+    __wifi_hmac_text_size__ = __wifi_hmac_text_end__ - __wifi_hmac_text_start__;
+
+    __plat_sramtext_size__ = __plat_sramtext_end__ - __plat_sramtext_start__;
+    __wifi_sramtext_size__ = __wifi_sramtext_end__ - __wifi_sramtext_start__;
+    __btc_sramtext_size__ = __btc_sramtext_end__ - __btc_sramtext_start__;
+    __bth_sramtext_size__ = __bth_sramtext_end__ - __bth_sramtext_start__;
+    __sramtext_size__ = __sramtext_end__ - __sramtext_begin__;
+}
+
+/* flash/other text SECTIONS: plt, wifi, btc, bth */
+SECTIONS {
+    .hot_func_flashtext : ALIGN(8) {
+        ADD_ROM_VERIFY_OFFSET
+        . = ALIGN(8);
+        __flashtext_begin__ = .;
+        __text_begin__ = .;
+        __hot_func_start__ = .;
+        /* 为提升性能，必须保证flash中的热点函数集中在前面 */
+        LITEOS_FLASH_HOT_FUNC_TEXT
+        __hot_func_end__ = .;
+    } > FLASH_PROGRAM
+    __hot_func_size__ = __hot_func_end__ - __hot_func_start__;
+
+    .plt_flashtext : ALIGN(8) {
+        . = ALIGN(8);
+        PLT_FLASH(.text* .rodata*)
+    } > FLASH_PROGRAM
+
+    .wifi_flashtext : ALIGN(8) {
+        . = ALIGN(8);
+        WIFI_FLASH(.text* .rodata*)
+    } > FLASH_PROGRAM
+
+    .btc_flashtext : ALIGN(8) {
+        . = ALIGN(8);
+        BTC_FLASH(.text* .rodata*)
+    } > FLASH_PROGRAM
+
+    .bth_flashtext : ALIGN(8) {
+        . = ALIGN(8);
+        BTH_FLASH(.text* .rodata*)
+        __flashtext_end__ = .;
+    } > FLASH_PROGRAM
+
+#ifdef CONFIG_DRIVER_SUPPORT_LITEOS_207_0_0
+    /* liteos compat linux initcall sections */
+    .initcall.init : {
+        . = ALIGN(16);
+        __initcall0_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall0.init)))
+        __initcall0_end = ABSOLUTE(.);
+
+        __initcall1_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall1.init)))
+        __initcall1_end = ABSOLUTE(.);
+
+        __initcall2_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall2.init)))
+        __initcall2_end = ABSOLUTE(.);
+
+        __initcall3_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall3.init)))
+        __initcall3_end = ABSOLUTE(.);
+
+        __initcall4_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall4.init)))
+        __initcall4_end = ABSOLUTE(.);
+
+        __initcall5_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall5.init)))
+        __initcall5_end = ABSOLUTE(.);
+
+        __initcall6_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall6.init)))
+        __initcall6_end = ABSOLUTE(.);
+
+        __initcall7_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall7.init)))
+        __initcall7_end = ABSOLUTE(.);
+        . = ALIGN(16);
+    } > FLASH_PROGRAM
+
+#elif defined(CONFIG_DRIVER_SUPPORT_LITEOS_208_5_0)
+    /* liteos v208 kernel init */
+    .sysintcall.init : {
+        . = ALIGN(4);
+        __sysinitcall_start = .;
+        __sysinitcall0_start = .;
+        KEEP(*(SORT(.sysinitcall_level0_*)))
+        __sysinitcall1_start = .;
+        KEEP(*(SORT(.sysinitcall_level1_*)))
+        __sysinitcall2_start = .;
+        KEEP(*(SORT(.sysinitcall_level2_*)))
+        __sysinitcall3_start = .;
+        KEEP(*(SORT(.sysinitcall_level3_*)))
+        __sysinitcall4_start = .;
+        KEEP(*(SORT(.sysinitcall_level4_*)))
+        __sysinitcall5_start = .;
+        KEEP(*(SORT(.sysinitcall_level5_*)))
+        __sysinitcall6_start = .;
+        KEEP(*(SORT(.sysinitcall_level6_*)))
+        __sysinitcall7_start = .;
+        KEEP(*(SORT(.sysinitcall_level7_*)))
+        __sysinitcall_end = .;
+    } > FLASH_PROGRAM
+
+    /* liteos compat linux initcall sections */
+    .initcall.init : {
+        __initcall0_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall0.init)))
+        __initcall0_end = ABSOLUTE(.);
+
+        __initcall1_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall1.init)))
+        __initcall1_end = ABSOLUTE(.);
+
+        __initcall2_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall2.init)))
+        __initcall2_end = ABSOLUTE(.);
+
+        __initcall3_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall3.init)))
+        __initcall3_end = ABSOLUTE(.);
+
+        __initcall4_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall4.init)))
+        __initcall4_end = ABSOLUTE(.);
+
+        __initcall5_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall5.init)))
+        __initcall5_end = ABSOLUTE(.);
+
+        __initcall6_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall6.init)))
+        __initcall6_end = ABSOLUTE(.);
+
+        __initcall7_start = ABSOLUTE(.);
+        KEEP(*(SORT (.initcall7.init)))
+        __initcall7_end = ABSOLUTE(.);
+    } > FLASH_PROGRAM
+#endif
+
+    .text : ALIGN(8) {
+        FILL(0xFF)
+        _hdf_drivers_start = .;
+        KEEP(*(.hdf.driver))
+        _hdf_drivers_end = .; /* define a section for hdf driver */
+
+        __zinitcall_bsp_start = .;
+        KEEP (*(.zinitcall.bsp0.init))
+        KEEP (*(.zinitcall.bsp1.init))
+        KEEP (*(.zinitcall.bsp2.init))
+        KEEP (*(.zinitcall.bsp3.init))
+        KEEP (*(.zinitcall.bsp4.init))
+        __zinitcall_bsp_end = .;
+        __zinitcall_device_start = .;
+        KEEP (*(.zinitcall.device0.init))
+        KEEP (*(.zinitcall.device1.init))
+        KEEP (*(.zinitcall.device2.init))
+        KEEP (*(.zinitcall.device3.init))
+        KEEP (*(.zinitcall.device4.init))
+        __zinitcall_device_end = .;
+        __zinitcall_core_start = .;
+        KEEP (*(.zinitcall.core0.init))
+        KEEP (*(.zinitcall.core1.init))
+        KEEP (*(.zinitcall.core2.init))
+        KEEP (*(.zinitcall.core3.init))
+        KEEP (*(.zinitcall.core4.init))
+        __zinitcall_core_end = .;
+        __zinitcall_sys_service_start = .;
+        KEEP (*(.zinitcall.sys.service0.init))
+        KEEP (*(.zinitcall.sys.service1.init))
+        KEEP (*(.zinitcall.sys.service2.init))
+        KEEP (*(.zinitcall.sys.service3.init))
+        KEEP (*(.zinitcall.sys.service4.init))
+        __zinitcall_sys_service_end = .;
+        __zinitcall_sys_feature_start = .;
+        KEEP (*(.zinitcall.sys.feature0.init))
+        KEEP (*(.zinitcall.sys.feature1.init))
+        KEEP (*(.zinitcall.sys.feature2.init))
+        KEEP (*(.zinitcall.sys.feature3.init))
+        KEEP (*(.zinitcall.sys.feature4.init))
+        __zinitcall_sys_feature_end = .;
+        __zinitcall_run_start = .;
+        KEEP (*(.zinitcall.run0.init))
+        KEEP (*(.zinitcall.run1.init))
+        KEEP (*(.zinitcall.run2.init))
+        KEEP (*(.zinitcall.run3.init))
+        KEEP (*(.zinitcall.run4.init))
+        __zinitcall_run_end = .;
+        __zinitcall_app_service_start = .;
+        KEEP (*(.zinitcall.app.service0.init))
+        KEEP (*(.zinitcall.app.service1.init))
+        KEEP (*(.zinitcall.app.service2.init))
+        KEEP (*(.zinitcall.app.service3.init))
+        KEEP (*(.zinitcall.app.service4.init))
+        __zinitcall_app_service_end = .;
+        __zinitcall_app_feature_start = .;
+        KEEP (*(.zinitcall.app.feature0.init))
+        KEEP (*(.zinitcall.app.feature1.init))
+        KEEP (*(.zinitcall.app.feature2.init))
+        KEEP (*(.zinitcall.app.feature3.init))
+        KEEP (*(.zinitcall.app.feature4.init))
+        __zinitcall_app_feature_end = .;
+        __zinitcall_test_start = .;
+        KEEP (*(.zinitcall.test0.init))
+        KEEP (*(.zinitcall.test1.init))
+        KEEP (*(.zinitcall.test2.init))
+        KEEP (*(.zinitcall.test3.init))
+        KEEP (*(.zinitcall.test4.init))
+        __zinitcall_test_end = .;
+        __zinitcall_exit_start = .;
+        KEEP (*(.zinitcall.exit0.init))
+        KEEP (*(.zinitcall.exit1.init))
+        KEEP (*(.zinitcall.exit2.init))
+        KEEP (*(.zinitcall.exit3.init))
+        KEEP (*(.zinitcall.exit4.init))
+        __zinitcall_exit_end = .;
+        *(.text)
+        *(.text*)
+        *(.itcm.text)
+        *(.rodata)
+        *(.rodata*)
+        *(.srodata)
+        *(.srodata*)
+        KEEP (*(.flashtext))
+        KEEP (*(.flashtext*))
+        . = ALIGN(4);
+        __text_end__ = .;
+    } > FLASH_PROGRAM
+
+    /* other text */
+    .text : ALIGN(8) {
+        . = ALIGN(8);
+        KEEP(*(.patch.text.on.flash .patch.rodata.on.flash))
+        *(.text)
+        *(.text*)
+        *(.itcm.text)
+        *(.flashtext)
+        *(.flashtext*)
+        *(.rodata)
+        *(.rodata*)
+        *(.libc.errno*)
+        KEEP (*(.gdb_debug))
+        __text_end__ = .;
+    } > FLASH_PROGRAM
+}
+
+/* data SECTIONS: plt, wifi, btc, bth */
+SECTIONS {
+    /* sram data */
+    .plt_sramdata : ALIGN(8) {
+        ADD_ROM_VERIFY_OFFSET
+        . = ALIGN(8);
+        __sramdata_load__ = LOADADDR(.plt_sramdata);
+        __sramdata_begin__ = .;
+        PLT_SRAM(.data*)
+        CHECK_ALIGN_4(__sramdata_load__);
+        CHECK_ALIGN_4(__sramdata_begin__);
+    } > APP_DTCM AT > FLASH_PROGRAM
+
+    .wifi_sramdata : ALIGN(8) {
+        . = ALIGN(8);
+        WIFI_SRAM(.data*)
+        . = ALIGN(4);
+        __sramdata_end__ = .;
+        CHECK_ALIGN_4(__sramdata_end__);
+    } > APP_DTCM AT > FLASH_PROGRAM
+    __sramdata_size__ = __sramdata_end__ - __sramdata_begin__;
+
+    /* flash data */
+    .plt_flashdata : ALIGN(8) {
+        . = ALIGN(8);
+        __flashdata_load__ = LOADADDR(.plt_flashdata);
+        __flashdata_begin__ = .;
+        PLT_FLASH(.data*)
+        CHECK_ALIGN_4(__flashdata_load__);
+        CHECK_ALIGN_4(__flashdata_begin__);
+    } > APP_DTCM AT > FLASH_PROGRAM
+
+    .wifi_flashdata : ALIGN(8) {
+        . = ALIGN(8);
+        WIFI_FLASH(.data*)
+    } > APP_DTCM AT > FLASH_PROGRAM
+
+    .btc_flashdata : ALIGN(8) {
+        . = ALIGN(8);
+        BTC_FLASH(.data*)
+    } > APP_DTCM AT > FLASH_PROGRAM
+
+    .bth_flashdata : ALIGN(8) {
+        . = ALIGN(8);
+        BTH_FLASH(.data*)
+        . = ALIGN(4);
+        __flashdata_end__ = .;
+        CHECK_ALIGN_4(__flashdata_end__);
+    } > APP_DTCM AT > FLASH_PROGRAM
+    __flashdata_size__ = __flashdata_end__ - __flashdata_begin__;
+
+    /* other data */
+    .data : ALIGN(8) {
+        . = ALIGN(8);
+        __data_load__ = LOADADDR(.data);
+        __data_begin__ = .;
+        KEEP(*(.patch.data .patch.data*))
+        *(.data)
+        *(.data*)
+        *(.got)
+        *(.got*)
+        *(.igot)
+        *(.igot*)
+        _gp_ = . + 0x800;
+        *(.sdata)
+        *(.sdata*)
+        . += 8;
+        . = ALIGN(4);
+        __data_end__ = .;
+        CHECK_ALIGN_4(__data_load__);
+        CHECK_ALIGN_4(__data_begin__);
+        CHECK_ALIGN_4(__data_end__);
+    } > APP_DTCM AT > FLASH_PROGRAM
+
+    __data_size__ = __data_end__ - __data_begin__;
+    g_ram_begin = ORIGIN(APP_DTCM);
+    g_ram_size = LENGTH(APP_DTCM);
+}
+
+/* bss SECTIONS: plt, wifi, btc, bth */
+SECTIONS {
+    /* sram bss */
+    .plt_srambss (NOLOAD) : ALIGN(8) {
+        ADD_ROM_VERIFY_OFFSET
+        . = ALIGN(8);
+        __bss_begin__ = .;
+        PLT_SRAM(.bss*)
+    } > APP_DTCM
+
+    .wifi_srambss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        WIFI_SRAM(.bss*)
+    } > APP_DTCM
+
+#ifndef WS53_APP_VERSION
+    /* flash bss */
+    .plt_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        PLT_FLASH(.bss*)
+    } > APP_DTCM
+#endif
+
+#ifdef CONFIG_MCU_MODE_3
+    .wifi_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        __em_ram_begin__ = .;
+        WIFI_FLASH(.bss*)
+        __em_ram_end__ = .;
+    } > EM_RAM
+#else
+    .wifi_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        WIFI_FLASH(.bss*)
+    } > APP_DTCM
+#endif
+    .btc_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        BTC_FLASH(.bss*)
+    } > APP_DTCM
+#ifndef WS53_APP_VERSION
+    .bth_flashbss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+        BTH_FLASH(.bss*)
+    } > APP_DTCM
+#endif
+    /* other bss */
+    .bss (NOLOAD) : ALIGN(8) {
+        . = ALIGN(8);
+#ifdef __LITEOS__
+        PROVIDE (__int_stack_start = .);
+        *(.int_stack);
+        . = ALIGN(0x4);
+        PROVIDE (__int_stack_end = .);
+#endif
+        KEEP(*(.patch.bss .patch.bss*))
+        *(.bss)
+        *(.bss*)
+        *(.sbss)
+        *(.sbss*)
+        *(COMMON)
+        . = ALIGN(8);
+        __bss_end__ = .;
+    } > APP_DTCM
+
+    __bss_size__ = __bss_end__ - __bss_begin__;
+}
+
+/* other */
+SECTIONS {
+/* Like Uninitialised data, but we don't want to 0 it. Stores backtrace among other things. */
+    .preserve (NOLOAD) : {
+        . = ALIGN(8);
+        *(preserve)
+    } > PRESERVE_SHARE_MEM
+
+    /* The internal heap uses whatever RAM space remains and so must be the last section for SRAM in the linker script. */
+    .heap (NOLOAD) : {
+        ADD_ROM_VERIFY_OFFSET
+        . = ALIGN(8);
+        g_intheap_begin = ABSOLUTE(.);
+        g_intheap_size = (ORIGIN(APP_DTCM) + LENGTH(APP_DTCM)) - g_intheap_begin;
+    } > APP_DTCM
+
+    .cputrace_mem (NOLOAD) : {
+        . = ALIGN(8);
+        KEEP(*(cputrace_mem))
+    } > CPUTRACE_RAM
+}

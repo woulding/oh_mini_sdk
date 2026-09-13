@@ -1,0 +1,82 @@
+# Copyright (C) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/huks/build/config.gni")
+import("//base/security/huks/huks.gni")
+import("//build/test.gni")
+
+module_output_path = "huks/huks/huks_standard_test"
+
+ohos_unittest("huks_multithread_test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_lock.c",
+    "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage.c",
+    "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_file_lock.c",
+    "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_manager.c",
+    "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_utils.c",
+    "//base/security/huks/services/huks_standard/huks_service/main/os_dependency/posix/hks_rwlock.c",
+    "//base/security/huks/utils/file_operator/hks_file_operator.c",
+    "//base/security/huks/utils/mutex/hks_mutex.c",
+    "src/hks_storage_file_lock_test.cpp",
+    "src/hks_storage_test.cpp",
+  ]
+
+  cflags = []
+  if (enable_hks_coverage) {
+    cflags += [ "--coverage" ]
+    ldflags = [ "--coverage" ]
+  }
+  cflags += [
+    "-Wall",
+    "-Werror",
+    "-fPIC",
+  ]
+
+  cflags +=
+      [ "-DHKS_CONFIG_KEY_STORE_PATH=\"${huks_key_store_standard_path}\"" ]
+
+  defines = [
+    "_HARDWARE_ROOT_KEY_",
+    "_HUKS_LOG_ENABLE_",
+    "L2_STANDARD",
+  ]
+
+  include_dirs = [
+    "//base/security/huks/frameworks/huks_standard/main/common/include",
+    "//base/security/huks/services/huks_standard/huks_service/main/core/include",
+    "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/include",
+    "//base/security/huks/services/huks_standard/huks_service/main/upgrade/lock/include",
+    "//base/security/huks/utils/file_operator",
+    "//base/security/huks/utils/mutex",
+    "unittest/include",
+    "//base/security/huks/services/huks_standard/huks_service/main/os_dependency/idl/ipc",  # hks_response.h
+    "//base/security/huks/services/huks_standard/huks_service/main/os_dependency/sa",  # hks_osaccount_check.h
+  ]
+  deps = [
+    "//base/security/huks/frameworks/huks_standard/main:huks_standard_frameworks",
+    "//base/security/huks/services/huks_standard/huks_service/main/os_dependency/idl:libhuks_service_idl_standard_static",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+
+  if (os_level == "standard") {
+    external_deps += [
+      "googletest:gtest",
+      "openssl:libcrypto_shared",
+    ]
+  }
+}

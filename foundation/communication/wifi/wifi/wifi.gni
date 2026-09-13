@@ -1,0 +1,112 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+fuzz_test_output_path = "wifi/wifi/wifi_sta"
+SUBSYSTEM_DIR = "//foundation/communication"
+WIFI_ROOT_DIR = "$SUBSYSTEM_DIR/wifi/wifi"
+DHCP_ROOT_DIR = "$SUBSYSTEM_DIR/dhcp"
+CONFIG_CTRL_IFACE = "unix"
+
+declare_args() {
+  wifi_feature_dynamic_unload_sa = false
+  wifi_feature_with_p2p = true
+  wifi_feature_with_rpt = true
+  wifi_feature_with_ap_intf = "wlan"
+  wifi_feature_with_ap_num = 1
+  wifi_feature_with_sta_num = 2
+  wifi_feature_with_auth_disable = false
+  wifi_feature_with_dhcp_disable = false
+  wifi_feature_with_encryption = true
+  wifi_feature_with_ap_extension = false
+  wifi_feature_with_app_frozen = false
+  wifi_feature_non_seperate_p2p = false
+  wifi_feature_non_hdf_driver = false
+  wifi_feature_with_local_random_mac = true
+  if (factory == true) {
+    wifi_feature_with_local_random_mac = false
+  }
+  wifi_feature_wifi_pro_ctrl = true
+  wifi_feature_voicewifi_enable = true
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.resourceschedule_efficiency_manager)) {
+    wifi_feature_with_app_frozen = true
+  }
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.resourceschedule_ffrt)) {
+    wifi_ffrt_enable = true
+  }
+  wifi_feature_with_data_report = false
+  wifi_feature_sta_ap_exclusion = true
+  wifi_feature_with_random_mac_addr = true
+  wifi_feature_with_hpf_supported = true
+  if (factory == true) {
+    wifi_feature_with_hpf_supported = false
+  }
+  wifi_feature_with_scan_control = true
+  wifi_feature_with_hdi_wpa_supported = true
+  wifi_feature_network_selection = false
+  wifi_feature_p2p_random_mac_addr = true
+  wifi_feature_powermgr_support = false
+  wifi_feature_with_sta_asset = true
+  wifi_feature_with_security_detect = true
+  wifi_feature_with_local_security_detect = false
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.hdf_drivers_interface_wlan)) {
+    wifi_feature_with_hdi_chip_supported = true
+  }
+  wifi_feature_with_portal_login = true
+  wifi_feature_with_vap_manager = true
+  wifi_feature_with_wifi_oeminfo_mac = false
+  wifi_feature_mdm_restricted_enable = true
+  wifi_feature_with_extensible_authentication = false
+  wifi_feature_with_scan_control_action_listen = true
+  wifi_feature_autoopen_specified_location = true
+  wifi_hiappevent_enable = false
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.hiviewdfx_hiappevent)) {
+    wifi_hiappevent_enable = false
+  }
+  wifi_feature_support_api_metrics = false
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.hiviewdfx_api_metrics)) {
+    wifi_feature_support_api_metrics = true
+  }
+  wifi_feature_auto_enable_support = false
+  wifi_feature_with_ipv6_selfcure = true
+  wifi_feature_with_dynamic_adjust_wifi_power_save = false
+  wifi_feature_enhance_switch_support = true
+  wifi_feature_pluggable_supported = false
+  wifi_feature_with_p2p_untrust_invitation = false
+  wifi_feature_with_bt_proxy_speed_limit = false
+  wifi_feature_car_cockpit_supported = false
+}
+
+memory_optimization_cflags = [
+  "-fdata-sections",
+  "-ffunction-sections",
+]
+
+memory_optimization_cflags_cc = [
+  "-fvisibility-inlines-hidden",
+  "-fdata-sections",
+  "-ffunction-sections",
+  "-fno-asynchronous-unwind-tables",
+  "-fno-unwind-tables",
+  "-fno-merge-all-constants",
+  "-Os",
+]
+
+memory_optimization_ldflags = [
+  "-Wl,--whole-archive",
+  "-Wl,--gc-sections",
+]

@@ -1,0 +1,37 @@
+# ===== repo/git 版本管理数据 =====
+.repo/
+.git/
+
+# ===== 编译输出 / 临时环境 =====
+out/
+oh_venv/
+*.log
+
+# ===== 预编译工具链（可重新下载：build/prebuilts_download.sh）=====
+prebuilts/
+
+# ===== 文档库（含大量图片/zip，可按需取消注释保留部分）=====
+docs/
+
+# ===== XTS 大体积测试集（mini 系统一般不用；保留 testfwk/device_attest_lite）=====
+test/xts/acts/
+test/xts/hats/
+test/xts/dcts/
+test/xts/tools/
+
+# ===== 与 mini 系统无关的大型三方测试集 =====
+third_party/vk-gl-cts/
+
+# ===== 芯片 SDK 非源码部分 =====
+# 编译产物
+device/soc/hisilicon/*/sdk/output/
+device/soc/hisilicon/*/sdk/interim_binary/
+# 原厂工具（ws63v100 的 tools 含独立工具链，排除后新机器需自备工具链才能编译 SDK）
+device/soc/hisilicon/*/sdk/tools/
+
+# ===== 个人工具配置（按需取消注释）=====
+# .agents/
+
+# ===== 系统杂项 =====
+.DS_Store
+Thumbs.db

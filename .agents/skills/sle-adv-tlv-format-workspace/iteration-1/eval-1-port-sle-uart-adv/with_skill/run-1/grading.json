@@ -1,0 +1,37 @@
+{
+  "eval_dir": "eval-1-port-sle-uart-adv",
+  "config": "with_skill",
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  },
+  "expectations": [
+    {
+      "text": "warns the sample name TLV is reversed and/or strlen+1",
+      "passed": true,
+      "evidence": "顺序写反"
+    },
+    {
+      "text": "states the layout is [type][length][value]",
+      "passed": true,
+      "evidence": "[type] [length] [value"
+    },
+    {
+      "text": "provides type-first TLV construction code",
+      "passed": true,
+      "evidence": "SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME"
+    },
+    {
+      "text": "references the ble_sle_tag oracle or the bundled decoder",
+      "passed": true,
+      "evidence": "decode_sle_adv"
+    },
+    {
+      "text": "mentions secondary checks (address / peripheral role / task context)",
+      "passed": true,
+      "evidence": "sle_set_local_addr"
+    }
+  ]
+}

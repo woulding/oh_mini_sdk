@@ -1,0 +1,89 @@
+{
+    "version": "3.0",
+    "subsystems": [
+        {
+          "subsystem": "applications",
+          "components": [
+            { "component": "wifi_iot_sample_app", "features":[] }
+          ]
+        },
+        {
+          "subsystem": "iothardware",
+          "components": [
+            { "component": "peripheral", "features":[] }
+          ]
+        },
+        {
+          "subsystem": "hiviewdfx",
+          "components": [
+            { "component": "hilog_lite", "features":[] },
+            { "component": "hievent_lite", "features":[] },
+            { "component": "blackbox_lite", "features":[] },
+            { "component": "hidumper_lite", "features":[] }
+          ]
+        },
+        {
+          "subsystem": "systemabilitymgr",
+          "components": [
+            { "component": "samgr_lite", "features":[] }
+          ]
+        },
+        {
+          "subsystem": "security",
+          "components": [
+            { "component": "device_auth", "features":[] },
+            { "component": "huks", "features":
+              [
+                "disable_huks_binary = false",
+                "disable_authenticate = false",
+                "huks_use_lite_storage = true",
+                "huks_use_hardware_root_key = true",
+                "huks_config_file = \"hks_config_lite.h\""
+              ]
+            }
+          ]
+        },
+        {
+          "subsystem": "startup",
+          "components": [
+            { "component": "bootstrap_lite", "features":[] },
+            { "component": "init", "features": [] }
+          ]
+        },
+        {
+          "subsystem": "communication",
+          "components": [
+            { "component": "wifi_lite", "features":[] },
+            { "component": "dsoftbus", "features":[] },
+            { "component": "wifi_aware", "features":[]}
+          ]
+        },
+        {
+          "subsystem": "updater",
+          "components": [
+            { "component": "sys_installer_lite", "features":[] }
+          ]
+        },
+        {
+          "subsystem": "commonlibrary",
+          "components": [
+            { "component": "file", "features":[] }
+          ]
+        },
+        {
+         "subsystem": "xts",
+         "components": [
+           { "component": "acts", "features":[] },
+           { "component": "tools", "features":[] },
+           { "component": "device_attest_lite", "features":[] }
+          ]
+        },
+        {
+          "subsystem": "developtools",
+          "components": [
+            { "component": "syscap_codec", "features":[] }
+          ]
+        }
+    ]
+  }
+  

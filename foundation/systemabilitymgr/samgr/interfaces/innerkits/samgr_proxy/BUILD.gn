@@ -1,0 +1,103 @@
+# Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/ohos_var.gni")
+import("../../../config.gni")
+
+config("samgr_proxy_config") {
+  include_dirs = [ "include" ]
+}
+
+config("lsamgr_proxy_config") {
+  include_dirs =
+      [ "//foundation/systemabilitymgr/samgr/services/lsamgr/include" ]
+}
+
+config("samgr_proxy_private_config") {
+  include_dirs = [
+    "include",
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/lsamgr",
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/samgr_proxy/include",
+    "//foundation/systemabilitymgr/samgr/services/lsamgr/include",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/include",
+    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/dynamic_cache/include",
+    "//foundation/systemabilitymgr/samgr/utils/native/include",
+  ]
+}
+
+ohos_shared_library("samgr_proxy") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    cfi_no_nvcall = true
+    blocklist = "../../../cfi_blocklist.txt"
+  }
+  branch_protector_ret = "pac_ret"
+
+  version_script = "libsamgr_proxy.versionscript"
+  defines = [ "SAMGR_PROXY" ]
+  sources = [
+    "//foundation/systemabilitymgr/samgr/frameworks/native/source/system_ability_load_callback_stub.cpp",
+    "//foundation/systemabilitymgr/samgr/frameworks/native/source/system_ability_manager_proxy.cpp",
+    "//foundation/systemabilitymgr/samgr/frameworks/native/source/system_ability_on_demand_event.cpp",
+    "//foundation/systemabilitymgr/samgr/frameworks/native/source/system_ability_status_change_stub.cpp",
+    "//foundation/systemabilitymgr/samgr/frameworks/native/source/system_process_status_change_stub.cpp",
+    "//foundation/systemabilitymgr/samgr/services/lsamgr/src/local_ability_manager_proxy.cpp",
+    "//foundation/systemabilitymgr/samgr/services/lsamgr/src/local_abilitys.cpp",
+    "//foundation/systemabilitymgr/samgr/services/samgr/native/source/service_registry.cpp",
+  ]
+  configs = [
+    ":samgr_proxy_private_config",
+    "//foundation/systemabilitymgr/samgr/test/resource:coverage_flags",
+  ]
+
+  deps = [ "//foundation/systemabilitymgr/samgr/interfaces/innerkits/dynamic_cache:dynamic_cache" ]
+
+  public_configs = [
+    ":lsamgr_proxy_config",
+    ":samgr_proxy_config",
+    "../dynamic_cache:dynamic_cache_config",
+  ]
+
+  if (is_standard_system) {
+    external_deps = [
+      "c_utils:utils",
+      "hilog:libhilog",
+      "init:libbegetutil",
+      "ipc:ipc_single",
+      "json:nlohmann_json_static",
+    ]
+
+    if (samgr_enable_extend_load_timeout) {
+      defines += [ "SAMGR_ENABLE_EXTEND_LOAD_TIMEOUT" ]
+    }
+
+    if (samgr_support_multi_instance) {
+      defines += [ "SUPPORT_MULTI_INSTANCE" ]
+    }
+    part_name = "samgr"
+  }
+
+  innerapi_tags = [
+    "chipsetsdk_sp",
+    "platformsdk",
+    "sasdk",
+  ]
+  install_images = [
+    system_base_dir,
+    updater_base_dir,
+  ]
+  subsystem_name = "systemabilitymgr"
+}

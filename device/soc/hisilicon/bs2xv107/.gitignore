@@ -1,0 +1,7 @@
+sdk/output/
+sdk/interim_binary/bs21e/libs/
+sdk/interim_binary/bs20/libs/
+sdk/interim_binary/bs22/libs/
+sdk/temp/
+__pycache__/
+*.pyc

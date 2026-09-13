@@ -1,0 +1,85 @@
+/*
+ * Copyright (c) 2020-2021 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include <signal.h>
+#include "init.h"
+#include "init_log.h"
+#include "init_utils.h"
+#include "device.h"
+#ifdef EROFS_OVERLAY
+#include "erofs_remount_overlay.h"
+#endif
+
+static const pid_t INIT_PROCESS_PID = 1;
+#ifdef INIT_FEATURE_SUPPORT_SASPAWN
+ProcProcessName *g_procProcessName = NULL;
+static const unsigned int SERVICE_NAME_MAX_LENGTH = 60;
+#endif
+
+int main(int argc, char * const argv[])
+{
+    const char *uptime = NULL;
+    long long upTimeInMicroSecs = 0;
+    int isSecondStage = 0;
+    (void)signal(SIGPIPE, SIG_IGN);
+    // Number of command line parameters is 2
+    if (argc > 1 && (strcmp(argv[1], "--second-stage") == 0)) {
+        isSecondStage = 1;
+        if (argc > 2) {
+            uptime = argv[2];
+        }
+    } else {
+        upTimeInMicroSecs = GetUptimeInMicroSeconds(NULL);
+    }
+    if (getpid() != INIT_PROCESS_PID) {
+        INIT_LOGE("Process id error %d!", getpid());
+        return 0;
+    }
+    EnableInitLog(INIT_INFO);
+
+    // Updater mode
+    if (isSecondStage == 0) {
+        SystemPrepare(upTimeInMicroSecs);
+    } else {
+        LogInit();
+#ifdef EROFS_OVERLAY
+    if (IsOverlayEnable()) {
+        RemountOverlay();
+    }
+#endif
+    }
+
+#ifdef INIT_FEATURE_SUPPORT_SASPAWN
+    uintptr_t start = (uintptr_t)argv[0];
+    uintptr_t end = (uintptr_t)strchr(argv[argc - 1], 0);
+    if (g_procProcessName == NULL) {
+        g_procProcessName = (ProcProcessName *)calloc(1, sizeof(ProcProcessName));
+    }
+
+    if (g_procProcessName != NULL) {
+        if (SERVICE_NAME_MAX_LENGTH > end - start) {
+            g_procProcessName->longProcNameLen = SERVICE_NAME_MAX_LENGTH;
+        } else {
+            g_procProcessName->longProcNameLen = end - start;
+        }
+        g_procProcessName->longProcName = argv[0];
+    }
+#endif
+
+    SystemInit();
+    SystemExecuteRcs();
+    SystemConfig(uptime);
+    SystemRun();
+    return 0;
+}

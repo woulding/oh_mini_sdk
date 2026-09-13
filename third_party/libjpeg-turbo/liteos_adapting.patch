@@ -1,0 +1,22 @@
+diff --git a/src/jmorecfg.h b/src/jmorecfg.h
+old mode 100644
+new mode 100755
+index fb3a9cf..f206757
+--- a/src/jmorecfg.h
++++ b/src/jmorecfg.h
+@@ -133,15 +133,6 @@ typedef short INT16;
+  * same regardless of any external headers that may be included.
+  */
+
+-#ifndef XMD_H                   /* X11/xmd.h correctly defines INT32 */
+-#ifndef _BASETSD_H_             /* Microsoft defines it in basetsd.h */
+-#ifndef _BASETSD_H              /* MinGW is slightly different */
+-#ifndef QGLOBAL_H               /* Qt defines it in qglobal.h */
+-typedef long INT32;
+-#endif
+-#endif
+-#endif
+-#endif
+
+ /* Datatype used for image dimensions.  The JPEG standard only supports
+  * images up to 64K*64K due to 16-bit fields in SOF markers.  Therefore

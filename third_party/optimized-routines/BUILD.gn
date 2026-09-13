@@ -1,0 +1,275 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+#    conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list
+#    of conditions and the following disclaimer in the documentation and/or other materials
+#    provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used
+#    to endorse or promote products derived from this software without specific prior written
+#    permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import("//build/config/clang/clang.gni")
+import("//build/ohos.gni")
+import("optimized-routines.gni")
+
+config("optimized_routines_config") {
+  include_dirs = [
+    "//third_party/optimized-routines/math",
+    "//third_party/optimized-routines/math/include",
+  ]
+}
+
+config("optimized_routines_stack_config") {
+  cflags = []
+  cflags_c = []
+
+  if (musl_arch == "aarch64") {
+    cflags += [ "-mbranch-protection=pac-ret+b-key" ]
+    cflags_c += [ "-fno-stack-protector" ]
+  }
+}
+
+if (!(is_lite_system && current_os == "ohos")) {
+  ohos_static_library("optimized_static") {
+    output_name = "liboptimize"
+    visibility = [
+      ":*",
+      "//third_party/musl/*",
+      "//out/*",
+    ]
+
+    public_configs = [ ":optimized_routines_config" ]
+    configs = [ ":optimized_routines_stack_config" ]
+    
+    sources = []
+    defines = []
+    include_dirs = [ "//third_party/optimized-routines/string/include" ]
+
+    if (musl_arch == "arm") {
+      if (is_llvm_build) {
+        defines += [ "__IS_LLVM_BUILD" ]
+      }
+      sources += [
+        "math/cosf.c",
+        "math/exp2.c",
+        "math/exp2f.c",
+        "math/exp2f_data.c",
+        "math/exp_data.c",
+        "math/expf.c",
+        "math/log.c",
+        "math/log2.c",
+        "math/log2_data.c",
+        "math/log2f.c",
+        "math/log2f_data.c",
+        "math/log_data.c",
+        "math/logf.c",
+        "math/logf_data.c",
+        "math/math_err.c",
+        "math/math_errf.c",
+        "math/pow.c",
+        "math/pow_log_data.c",
+        "math/powf.c",
+        "math/powf_log2_data.c",
+        "math/sincosf.c",
+        "math/sincosf_data.c",
+        "math/sinf.c",
+        "string/arm/memchr.S",
+        "string/arm/memcpy.S",
+        "string/arm/memset.S",
+        "string/arm/strcmp.S",
+        "string/arm/strlen-armv6t2.S",
+      ]
+
+      asmflags = [
+        "-D__memcpy_arm = memcpy",
+        "-D__memchr_arm = memchr",
+        "-D__memset_arm = memset",
+        "-D__strcmp_arm = strcmp",
+        "-D__strlen_armv6t2 = strlen",
+      ]
+
+      include_dirs += [ "//third_party/optimized-routines/string/arm" ]
+    } else if (musl_arch == "aarch64") {
+      include_dirs += [ "//third_party/optimized-routines/string/aarch64" ]
+      if (defined(ARM_FEATURE_SVE)) {
+        sources += [
+          "string/aarch64/memchr-sve.S",
+          "string/aarch64/memcmp-sve.S",
+          "string/aarch64/memcpy.S",
+          "string/aarch64/memset.S",
+          "string/aarch64/stpcpy-sve.S",
+          "string/aarch64/strchr-sve.S",
+          "string/aarch64/strchrnul-sve.S",
+          "string/aarch64/strcmp-sve.S",
+          "string/aarch64/strcpy-sve.S",
+          "string/aarch64/strlen-sve.S",
+          "string/aarch64/strncmp-sve.S",
+          "string/aarch64/strnlen-sve.S",
+          "string/aarch64/strrchr-sve.S",
+        ]
+        asmflags = [
+          "-D__memcpy_aarch64 = memcpy",
+          "-D__memset_aarch64 = memset",
+          "-D__memcmp_aarch64_sve = memcmp",
+          "-D__memchr_aarch64_sve = memchr",
+          "-D__strcmp_aarch64_sve = strcmp",
+          "-D__strlen_aarch64_sve = strlen",
+          "-D__strcpy_aarch64_sve = strcpy",
+          "-D__stpcpy_aarch64_sve = stpcpy",
+          "-D__strchr_aarch64_sve = strchr",
+          "-D__strrchr_aarch64_sve = strrchr",
+          "-D__strchrnul_aarch64_sve = strchrnul",
+          "-D__strnlen_aarch64_sve = strnlen",
+          "-D__strncmp_aarch64_sve = strncmp",
+        ]
+      } else if (defined(ARM_FEATURE_MTE)) {
+        sources += [
+          "string/aarch64/memchr-mte.S",
+          "string/aarch64/memcmp.S",
+          "string/aarch64/memcpy.S",
+          "string/aarch64/memset.S",
+          "string/aarch64/stpcpy-mte.S",
+          "string/aarch64/strchr-mte.S",
+          "string/aarch64/strchrnul-mte.S",
+          "string/aarch64/strcmp-mte.S",
+          "string/aarch64/strcpy-mte.S",
+          "string/aarch64/strlen-mte.S",
+          "string/aarch64/strncmp-mte.S",
+          "string/aarch64/strnlen.S",
+          "string/aarch64/strrchr-mte.S",
+        ]
+        asmflags = [
+          "-D__memcpy_aarch64 = memcpy",
+          "-D__memset_aarch64 = memset",
+          "-D__memcmp_aarch64 = memcmp",
+          "-D__memchr_aarch64_mte = memchr",
+          "-D__strcmp_aarch64_mte = strcmp",
+          "-D__strlen_aarch64_mte = strlen",
+          "-D__strcpy_aarch64_mte = strcpy",
+          "-D__stpcpy_aarch64_mte = stpcpy",
+          "-D__strchr_aarch64_mte = strchr",
+          "-D__strrchr_aarch64_mte = strrchr",
+          "-D__strchrnul_aarch64_mte = strchrnul",
+          "-D__strnlen_aarch64 = strnlen",
+          "-D__strncmp_aarch64_mte = strncmp",
+        ]
+      } else {
+        sources += [
+          "string/aarch64/memchr.S",
+          "string/aarch64/memcmp.S",
+          "string/aarch64/memcpy.S",
+          "string/aarch64/memset.S",
+          "string/aarch64/stpcpy.S",
+          "string/aarch64/strchr.S",
+          "string/aarch64/strchrnul.S",
+          "string/aarch64/strcmp.S",
+          "string/aarch64/strcpy.S",
+          "string/aarch64/strlen.S",
+          "string/aarch64/strncmp.S",
+          "string/aarch64/strnlen.S",
+          "string/aarch64/strrchr.S",
+        ]
+        asmflags = [
+          "-D__memmove_aarch64 = memmove",
+          "-D__memcpy_aarch64 = memcpy",
+          "-D__memchr_aarch64 = memchr",
+          "-D__memset_aarch64 = memset",
+          "-D__memcmp_aarch64 = memcmp",
+          "-D__strcmp_aarch64 = strcmp",
+          "-D__strlen_aarch64 = strlen",
+          "-D__strcpy_aarch64 = strcpy",
+          "-D__stpcpy_aarch64 = stpcpy",
+          "-D__strchr_aarch64 = strchr",
+          "-D__strrchr_aarch64 = strrchr",
+          "-D__strchrnul_aarch64 = strchrnul",
+          "-D__strnlen_aarch64 = strnlen",
+          "-D__strncmp_aarch64 = strncmp",
+        ]
+      }
+    }
+
+    cflags = [
+      "-O3",
+      "-fPIC",
+      "-fstack-protector-strong",
+    ]
+    cflags_c = [ "-fno-lto" ]
+
+    remove_configs = optimized_inherited_configs
+    configs += [ "//build/config/components/musl:soft_musl_config" ]
+    if (use_hwasan) {
+      defines += [ "HWASAN_REMOVE_CLEANUP" ]
+      configs += [ "//build/config/sanitizers:default_sanitizer_flags" ]
+      cflags += [
+        "-mllvm",
+        "-hwasan-instrument-check-enabled=true",
+      ]
+    }
+    subsystem_name = "thirdparty"
+    part_name = "optimized_routines"
+  }
+
+  ohos_static_library("optimize_math") {
+    output_name = "liboptimize_math"
+    output_extension = "a"
+    visibility = [
+      ":*",
+      "//third_party/musl/*",
+      "//out/*",
+    ]
+
+    public_configs = [ ":optimized_routines_config" ]
+    configs = [ ":optimized_routines_stack_config" ]
+    sources = []
+
+    if (musl_arch == "aarch64") {
+      sources += [
+        "math/cosf.c",
+        "math/math_errf.c",
+        "math/sincosf.c",
+        "math/sincosf_data.c",
+        "math/sinf.c",
+      ]
+    }
+
+    cflags = [
+      "-mllvm",
+      "-instcombine-max-iterations=0",
+      "-ffp-contract=fast",
+      "-O3",
+      "-fPIC",
+      "-fstack-protector-strong",
+    ]
+    cflags_c = [ "-fno-lto" ]
+
+    remove_configs = optimized_inherited_configs
+    configs += [ "//build/config/components/musl:soft_musl_config" ]
+    if (use_hwasan) {
+      configs += [ "//build/config/sanitizers:default_sanitizer_flags" ]
+      cflags += [
+        "-mllvm",
+        "-hwasan-instrument-check-enabled=true",
+      ]
+    }
+    subsystem_name = "thirdparty"
+    part_name = "optimized_routines"
+  }
+}

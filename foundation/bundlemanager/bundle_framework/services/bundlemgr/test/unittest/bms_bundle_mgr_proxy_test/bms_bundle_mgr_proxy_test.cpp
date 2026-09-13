@@ -1,0 +1,2194 @@
+/*
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <fstream>
+#include <future>
+#include <gtest/gtest.h>
+
+#include "bundle_mgr_proxy.h"
+#include "get_largest_items_callback_interface.h"
+#include "if_system_ability_manager.h"
+#include "iservice_registry.h"
+#include "process_cache_callback_host.h"
+#include "system_ability_definition.h"
+#include "want.h"
+
+using namespace testing::ext;
+
+using OHOS::AAFwk::Want;
+
+namespace OHOS {
+namespace AppExecFwk {
+
+namespace {
+const int32_t ERR_CODE = 8388613;
+const uint32_t ACCESS_TOKEN_ID = 1765341;
+const int32_t MAX_WAITING_TIME = 600;
+const int32_t MAX_SHORTCUT_INFOS = 101;
+}
+
+class ProcessCacheCallbackImpl : public ProcessCacheCallbackHost {
+public:
+    ProcessCacheCallbackImpl() : cacheStat_(std::make_shared<std::promise<uint64_t>>()),
+        cleanResult_(std::make_shared<std::promise<int32_t>>()) {}
+    ~ProcessCacheCallbackImpl() override
+    {}
+    void OnGetAllBundleCacheFinished(uint64_t cacheStat) override;
+    void OnCleanAllBundleCacheFinished(int32_t result) override;
+    uint64_t GetCacheStat() override;
+    int32_t GetDelRet();
+private:
+    std::shared_ptr<std::promise<uint64_t>> cacheStat_;
+    std::shared_ptr<std::promise<int32_t>> cleanResult_;
+    DISALLOW_COPY_AND_MOVE(ProcessCacheCallbackImpl);
+};
+
+void ProcessCacheCallbackImpl::OnGetAllBundleCacheFinished(uint64_t cacheStat)
+{
+    if (cacheStat_ != nullptr) {
+        cacheStat_->set_value(cacheStat);
+    }
+}
+
+void ProcessCacheCallbackImpl::OnCleanAllBundleCacheFinished(int32_t result)
+{
+    if (cleanResult_ != nullptr) {
+        cleanResult_->set_value(result);
+    }
+}
+
+uint64_t ProcessCacheCallbackImpl::GetCacheStat()
+{
+    if (cacheStat_ != nullptr) {
+        auto future = cacheStat_->get_future();
+        std::chrono::milliseconds span(MAX_WAITING_TIME);
+        if (future.wait_for(span) == std::future_status::timeout) {
+            return 0;
+        }
+        return future.get();
+    }
+    return 0;
+};
+
+int32_t ProcessCacheCallbackImpl::GetDelRet()
+{
+    if (cleanResult_ != nullptr) {
+        auto future = cleanResult_->get_future();
+        std::chrono::milliseconds span(MAX_WAITING_TIME);
+        if (future.wait_for(span) == std::future_status::timeout) {
+            return -1;
+        }
+        return future.get();
+    }
+    return -1;
+};
+
+class ICleanCacheCallbackTest : public ICleanCacheCallback {
+public:
+    void OnCleanCacheFinished(bool succeeded);
+    sptr<IRemoteObject> AsObject();
+};
+
+void ICleanCacheCallbackTest::OnCleanCacheFinished(bool succeeded) {}
+
+sptr<IRemoteObject> ICleanCacheCallbackTest::AsObject()
+{
+    sptr<ISystemAbilityManager> systemAbilityManager =
+        SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    return systemAbilityManager->GetSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+}
+
+class IBundleStatusCallbackTest : public IBundleStatusCallback {
+public:
+    void OnBundleStateChanged(const uint8_t installType, const int32_t resultCode, const std::string &resultMsg,
+        const std::string &bundleName);
+    void OnBundleAdded(const std::string &bundleName, const int userId);
+    void OnBundleUpdated(const std::string &bundleName, const int userId);
+    void OnBundleRemoved(const std::string &bundleName, const int userId);
+    sptr<IRemoteObject> AsObject();
+};
+
+void IBundleStatusCallbackTest::OnBundleStateChanged(const uint8_t installType,
+    const int32_t resultCode, const std::string &resultMsg, const std::string &bundleName)
+{}
+
+void IBundleStatusCallbackTest::OnBundleAdded(const std::string &bundleName, const int userId)
+{}
+
+void IBundleStatusCallbackTest::OnBundleUpdated(const std::string &bundleName, const int userId)
+{}
+
+void IBundleStatusCallbackTest::OnBundleRemoved(const std::string &bundleName, const int userId)
+{}
+
+sptr<IRemoteObject> IBundleStatusCallbackTest::AsObject()
+{
+    return nullptr;
+}
+
+class IBundleEventCallbackTest : public IBundleEventCallback {
+    void OnReceiveEvent(const EventFwk::CommonEventData eventData);
+    sptr<IRemoteObject> AsObject();
+};
+
+void IBundleEventCallbackTest::OnReceiveEvent(const EventFwk::CommonEventData eventData)
+{}
+
+sptr<IRemoteObject> IBundleEventCallbackTest::AsObject()
+{
+    return nullptr;
+}
+
+class BmsBundleMgrProxyTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp();
+    void TearDown();
+};
+
+void BmsBundleMgrProxyTest::SetUpTestCase()
+{}
+
+void BmsBundleMgrProxyTest::TearDownTestCase()
+{}
+
+void BmsBundleMgrProxyTest::SetUp()
+{}
+
+void BmsBundleMgrProxyTest::TearDown()
+{}
+
+/**
+ * @tc.number: GetApplicationInfo_0100
+ * @tc.name: test the GetApplicationInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    string appName = "";
+    ApplicationFlag flag = ApplicationFlag::GET_BASIC_APPLICATION_INFO;
+    int userId = 100;
+    ApplicationInfo appInfo;
+    EXPECT_TRUE(appName.empty());
+    auto res = bundleMgrProxy.GetApplicationInfo(appName, flag, userId, appInfo);
+    EXPECT_FALSE(res);
+    appName = "appName";
+    res = bundleMgrProxy.GetApplicationInfo(appName, flag, userId, appInfo);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetApplicationInfo_0200
+ * @tc.name: test the GetApplicationInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationInfo_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    string appName = "";
+    int32_t flags = 1;
+    int userId = 100;
+    ApplicationInfo appInfo;
+    EXPECT_TRUE(appName.empty());
+    auto res = bundleMgrProxy.GetApplicationInfo(appName, flags, userId, appInfo);
+    EXPECT_FALSE(res);
+    appName = "appName";
+    res = bundleMgrProxy.GetApplicationInfo(appName, flags, userId, appInfo);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetApplicationInfoV9_0100
+ * @tc.name: test the GetApplicationInfoV9
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationInfoV9
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationInfoV9_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    string appName = "";
+    int32_t flags = 1;
+    int userId = 100;
+    ApplicationInfo appInfo;
+    EXPECT_TRUE(appName.empty());
+    auto res = bundleMgrProxy.GetApplicationInfoV9(appName, flags, userId, appInfo);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    appName = "appName";
+    res = bundleMgrProxy.GetApplicationInfoV9(appName, flags, userId, appInfo);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetApplicationInfos_0100
+ * @tc.name: test the GetApplicationInfos
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationInfos_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int userId = 100;
+    ApplicationFlag flag = ApplicationFlag::GET_BASIC_APPLICATION_INFO;
+    std::vector<ApplicationInfo> appInfos;
+    auto res = bundleMgrProxy.GetApplicationInfos(flag, userId, appInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetApplicationInfos_0200
+ * @tc.name: test the GetApplicationInfos
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationInfos_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int userId = 100;
+    int32_t flags = 1;
+    std::vector<ApplicationInfo> appInfos;
+    auto res = bundleMgrProxy.GetApplicationInfos(flags, userId, appInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetApplicationInfosV9_0100
+ * @tc.name: test the GetApplicationInfosV9
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationInfosV9
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationInfosV9_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int userId = 100;
+    int32_t flags = 1;
+    std::vector<ApplicationInfo> appInfos;
+    auto res = bundleMgrProxy.GetApplicationInfosV9(flags, userId, appInfos);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: BatchGetBundleInfo_0100
+ * @tc.name: test the BatchGetBundleInfo
+ * @tc.desc: 1. system running normally
+ *           2. test BatchGetBundleInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, BatchGetBundleInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<Want> wants;
+    EXPECT_EQ(wants.size(), 0);
+    int32_t flags = 1;
+    std::vector<BundleInfo> bundleInfos;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.BatchGetBundleInfo(wants, flags, bundleInfos, userId);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    Want want;
+    std::string bundleName = "bundleName";
+    want.GetElement().SetBundleName(bundleName);
+    wants.emplace_back(want);
+    res = bundleMgrProxy.BatchGetBundleInfo(wants, flags, bundleInfos, userId);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+}
+
+/**
+ * @tc.number: BatchGetBundleInfo_0200
+ * @tc.name: test the BatchGetBundleInfo
+ * @tc.desc: 1. system running normally
+ *           2. test BatchGetBundleInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, BatchGetBundleInfo_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<std::string> bundleNames;
+    EXPECT_EQ(bundleNames.size(), 0);
+    int32_t flags = 1;
+    std::vector<BundleInfo> bundleInfos;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.BatchGetBundleInfo(bundleNames, flags, bundleInfos, userId);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    std::string bundleName = "bundleName";
+    bundleNames.emplace_back(bundleName);
+    res = bundleMgrProxy.BatchGetBundleInfo(bundleNames, flags, bundleInfos, userId);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetBundlePackInfo_0100
+ * @tc.name: test the GetBundlePackInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundlePackInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundlePackInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    BundlePackFlag flag = BundlePackFlag::GET_PACK_INFO_ALL;
+    BundlePackInfo bundlePackInfo;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetBundlePackInfo(bundleName, flag, bundlePackInfo, userId);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    bundleName = "bundleName";
+    res = bundleMgrProxy.GetBundlePackInfo(bundleName, flag, bundlePackInfo, userId);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+
+/**
+ * @tc.number: GetBundlePackInfo_0200
+ * @tc.name: test the GetBundlePackInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundlePackInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundlePackInfo_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t flags = 1;
+    BundlePackInfo bundlePackInfo;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetBundlePackInfo(bundleName, flags, bundlePackInfo, userId);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    bundleName = "bundleName";
+    res = bundleMgrProxy.GetBundlePackInfo(bundleName, flags, bundlePackInfo, userId);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetBundleInfos_0100
+ * @tc.name: test the GetBundleInfos
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleInfos_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    BundleFlag flag = BundleFlag::GET_BUNDLE_DEFAULT;
+    std::vector<BundleInfo> bundleInfos;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetBundleInfos(flag, bundleInfos, userId);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetBundleInfos_0200
+ * @tc.name: test the GetBundleInfos
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleInfos_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int32_t flag = 1;
+    std::vector<BundleInfo> bundleInfos;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetBundleInfos(flag, bundleInfos, userId);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetBundleInfosV9_0100
+ * @tc.name: test the GetBundleInfosV9
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleInfosV9
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleInfosV9_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    BundleFlag flag = BundleFlag::GET_BUNDLE_DEFAULT;
+    std::vector<BundleInfo> bundleInfos;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetBundleInfosV9(flag, bundleInfos, userId);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetAllPluginInfo_0100
+ * @tc.name: test the GetAllPluginInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetAllPluginInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAllPluginInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<PluginBundleInfo> pluginBundleInfos;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetAllPluginInfo("", userId, pluginBundleInfos);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetPluginInfosForSelf_0100
+ * @tc.name: test the GetPluginInfosForSelf
+ * @tc.desc: 1. system running normally
+ *           2. test GetPluginInfosForSelf
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetPluginInfosForSelf_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<PluginBundleInfo> pluginBundleInfos;
+    auto res = bundleMgrProxy.GetPluginInfosForSelf(pluginBundleInfos);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetUidByBundleName_0100
+ * @tc.name: test the GetUidByBundleName
+ * @tc.desc: 1. system running normally
+ *           2. test GetUidByBundleName
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetUidByBundleName_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetUidByBundleName(bundleName, userId);
+    EXPECT_EQ(res, Constants::INVALID_UID);
+    bundleName = "bundleName";
+    res = bundleMgrProxy.GetUidByBundleName(bundleName, userId);
+    EXPECT_EQ(res, Constants::INVALID_UID);
+}
+
+/**
+ * @tc.number: GetUidByBundleName_0200
+ * @tc.name: test the GetUidByBundleName
+ * @tc.desc: 1. system running normally
+ *           2. test GetUidByBundleName
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetUidByBundleName_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto res = bundleMgrProxy.GetUidByBundleName(bundleName, userId, appIndex);
+    EXPECT_EQ(res, Constants::INVALID_UID);
+    bundleName = "bundleName";
+    res = bundleMgrProxy.GetUidByBundleName(bundleName, userId, appIndex);
+    EXPECT_EQ(res, Constants::INVALID_UID);
+}
+
+/**
+ * @tc.number: GetUidByDebugBundleName_0100
+ * @tc.name: test the GetUidByDebugBundleName
+ * @tc.desc: 1. system running normally
+ *           2. test GetUidByDebugBundleName
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetUidByDebugBundleName_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetUidByDebugBundleName(bundleName, userId);
+    EXPECT_EQ(res, Constants::INVALID_UID);
+    bundleName = "bundleName";
+    res = bundleMgrProxy.GetUidByDebugBundleName(bundleName, userId);
+    EXPECT_EQ(res, Constants::INVALID_UID);
+}
+
+/**
+ * @tc.number: GetAppIdByBundleName_0100
+ * @tc.name: test the GetAppIdByBundleName
+ * @tc.desc: 1. system running normally
+ *           2. test GetAppIdByBundleName
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAppIdByBundleName_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.GetAppIdByBundleName(bundleName, userId);
+    EXPECT_EQ(res, Constants::EMPTY_STRING);
+    bundleName = "bundleName";
+    res = bundleMgrProxy.GetAppIdByBundleName(bundleName, userId);
+    EXPECT_EQ(res, Constants::EMPTY_STRING);
+}
+
+/**
+ * @tc.number: GetBundleNameForUid_0100
+ * @tc.name: test the GetBundleNameForUid
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleNameForUid
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleNameForUid_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int uid = 100;
+    auto res = bundleMgrProxy.GetBundleNameForUid(uid, bundleName);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetBundleNameForUid_0200
+ * @tc.name: test the GetBundleNameForUid
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleNameForUid
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleNameForUid_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int uid = 100;
+    std::string bundleName = "";
+    auto res = bundleMgrProxy.GetBundleNameForUid(uid, bundleName);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetNameForUid_0100
+ * @tc.name: test the GetNameForUid
+ * @tc.desc: 1. system running normally
+ *           2. test GetNameForUid
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetNameForUid_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int uid = 100;
+    std::string name;
+    auto res = bundleMgrProxy.GetNameForUid(uid, name);
+    EXPECT_EQ(res, ERR_APPEXECFWK_NULL_PTR);
+}
+
+/**
+ * @tc.number: GetNameAndIndexForUid_0100
+ * @tc.name: test the GetNameAndIndexForUid
+ * @tc.desc: 1. system running normally
+ *           2. test GetNameAndIndexForUid
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetNameAndIndexForUid_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int uid = 100;
+    std::string bundleName = "";
+    int32_t appIndex = 1;
+    auto res = bundleMgrProxy.GetNameAndIndexForUid(uid, bundleName, appIndex);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetSimpleAppInfoForUid_0100
+ * @tc.name: test the GetSimpleAppInfoForUid
+ * @tc.desc: 1. system running normally
+ *           2. test GetSimpleAppInfoForUid
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetSimpleAppInfoForUid_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+
+    int uid = 100;
+    std::vector<std::int32_t> uids;
+    std::vector<SimpleAppInfo> simpleAppInfo;
+
+    auto res = bundleMgrProxy.GetSimpleAppInfoForUid(uids, simpleAppInfo);
+    EXPECT_EQ(res, ERR_APPEXECFWK_INVALID_UID);
+
+    uids.emplace_back(uid);
+    res = bundleMgrProxy.GetSimpleAppInfoForUid(uids, simpleAppInfo);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+
+    for (int i = 0; i <= 1000; i++) {
+        uids.emplace_back(uid + i);
+    }
+    res = bundleMgrProxy.GetSimpleAppInfoForUid(uids, simpleAppInfo);
+    EXPECT_EQ(res, ERR_CODE);
+}
+
+/**
+ * @tc.number: GetBundleGids_0100
+ * @tc.name: test the GetBundleGids
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleGids
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleGids_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<int> gids;
+    std::string bundleName = "";
+    auto res = bundleMgrProxy.GetBundleGids(bundleName, gids);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetBundleGidsByUid_0100
+ * @tc.name: test the GetBundleGidsByUid
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleGidsByUid
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleGidsByUid_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<int> gids;
+    std::string bundleName = "";
+    int uid = 100;
+    auto res = bundleMgrProxy.GetBundleGidsByUid(bundleName, uid, gids);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetAppType_0100
+ * @tc.name: test the GetAppType
+ * @tc.desc: 1. system running normally
+ *           2. test GetAppType
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAppType_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    auto res = bundleMgrProxy.GetAppType(bundleName);
+    EXPECT_EQ(res, Constants::EMPTY_STRING);
+    bundleName = "bundleName";
+    res = bundleMgrProxy.GetAppType(bundleName);
+    EXPECT_EQ(res, Constants::EMPTY_STRING);
+}
+
+/**
+ * @tc.number: CheckIsSystemAppByUid_0100
+ * @tc.name: test the CheckIsSystemAppByUid
+ * @tc.desc: 1. system running normally
+ *           2. test CheckIsSystemAppByUid
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CheckIsSystemAppByUid_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int uid = 100;
+    auto res = bundleMgrProxy.CheckIsSystemAppByUid(uid);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetBundleInfosByMetaData_0100
+ * @tc.name: test the GetBundleInfosByMetaData
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleInfosByMetaData
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleInfosByMetaData_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string metaData;
+    EXPECT_TRUE(metaData.empty());
+    std::vector<BundleInfo> bundleInfos;
+    auto res = bundleMgrProxy.GetBundleInfosByMetaData(metaData, bundleInfos);
+    EXPECT_FALSE(res);
+    metaData = "metaData";
+    res = bundleMgrProxy.GetBundleInfosByMetaData(metaData, bundleInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfo_0100
+ * @tc.name: test the QueryAbilityInfo
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    AbilityInfo abilityInfo;
+    auto res = bundleMgrProxy.QueryAbilityInfo(want, abilityInfo);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfo_0200
+ * @tc.name: test the QueryAbilityInfo
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfo_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    AbilityInfo abilityInfo;
+    int32_t flag = 1;
+    int32_t userId = 100;
+    sptr<IRemoteObject> callBack;
+    auto res = bundleMgrProxy.QueryAbilityInfo(want, flag, userId, abilityInfo, callBack);
+    EXPECT_FALSE(res);
+    sptr<ISystemAbilityManager> systemAbilityManager =
+        SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    ASSERT_NE(systemAbilityManager, nullptr);
+    callBack = systemAbilityManager->GetSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    res = bundleMgrProxy.QueryAbilityInfo(want, flag, userId, abilityInfo, callBack);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: SilentInstall_0100
+ * @tc.name: test the SilentInstall
+ * @tc.desc: 1. system running normally
+ *           2. test SilentInstall
+ */
+HWTEST_F(BmsBundleMgrProxyTest, SilentInstall_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    int32_t userId = 100;
+    sptr<IRemoteObject> callBack;
+    auto res = bundleMgrProxy.SilentInstall(want, userId, callBack);
+    EXPECT_FALSE(res);
+    sptr<ISystemAbilityManager> systemAbilityManager =
+        SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    ASSERT_NE(systemAbilityManager, nullptr);
+    callBack = systemAbilityManager->GetSystemAbility(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID);
+    res = bundleMgrProxy.SilentInstall(want, userId, callBack);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfo_0300
+ * @tc.name: test the QueryAbilityInfo
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfo_0300, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    int32_t flags = 1;
+    int32_t userId = 100;
+    AbilityInfo abilityInfo;
+    auto res = bundleMgrProxy.QueryAbilityInfo(want, flags, userId, abilityInfo);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfos_0100
+ * @tc.name: test the QueryAbilityInfos
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfos_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.QueryAbilityInfos(want, abilityInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfos_0200
+ * @tc.name: test the QueryAbilityInfos
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfos_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    int32_t flags = 1;
+    int32_t userId = 100;
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.QueryAbilityInfos(want, flags, userId, abilityInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfosV9_0100
+ * @tc.name: test the QueryAbilityInfosV9
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfosV9
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfosV9_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    int32_t flags = 1;
+    int32_t userId = 100;
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.QueryAbilityInfosV9(want, flags, userId, abilityInfos);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: BatchQueryAbilityInfos_0100
+ * @tc.name: test the BatchQueryAbilityInfos
+ * @tc.desc: 1. system running normally
+ *           2. test BatchQueryAbilityInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, BatchQueryAbilityInfos_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<Want> wants;
+    int32_t flags = 1;
+    int32_t userId = 100;
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.BatchQueryAbilityInfos(wants, flags, userId, abilityInfos);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: QueryLauncherAbilityInfos_0100
+ * @tc.name: test the QueryLauncherAbilityInfos
+ * @tc.desc: 1. system running normally
+ *           2. test QueryLauncherAbilityInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryLauncherAbilityInfos_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    int32_t userId = 100;
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.QueryLauncherAbilityInfos(want, userId, abilityInfos);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetLauncherAbilityInfoSync_0100
+ * @tc.name: test the GetLauncherAbilityInfoSync
+ * @tc.desc: 1. system running normally
+ *           2. test GetLauncherAbilityInfoSync
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetLauncherAbilityInfoSync_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName;
+    int32_t userId = 100;
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.GetLauncherAbilityInfoSync(bundleName, userId, abilityInfos);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: QueryAllAbilityInfos_0100
+ * @tc.name: test the QueryAllAbilityInfos
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAllAbilityInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAllAbilityInfos_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    Want want;
+    int32_t userId = 100;
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.QueryAllAbilityInfos(want, userId, abilityInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfoByUri_0100
+ * @tc.name: test the QueryAbilityInfoByUri
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfoByUri
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfoByUri_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string abilityUri = "abilityUri";
+    AbilityInfo abilityInfos;
+    auto res = bundleMgrProxy.QueryAbilityInfoByUri(abilityUri, abilityInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfosByUri_0100
+ * @tc.name: test the QueryAbilityInfosByUri
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfosByUri
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfosByUri_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string abilityUri = "abilityUri";
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.QueryAbilityInfosByUri(abilityUri, abilityInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryAbilityInfoByUri_0200
+ * @tc.name: test the QueryAbilityInfoByUri
+ * @tc.desc: 1. system running normally
+ *           2. test QueryAbilityInfoByUri
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryAbilityInfoByUri_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string abilityUri = "abilityUri";
+    AbilityInfo abilityInfos;
+    int32_t userId = 100;
+    auto res = bundleMgrProxy.QueryAbilityInfoByUri(abilityUri, userId, abilityInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: QueryKeepAliveBundleInfos_0100
+ * @tc.name: test the QueryKeepAliveBundleInfos
+ * @tc.desc: 1. system running normally
+ *           2. test QueryKeepAliveBundleInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QueryKeepAliveBundleInfos_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<BundleInfo> bundleInfos;
+    auto res = bundleMgrProxy.QueryKeepAliveBundleInfos(bundleInfos);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: GetAbilityLabel_0100
+ * @tc.name: test the GetAbilityLabel
+ * @tc.desc: 1. system running normally
+ *           2. test GetAbilityLabel
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAbilityLabel_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    std::string abilityName = "abilityName";
+    auto res = bundleMgrProxy.GetAbilityLabel(bundleName, abilityName);
+    EXPECT_EQ(res, Constants::EMPTY_STRING);
+    bundleName ="bundleName";
+    res = bundleMgrProxy.GetAbilityLabel(bundleName, abilityName);
+    EXPECT_EQ(res, Constants::EMPTY_STRING);
+}
+
+/**
+ * @tc.number: GetAbilityLabel_0200
+ * @tc.name: test the GetAbilityLabel
+ * @tc.desc: 1. system running normally
+ *           2. test GetAbilityLabel
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAbilityLabel_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    std::string moduleName = "moduleName";
+    std::string abilityName = "abilityName";
+    std::string label = "label";
+    auto res = bundleMgrProxy.GetAbilityLabel(bundleName, moduleName, abilityName, label);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_PARAM_ERROR);
+    bundleName ="bundleName";
+    res = bundleMgrProxy.GetAbilityLabel(bundleName, moduleName, abilityName, label);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_IPC_TRANSACTION);
+}
+
+/**
+ * @tc.number: GetApplicationLabel_0100
+ * @tc.name: test the GetApplicationLabel
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationLabel with empty bundleName
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationLabel_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t appIndex = 0;
+    std::string label;
+    auto res = bundleMgrProxy.GetApplicationLabel(bundleName, appIndex, label);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+}
+
+/**
+ * @tc.number: GetApplicationLabel_0200
+ * @tc.name: test the GetApplicationLabel
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationLabel with valid bundleName
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationLabel_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 0;
+    std::string label;
+    auto res = bundleMgrProxy.GetApplicationLabel(bundleName, appIndex, label);
+    // When impl is nullptr, SendTransactCmd fails and returns ERR_BUNDLE_MANAGER_IPC_TRANSACTION
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: GetApplicationLabel_0300
+ * @tc.name: test the GetApplicationLabel
+ * @tc.desc: 1. system running normally
+ *           2. test GetApplicationLabel with appIndex for clone app
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetApplicationLabel_0300, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 1;  // clone app index
+    std::string label;
+    auto res = bundleMgrProxy.GetApplicationLabel(bundleName, appIndex, label);
+    // When impl is nullptr, SendTransactCmd fails and returns ERR_BUNDLE_MANAGER_IPC_TRANSACTION
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: GetLaunchWantForBundle_0100
+ * @tc.name: test the GetLaunchWantForBundle
+ * @tc.desc: 1. system running normally
+ *           2. test GetLaunchWantForBundle
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetLaunchWantForBundle_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t userId = 100;
+    Want want;
+    auto res = bundleMgrProxy.GetLaunchWantForBundle(bundleName, want, userId);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    bundleName = "com.example.bundleName.test";
+    res = bundleMgrProxy.GetLaunchWantForBundle(bundleName, want, userId);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetPermissionDef_0100
+ * @tc.name: test the GetPermissionDef
+ * @tc.desc: 1. system running normally
+ *           2. test GetPermissionDef
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetPermissionDef_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string permissionName = "";
+    PermissionDef permissionDef;
+    auto res = bundleMgrProxy.GetPermissionDef(permissionName, permissionDef);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: CleanBundleCacheFilesAutomatic_0100
+ * @tc.name: test the CleanBundleCacheFilesAutomatic
+ * @tc.desc: 1. system running normally
+ *           2. test CleanBundleCacheFilesAutomatic
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CleanBundleCacheFilesAutomatic_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    uint64_t cacheSize = 0;
+    auto res = bundleMgrProxy.CleanBundleCacheFilesAutomatic(cacheSize);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_INVALID_PARAMETER);
+    cacheSize = 1;
+    res = bundleMgrProxy.CleanBundleCacheFilesAutomatic(cacheSize);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_IPC_TRANSACTION);
+}
+
+/**
+ * @tc.number: CleanBundleCacheFiles_0100
+ * @tc.name: test the CleanBundleCacheFiles
+ * @tc.desc: 1. system running normally
+ *           2. test CleanBundleCacheFiles
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CleanBundleCacheFiles_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    sptr<ICleanCacheCallback> cleanCacheCallback;
+    int32_t userId = 100;
+    int32_t appIndex = 1;
+    auto res = bundleMgrProxy.CleanBundleCacheFiles(bundleName, cleanCacheCallback, userId, appIndex);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    bundleName = "bundleName";
+    res = bundleMgrProxy.CleanBundleCacheFiles(bundleName, cleanCacheCallback, userId, appIndex);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_PARAM_ERROR);
+    cleanCacheCallback =  new (std::nothrow) ICleanCacheCallbackTest();
+    res = bundleMgrProxy.CleanBundleCacheFiles(bundleName, cleanCacheCallback, userId, appIndex);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_IPC_TRANSACTION);
+}
+
+/**
+ * @tc.number: CleanBundleCacheFilesForSelf_0100
+ * @tc.name: test the CleanBundleCacheFilesForSelf
+ * @tc.desc: 1. system running normally
+ *           2. test CleanBundleCacheFilesForSelf
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CleanBundleCacheFilesForSelf_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    sptr<ICleanCacheCallback> cleanCacheCallback;
+    auto res = bundleMgrProxy.CleanBundleCacheFilesForSelf(cleanCacheCallback);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_PARAM_ERROR);
+    cleanCacheCallback =  new (std::nothrow) ICleanCacheCallbackTest();
+    res = bundleMgrProxy.CleanBundleCacheFilesForSelf(cleanCacheCallback);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_IPC_TRANSACTION);
+}
+
+/**
+ * @tc.number: CleanBundleDataFiles_0100
+ * @tc.name: test the CleanBundleDataFiles
+ * @tc.desc: 1. system running normally
+ *           2. test CleanBundleDataFiles
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CleanBundleDataFiles_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t userId = 100;
+    int32_t appIndex = 1;
+    int32_t callerUid = 1001;
+    auto res = bundleMgrProxy.CleanBundleDataFiles(bundleName, userId, appIndex, callerUid);
+    EXPECT_FALSE(res);
+    bundleName = "com.example.bundleName.test";
+    res = bundleMgrProxy.CleanBundleDataFiles(bundleName, userId, appIndex, callerUid);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: RegisterBundleStatusCallback_0100
+ * @tc.name: test the RegisterBundleStatusCallback
+ * @tc.desc: 1. system running normally
+ *           2. test RegisterBundleStatusCallback
+ */
+HWTEST_F(BmsBundleMgrProxyTest, RegisterBundleStatusCallback_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    sptr<IBundleStatusCallback> bundleStatusCallback = nullptr;
+    auto res = bundleMgrProxy.RegisterBundleStatusCallback(bundleStatusCallback);
+    EXPECT_FALSE(res);
+    bundleStatusCallback = new (std::nothrow) IBundleStatusCallbackTest();
+    res = bundleMgrProxy.RegisterBundleStatusCallback(bundleStatusCallback);
+    EXPECT_FALSE(res);
+    bundleStatusCallback->SetBundleName("com.example.bundleName.demo");
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: RegisterBundleEventCallback_0100
+ * @tc.name: test the RegisterBundleEventCallback
+ * @tc.desc: 1. system running normally
+ *           2. test RegisterBundleEventCallback
+ */
+HWTEST_F(BmsBundleMgrProxyTest, RegisterBundleEventCallback_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    sptr<IBundleEventCallback> bundleEventCallback = nullptr;
+    auto res = bundleMgrProxy.RegisterBundleEventCallback(bundleEventCallback);
+    EXPECT_FALSE(res);
+    bundleEventCallback = new (std::nothrow) IBundleEventCallbackTest();
+    res = bundleMgrProxy.RegisterBundleEventCallback(bundleEventCallback);
+    EXPECT_FALSE(res);
+}
+
+/**
+ * @tc.number: IsBundleInstalled_0100
+ * @tc.name: test the IsBundleInstalled
+ * @tc.desc: 1. system running normally
+ *           2. test IsBundleInstalled
+ */
+HWTEST_F(BmsBundleMgrProxyTest, IsBundleInstalled_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    bool isBundleInstalled = false;
+    ErrCode res = bundleMgrProxy.IsBundleInstalled("", 100, 0, isBundleInstalled);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_IPC_TRANSACTION);
+    EXPECT_FALSE(isBundleInstalled);
+}
+
+/**
+ * @tc.number: GetAbilityInfos_0100
+ * @tc.name: test the GetAbilityInfos
+ * @tc.desc: 1. system running normally
+ *           2. test GetAbilityInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAbilityInfos_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string uri = "https://";
+    int32_t flags = 2;
+    std::vector<AbilityInfo> abilityInfos;
+    auto res = bundleMgrProxy.GetAbilityInfos(uri, flags, abilityInfos);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetAppIdentifierAndAppIndex_0100
+ * @tc.name: test the GetAppIdentifierAndAppIndex
+ * @tc.desc: 1. system running normally
+ *           2. test GetAppIdentifierAndAppIndex
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAppIdentifierAndAppIndex_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string appIdentifier;
+    int32_t appIndex;
+    auto res = bundleMgrProxy.GetAppIdentifierAndAppIndex(ACCESS_TOKEN_ID, appIdentifier, appIndex);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetAllFormsInfo_0100
+ * @tc.name: test the GetAllFormsInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetAllFormsInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAllFormsInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<FormInfo> formInfos;
+    auto result = bundleMgrProxy.GetAllFormsInfo(formInfos);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: CleanAllBundleCache_0100
+ * @tc.name: test the CleanAllBundleCache
+ * @tc.desc: 1. system running normally
+ *           2. test CleanAllBundleCache
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CleanAllBundleCache_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    sptr<ProcessCacheCallbackImpl> delCache = new (std::nothrow) ProcessCacheCallbackImpl();
+    auto ret = bundleMgrProxy.CleanAllBundleCache(delCache);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: GetLaunchWant_0100
+ * @tc.name: test the GetLaunchWant
+ * @tc.desc: 1. system running normally
+ *           2. test GetLaunchWant
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetLaunchWant_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    AAFwk::Want want;
+    auto ret = bundleMgrProxy.GetLaunchWant(want);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: GetPluginHapModuleInfo_0100
+ * @tc.name: test the GetPluginHapModuleInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetPluginHapModuleInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetPluginHapModuleInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string hostBundleName;
+    std::string pluginBundleName;
+    std::string pluginModuleName;
+    int32_t userId = 100;
+    HapModuleInfo hapModuleInfo;
+    auto ret = bundleMgrProxy.GetPluginHapModuleInfo(hostBundleName, pluginBundleName, pluginModuleName, userId,
+        hapModuleInfo);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: SetShortcutVisibleForSelf_0100
+ * @tc.name: test the SetShortcutVisibleForSelf
+ * @tc.desc: 1. system running normally
+ *           2. test SetShortcutVisibleForSelf
+ */
+HWTEST_F(BmsBundleMgrProxyTest, SetShortcutVisibleForSelf_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string shortcutId;
+    bool visible = true;
+    auto ret = bundleMgrProxy.SetShortcutVisibleForSelf(shortcutId, visible);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: GetAllShortcutInfoForSelf_0100
+ * @tc.name: test the GetAllShortcutInfoForSelf
+ * @tc.desc: 1. system running normally
+ *           2. test GetAllShortcutInfoForSelf
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAllShortcutInfoForSelf_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<ShortcutInfo> shortcutInfos;
+    auto ret = bundleMgrProxy.GetAllShortcutInfoForSelf(shortcutInfos);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: GreatOrEqualTargetAPIVersion_0100
+ * @tc.name: test the GreatOrEqualTargetAPIVersion
+ * @tc.desc: 1. system running normally
+ *           2. test GreatOrEqualTargetAPIVersion
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GreatOrEqualTargetAPIVersion_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int32_t platformVersion = 1;
+    int32_t minorVersion = 2;
+    int32_t patchVersion = 3;
+    auto ret = bundleMgrProxy.GreatOrEqualTargetAPIVersion(platformVersion, minorVersion, patchVersion);
+    EXPECT_NE(ret, true);
+}
+
+/**
+ * @tc.number: ProcessCacheCallbackHost_0100
+ * @tc.name: test the ProcessCacheCallbackHost
+ * @tc.desc: 1. test ProcessCacheCallbackHost
+ */
+HWTEST_F(BmsBundleMgrProxyTest, ProcessCacheCallbackHost_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    sptr<ProcessCacheCallbackHost> getCache = new (std::nothrow) ProcessCacheCallbackHost();
+    EXPECT_NE(getCache, nullptr);
+
+    // test finish
+    getCache->OnGetAllBundleCacheFinished(2);
+    uint64_t cacheSize = getCache->GetCacheStat();
+    EXPECT_EQ(cacheSize, 2);
+
+    // test no finish, wait timeout
+    getCache->setAllComplete(false);
+    cacheSize = getCache->GetCacheStat();
+    EXPECT_EQ(cacheSize, 2);
+}
+
+/**
+ * @tc.number: GetPluginInfo_0001
+ * @tc.name: test the GetPluginInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetPluginInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetPluginInfo_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string hostBundleName = "bundle";
+    std::string pluginBundleName = "plugin";
+    int32_t userId = 100;
+    PluginBundleInfo pluginBundleInfo;
+    auto ret = bundleMgrProxy.GetPluginInfo(hostBundleName, pluginBundleName, userId, pluginBundleInfo);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: GetPluginBundlePathForSelf_0100
+ * @tc.name: test the GetPluginBundlePathForSelf
+ * @tc.desc: 1. system running normally
+ *           2. test GetPluginBundlePathForSelf
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetPluginBundlePathForSelf_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string pluginBundleName = "plugin";
+    std::string codePath;
+    auto ret = bundleMgrProxy.GetPluginBundlePathForSelf(pluginBundleName, codePath);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: IsApplicationDisableForbidden_0001
+ * @tc.name: test the IsApplicationDisableForbidden
+ * @tc.desc: 1. system running normally
+ *           2. test IsApplicationDisableForbidden
+ */
+HWTEST_F(BmsBundleMgrProxyTest, IsApplicationDisableForbidden_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle_test";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    bool forbidden = false;
+    auto ret = bundleMgrProxy.IsApplicationDisableForbidden(bundleName, userId, appIndex, forbidden);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: SetApplicationDisableForbidden_0001
+ * @tc.name: test the SetApplicationDisableForbidden
+ * @tc.desc: 1. system running normally
+ *           2. test SetApplicationDisableForbidden
+ */
+HWTEST_F(BmsBundleMgrProxyTest, SetApplicationDisableForbidden_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle_test";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    bool forbidden = false;
+    auto ret = bundleMgrProxy.SetApplicationDisableForbidden(bundleName, userId, appIndex, forbidden);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: GetBundleInstallStatus_0001
+ * @tc.name: test the GetBundleInstallStatus
+ * @tc.desc: 1. system running normally
+ *           2. test GetBundleInstallStatus
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetBundleInstallStatus_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle";
+    int32_t userId = 100;
+    BundleInstallStatus status;
+    auto ret = bundleMgrProxy.GetBundleInstallStatus(bundleName, userId, status);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: GetAllJsonProfile_0001
+ * @tc.name: test the GetAllJsonProfile
+ * @tc.desc: 1. system running normally
+ *           2. test GetAllJsonProfile
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAllJsonProfile_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<JsonProfileInfo> profileInfos;
+    int32_t userId = 100;
+    auto ret = bundleMgrProxy.GetAllJsonProfile(ProfileType::EASY_GO_PROFILE, userId, profileInfos);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: GetAllAppProvisionInfo_0001
+ * @tc.name: test the GetAllAppProvisionInfo
+ * @tc.desc: 1. system running normally
+ *           2. test GetAllAppProvisionInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAllAppProvisionInfo_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<AppProvisionInfo> appProvisionInfos;
+    int32_t userId = 100;
+    auto ret = bundleMgrProxy.GetAllAppProvisionInfo(userId, appProvisionInfos);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: RecoverBackupBundleData_0001
+ * @tc.name: test the RecoverBackupBundleData
+ * @tc.desc: 1. system running normally
+ *           2. test RecoverBackupBundleData
+ */
+HWTEST_F(BmsBundleMgrProxyTest, RecoverBackupBundleData_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto ret = bundleMgrProxy.RecoverBackupBundleData(bundleName, userId, appIndex);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: RemoveBackupBundleData_0001
+ * @tc.name: test the RemoveBackupBundleData
+ * @tc.desc: 1. system running normally
+ *           2. test RemoveBackupBundleData
+ */
+HWTEST_F(BmsBundleMgrProxyTest, RemoveBackupBundleData_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto ret = bundleMgrProxy.RemoveBackupBundleData(bundleName, userId, appIndex);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: CreateNewBundleEl5Dir_0001
+ * @tc.name: test the CreateNewBundleDir
+ * @tc.desc: 1. system running normally
+ *           2. test CreateNewBundleDir
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CreateNewBundleEl5Dir_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    int32_t userId = 100;
+    auto ret = bundleMgrProxy.CreateNewBundleDir(userId);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: AddDynamicShortcutInfosProxy_0001
+ * @tc.name: test the AddDynamicShortcutInfos
+ * @tc.desc: test AddDynamicShortcutInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, AddDynamicShortcutInfosProxy_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    ShortcutInfo shortcutInfo;
+    std::vector<ShortcutInfo> shortcutInfos;
+    shortcutInfos.push_back(shortcutInfo);
+    int32_t userId = 100;
+    auto ret = bundleMgrProxy.AddDynamicShortcutInfos(shortcutInfos, userId);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: AddDynamicShortcutInfosProxy_0002
+ * @tc.name: test the AddDynamicShortcutInfos
+ * @tc.desc: test AddDynamicShortcutInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, AddDynamicShortcutInfosProxy_0002, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<ShortcutInfo> shortcutInfos;
+    shortcutInfos.clear();
+    int32_t userId = 100;
+    auto ret = bundleMgrProxy.AddDynamicShortcutInfos(shortcutInfos, userId);
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_PARAM_ERROR);
+}
+
+/**
+ * @tc.number: AddDynamicShortcutInfosProxy_0003
+ * @tc.name: test the AddDynamicShortcutInfos
+ * @tc.desc: test AddDynamicShortcutInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, AddDynamicShortcutInfosProxy_0003, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    ShortcutInfo shortcutInfo;
+    std::vector<ShortcutInfo> shortcutInfos;
+    shortcutInfos.reserve(MAX_SHORTCUT_INFOS);
+    for (int i = 0; i < MAX_SHORTCUT_INFOS; ++i) {
+        shortcutInfos.push_back(shortcutInfo);
+    }
+    int32_t userId = 100;
+    auto ret = bundleMgrProxy.AddDynamicShortcutInfos(shortcutInfos, userId);
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_PARAM_ERROR);
+}
+
+/**
+ * @tc.number: DeleteDynamicShortcutInfosProxy_0001
+ * @tc.name: test the DeleteDynamicShortcutInfos
+ * @tc.desc: test DeleteDynamicShortcutInfos
+ */
+HWTEST_F(BmsBundleMgrProxyTest, DeleteDynamicShortcutInfosProxy_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<std::string> ids;
+    std::string bundleName = "bundle";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto ret = bundleMgrProxy.DeleteDynamicShortcutInfos(bundleName, appIndex, userId, ids);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: SetShortcutsEnabled_0001
+ * @tc.name: test the SetShortcutsEnabled
+ * @tc.desc: test SetShortcutsEnabled
+ */
+HWTEST_F(BmsBundleMgrProxyTest, SetShortcutsEnabled_0001, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    ShortcutInfo shortcutInfo;
+    std::vector<ShortcutInfo> shortcutInfos;
+    shortcutInfos.push_back(shortcutInfo);
+    bool isEnabled = false;
+    auto ret = bundleMgrProxy.SetShortcutsEnabled(shortcutInfos, isEnabled);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: SetShortcutsEnabled_0002
+ * @tc.name: test the SetShortcutsEnabled
+ * @tc.desc: test SetShortcutsEnabled
+ */
+HWTEST_F(BmsBundleMgrProxyTest, SetShortcutsEnabled_0002, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<ShortcutInfo> shortcutInfos;
+    shortcutInfos.clear();
+    bool isEnabled = false;
+    auto ret = bundleMgrProxy.SetShortcutsEnabled(shortcutInfos, isEnabled);
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_PARAM_ERROR);
+}
+
+/**
+ * @tc.number: SetShortcutsEnabled_0003
+ * @tc.name: test the SetShortcutsEnabled
+ * @tc.desc: test SetShortcutsEnabled
+ */
+HWTEST_F(BmsBundleMgrProxyTest, SetShortcutsEnabled_0003, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    ShortcutInfo shortcutInfo;
+    std::vector<ShortcutInfo> shortcutInfos;
+    shortcutInfos.reserve(MAX_SHORTCUT_INFOS);
+    for (int i = 0; i < MAX_SHORTCUT_INFOS; ++i) {
+        shortcutInfos.push_back(shortcutInfo);
+    }
+    bool isEnabled = false;
+    auto ret = bundleMgrProxy.SetShortcutsEnabled(shortcutInfos, isEnabled);
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_PARAM_ERROR);
+}
+
+/**
+ * @tc.number: CleanBundleCacheFilesAutomatic_0200
+ * @tc.name: test the CleanBundleCacheFilesAutomatic
+ * @tc.desc: 1. system running normally
+ *           2. test CleanBundleCacheFilesAutomatic
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CleanBundleCacheFilesAutomatic_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    uint64_t cacheSize = 0;
+    CleanType cleanType = CleanType::CACHE_SPACE;
+    std::optional<uint64_t> cleanedSize;
+    auto res = bundleMgrProxy.CleanBundleCacheFilesAutomatic(cacheSize, cleanType, cleanedSize);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_INVALID_PARAMETER);
+    cacheSize = 1;
+    res = bundleMgrProxy.CleanBundleCacheFilesAutomatic(cacheSize, cleanType, cleanedSize);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_IPC_TRANSACTION);
+}
+
+/**
+ * @tc.number: GetAllAppInstallExtendedInfo_0100
+ * @tc.name: test GetAllAppInstallExtendedInfo basic call
+ * @tc.desc: 1. BundleMgrProxy constructed with null IRemoteObject
+ *           2. verify GetAllAppInstallExtendedInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAllAppInstallExtendedInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<AppInstallExtendedInfo> appInstallExtendedInfos;
+    ErrCode ret = bundleMgrProxy.GetAllAppInstallExtendedInfo(appInstallExtendedInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetOdidResetCount_0100
+ * @tc.name: test GetOdidResetCount with null remote object
+ * @tc.desc: 1. BundleMgrProxy constructed with null IRemoteObject
+ *           2. verify GetOdidResetCount returns error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetOdidResetCount_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "com.example.test";
+    int32_t count = 0;
+    std::string odid;
+    ErrCode ret = bundleMgrProxy.GetOdidResetCount(bundleName, odid, count);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetOdidResetCount_0200
+ * @tc.name: test GetOdidResetCount with empty bundleName
+ * @tc.desc: 1. BundleMgrProxy constructed with null IRemoteObject
+ *           2. verify GetOdidResetCount with empty bundleName
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetOdidResetCount_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    int32_t count = 0;
+    std::string odid;
+    ErrCode ret = bundleMgrProxy.GetOdidResetCount(bundleName, odid, count);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetOdidResetCount_0300
+ * @tc.name: test GetOdidResetCount normal call
+ * @tc.desc: 1. BundleMgrProxy constructed with null IRemoteObject
+ *           2. verify GetOdidResetCount returns parcel error when IPC fails
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetOdidResetCount_0300, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "com.example.testbundle";
+    int32_t count = 0;
+    std::string odid;
+    ErrCode ret = bundleMgrProxy.GetOdidResetCount(bundleName, odid, count);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetInstalledBundleList_0100
+ * @tc.name: test GetInstalledBundleList with null remote object
+ * @tc.desc: 1. BundleMgrProxy constructed with null IRemoteObject
+ *           2. verify GetInstalledBundleList returns parcel error when IPC fails
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetInstalledBundleList_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+    uint32_t flags = 0;
+    int32_t userId = 100;
+    std::vector<BundleInfo> bundleInfos;
+    ErrCode ret = bundleMgrProxy.GetInstalledBundleList(flags, userId, bundleInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetInstalledBundleList_0200
+ * @tc.name: test GetInstalledBundleList with different flags
+ * @tc.desc: 1. BundleMgrProxy constructed with null IRemoteObject
+ *           2. verify GetInstalledBundleList with various flag values
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetInstalledBundleList_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+    uint32_t flags = 0x00000001;
+    int32_t userId = 0;
+    std::vector<BundleInfo> bundleInfos;
+    ErrCode ret = bundleMgrProxy.GetInstalledBundleList(flags, userId, bundleInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetInstalledBundleList_0300
+ * @tc.name: test GetInstalledBundleList with negative userId
+ * @tc.desc: 1. BundleMgrProxy constructed with null IRemoteObject
+ *           2. verify GetInstalledBundleList error handling
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetInstalledBundleList_0300, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+    uint32_t flags = 0;
+    int32_t userId = -1;
+    std::vector<BundleInfo> bundleInfos;
+    ErrCode ret = bundleMgrProxy.GetInstalledBundleList(flags, userId, bundleInfos);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetTopNLargestItemsInAppDataDir_0100
+ * @tc.name: test GetTopNLargestItemsInAppDataDir with null remote object
+ * @tc.desc: 1. BundleMgrProxy constructed with null IRemoteObject
+ *           2. verify GetTopNLargestItemsInAppDataDir returns parcel error when IPC fails
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetTopNLargestItemsInAppDataDir_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+
+    class MockGetLargestItemsCallback : public IGetLargestItemsCallback {
+    public:
+        void OnGetLargestItemsFinished(ErrCode errCode, const std::string &largestItems) override
+        {
+            resultErrCode = errCode;
+            resultData = largestItems;
+        }
+        sptr<IRemoteObject> AsObject() override
+        {
+            return nullptr;
+        }
+        ErrCode resultErrCode = ERR_OK;
+        std::string resultData;
+    };
+
+    sptr<MockGetLargestItemsCallback> callback = new (std::nothrow) MockGetLargestItemsCallback();
+    ASSERT_NE(callback, nullptr);
+
+    std::string bundleName = "com.example.test";
+    int32_t appIndex = 0;
+    int32_t userId = 100;
+
+    ErrCode ret = bundleMgrProxy.GetTopNLargestItemsInAppDataDir(bundleName, appIndex, userId, callback);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetAlternateIcons_0100
+ * @tc.name: test the GetAlternateIcons
+ * @tc.desc: 1. system running normally
+ *           2. test GetAlternateIcons
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetAlternateIcons_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::vector<AlternateIconInfo> alternateIcons;
+    auto ret = bundleMgrProxy.GetAlternateIcons(alternateIcons);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: CleanBundlePartialCacheAutomatic_0100
+ * @tc.name: test the CleanBundlePartialCacheAutomatic
+ * @tc.desc: 1. system running normally
+ *           2. test CleanBundlePartialCacheAutomatic
+ */
+HWTEST_F(BmsBundleMgrProxyTest, CleanBundlePartialCacheAutomatic_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    CleanCacheInfo cleanCacheInfo;
+    cleanCacheInfo.bundleName = "";
+    cleanCacheInfo.userId = 100;
+    cleanCacheInfo.appIndex = 0;
+    cleanCacheInfo.cacheThreshold = 0;
+    uint64_t beforeCleanedSize = 0;
+    uint64_t afterCleanedSize = 0;
+    auto res = bundleMgrProxy.CleanBundlePartialCacheAutomatic(cleanCacheInfo, beforeCleanedSize, afterCleanedSize);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    cleanCacheInfo.bundleName = "com.example.test";
+    res = bundleMgrProxy.CleanBundlePartialCacheAutomatic(cleanCacheInfo, beforeCleanedSize, afterCleanedSize);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_IPC_TRANSACTION);
+}
+
+/**
+ * @tc.number: QuerySandboxCloneAbilityInfo_0100
+ * @tc.name: test the QuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. creatorBundleName is empty
+ *           2. test QuerySandboxCloneAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QuerySandboxCloneAbilityInfo_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string creatorBundleName = "";
+    ElementName element;
+    element.SetBundleName("com.example.bundle");
+    element.SetAbilityName("MainAbility");
+    int32_t flags = 1;
+    int32_t appIndex = 2000;
+    AbilityInfo abilityInfo;
+    auto res = bundleMgrProxy.QuerySandboxCloneAbilityInfo(
+        creatorBundleName, element, flags, appIndex, abilityInfo, 100);
+    EXPECT_EQ(res, ERR_APPEXECFWK_CLI_SANDBOX_INSTALL_INVALID_CREATOR_BUNDLE_NAME);
+}
+
+/**
+ * @tc.number: QuerySandboxCloneAbilityInfo_0200
+ * @tc.name: test the QuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. appIndex below CLI_SANDBOX_APP_INDEX_MIN
+ *           2. test QuerySandboxCloneAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QuerySandboxCloneAbilityInfo_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string creatorBundleName = "com.example.creator";
+    ElementName element;
+    element.SetBundleName("com.example.bundle");
+    element.SetAbilityName("MainAbility");
+    int32_t flags = 1;
+    int32_t appIndex = 100;
+    AbilityInfo abilityInfo;
+    auto res = bundleMgrProxy.QuerySandboxCloneAbilityInfo(
+        creatorBundleName, element, flags, appIndex, abilityInfo, 100);
+    EXPECT_EQ(res, ERR_APPEXECFWK_CLI_SANDBOX_INSTALL_INVALID_APP_INDEX);
+}
+
+/**
+ * @tc.number: QuerySandboxCloneAbilityInfo_0201
+ * @tc.name: test the QuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. element bundleName is empty (creatorBundleName valid)
+ *           2. test QuerySandboxCloneAbilityInfo returns param error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QuerySandboxCloneAbilityInfo_0201, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string creatorBundleName = "com.example.creator";
+    ElementName element;
+    element.SetAbilityName("MainAbility"); // bundleName left empty
+    int32_t flags = 1;
+    int32_t appIndex = 2000;
+    AbilityInfo abilityInfo;
+    auto res = bundleMgrProxy.QuerySandboxCloneAbilityInfo(
+        creatorBundleName, element, flags, appIndex, abilityInfo, 100);
+    EXPECT_EQ(res, ERR_APPEXECFWK_CLI_SANDBOX_QUERY_PARAM_ERROR);
+}
+
+/**
+ * @tc.number: QuerySandboxCloneAbilityInfo_0202
+ * @tc.name: test the QuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. element abilityName is empty (creatorBundleName valid)
+ *           2. test QuerySandboxCloneAbilityInfo returns param error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QuerySandboxCloneAbilityInfo_0202, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string creatorBundleName = "com.example.creator";
+    ElementName element;
+    element.SetBundleName("com.example.bundle"); // abilityName left empty
+    int32_t flags = 1;
+    int32_t appIndex = 2000;
+    AbilityInfo abilityInfo;
+    auto res = bundleMgrProxy.QuerySandboxCloneAbilityInfo(
+        creatorBundleName, element, flags, appIndex, abilityInfo, 100);
+    EXPECT_EQ(res, ERR_APPEXECFWK_CLI_SANDBOX_QUERY_PARAM_ERROR);
+}
+
+/**
+ * @tc.number: QuerySandboxCloneAbilityInfo_0300
+ * @tc.name: test the QuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. appIndex above CLI_SANDBOX_APP_INDEX_MAX
+ *           2. test QuerySandboxCloneAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QuerySandboxCloneAbilityInfo_0300, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string creatorBundleName = "com.example.creator";
+    ElementName element;
+    element.SetBundleName("com.example.bundle");
+    element.SetAbilityName("MainAbility");
+    int32_t flags = 1;
+    int32_t appIndex = 3001;
+    AbilityInfo abilityInfo;
+    auto res = bundleMgrProxy.QuerySandboxCloneAbilityInfo(
+        creatorBundleName, element, flags, appIndex, abilityInfo, 100);
+    EXPECT_EQ(res, ERR_APPEXECFWK_CLI_SANDBOX_INSTALL_INVALID_APP_INDEX);
+}
+
+/**
+ * @tc.number: QuerySandboxCloneAbilityInfo_0400
+ * @tc.name: test the QuerySandboxCloneAbilityInfo
+ * @tc.desc: 1. valid params but remote object unavailable
+ *           2. test QuerySandboxCloneAbilityInfo
+ */
+HWTEST_F(BmsBundleMgrProxyTest, QuerySandboxCloneAbilityInfo_0400, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string creatorBundleName = "com.example.creator";
+    ElementName element;
+    element.SetBundleName("com.example.bundle");
+    element.SetAbilityName("MainAbility");
+    int32_t flags = 1;
+    int32_t appIndex = 2000;
+    AbilityInfo abilityInfo;
+    auto res = bundleMgrProxy.QuerySandboxCloneAbilityInfo(
+        creatorBundleName, element, flags, appIndex, abilityInfo, 100);
+    EXPECT_NE(res, ERR_OK);
+}
+
+/**
+ * @tc.number: GetCliSandboxAppIndexes_0100
+ * @tc.name: test the GetCliSandboxAppIndexes
+ * @tc.desc: 1. remote object unavailable
+ *           2. test GetCliSandboxAppIndexes
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetCliSandboxAppIndexes_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "com.example.bundle";
+    std::vector<int32_t> appIndexes;
+    auto res = bundleMgrProxy.GetCliSandboxAppIndexes(bundleName, appIndexes, 100);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetStringByIdListProxy_0100
+ * @tc.name: test the GetStringByIdList
+ * @tc.desc: 1. bundleName is empty
+ *           2. test GetStringByIdList returns internal error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetStringByIdListProxy_0100, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "";
+    std::string moduleName = "module";
+    std::vector<uint32_t> resIdList = {1, 2, 3};
+    std::vector<std::string> labelList;
+    int32_t userId = 100;
+    std::string localeInfo = "";
+    auto res = bundleMgrProxy.GetStringByIdList(bundleName, moduleName, resIdList, labelList, userId, localeInfo);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_INTERNAL_ERROR);
+}
+
+/**
+ * @tc.number: GetStringByIdListProxy_0200
+ * @tc.name: test the GetStringByIdList
+ * @tc.desc: 1. moduleName is empty
+ *           2. test GetStringByIdList returns internal error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetStringByIdListProxy_0200, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle";
+    std::string moduleName = "";
+    std::vector<uint32_t> resIdList = {1, 2, 3};
+    std::vector<std::string> labelList;
+    int32_t userId = 100;
+    std::string localeInfo = "";
+    auto res = bundleMgrProxy.GetStringByIdList(bundleName, moduleName, resIdList, labelList, userId, localeInfo);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_INTERNAL_ERROR);
+}
+
+/**
+ * @tc.number: GetStringByIdListProxy_0300
+ * @tc.name: test the GetStringByIdList
+ * @tc.desc: 1. resIdList is empty
+ *           2. test GetStringByIdList returns internal error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetStringByIdListProxy_0300, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle";
+    std::string moduleName = "module";
+    std::vector<uint32_t> resIdList;
+    std::vector<std::string> labelList;
+    int32_t userId = 100;
+    std::string localeInfo = "";
+    auto res = bundleMgrProxy.GetStringByIdList(bundleName, moduleName, resIdList, labelList, userId, localeInfo);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_INTERNAL_ERROR);
+}
+
+/**
+ * @tc.number: GetStringByIdListProxy_0400
+ * @tc.name: test the GetStringByIdList
+ * @tc.desc: 1. resIdList size exceeds MAX_RES_ID_LIST_SIZE
+ *           2. test GetStringByIdList returns internal error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetStringByIdListProxy_0400, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle";
+    std::string moduleName = "module";
+    std::vector<uint32_t> resIdList;
+    for (int32_t i = 0; i < 1001; ++i) {
+        resIdList.push_back(i);
+    }
+    std::vector<std::string> labelList;
+    int32_t userId = 100;
+    std::string localeInfo = "";
+    auto res = bundleMgrProxy.GetStringByIdList(bundleName, moduleName, resIdList, labelList, userId, localeInfo);
+    EXPECT_EQ(res, ERR_BUNDLE_MANAGER_INTERNAL_ERROR);
+}
+
+/**
+ * @tc.number: GetStringByIdListProxy_0500
+ * @tc.name: test the GetStringByIdList
+ * @tc.desc: 1. remote object is nullptr
+ *           2. test GetStringByIdList returns parcel error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetStringByIdListProxy_0500, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl = nullptr;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle";
+    std::string moduleName = "module";
+    std::vector<uint32_t> resIdList = {1, 2, 3};
+    std::vector<std::string> labelList;
+    int32_t userId = 100;
+    std::string localeInfo = "";
+    auto res = bundleMgrProxy.GetStringByIdList(bundleName, moduleName, resIdList, labelList, userId, localeInfo);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+
+/**
+ * @tc.number: GetStringByIdListProxy_0600
+ * @tc.name: test the GetStringByIdList
+ * @tc.desc: 1. all params valid but remote object unavailable
+ *           2. test GetStringByIdList returns parcel error
+ */
+HWTEST_F(BmsBundleMgrProxyTest, GetStringByIdListProxy_0600, Function | MediumTest | Level1)
+{
+    sptr<IRemoteObject> impl;
+    BundleMgrProxy bundleMgrProxy(impl);
+    std::string bundleName = "bundle";
+    std::string moduleName = "module";
+    std::vector<uint32_t> resIdList = {1, 2, 3};
+    std::vector<std::string> labelList;
+    int32_t userId = 100;
+    std::string localeInfo = "en_US";
+    auto res = bundleMgrProxy.GetStringByIdList(bundleName, moduleName, resIdList, labelList, userId, localeInfo);
+    EXPECT_EQ(res, ERR_APPEXECFWK_PARCEL_ERROR);
+}
+}
+}

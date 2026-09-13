@@ -1,0 +1,151 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//build/ohos_var.gni")
+import("../../../config.gni")
+import("../../../var.gni")
+
+################################################################################
+
+config("system_ability_config") {
+  visibility = [ ":*" ]
+  visibility += [ "//foundation/ability/ability_runtime/test/moduletest/ability_record_test/*" ]
+  include_dirs = [
+    "../../../services/safwk/include",
+    "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk",
+  ]
+}
+
+config("system_ability_all_deps_config") {
+  include_dirs =
+      [ "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk" ]
+}
+
+config("api_cache_manager_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "../../../services/safwk/include",
+    "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk",
+  ]
+}
+
+ohos_shared_library("system_ability_fwk") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    cfi_no_nvcall = true
+    blocklist = "../../../cfi_blocklist.txt"
+  }
+  branch_protector_ret = "pac_ret"
+
+  version_script = "libsystem_ability_fwk.versionscript"
+  sources = [
+    "../../../services/safwk/src/ffrt_handler.cpp",
+    "../../../services/safwk/src/local_ability_manager.cpp",
+    "../../../services/safwk/src/local_ability_manager_dumper.cpp",
+    "../../../services/safwk/src/local_ability_manager_stub.cpp",
+    "../../../services/safwk/src/system_ability.cpp",
+    "../../../services/safwk/src/system_ability_ondemand_reason.cpp",
+  ]
+
+  configs =
+      [ "//foundation/systemabilitymgr/safwk/test/resource:coverage_flags" ]
+
+  public_configs = [
+    ":system_ability_all_deps_config",
+    ":system_ability_config",
+    "//foundation/systemabilitymgr/safwk/test/resource:coverage_flags",
+  ]
+  defines = []
+  if (is_standard_system) {
+    external_deps = [
+      "access_token:libaccesstoken_sdk",
+      "c_utils:utils",
+      "ffrt:libffrt",
+      "hilog:libhilog",
+      "hitrace:hitrace_meter",
+      "ipc:ipc_core",
+      "json:nlohmann_json_static",
+      "samgr:samgr_common",
+      "samgr:samgr_proxy",
+    ]
+
+    if (safwk_enable_run_on_demand_qos) {
+      defines += [ "SAFWK_ENABLE_RUN_ON_DEMAND_QOS" ]
+    }
+  }
+
+  install_images = [ system_base_dir ]
+  relative_install_dir = "platformsdk"
+  innerapi_tags = [
+    "platformsdk_indirect",
+    "sasdk",
+  ]
+  part_name = "safwk"
+  subsystem_name = "systemabilitymgr"
+}
+
+ohos_static_library("system_ability_ondemand_reason") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    cfi_no_nvcall = true
+    blocklist = "../../../cfi_blocklist.txt"
+  }
+  branch_protector_ret = "pac_ret"
+
+  sources = [ "../../../services/safwk/src/system_ability_ondemand_reason.cpp" ]
+
+  public_configs = [ ":system_ability_all_deps_config" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "json:nlohmann_json_static",
+    "samgr:samgr_common",
+  ]
+
+  part_name = "safwk"
+  subsystem_name = "systemabilitymgr"
+}
+
+ohos_shared_library("api_cache_manager") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    cfi_no_nvcall = true
+    blocklist = "../../../cfi_blocklist.txt"
+  }
+  branch_protector_ret = "pac_ret"
+
+  sources = [ "//foundation/systemabilitymgr/safwk/services/safwk/src/api_cache_manager.cpp" ]
+  public_configs = [ ":api_cache_manager_config" ]
+
+  install_images = [ system_base_dir ]
+  relative_install_dir = "platformsdk"
+  innerapi_tags = [
+    "platformsdk_indirect",
+    "sasdk",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+  part_name = "safwk"
+  subsystem_name = "systemabilitymgr"
+}
+################################################################################

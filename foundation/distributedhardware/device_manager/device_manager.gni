@@ -1,0 +1,105 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#------------------------device manager------------------------------#
+devicemanager_path = "//foundation/distributedhardware/device_manager"
+common_path = "${devicemanager_path}/common"
+utils_path = "${devicemanager_path}/utils"
+services_path = "${devicemanager_path}/services/service"
+servicesimpl_path = "${devicemanager_path}/services/implementation"
+softbuscache_parh = "${devicemanager_path}/services/softbuscache"
+innerkits_path = "${devicemanager_path}/interfaces/inner_kits"
+mini_tools_kits_path = "${devicemanager_path}/interfaces/mini_tools_kits"
+hilog_path = "//base/hiviewdfx/hilog_lite/frameworks/featured"
+third_path = "//third_party/bounds_checking_function"
+dsoftbussdk_path = "//foundation/communication/dsoftbus/sdk"
+ext_path = "${devicemanager_path}/ext"
+os_account_path = "//base/account/os_account"
+samgr_lite_path = "//foundation/systemabilitymgr/samgr_lite/interfaces"
+interfaces_path = "//foundation/communication/ipc/interfaces/innerkits"
+utils_lite_path = "//commonlibrary/utils_lite"
+c_utils_path = "//commonlibrary/c_utils/base/"
+fuzz_test_output_path = "device_manager/device_manager"
+json_path = "${devicemanager_path}/json"
+
+interfaces_3rd_path = "${devicemanager_path}/3rd/interfaces"
+utils_3rd_path = "${devicemanager_path}/3rd/utils"
+service_3rd_path = "${devicemanager_path}/3rd/services/service"
+serviceimpl_3rd_path = "${devicemanager_path}/3rd/services/implementation"
+
+#----------------------compilation options--------------------------#
+dm_ldflags = [ "-lpthread" ]
+declare_args() {
+  device_manager_capability = true
+  device_manager_enable_ets_frontend = true
+  device_manager_no_interaction_auth = false
+  device_manager_feature_product = "default"
+  use_nlohmann_json = true
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.account_os_account)) {
+    os_account_part_exists = true
+  } else {
+    os_account_part_exists = false
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.communication_bluetooth)) {
+    support_bluetooth = true
+  } else {
+    support_bluetooth = false
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.communication_wifi)) {
+    support_wifi = true
+  } else {
+    support_wifi = false
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.powermgr_power_manager)) {
+    support_power_manager = true
+  } else {
+    support_power_manager = false
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.theme_screenlock_mgr)) {
+    support_screenlock = true
+  } else {
+    support_screenlock = false
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.resourceschedule_memmgr_override)) {
+    support_memmgr = true
+  } else {
+    support_memmgr = false
+  }
+
+  if (defined(global_parts_info) &&
+      defined(
+          global_parts_info.distributedhardware_distributed_hardware_adapter)) {
+    device_manager_common = false
+  } else {
+    device_manager_common = true
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.msdp_spatial_awareness)) {
+    support_msdp = true
+  } else {
+    support_msdp = false
+  }
+}

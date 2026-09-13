@@ -1,0 +1,301 @@
+/*
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef FOUNDATION_BUNDLEMANAGER_BUNDLE_FRAMEWORK_BUNDLE_TOOL_INCLUDE_BUNDLE_TEST_TOOL_H
+#define FOUNDATION_BUNDLEMANAGER_BUNDLE_FRAMEWORK_BUNDLE_TOOL_INCLUDE_BUNDLE_TEST_TOOL_H
+
+#include <getopt.h>
+
+#include "shell_command.h"
+#include "bundle_event_callback_host.h"
+#include "bundle_mgr_interface.h"
+#include "bundle_installer_interface.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+class BundleEventCallbackImpl : public BundleEventCallbackHost {
+public:
+    BundleEventCallbackImpl();
+    virtual ~BundleEventCallbackImpl() override;
+    virtual void OnReceiveEvent(const EventFwk::CommonEventData eventData) override;
+
+private:
+    DISALLOW_COPY_AND_MOVE(BundleEventCallbackImpl);
+};
+
+class BundleTestTool : public ShellCommand {
+public:
+    BundleTestTool(int argc, char *argv[]);
+    ~BundleTestTool();
+
+private:
+    ErrCode CreateCommandMap() override;
+    ErrCode CreateMessageMap() override;
+    ErrCode Init() override;
+    void CreateQuickFixMsgMap(std::unordered_map<int32_t, std::string> &quickFixMsgMap);
+    std::string GetResMsg(int32_t code);
+    std::string GetResMsg(int32_t code, const std::shared_ptr<QuickFixResult> &quickFixRes);
+
+    ErrCode RunAsHelpCommand();
+    ErrCode RunAsCheckCommand();
+    ErrCode CheckOperation(int userId, std::string deviceId, std::string bundleName,
+        std::string moduleName, std::string abilityName);
+    ErrCode RunAsSetRemovableCommand();
+    ErrCode RunAsGetRemovableCommand();
+    ErrCode RunAsInstallSandboxCommand();
+    ErrCode RunAsUninstallSandboxCommand();
+    ErrCode RunAsUninstallPreInstallBundleCommand();
+    ErrCode RunAsDumpSandboxCommand();
+    ErrCode RunAsUninstallEnterpriseReSignCert();
+    ErrCode RunAsGetEnterpriseReSignCert();
+    ErrCode RunAsGetStringCommand();
+    ErrCode RunAsGetIconCommand();
+    ErrCode RunAsDeleteDisposedRulesCommand();
+    ErrCode CheckDeleteRulesCorrectOption(int option, const std::string &commandName, std::vector<std::string> &appIds,
+        int &appIndex, int &userId, int &uid);
+    ErrCode RunAsAddInstallRuleCommand();
+    ErrCode RunAsGetInstallRuleCommand();
+    ErrCode RunAsDeleteInstallRuleCommand();
+    ErrCode RunAsCleanInstallRuleCommand();
+    ErrCode RunAsAddAppRunningRuleCommand();
+    ErrCode RunAsDeleteAppRunningRuleCommand();
+    ErrCode RunAsCleanAppRunningRuleCommand();
+    ErrCode RunAsGetAppRunningControlRuleCommand();
+    ErrCode RunAsGetAppRunningControlRuleResultCommand();
+    ErrCode RunAsDeployQuickFix();
+    ErrCode RunAsSwitchQuickFix();
+    ErrCode RunAsDeleteQuickFix();
+    ErrCode RunAsSetDebugMode();
+    ErrCode RunAsGetBundleStats();
+    ErrCode RunAsGetBundleInodeCount();
+    ErrCode RunAsBatchGetBundleStats();
+    ErrCode RunAsGetAllBundleStats();
+    ErrCode RunAsGetAppProvisionInfo();
+    ErrCode RunAsGetContinueBundleName();
+    ErrCode RunAsGetDistributedBundleName();
+    ErrCode HandleBundleEventCallback();
+    ErrCode HandlePluginEventCallback();
+    ErrCode ResetAOTCompileStatus();
+    ErrCode SendCommonEvent();
+    ErrCode RunAsGetProxyDataCommand();
+    ErrCode RunAsGetAllProxyDataCommand();
+    ErrCode RunAsSetExtNameOrMIMEToAppCommand();
+    ErrCode RunAsDelExtNameOrMIMEToAppCommand();
+    ErrCode RunAsQueryDataGroupInfos();
+    ErrCode RunAsGetGroupDir();
+    ErrCode RunAsGetJsonProfile();
+    ErrCode RunAsGetUninstalledBundleInfo();
+    ErrCode RunAsGetOdid();
+    ErrCode RunGetUidByBundleName();
+    ErrCode RunGetApiTargetVersionByUid();
+    ErrCode CheckImplicitQueryWantOption(int option, std::string &value);
+    ErrCode ImplicitQuerySkillUriInfo(const std::string &bundleName,
+        const std::string &action, const std::string &entity, const std::string &uri,
+        const std::string &type, std::string &msg);
+    ErrCode RunAsImplicitQuerySkillUriInfo();
+    ErrCode RunAsQueryAbilityInfoByContinueType();
+    ErrCode RunAsCleanBundleCacheFilesAutomaticCommand();
+    ErrCode RunAsCleanBundlePartialCacheAutomaticCommand();
+    ErrCode RunAsUpdateAppEncryptedStatus();
+    ErrCode RunAsGetDirByBundleNameAndAppIndex();
+    ErrCode RunAsGetAllBundleDirs();
+    ErrCode GetAllBundleDirs(int32_t userId, std::string& msg);
+    ErrCode RunAsGetAllJsonProfile();
+    ErrCode GetAllJsonProfile(ProfileType profileType, int32_t userId, std::string& msg);
+    bool CheckSetAppDisableForbiddenCorrectOption(int32_t option, const std::string &commandName,
+        std::string &bundleName, int32_t &userId, int32_t &appIndex, int32_t &forbidden, int32_t &callerUid);
+    ErrCode RunAsSetApplicationDisableForbidden();
+    ErrCode SetApplicationDisableForbidden(const std::string &bundleName, int32_t userId, int32_t appIndex,
+        bool forbidden);
+    bool CheckSetDefaultAppForCustomOption(int32_t option, const std::string &commandName,
+        int32_t &userId, std::string &type, std::string &bundleName, std::string &moduleName,
+        std::string &abilityName, int32_t &callerUid);
+    ErrCode RunAsSetDefaultApplicationForCustom();
+    ErrCode SetDefaultApplicationForCustom(int32_t userId,
+        const std::string& type, const std::string &bundleName, const std::string &moduleName,
+        const std::string &abilityName);
+    ErrCode RunAsGetDisposedRules();
+    ErrCode GetDisposedRules(int32_t userId, std::string &msg);
+    ErrCode CheckGetDisposedRulesCorrectOption(
+        int option, const std::string &commandName, int &userId, int &callerUid);
+    ErrCode RunAsGetAllBundleCacheStat();
+    ErrCode GetAllBundleCacheStat(std::string& msg);
+    ErrCode RunAsGetEachBundleCacheStat();
+    ErrCode RunAsCleanAllBundleCache();
+    ErrCode CleanAllBundleCache(std::string& msg);
+    ErrCode RunAsIsBundleInstalled();
+    ErrCode RunAsGetCompatibleDeviceType();
+    ErrCode RunAsBatchGetCompatibleDeviceType();
+    ErrCode RunAsGetSimpleAppInfoForUid();
+    ErrCode RunAsGetBundleNameByAppId();
+    ErrCode RunAsGetAssetAccessGroups();
+    ErrCode RunAsSetAppDistributionTypes();
+    ErrCode RunAsGetBundleNamesForUidExtCommand();
+    ErrCode RunAsGetAppIdentifierAndAppIndex();
+    ErrCode RunAsGetAssetGroupsInfo();
+    ErrCode RunAsSetEnpDeviceCommand();
+    ErrCode RunAsInstallEnterpriseResignCertCommand();
+    ErrCode RunAsGetOdidResetCount();
+    ErrCode RunAsSetBundleFirstLaunch();
+    ErrCode RunAsGetTopNLargestItemsInAppDataDir();
+    // eg: bundle_test_tool batchGetBundleInfo -n <bundle-name>,<bundle-name> -f <flags> -u <user-id>
+    ErrCode RunAsBatchGetBundleInfo();
+    ErrCode RunAsParseSpmModule();
+    ErrCode RunAsQueryAbilityInfo();
+    ErrCode ParseQueryAbilityInfoOptions(std::string &bundleName, std::string &moduleName,
+        std::string &abilityName, int32_t &flags, int32_t &userId);
+    ErrCode ExecuteQueryAbilityInfo(const std::string &bundleName, const std::string &moduleName,
+        const std::string &abilityName, int32_t flags, int32_t userId);
+    ErrCode RunAsBatchQueryAbilityInfos();
+    ErrCode ParseBatchQueryAbilityInfosOptions(std::vector<AAFwk::Want> &wants, int32_t &flags, int32_t &userId);
+    ErrCode ExecuteBatchQueryAbilityInfos(const std::vector<AAFwk::Want> &wants, int32_t flags, int32_t userId);
+    ErrCode RunAsImplicitQueryInfos();
+    ErrCode ParseImplicitQueryInfosOptions(std::string &bundleName, std::string &action,
+        std::string &entity, std::string &uri, std::string &type, int32_t &flags,
+        int32_t &userId, bool &withDefault);
+    ErrCode ExecuteImplicitQueryInfos(const std::string &bundleName, const std::string &action,
+        const std::string &entity, const std::string &uri, const std::string &type,
+        int32_t flags, int32_t userId, bool withDefault);
+    ErrCode RunAsGetCloneBundleInfoExt();
+    ErrCode ParseGetCloneBundleInfoExtOptions(std::string &bundleName, uint32_t &flags,
+        int32_t &appIndex, int32_t &userId);
+    ErrCode ExecuteGetCloneBundleInfoExt(const std::string &bundleName, uint32_t flags,
+        int32_t appIndex, int32_t userId);
+    ErrCode RunAsAddResourceInfoByBundleName();
+    ErrCode ParseAddResourceInfoByBundleNameOptions(std::string &bundleName, int32_t &userId);
+    ErrCode ExecuteAddResourceInfoByBundleName(const std::string &bundleName, int32_t userId);
+    ErrCode RunAsAddResourceInfoByAbility();
+    ErrCode ParseAddResourceInfoByAbilityOptions(std::string &bundleName, std::string &moduleName,
+        std::string &abilityName, int32_t &userId);
+    ErrCode ExecuteAddResourceInfoByAbility(const std::string &bundleName, const std::string &moduleName,
+        const std::string &abilityName, int32_t userId);
+    ErrCode RunAsDeleteResourceInfo();
+    ErrCode ParseDeleteResourceInfoOptions(std::string &key);
+    ErrCode ExecuteDeleteResourceInfo(const std::string &key);
+    ErrCode RunAsGetMainAndCloneBundleInfo();
+    ErrCode RunAsQuerySandboxCloneAbilityInfo();
+    ErrCode ParseQuerySandboxCloneAbilityInfoOptions(std::string &creatorBundleName,
+        std::string &bundleName, std::string &moduleName, std::string &abilityName,
+        int32_t &flags, int32_t &appIndex, int32_t &userId);
+    ErrCode ExecuteQuerySandboxCloneAbilityInfo(const std::string &creatorBundleName,
+        const std::string &bundleName, const std::string &moduleName, const std::string &abilityName,
+        int32_t flags, int32_t appIndex, int32_t userId);
+
+    std::condition_variable cv_;
+    std::mutex mutex_;
+    bool dataReady_ {false};
+
+    sptr<IBundleMgr> bundleMgrProxy_;
+    sptr<IBundleInstaller> bundleInstallerProxy_;
+    sptr<IBundleResource> bundleResourceProxy_;
+
+    bool CheckRemovableErrorOption(int option, int counter, const std::string &commandName);
+    bool CheckRemovableCorrectOption(int option, const std::string &commandName, int &isRemovable, std::string &name);
+    bool SetIsRemovableOperation(const std::string &bundleName, const std::string &moduleName, int isRemovable) const;
+    bool GetIsRemovableOperation(
+        const std::string &bundleName, const std::string &moduleName, std::string &result) const;
+    bool CheckSandboxErrorOption(int option, int counter, const std::string &commandName);
+    bool CheckGetStringCorrectOption(int option, const std::string &commandName, int &temp, std::string &name);
+    bool CheckGetIconCorrectOption(int option, const std::string &commandName, int &temp, std::string &name);
+    ErrCode CheckAddInstallRuleCorrectOption(int option, const std::string &commandName,
+        std::vector<std::string> &appIds, int &controlRuleType, int &userId, int &euid);
+    ErrCode CheckGetInstallRuleCorrectOption(int option, const std::string &commandName, int &controlRuleType,
+        int &userId, int &euid);
+    ErrCode CheckDeleteInstallRuleCorrectOption(int option, const std::string &commandName,
+        int &controlRuleType, std::vector<std::string> &appIds, int &userId, int &euid);
+    ErrCode CheckCleanInstallRuleCorrectOption(int option, const std::string &commandName,
+        int &controlRuleType, int &userId, int &euid);
+    ErrCode CheckAppRunningRuleCorrectOption(int option, const std::string &commandName,
+        std::vector<AppRunningControlRule> &controlRule, int &userId, int &euid);
+    ErrCode CheckCleanAppRunningRuleCorrectOption(int option, const std::string &commandName, int &userId, int &euid);
+    ErrCode CheckGetAppRunningRuleCorrectOption(int option, const std::string &commandName,
+        int32_t &userId, int &euid);
+    ErrCode CheckGetAppRunningRuleResultCorrectOption(int option, const std::string &commandName,
+        std::string &bundleName, int32_t &userId, int &euid);
+    bool CheckSandboxCorrectOption(int option, const std::string &commandName, int &data, std::string &bundleName);
+    bool CheckGetProxyDataCorrectOption(int option, const std::string &commandName, int &temp, std::string &name);
+    bool CheckGetAllProxyDataCorrectOption(int option, const std::string &commandName, int &temp, std::string &name);
+    bool CheckExtOrMimeCorrectOption(int option, const std::string &commandName, int &temp, std::string &name);
+    ErrCode InstallSandboxOperation(
+        const std::string &bundleName, const int32_t userId, const int32_t dlpType, int32_t &appIndex) const;
+    ErrCode UninstallSandboxOperation(
+        const std::string &bundleName, const int32_t appIndex, const int32_t userId) const;
+    ErrCode DumpSandboxBundleInfo(const std::string &bundleName, const int32_t appIndex, const int32_t userId,
+        std::string &dumpResults);
+    ErrCode StringToInt(std::string option, const std::string &commandName, int &temp, bool &result);
+    ErrCode StringToUnsignedLongLong(std::string optarg, const std::string &commandName,
+        uint64_t &temp, bool &result);
+    bool StringToUnsignedLongLong(std::string optarg, const std::string &commandName, uint64_t &temp);
+    bool StrToUint32(const std::string &str, uint32_t &value);
+    ErrCode DeployQuickFix(const std::vector<std::string> &quickFixPaths,
+        std::shared_ptr<QuickFixResult> &quickFixRes, bool isDebug);
+    ErrCode SwitchQuickFix(const std::string &bundleName, int32_t enable,
+        std::shared_ptr<QuickFixResult> &quickFixRes);
+    ErrCode DeleteQuickFix(const std::string &bundleName, std::shared_ptr<QuickFixResult> &quickFixRes);
+    ErrCode GetQuickFixPath(int32_t index, std::vector<std::string> &quickFixPaths) const;
+    ErrCode SetDebugMode(int32_t debugMode);
+    bool GetBundleStats(const std::string &bundleName, int32_t userId, std::string &msg, int32_t appIndex);
+    bool GetBundleInodeCount(const std::string &bundleName, int32_t appIndex, int32_t userId, std::string &msg);
+    bool BatchGetBundleStats(const std::vector<std::string> &bundleNames, int32_t userId, std::string &msg);
+    bool GetAllBundleStats(int32_t userId, std::string &msg);
+    bool GetEachBundleCacheStat(int32_t userId, std::string &msg);
+    ErrCode GetAppProvisionInfo(const std::string &bundleName, int32_t userId, std::string &msg);
+    ErrCode GetDistributedBundleName(const std::string &networkId, int32_t accessTokenId, std::string &msg);
+    ErrCode BundleNameAndUserIdCommonFunc(std::string &bundleName, int32_t &userId, int32_t &appIndex);
+    ErrCode BatchBundleNameAndUserIdCommonFunc(std::vector<std::string> &bundleNames, int32_t &userId);
+    ErrCode UserIdCommonFunc(int32_t &userId);
+    ErrCode BatchBundleNameCommonFunc(std::string short_option,
+                                      const struct option *long_options,
+                                      std::vector<std::string> &bundleNames);
+    ErrCode CheckGetDistributedBundleNameCorrectOption(int32_t option, const std::string &commandName,
+        std::string &networkId, int32_t &accessTokenId);
+    bool QueryDataGroupInfos(const std::string &bundleName, int32_t userId, std::string& msg);
+    bool ParseEventCallbackOptions(bool &onlyUnregister, int32_t &uid);
+    bool ParsePluginEventCallbackOptions(bool &onlyUnregister, int32_t &uid);
+    bool ParseResetAOTCompileStatusOptions(std::string &bundleName, std::string &moduleName,
+        int32_t &triggerMode, int32_t &uid);
+    void Sleep(int32_t seconds);
+    bool HandleUnknownOption(const std::string &commandName, bool &ret);
+    ErrCode CallRegisterBundleEventCallback(sptr<BundleEventCallbackImpl> bundleEventCallback);
+    ErrCode CallUnRegisterBundleEventCallback(sptr<BundleEventCallbackImpl> bundleEventCallback);
+    ErrCode CheckGetGroupIdCorrectOption(int32_t option, std::string &dataGroupId);
+    bool GetGroupDir(const std::string &dataGroupId, std::string& msg);
+    ErrCode CheckGetBundleNameOption(int32_t option, std::string &bundleName);
+    ErrCode CheckCleanBundleCacheFilesAutomaticOption(int option, const std::string &commandName,
+        uint64_t &cacheSize, int32_t &cleanType);
+    ErrCode CheckCleanBundlePartialCacheAutomaticOption(
+        int32_t option, const std::string &commandName, CleanCacheInfo &cleanCacheInfo);
+    ErrCode GetContinueBundleName(const std::string &bundleName, int32_t userId, std::string& msg);
+    bool CheckGetAssetAccessGroupsOption(int32_t option, const std::string &commandName,
+        std::string &bundleName);
+    bool CheckSetAppDistributionTypesOption(int32_t option, const std::string &commandName,
+        std::string &appDistributionTypes);
+    bool ProcessAppDistributionTypeEnums(std::vector<std::string> appDistributionTypeStrings,
+        std::set<AppDistributionTypeEnum> &appDistributionTypeEnums);
+    void ReloadNativeTokenInfo();
+    ErrCode InnerGetSimpleAppInfoForUid(const int32_t &option, std::vector<std::int32_t> &uids);
+    ErrCode UninstallPreInstallBundleOperation(
+        const std::string &bundleName, InstallParam &installParam) const;
+    bool CheckUnisntallCorrectOption(int option, const std::string &commandName,
+        int &temp, std::string &Name);
+    bool CheckGetAppIdentifierAndAppIndexOption(int32_t option, const std::string &commandName,
+        uint32_t &accessTokenId);
+    bool CheckInstallEnterpriseResignCertOption(int32_t option, const std::string &commandName,
+        std::string& certAlias, std::string& certPath, int32_t& userId, bool& withPermission);
+};
+}  // namespace AppExecFwk
+}  // namespace OHOS
+
+#endif  // FOUNDATION_BUNDLEMANAGER_BUNDLE_FRAMEWORK_BUNDLE_TOOL_INCLUDE_BUNDLE_TEST_TOOL_H

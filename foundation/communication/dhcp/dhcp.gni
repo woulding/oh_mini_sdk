@@ -1,0 +1,42 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+SUBSYSTEM_DIR = "//foundation/communication"
+WIFI_ROOT_DIR = "$SUBSYSTEM_DIR/wifi/wifi"
+DHCP_ROOT_DIR = "$SUBSYSTEM_DIR/dhcp"
+dhcp_fuzz_output_path = "dhcp/dhcp/dhcp_fuzz"
+
+declare_args() {
+  VENDOR_NAME = "HUAWEI:openharmony"
+  IPV4_DNS_PRI = "8.8.8.8"
+  IPV4_DNS_SEC = "8.8.4.4"
+  dhcpv6_feature_enable = true
+}
+
+memory_optimization_cflags = [
+  "-fdata-sections",
+  "-ffunction-sections",
+]
+
+memory_optimization_cflags_cc = [
+  "-fvisibility-inlines-hidden",
+  "-fmerge-all-constants",
+  "-fdata-sections",
+  "-ffunction-sections",
+  "-Os",
+]
+
+memory_optimization_ldflags = [
+  "-Wl,--exclude-libs=ALL",
+  "-Wl,--gc-sections",
+]

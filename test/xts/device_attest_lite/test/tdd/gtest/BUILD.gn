@@ -1,0 +1,80 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/lite/config/test.gni")
+import("//build/ohos.gni")
+import("//test/xts/device_attest_lite/build/devattestconfig.gni")
+import("//test/xts/device_attest_lite/services/core/attestsource.gni")
+
+if (ohos_kernel_type == "liteos_a" || ohos_kernel_type == "linux") {
+  unittest("device_attest_tdd") {
+    output_extension = "bin"
+    output_dir = "$root_out_dir/test/unittest/device_attest_lite"
+    cflags = [
+      "-ftrapv",
+      "-Werror",
+      "-Wextra",
+      "-Wshadow",
+      "-fstack-protector-all",
+      "-Wformat=2",
+      "-Wfloat-equal",
+      "-Wdate-time",
+      "-fPIC",
+    ]
+
+    defines = [ "MBEDTLS_ALLOW_PRIVATE_ACCESS" ]
+
+    if (enable_attest_preset_token) {
+      defines += [ "__ATTEST_ENABLE_PRESET_TOKEN__" ]
+    }
+    include_dirs = include_core_dirs
+    include_dirs += [
+      "./include",
+      "${devattest_path}/services/core",
+      "${devattest_path}/interfaces/innerkits",
+      "${devattest_path}/common",
+      "${devattest_path}/common/log",
+      "${devattest_path}/common/small",
+    ]
+    sources = [
+      "./src/attest_tdd_data_transfer.c",
+      "./src/attest_tdd_mock_hal.c",
+      "./src/attest_tdd_mock_net.c",
+      "./src/attest_tdd_mock_property.c",
+      "./src/attest_tdd_test.cpp",
+    ]
+    sources += [
+      "${devattest_path}/services/core/small/attest/attest_service_pcid.c",
+      "${devattest_path}/services/core/small/utils/attest_utils_file_detail.c",
+    ]
+    sources += sources_common
+
+    sources -= [
+      "${devattest_path}/services/core/adapter/attest_adapter.c",
+      "${devattest_path}/services/core/security/attest_security_ticket.c",
+    ]
+
+    deps = [
+      "$ohos_product_adapter_dir/utils/token:haltoken_shared",
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//base/startup/init/interfaces/innerkits:parameter",
+      "//build/lite/config/component/cJSON:cjson_shared",
+      "//developtools/syscap_codec:syscap_interface_shared",
+      "//third_party/mbedtls:mbedtls",
+    ]
+  }
+} else {
+  #L0 Empty module
+  group("device_attest_tdd") {
+  }
+}

@@ -1,0 +1,1417 @@
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <errno.h>
+#include <resolv.h>
+#include "lookup.h"
+#include "stdio_impl.h"
+#include "syscall.h"
+#include "atomic.h"
+#include <dlfcn.h>
+#define BREAK 0
+#define CONTINUE 1
+#if OHOS_PERMISSION_INTERNET
+uint8_t is_allow_internet(void);
+#endif
+#define FIXED_HOSTS_MAX_LENGTH 2
+#define FIXED_HOSTS_STR_MAX_LENGTH 23
+
+char fixed_hosts[][FIXED_HOSTS_STR_MAX_LENGTH] = {
+	"127.0.0.1  localhost\r\n\0",
+	"::1  ip6-localhost\r\n\0"
+};
+
+static int is_valid_hostname(const char *host)
+{
+	const unsigned char *s;
+	if (strnlen(host, 255)-1 >= 254 || mbstowcs(0, host, 0) == -1) return 0;
+	for (s=(void *)host; *s>=0x80 || *s=='.' || *s=='-' || isalnum(*s); s++);
+	return !*s;
+}
+
+static int name_from_null(struct address buf[static 2], const char *name, int family, int flags)
+{
+	int cnt = 0;
+	if (name) return 0;
+	if (flags & AI_PASSIVE) {
+		if (family != AF_INET6)
+			buf[cnt++] = (struct address){ .family = AF_INET };
+		if (family != AF_INET)
+			buf[cnt++] = (struct address){ .family = AF_INET6 };
+	} else {
+		if (family != AF_INET6)
+			buf[cnt++] = (struct address){ .family = AF_INET, .addr = { 127,0,0,1 } };
+		if (family != AF_INET)
+			buf[cnt++] = (struct address){ .family = AF_INET6, .addr = { [15] = 1 } };
+	}
+	return cnt;
+}
+
+static int name_from_numeric(struct address buf[static 1], const char *name, int family)
+{
+	return __lookup_ipliteral(buf, name, family);
+}
+
+static inline int get_hosts_str(char *line, int length, FILE *f, int *i)
+{
+	if (f) {
+		char *ret = fgets(line, length, f);
+		if (ret) {
+			size_t len = strlen(line);
+			if (len > 0 && line[len - 1] != '\n' && len < length - 1) {
+				line[len] = '\n';
+				line[len + 1] = '\0';
+			}
+		}
+		return ret;
+	}
+	if (*i < FIXED_HOSTS_MAX_LENGTH) {
+		memcpy(line, fixed_hosts[*i], strlen(fixed_hosts[*i]));
+		(*i)++;
+		return 1;
+	}
+	return NULL;
+}
+
+static int name_from_hosts(struct address buf[static MAXADDRS], char canon[static 256], const char *name, int family)
+{
+	char line[512];
+	size_t l = strlen(name);
+	int cnt = 0, badfam = 0, have_canon = 0;
+	unsigned char _buf[1032];
+	FILE _f, *f = __fopen_rb_ca("/etc/hosts", &_f, _buf, sizeof _buf);
+	int i = 0;
+	while (i < FIXED_HOSTS_MAX_LENGTH && get_hosts_str(line, sizeof line, f, &i) && cnt < MAXADDRS) {
+		char *p, *z;
+
+		if ((p=strchr(line, '#'))) *p++='\n', *p=0;
+		for(p=line+1; (p=strstr(p, name)) &&
+			(!isspace(p[-1]) || !isspace(p[l])); p++);
+		if (!p) continue;
+
+		/* Isolate IP address to parse */
+		for (p=line; *p && !isspace(*p); p++);
+		*p++ = 0;
+		switch (name_from_numeric(buf+cnt, line, family)) {
+		case 1:
+			cnt++;
+			break;
+		case 0:
+			continue;
+		default:
+			badfam = DNS_FAIL_REASON_PARAM_INVALID;
+			break;
+		}
+
+		if (have_canon) continue;
+
+		/* Extract first name as canonical name */
+		for (; *p && isspace(*p); p++);
+		for (z=p; *z && !isspace(*z); z++);
+		*z = 0;
+		if (is_valid_hostname(p)) {
+			have_canon = 1;
+			memcpy(canon, p, z-p+1);
+		}
+	}
+	if (f) {
+		__fclose_ca(f);
+	}
+	return cnt ? cnt : badfam;
+}
+
+struct dpc_ctx {
+	struct address *addrs;
+	char *canon;
+	int cnt;
+	int rrtype;
+};
+
+#define RR_A 1
+#define RR_CNAME 5
+#define RR_AAAA 28
+#define MAX_QUERY_SIZE 5
+#define VALID_ANSWER 1
+#define MIN_ANSWER_TYPE 1
+#define MAX_ANSWER_TYPE 2
+#define MAX_NAME_LENGTH 256
+#define ABUF_SIZE 4800
+
+static int dns_parse_callback(void *c, int rr, const void *data, int len, const void *packet, int plen, int ttl)
+{
+	char tmp[256];
+	int family;
+	struct dpc_ctx *ctx = c;
+	if (rr == RR_CNAME) {
+		if (__dn_expand(packet, (const unsigned char *)packet + plen,
+		    data, tmp, sizeof tmp) > 0 && is_valid_hostname(tmp))
+			strcpy(ctx->canon, tmp);
+		return 0;
+	}
+	if (ctx->cnt >= MAXADDRS) return 0;
+	if (rr != ctx->rrtype) return 0;
+	switch (rr) {
+	case RR_A:
+		if (len != 4) return -1;
+		family = AF_INET;
+		break;
+	case RR_AAAA:
+		if (len != 16) return -1;
+		family = AF_INET6;
+		break;
+	}
+	ctx->addrs[ctx->cnt].family = family;
+	ctx->addrs[ctx->cnt].scopeid = 0;
+	ctx->addrs[ctx->cnt].ttl = ttl;
+	memcpy(ctx->addrs[ctx->cnt++].addr, data, len);
+	return 0;
+}
+
+#if OHOS_DNS_PROXY_BY_NETSYS
+static JudgeIpv6 load_ipv6_judger(void)
+{
+	static JudgeIpv6 ipv6_judger = NULL;
+	resolve_dns_sym((void **) &ipv6_judger, OHOS_JUDGE_IPV6_FUNC_NAME);
+	return ipv6_judger;
+}
+
+static JudgeIpv4 load_ipv4_judger(void)
+{
+	static JudgeIpv4 ipv4_judger = NULL;
+	resolve_dns_sym((void **) &ipv4_judger, OHOS_JUDGE_IPV4_FUNC_NAME);
+	return ipv4_judger;
+}
+
+static GetNodataCache load_nodata_cache_getter(void)
+{
+	static GetNodataCache nodata_cache_getter = NULL;
+	resolve_dns_sym((void **) &nodata_cache_getter, OHOS_GET_NODATA_CACHE_FUNC_NAME);
+	return nodata_cache_getter;
+}
+#endif
+
+static int IsIpv6Enable(int netid)
+{
+    int ret = 0;
+#if OHOS_DNS_PROXY_BY_NETSYS
+    JudgeIpv6 func = load_ipv6_judger();
+	if (!func) {
+		return -1;
+	}
+
+	ret = func(netid);
+	if (ret < 0) {
+		return -1;
+	}
+#endif
+    return ret;
+}
+
+static int IsIpv4Enable(int netid)
+{
+    int ret = 1;
+#if OHOS_DNS_PROXY_BY_NETSYS
+    JudgeIpv4 func = load_ipv4_judger();
+	if (!func) {
+		return -1;
+	}
+
+	ret = func(netid);
+	if (ret < 0) {
+		return -1;
+	}
+#endif
+    return ret;
+}
+
+static int CheckAndSkipAAAAQuery(int netid, const char *host)
+{
+#if OHOS_DNS_PROXY_BY_NETSYS
+    GetNodataCache func = load_nodata_cache_getter();
+	if (!func) {
+		return 0;
+	}
+
+	int ret = func(netid, host);
+	if (ret < 0) {
+		return 0;
+	}
+	/* If return value is 1, it means AAAA nodata cache exists, skip AAAA query */
+	return ret;
+#else
+    (void)netid;
+    (void)host;
+    return 0;
+#endif
+}
+
+static int IsAnswerValid(const unsigned char *answer, int alen)
+{
+	if (alen < 4 || (answer[3] & 15) == 2) {
+		return EAI_AGAIN;
+	}
+	if ((answer[3] & 15) == 3) return 0;
+	if ((answer[3] & 15) != 0) {
+		return EAI_FAIL;
+	}
+	return VALID_ANSWER;
+}
+
+void copy_dnsserver(struct dnsserver *dest, struct dnsserver *src)
+{
+    if (dest == NULL || src == NULL) {
+		return;
+	}
+ 
+    dest->query_protocol = src->query_protocol;
+    dest->sa_next = NULL;
+	dest->sa = src->sa;
+	src->sa = NULL;
+}
+
+static int name_from_dns(struct address buf[static MAXADDRS], char canon[static 256], const char *name, int family, const struct resolvconf *conf, int netid,
+	struct dns_nodata *nodata, struct dnsserver sabuf[static MAXADDRS])
+{
+	unsigned char qbuf[2][280], abuf[2][ABUF_SIZE];
+	const unsigned char *qp[2] = { qbuf[0], qbuf[1] };
+	unsigned char *ap[2] = { abuf[0], abuf[1] };
+	int qlens[2], alens[2], qtypes[2];
+	int queryNum = 2;
+	int dns_errno = 0;
+	struct dnsserver dnsServerBuf[MAXADDRS] = {0};
+#if OHOS_DNS_PROXY_BY_NETSYS
+	struct address tempAddr[MAXADDRS];
+	struct dpc_ctx ctx = { .addrs = tempAddr, .canon = canon };
+#else
+	struct dpc_ctx ctx = { .addrs = buf, .canon = canon };
+#endif
+	static const struct { int af; int rr; } afrr_ipv6_enable[2] = {
+		{ .af = AF_INET, .rr = RR_AAAA },
+		{ .af = AF_INET6, .rr = RR_A },
+	};
+	static const struct { int af; int rr; } afrr_ipv4_only[1] = {
+		{ .af = AF_INET6, .rr = RR_A },
+	};
+	static const struct { int af; int rr; } afrr_ipv6_only[1] = {
+		{ .af = AF_INET, .rr = RR_AAAA },
+	};
+	struct {int af; int rr;} *afrr = afrr_ipv6_enable;
+
+	/* Check if we should skip AAAA query based on nodata cache or ipv6 uid black list*/
+	int skipAAAA = family == AF_UNSPEC ? CheckAndSkipAAAAQuery(netid, name) : 0;
+	if (((!IsIpv6Enable(netid) || (skipAAAA > 0)) && IsIpv4Enable(netid)) || (family == AF_INET)) {
+		if (family == AF_INET6) {
+#ifndef __LITEOS__
+			MUSL_LOGW("Network scenario mismatch: %{public}d", EAI_SYSTEM);
+#endif
+			return DNS_FAIL_REASON_LACK_V6_SUPPORT;
+		}
+		queryNum = 1;
+		afrr = afrr_ipv4_only;
+	} else if ((!IsIpv4Enable(netid) && IsIpv6Enable(netid)) || (family == AF_INET6)) {
+		if (family == AF_INET) {
+#ifndef __LITEOS__
+			MUSL_LOGW("Network scenario mismatch: %{public}d", EAI_SYSTEM);
+#endif
+			return DNS_FAIL_REASON_LACK_V4_SUPPORT;
+		}
+		queryNum = 1;
+		afrr = afrr_ipv6_only;
+	} else {
+		queryNum = 2;
+		afrr = afrr_ipv6_enable;
+	}
+
+	int cname_count = 0;
+	const char *queryName = name;
+	int checkBuf[MAX_ANSWER_TYPE] = {VALID_ANSWER, VALID_ANSWER};
+#if OHOS_DNS_PROXY_BY_NETSYS
+	struct address localAddrBuf[MAXADDRS];
+	int ipv4LocalAddrCnt = 0;
+	int validIpv4AddrCnt = 0;
+	int invalidAddrCnt = 0;
+	int validAddrCnt = 0;
+#endif
+	while (strnlen(queryName, MAX_NAME_LENGTH) != 0 && cname_count < MAX_QUERY_SIZE) {
+		int i, nq = 0;
+		for (i = 0; i < queryNum; i++) {
+			if (family != afrr[i].af) {
+				qlens[nq] = __res_mkquery(0, queryName, 1, afrr[i].rr,
+					0, 0, 0, qbuf[nq], sizeof *qbuf);
+				if (qlens[nq] == -1) {
+#ifndef __LITEOS__
+					MUSL_LOGW("Illegal querys: %{public}d", EAI_NONAME);
+#endif
+					return 0;
+				}
+				qtypes[nq] = afrr[i].rr;
+				qbuf[nq][3] = 0; /* don't need AD flag */
+				/* Ensure query IDs are distinct. */
+				if (nq && qbuf[nq][0] == qbuf[0][0])
+					qbuf[nq][0]++;
+				nq++;
+			}
+		}
+
+		int res = res_msend_rc_ext(netid, nq, qp, qlens, ap, alens, sizeof *abuf, conf, &dns_errno, nodata, dnsServerBuf);
+		if (res < 0) return res;
+
+		for (i=0; i<nq; i++) {
+			checkBuf[i] = IsAnswerValid(abuf[i], alens[i]);
+		}
+		if (checkBuf[MIN_ANSWER_TYPE - 1] != VALID_ANSWER &&
+		   (nq < MAX_ANSWER_TYPE || checkBuf[MAX_ANSWER_TYPE - 1] != VALID_ANSWER)) {
+#ifndef __LITEOS__
+			MUSL_LOGW("Illegal answers, errno id: %{public}d", checkBuf[MIN_ANSWER_TYPE - 1]);
+#endif
+			int ret = checkBuf[MIN_ANSWER_TYPE - 1];
+			if (ret != EAI_AGAIN) {
+				return ret;
+			}
+            switch (dns_errno) {
+                case 0:
+                    return DNS_FAIL_REASON_SERVER_NO_RESULT;
+                case ENETUNREACH:
+                    return DNS_FAIL_REASON_ROUTE_CONFIG_ERR;
+                case EPERM:
+                    return DNS_FAIL_REASON_FIREWALL_INTERCEPTION;
+                case FALLBACK_TCP_QUERY:
+                    return DNS_FAIL_REASON_TCP_QUERY_FAILED;
+                default:
+                    return DNS_FAIL_REASON_CORE_ERRNO_BASE - dns_errno;
+            }
+		}
+
+		for (i=nq-1; i>=0; i--) {
+			ctx.rrtype = qtypes[i];
+			if (alens[i] > sizeof(abuf[i])) alens[i] = sizeof abuf[i];
+			__dns_parse(abuf[i], alens[i], dns_parse_callback, &ctx);
+		}
+#if OHOS_DNS_PROXY_BY_NETSYS
+		for (i = 0;i < ctx.cnt; i++) {
+			struct address addrs = ctx.addrs[i];
+			int family =  ctx.addrs[i].family;
+			if (family != AF_INET && family != AF_INET6) {
+				continue;
+			}
+			int invalidType = IPV4_VALID_TYPE;
+			if (family == AF_INET) {
+				invalidType = get_ipv4_invalid_type(addrs.addr);
+			}
+			if (invalidType == IPV4_VALID_TYPE) {
+				validIpv4AddrCnt += ((family == AF_INET) ? 1 : 0);
+				copy_dnsserver(&sabuf[validAddrCnt], &dnsServerBuf[validAddrCnt]);
+				memcpy(&buf[validAddrCnt++], &addrs, sizeof(struct address));
+				continue;
+			}
+			if (invalidType == IPV4_INVALID_TYPE_LOCAL) {
+				memcpy(&localAddrBuf[ipv4LocalAddrCnt++], &addrs, sizeof(struct address));
+			}
+			invalidAddrCnt++;
+		}
+
+		if (validIpv4AddrCnt <= 0) {
+			for (int j = 0; j < ipv4LocalAddrCnt; j++) {
+				buf[validAddrCnt].family = AF_INET;
+				buf[validAddrCnt].scopeid = 0;
+				copy_dnsserver(&sabuf[validAddrCnt], &dnsServerBuf[validAddrCnt]);
+				memcpy(&buf[validAddrCnt++].addr, localAddrBuf[j].addr, 4);
+			}
+			if (ipv4LocalAddrCnt > 0) {
+#ifndef __LITEOS__
+				MUSL_LOGW("dns ipv4 result: only local addr");
+#endif
+			}
+		}
+		ctx.cnt = validAddrCnt;
+#endif
+		if (ctx.cnt) return ctx.cnt;
+#if OHOS_DNS_PROXY_BY_NETSYS
+		if (queryName == ctx.canon) break;
+#endif
+		queryName = ctx.canon;
+		cname_count++;
+	}
+	free_dns_server_buf(dnsServerBuf);
+#if OHOS_DNS_PROXY_BY_NETSYS
+	if (validAddrCnt == 0 && invalidAddrCnt > 0) {
+#ifndef __LITEOS__
+		MUSL_LOGW("dns ipv4 result: all zero");
+#endif
+		return DNS_FAIL_REASON_SERVER_NO_RESULT;
+	}
+#endif
+#ifndef __LITEOS__
+	MUSL_LOGW("failed to parse dns : %{public}d", cname_count);
+#endif
+	return DNS_FAIL_REASON_FAIL_TO_PARSE_DNS;
+}
+
+static int name_from_dns_search(struct address buf[static MAXADDRS], char canon[static 256], const char *name, int family, int netid, struct dns_nodata *nodata,
+	struct dnsserver sabuf[static MAXADDRS])
+{
+#if OHOS_PERMISSION_INTERNET
+	if (is_allow_internet() == 0) {
+		errno = EPERM;
+#ifndef __LITEOS__
+		MUSL_LOGW("internet is not allowed");
+#endif
+		return -1;
+	}
+#endif
+
+	char search[256];
+	struct resolvconf conf;
+	size_t l, dots;
+	char *p, *z;
+
+	int res = get_resolv_conf_ext(&conf, search, sizeof search, netid);
+	if (res < 0) {
+		return DNS_FAIL_REASON_GET_RESOLV_CONF_FAILED;
+	}
+	/* Count dots, suppress search when >=ndots or name ends in
+	 * a dot, which is an explicit request for global scope. */
+	for (dots=l=0; name[l]; l++) if (name[l]=='.') dots++;
+	if (dots >= conf.ndots || name[l-1]=='.') *search = 0;
+
+	/* Strip final dot for canon, fail if multiple trailing dots. */
+	if (name[l-1]=='.') l--;
+	if (!l || name[l-1]=='.') {
+#ifndef __LITEOS__
+		MUSL_LOGW("fail when multiple trailing dots: %{public}d", EAI_NONAME);
+#endif
+		return DNS_FAIL_REASON_HOST_NAME_ILLEGAL;
+	}
+
+	/* This can never happen; the caller already checked length. */
+	if (l >= 256) return DNS_FAIL_REASON_HOST_NAME_ILLEGAL;
+
+	/* Name with search domain appended is setup in canon[]. This both
+	 * provides the desired default canonical name (if the requested
+	 * name is not a CNAME record) and serves as a buffer for passing
+	 * the full requested name to name_from_dns. */
+	memcpy(canon, name, l);
+	canon[l] = '.';
+
+	for (p=search; *p; p=z) {
+		for (; isspace(*p); p++);
+		for (z=p; *z && !isspace(*z); z++);
+		if (z==p) break;
+		if (z-p < 256 - l - 1) {
+			memcpy(canon+l+1, p, z-p);
+			canon[z-p+1+l] = 0;
+			int cnt = name_from_dns(buf, canon, canon, family, &conf, netid, nodata, sabuf);
+			if (cnt) return cnt;
+		}
+	}
+
+	canon[l] = 0;
+	return name_from_dns(buf, canon, name, family, &conf, netid, nodata, sabuf);
+}
+
+static const struct policy {
+	unsigned char addr[16];
+	unsigned char len, mask;
+	unsigned char prec, label;
+} defpolicy[] = {
+	{ "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1", 15, 0xff, 50, 0 },
+	{ "\0\0\0\0\0\0\0\0\0\0\xff\xff", 11, 0xff, 35, 4 },
+	{ "\x20\2", 1, 0xff, 30, 2 },
+	{ "\x20\1", 3, 0xff, 5, 5 },
+	{ "\xfc", 0, 0xfe, 3, 13 },
+#if 0
+	/* These are deprecated and/or returned to the address
+	 * pool, so despite the RFC, treating them as special
+	 * is probably wrong. */
+	{ "", 11, 0xff, 1, 3 },
+	{ "\xfe\xc0", 1, 0xc0, 1, 11 },
+	{ "\x3f\xfe", 1, 0xff, 1, 12 },
+#endif
+	/* Last rule must match all addresses to stop loop. */
+	{ "", 0, 0, 40, 1 },
+};
+
+static const struct policy *policyof(const struct in6_addr *a)
+{
+	int i;
+	for (i=0; ; i++) {
+		if (memcmp(a->s6_addr, defpolicy[i].addr, defpolicy[i].len))
+			continue;
+		if ((a->s6_addr[defpolicy[i].len] & defpolicy[i].mask)
+		    != defpolicy[i].addr[defpolicy[i].len])
+			continue;
+		return defpolicy+i;
+	}
+}
+
+static int labelof(const struct in6_addr *a)
+{
+	return policyof(a)->label;
+}
+
+static int scopeof(const struct in6_addr *a)
+{
+	if (IN6_IS_ADDR_MULTICAST(a)) return a->s6_addr[1] & 15;
+	if (IN6_IS_ADDR_LINKLOCAL(a)) return 2;
+	if (IN6_IS_ADDR_LOOPBACK(a)) return 2;
+	if (IN6_IS_ADDR_SITELOCAL(a)) return 5;
+	return 14;
+}
+
+static int prefixmatch(const struct in6_addr *s, const struct in6_addr *d)
+{
+	/* FIXME: The common prefix length should be limited to no greater
+	 * than the nominal length of the prefix portion of the source
+	 * address. However the definition of the source prefix length is
+	 * not clear and thus this limiting is not yet implemented. */
+	unsigned i;
+	for (i=0; i<128 && !((s->s6_addr[i/8]^d->s6_addr[i/8])&(128>>(i%8))); i++);
+	return i;
+}
+
+#define DAS_USABLE              0x40000000
+#define DAS_MATCHINGSCOPE       0x20000000
+#define DAS_MATCHINGLABEL       0x10000000
+#define DAS_PREC_SHIFT          20
+#define DAS_SCOPE_SHIFT         16
+#define DAS_PREFIX_SHIFT        8
+#define DAS_ORDER_SHIFT         0
+
+static int addrcmp(const void *_a, const void *_b)
+{
+	const struct address *a = _a, *b = _b;
+	return b->sortkey - a->sortkey;
+}
+
+int lookup_name_ext(struct address buf[static MAXADDRS], char canon[static 256], const char *name,
+				int family, int flags, int netid, struct dns_nodata *nodata, struct dnsserver sabuf[static MAXADDRS])
+{
+	int cnt = 0, i, j;
+
+#if OHOS_DNS_PROXY_BY_NETSYS
+	DNS_CONFIG_PRINT("lookup_name_ext \n");
+#endif
+
+	*canon = 0;
+	if (name) {
+		/* reject empty name and check len so it fits into temp bufs */
+		size_t l = strnlen(name, 255);
+		if (l-1 >= 254) {
+#ifndef __LITEOS__
+			MUSL_LOGW("Illegal name length: %{public}zu", l);
+#endif
+			return DNS_FAIL_REASON_HOST_NAME_ILLEGAL;
+		}
+		memcpy(canon, name, l+1);
+	}
+
+	/* Procedurally, a request for v6 addresses with the v4-mapped
+	 * flag set is like a request for unspecified family, followed
+	 * by filtering of the results. */
+	if (flags & AI_V4MAPPED) {
+		if (family == AF_INET6) family = AF_UNSPEC;
+		else flags -= AI_V4MAPPED;
+	}
+
+	/* Try each backend until there's at least one result. */
+	cnt = name_from_null(buf, name, family, flags);
+	if (!cnt) cnt = name_from_numeric(buf, name, family);
+#ifndef __LITEOS__
+	if (!cnt && (flags & AI_NUMERICHOST)) {
+		cnt = DNS_FAIL_REASON_PARAM_INVALID;
+		MUSL_LOGW("flag is AI_NUMERICHOST but host is Illegal");
+	}
+#endif
+	if (cnt < 0) {
+		cnt = DNS_FAIL_REASON_PARAM_INVALID;
+	}
+	if (!cnt && !(flags & AI_NUMERICHOST)) {
+		cnt = predefined_host_name_from_hosts(buf, canon, name, family);
+		if (!cnt) cnt = name_from_hosts(buf, canon, name, family);
+		if (!cnt) cnt = name_from_dns_search(buf, canon, name, family, netid, nodata, sabuf);
+	}
+	if (cnt<=0) return cnt ? cnt : DNS_FAIL_REASON_SERVER_NO_SUCH_NAME;
+
+	/* Filter/transform results for v4-mapped lookup, if requested. */
+	if (flags & AI_V4MAPPED) {
+		if (!(flags & AI_ALL)) {
+			/* If any v6 results exist, remove v4 results. */
+			for (i=0; i<cnt && buf[i].family != AF_INET6; i++);
+			if (i<cnt) {
+				for (j=0; i<cnt; i++) {
+					if (buf[i].family == AF_INET6)
+						buf[j++] = buf[i];
+				}
+				cnt = i = j;
+			}
+		}
+		/* Translate any remaining v4 results to v6 */
+		for (i=0; i<cnt; i++) {
+			if (buf[i].family != AF_INET) continue;
+			memcpy(buf[i].addr+12, buf[i].addr, 4);
+			memcpy(buf[i].addr, "\0\0\0\0\0\0\0\0\0\0\xff\xff", 12);
+			buf[i].family = AF_INET6;
+		}
+	}
+
+	/* No further processing is needed if there are fewer than 2
+	 * results or if there are only IPv4 results. */
+	if (cnt<2 || family==AF_INET) return cnt;
+	for (i=0; i<cnt; i++) if (buf[i].family != AF_INET) break;
+	if (i==cnt) return cnt;
+
+	int cs;
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+
+	/* The following implements a subset of RFC 3484/6724 destination
+	 * address selection by generating a single 31-bit sort key for
+	 * each address. Rules 3, 4, and 7 are omitted for having
+	 * excessive runtime and code size cost and dubious benefit.
+	 * So far the label/precedence table cannot be customized. */
+	for (i=0; i<cnt; i++) {
+		int family = buf[i].family;
+		int key = 0;
+		struct sockaddr_in6 sa6 = { 0 }, da6 = {
+			.sin6_family = AF_INET6,
+			.sin6_scope_id = buf[i].scopeid,
+			.sin6_port = 65535
+		};
+		struct sockaddr_in sa4 = { 0 }, da4 = {
+			.sin_family = AF_INET,
+			.sin_port = 65535
+		};
+		void *sa, *da;
+		socklen_t salen, dalen;
+		if (family == AF_INET6) {
+			memcpy(da6.sin6_addr.s6_addr, buf[i].addr, 16);
+			da = &da6; dalen = sizeof da6;
+			sa = &sa6; salen = sizeof sa6;
+		} else {
+			memcpy(sa6.sin6_addr.s6_addr,
+				"\0\0\0\0\0\0\0\0\0\0\xff\xff", 12);
+			memcpy(da6.sin6_addr.s6_addr+12, buf[i].addr, 4);
+			memcpy(da6.sin6_addr.s6_addr,
+				"\0\0\0\0\0\0\0\0\0\0\xff\xff", 12);
+			memcpy(da6.sin6_addr.s6_addr+12, buf[i].addr, 4);
+			memcpy(&da4.sin_addr, buf[i].addr, 4);
+			da = &da4; dalen = sizeof da4;
+			sa = &sa4; salen = sizeof sa4;
+		}
+		const struct policy *dpolicy = policyof(&da6.sin6_addr);
+		int dscope = scopeof(&da6.sin6_addr);
+		int dlabel = dpolicy->label;
+		int dprec = dpolicy->prec;
+		int prefixlen = 0;
+		int fd = socket(family, SOCK_DGRAM|SOCK_CLOEXEC, IPPROTO_UDP);
+		if (fd >= 0) {
+			if (!connect(fd, da, dalen)) {
+				key |= DAS_USABLE;
+				if (!getsockname(fd, sa, &salen)) {
+					if (family == AF_INET) memcpy(
+						sa6.sin6_addr.s6_addr+12,
+						&sa4.sin_addr, 4);
+					if (dscope == scopeof(&sa6.sin6_addr))
+						key |= DAS_MATCHINGSCOPE;
+					if (dlabel == labelof(&sa6.sin6_addr))
+						key |= DAS_MATCHINGLABEL;
+					prefixlen = prefixmatch(&sa6.sin6_addr,
+						&da6.sin6_addr);
+				}
+			}
+			close(fd);
+		}
+		key |= dprec << DAS_PREC_SHIFT;
+		key |= (15-dscope) << DAS_SCOPE_SHIFT;
+		key |= prefixlen << DAS_PREFIX_SHIFT;
+		key |= (MAXADDRS-i) << DAS_ORDER_SHIFT;
+		buf[i].sortkey = key;
+	}
+	qsort(buf, cnt, sizeof *buf, addrcmp);
+
+	pthread_setcancelstate(cs, 0);
+
+	return cnt;
+}
+
+int __lookup_name(struct address buf[static MAXADDRS], char canon[static 256], const char *name, int family,
+	int flags, struct dns_nodata *nodata)
+{
+	struct dnsserver sabuf[MAXADDRS] = {0};
+	int ret = lookup_name_ext(buf, canon, name, family, flags, 0, nodata, sabuf);
+	free_dns_server_buf(sabuf);
+	return ret;
+}
+
+/*
+ * 预定义主机-IP映射模块
+ *
+ * 内部管理host到IP地址的映射关系。
+ * 使用带尾部指针的单向链表，支持O(1)尾部插入。
+ * 每个节点中host和IP字符串存储在同一块连续内存中。
+ */
+
+struct __host_ip_node {
+	struct __host_ip_node *next;
+	char *host;
+	char *ip;
+};
+
+struct __host_ip_list {
+	struct __host_ip_node *head;
+	struct __host_ip_node *tail;
+	int count;
+	volatile int refcount;
+};
+
+#define __HOST_IP_GROUP_SEP	"|"
+#define __HOST_IP_ENTRY_SEP	","
+
+static volatile struct __host_ip_list *host_ips_list_ = NULL;
+
+/*
+ * 内部辅助函数
+ * ---------------------------------------------------------------
+ * __host_ip_strsep	    - 字符串分隔器
+ * __host_ip_node_alloc   - 分配节点及数据
+ * __host_ip_node_free    - 释放节点及数据
+ * __host_ip_list_init    - 创建并初始化链表
+ * __host_ip_list_destroy - 销毁链表及所有节点
+ * __host_ip_list_append  - 尾部追加节点 (O(1))
+ * __host_ip_list_contains - 检查host/ip是否存在
+ * __host_ip_add_record   - 添加host-ip记录
+ * __host_ip_parse_host_ips - 解析批量host-ips字符串
+ */
+
+/* 字符串分隔器 - 类似标准strsep但为静态实现 */
+static char *__host_ip_strsep(char **s, const char *ct)
+{
+	char *sbegin;
+	char *end;
+
+	if (!s || !*s) {
+		return NULL;
+    }
+
+	sbegin = *s;
+	end = strpbrk(sbegin, ct);
+	if (end) {
+		*end++ = '\0';
+    }
+
+	*s = end;
+	return sbegin;
+}
+
+/* 分配节点并将host/ip字符串复制到同一块内存中 */
+static struct __host_ip_node *__host_ip_node_alloc(const char *host, const char *ip)
+{
+	size_t host_len = strlen(host);
+	size_t ip_len   = strlen(ip);
+	size_t total    = sizeof(struct __host_ip_node) + host_len + 1 + ip_len + 1;
+	struct __host_ip_node *node = calloc(1, total);
+
+	if (!node) {
+		return NULL;
+    }
+
+	/* host字符串紧跟结构体之后 */
+	node->host = (char *)(node + 1);
+	memcpy(node->host, host, host_len + 1);
+
+	/* ip字符串紧跟host之后 */
+	node->ip = node->host + host_len + 1;
+	memcpy(node->ip, ip, ip_len + 1);
+
+	node->next = NULL;
+	return node;
+}
+
+/* 释放节点（数据和节点在同一块内存中，一次free即可） */
+static void __host_ip_node_free(struct __host_ip_node *node)
+{
+	free(node);
+}
+
+/* 创建并初始化空链表 */
+static struct __host_ip_list *__host_ip_list_init(void)
+{
+	struct __host_ip_list *list = calloc(1, sizeof(struct __host_ip_list));
+	if (list) {
+		list->head     = NULL;
+		list->tail     = NULL;
+		list->count    = 0;
+		list->refcount = 1;
+	}
+	return list;
+}
+
+/* 销毁链表并释放所有节点 */
+static void __host_ip_list_destroy(struct __host_ip_list *list)
+{
+	if (!list) {
+		return;
+    }
+
+	struct __host_ip_node *cur = list->head;
+	while (cur) {
+		struct __host_ip_node *next = cur->next;
+		__host_ip_node_free(cur);
+		cur = next;
+	}
+
+	list->head  = NULL;
+	list->tail  = NULL;
+	list->count = 0;
+}
+
+/* 尾部追加节点 - O(1) */
+static int __host_ip_list_append(struct __host_ip_list *list, struct __host_ip_node *node)
+{
+	if (!list || !node) {
+		return -1;
+    }
+
+	if (!list->head) {
+		list->head = node;
+		list->tail = node;
+	} else {
+		list->tail->next = node;
+		list->tail = node;
+	}
+	list->count++;
+	return 0;
+}
+
+/* 遍历回调前向声明 */
+typedef int (*__host_ip_for_each_fn)(const struct __host_ip_node *node, void *user_data);
+static int __host_ip_list_for_each(const struct __host_ip_list *,
+		__host_ip_for_each_fn, void *);
+
+/* contains 回调数据 */
+struct __host_ip_contains_data {
+	const char *host;
+	const char *ip;
+};
+
+static int __host_ip_contains_cb(const struct __host_ip_node *node, void *user_data)
+{
+	struct __host_ip_contains_data *d = user_data;
+	if (strcmp(node->host, d->host) == 0) {
+		if (!d->ip || strcmp(node->ip, d->ip) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/* 检查是否包含指定的host/ip组合 - O(n) */
+static int __host_ip_list_contains(const struct __host_ip_list *list,
+		const char *host, const char *ip)
+{
+	if (!list || !host) {
+		return 0;
+    }
+ 
+	struct __host_ip_contains_data data = { .host = host, .ip = ip };
+	return __host_ip_list_for_each(list, __host_ip_contains_cb, &data);
+}
+
+/* 添加单条host-ip记录 */
+static int __host_ip_add_record(struct __host_ip_list *list, const char *host, const char *ip)
+{
+	struct __host_ip_node *node = __host_ip_node_alloc(host, ip);
+	if (!node) {
+		return EAI_MEMORY;
+    }
+
+	if (__host_ip_list_append(list, node) < 0) {
+		__host_ip_node_free(node);
+		return -1;
+	}
+	return 0;
+}
+
+/* 解析格式为 "host,ip1,ip2|host2,ip3" 的字符串 */
+static int __host_ip_parse_host_ips(struct __host_ip_list *list, char *params)
+{
+	char *group;
+	int cnt = 0;
+
+	while ((group = __host_ip_strsep(&params, __HOST_IP_GROUP_SEP)) != NULL) {
+		char *host = __host_ip_strsep(&group, __HOST_IP_ENTRY_SEP);
+		if (!host || !*host) {
+			continue;
+        }
+
+		char *ip;
+		while ((ip = __host_ip_strsep(&group, __HOST_IP_ENTRY_SEP)) != NULL) {
+			if (!*ip) {
+                continue;
+            }
+			cnt++;
+			if (!__host_ip_list_contains(list, host, ip)) {
+				int ret = __host_ip_add_record(list, host, ip);
+				if (ret != 0) {
+					return ret;
+                }
+			}
+		}
+	}
+
+	return cnt > 0 ? 0 : -1;
+}
+
+/* 链表通用遍历接口 */
+static int __host_ip_list_for_each(const struct __host_ip_list *list,
+		__host_ip_for_each_fn fn, void *user_data)
+{
+	if (!list || !fn) {
+		return -1;
+    }
+
+	const struct __host_ip_node *cur = list->head;
+	while (cur) {
+		int ret = fn(cur, user_data);
+		if (ret) {
+			return ret;
+        }
+		cur = cur->next;
+	}
+	return 0;
+}
+
+/*
+ * COW + 引用计数核心实现
+ * ---------------------------------------------------------------
+ * 深拷贝、写端释放旧引用、读端获取/释放引用
+ */
+
+/* 深拷贝完整链表（CAS 发布前的构建用） */
+static struct __host_ip_list *__host_ip_list_deep_copy(const struct __host_ip_list *src)
+{
+	if (!src) {
+		return __host_ip_list_init();
+    }
+
+	struct __host_ip_list *dst = __host_ip_list_init();
+	if (!dst) {
+		return NULL;
+    }
+
+	const struct __host_ip_node *cur = src->head;
+	while (cur) {
+		struct __host_ip_node *node = __host_ip_node_alloc(cur->host, cur->ip);
+		if (!node) {
+			__host_ip_list_destroy(dst);
+			free(dst);
+			return NULL;
+		}
+		__host_ip_list_append(dst, node);
+		cur = cur->next;
+	}
+	return dst;
+}
+
+/* 深拷贝链表时过滤掉指定 host（用于 COW 删除） */
+static struct __host_ip_list *__host_ip_list_deep_copy_except(
+		const struct __host_ip_list *src, const char *host)
+{
+	if (!src) {
+		return __host_ip_list_init();
+    }
+
+	struct __host_ip_list *dst = __host_ip_list_init();
+	if (!dst) {
+		return NULL;
+    }
+
+	const struct __host_ip_node *cur = src->head;
+	while (cur) {
+		if (strcmp(cur->host, host) != 0) {
+			struct __host_ip_node *node = __host_ip_node_alloc(cur->host, cur->ip);
+			if (!node) {
+				__host_ip_list_destroy(dst);
+				free(dst);
+				return NULL;
+			}
+			__host_ip_list_append(dst, node);
+		}
+		cur = cur->next;
+	}
+	return dst;
+}
+
+/* 写端释放旧链表的全局引用，归零时触发释放 */
+static void __host_ip_release_ref(struct __host_ip_list *list)
+{
+	if (!list) {
+		return;
+    }
+
+	int val = a_fetch_add(&list->refcount, -1);
+	a_barrier();
+
+	if (val == 1) {
+		if (a_cas(&list->refcount, 0, -1) == 0) {
+			__host_ip_list_destroy(list);
+			free(list);
+		}
+	}
+}
+
+/* 读端获取遍历引用 */
+static struct __host_ip_list *__host_ip_list_acquire(void)
+{
+	struct __host_ip_list *list;
+	int val;
+
+	for (;;) {
+		list = (struct __host_ip_list *)host_ips_list_;
+		if (!list) {
+			return NULL;
+        }
+
+		val = a_fetch_add(&list->refcount, 1);
+		a_barrier();
+
+		if (val <= 0) {
+			int release = a_fetch_add(&list->refcount, -1);
+			if (release == 1) {
+				if (a_cas(&list->refcount, 0, -1) == 0) {
+					__host_ip_list_destroy(list);
+					free(list);
+				}
+			}
+			continue;
+		}
+
+		return list;
+	}
+}
+
+/* 读端释放遍历引用 */
+static void __host_ip_list_dropref(struct __host_ip_list *list)
+{
+	if (!list) {
+		return;
+    }
+
+	int val = a_fetch_add(&list->refcount, -1);
+	a_barrier();
+
+	if (val == 1) {
+		if (a_cas(&list->refcount, 0, -1) == 0) {
+			__host_ip_list_destroy(list);
+			free(list);
+		}
+	}
+}
+
+/*
+ * lookup_ip 回调数据
+ */
+struct __host_ip_lookup_data {
+	const char *host;
+	const struct addrinfo *hint;
+	struct addrinfo **res;
+	int last_status;
+};
+
+static int __host_ip_lookup_cb(const struct __host_ip_node *node, void *user_data)
+{
+	struct __host_ip_lookup_data *d = user_data;
+	if (strcmp(node->host, d->host) == 0) {
+		struct addrinfo *temp_res = NULL;
+		int status = getaddrinfo(node->ip, NULL, d->hint, &temp_res);
+		if (status == 0) {
+			if (*d->res) {
+				freeaddrinfo(*d->res);
+				*d->res = NULL;
+			}
+			*d->res = temp_res;
+			d->last_status = status;
+			return 1;
+		} else {
+			d->last_status = status;
+		}
+	}
+	return 0;
+}
+
+/*
+ * name_from_hosts 回调数据
+ */
+struct __host_ip_name_data {
+	struct address *buf;
+	const char *name;
+	int family;
+	int cnt;
+};
+
+static int __host_ip_name_from_hosts_cb(const struct __host_ip_node *node, void *user_data)
+{
+	struct __host_ip_name_data *d = user_data;
+	if (d->cnt >= MAXADDRS) {
+		return 1;
+    }
+	if (strcmp(node->host, d->name) == 0) {
+		if (__lookup_ipliteral(d->buf + d->cnt, node->ip, d->family) == 1) {
+			d->cnt++;
+        }
+	}
+	return 0;
+}
+
+/*
+ * 对外接口函数
+ * ---------------------------------------------------------------
+ * COW + a_cas_p + refcount 无锁并发安全实现
+ * 以下函数签名与原有接口保持一致，确保外部调用方兼容性。
+ */
+
+/* 清空所有预定义host记录 — COW 空链表 + CAS */
+int predefined_host_clear_all_hosts(void)
+{
+	struct __host_ip_list *old_list, *empty;
+
+	for (;;) {
+		empty = __host_ip_list_init();
+		if (!empty) {
+			return EAI_MEMORY;
+        }
+
+		old_list = __host_ip_list_acquire();
+		if (!old_list) {
+			free(empty);
+			return -1;
+		}
+
+		struct __host_ip_list *cas_old = a_cas_p(&host_ips_list_, old_list, empty);
+		if (cas_old == old_list) {
+			__host_ip_list_dropref(old_list);
+			__host_ip_release_ref(old_list);
+			return 0;
+		}
+
+		__host_ip_list_dropref(old_list);
+		free(empty);
+	}
+}
+
+/* 移除指定host的所有记录 — COW deep_copy_except + CAS */
+int predefined_host_remove_host(const char *host)
+{
+	struct __host_ip_list *old_list, *new_list;
+
+	for (;;) {
+		old_list = __host_ip_list_acquire();
+		if (!old_list) {
+			return -1;
+        }
+
+		new_list = __host_ip_list_deep_copy_except(old_list, host);
+		if (!new_list) {
+			__host_ip_list_dropref(old_list);
+			return EAI_MEMORY;
+		}
+
+		if (new_list->count == old_list->count) {
+			__host_ip_list_destroy(new_list);
+			free(new_list);
+			__host_ip_list_dropref(old_list);
+			return -1;
+		}
+
+		struct __host_ip_list *cas_old = a_cas_p(&host_ips_list_, old_list, new_list);
+		if (cas_old == old_list) {
+			__host_ip_list_dropref(old_list);
+			__host_ip_release_ref(old_list);
+			return 0;
+		}
+
+		__host_ip_list_destroy(new_list);
+		free(new_list);
+		__host_ip_list_dropref(old_list);
+	}
+}
+
+/* 检查是否包含指定host — acquire/release 包裹遍历 */
+int predefined_host_is_contain_host(const char *host)
+{
+	struct __host_ip_list *list = __host_ip_list_acquire();
+	if (!list) {
+		return 0;
+    }
+
+	int ret = __host_ip_list_contains(list, host, NULL);
+	__host_ip_list_dropref(list);
+	return ret;
+}
+
+/* 查询host对应的IP地址信息 — acquire/release 包裹遍历 */
+int predefined_host_lookup_ip(const char *host, const char *serv,
+		const struct addrinfo *hint, struct addrinfo **res)
+{
+	(void)serv;
+
+	if (!host) {
+		return -1;
+    }
+
+	struct __host_ip_list *list = __host_ip_list_acquire();
+	if (!list) {
+		return -1;
+    }
+
+	struct __host_ip_lookup_data data = {
+		.host = host, .hint = hint, .res = res, .last_status = -1
+	};
+	__host_ip_list_for_each(list, __host_ip_lookup_cb, &data);
+	__host_ip_list_dropref(list);
+	return data.last_status;
+}
+
+/* 从预定义列表中解析主机名为地址 — acquire/release 包裹遍历 */
+int predefined_host_name_from_hosts(
+		struct address buf[static MAXADDRS],
+		char canon[static 256], const char *name, int family)
+{
+	if (!name) {
+		return 0;
+    }
+
+	struct __host_ip_list *list = __host_ip_list_acquire();
+	if (!list) {
+		return 0;
+    }
+
+	struct __host_ip_name_data data = {
+		.buf = buf, .name = name, .family = family, .cnt = 0
+	};
+	__host_ip_list_for_each(list, __host_ip_name_from_hosts_cb, &data);
+	__host_ip_list_dropref(list);
+
+	if (data.cnt > 0) {
+		strncpy(canon, name, 255);
+		canon[255] = '\0';
+	}
+	return data.cnt;
+}
+
+/* 批量设置host-ip映射字符串 — COW + CAS */
+int predefined_host_set_hosts(const char *host_ips)
+{
+	size_t len;
+	char *copy;
+
+	if (!host_ips || !*host_ips) {
+		return EAI_NONAME;
+    }
+
+	len = strlen(host_ips);
+	copy = malloc(len + 1);
+	if (!copy) {
+		return EAI_MEMORY;
+    }
+
+	memcpy(copy, host_ips, len + 1);
+
+	for (;;) {
+		struct __host_ip_list *old_list = __host_ip_list_acquire();
+		struct __host_ip_list *new_list;
+		char *params;
+		int ret = 0;
+
+		new_list = __host_ip_list_deep_copy(old_list);
+		if (!new_list) {
+			__host_ip_list_dropref(old_list);
+			free(copy);
+			return EAI_MEMORY;
+		}
+
+		params = malloc(len + 1);
+		if (!params) {
+			__host_ip_list_destroy(new_list);
+			free(new_list);
+			__host_ip_list_dropref(old_list);
+			free(copy);
+			return EAI_MEMORY;
+		}
+		memcpy(params, copy, len + 1);
+		ret = __host_ip_parse_host_ips(new_list, params);
+		free(params);
+
+		if (ret != 0) {
+			__host_ip_list_destroy(new_list);
+			free(new_list);
+			__host_ip_list_dropref(old_list);
+			free(copy);
+			return ret;
+		}
+
+		struct __host_ip_list *cas_old = a_cas_p(&host_ips_list_, old_list, new_list);
+		if (cas_old == old_list) {
+			__host_ip_list_dropref(old_list);
+			__host_ip_release_ref(old_list);
+			free(copy);
+			return 0;
+		}
+
+		__host_ip_list_destroy(new_list);
+		free(new_list);
+		__host_ip_list_dropref(old_list);
+	}
+}
+
+/* 添加单个host-ip映射 — COW + CAS */
+int predefined_host_set_host(const char *host, const char *ip)
+{
+	struct __host_ip_list *old_list, *new_list;
+
+	if (!host || !*host || !ip || !*ip) {
+		return -1;
+    }
+
+	for (;;) {
+		old_list = __host_ip_list_acquire();
+
+		new_list = __host_ip_list_deep_copy(old_list);
+		if (!new_list) {
+			__host_ip_list_dropref(old_list);
+			return EAI_MEMORY;
+		}
+
+		if (__host_ip_list_contains(new_list, host, ip)) {
+			__host_ip_list_destroy(new_list);
+			free(new_list);
+			__host_ip_list_dropref(old_list);
+			return 0;
+		}
+
+		if (__host_ip_add_record(new_list, host, ip) != 0) {
+			__host_ip_list_destroy(new_list);
+			free(new_list);
+			__host_ip_list_dropref(old_list);
+			return EAI_MEMORY;
+		}
+
+		struct __host_ip_list *cas_old = a_cas_p(&host_ips_list_, old_list, new_list);
+		if (cas_old == old_list) {
+			__host_ip_list_dropref(old_list);
+			__host_ip_release_ref(old_list);
+			return 0;
+		}
+
+		__host_ip_list_destroy(new_list);
+		free(new_list);
+		__host_ip_list_dropref(old_list);
+	}
+}

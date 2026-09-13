@@ -1,0 +1,41 @@
+{
+  "product_name": "system_arm64_default",
+  "device_company": "ohos",
+  "target_cpu": "arm64",
+  "board": "arm64",
+  "type": "standard",
+  "version": "3.0",
+  "enable_ramdisk": true,
+  "build_selinux": true,
+  "inherit": [ "productdefine/common/inherit/rich.json" ],
+  "subsystems": [
+    {
+      "subsystem": "security",
+      "components": [
+        {
+          "component": "selinux_adapter",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem":"hdf",
+      "components":[
+        {
+          "component": "drivers_peripheral_codec",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_display",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_input",
+          "features": [
+            "drivers_peripheral_input_feature_model = true"
+          ]
+        }
+      ]
+    }
+  ]
+}

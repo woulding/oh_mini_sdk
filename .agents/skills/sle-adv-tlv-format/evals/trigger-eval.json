@@ -1,0 +1,22 @@
+[
+  {"query": "我的星闪设备手机上的星闪调试助手扫描不到，但设备日志里 set announce data success、sle_start_announce 都成功，日志里 announce_data 是 01 02 01 02 02 00，帮我看看哪里错了", "should_trigger": true},
+  {"query": "帮我把这段 SLE 广播数据解码检查一下：0c 02 06 0b 0b 73 6c 65 5f 73 65 72 76 65 72", "should_trigger": true},
+  {"query": "BS21E 的 OHOS sle_server demo，扫描响应里的设备名 TLV 怎么写才对？现在调试助手扫不到名字", "should_trigger": true},
+  {"query": "sle_uart_server 的 sle_set_adv_local_name 里为什么写 local_name_len + 1？我在 OHOS 上照抄后手机扫不到", "should_trigger": true},
+  {"query": "把 device/soc 下 sle_uart_server 的广播配置移植到 applications/demo/ohos_bs21e/sle_server，广播数据构造要注意什么", "should_trigger": true},
+  {"query": "SLE 广播的 discovery level TLV 应该是什么字节？我现在写的是 01 02 01", "should_trigger": true},
+  {"query": "星闪调试助手能扫到其他设备但扫不到我这台，我的 announce_data 是 01 01 01 02 01 00，seek_rsp_data 是 0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72", "should_trigger": true},
+  {"query": "ble_sle_tag 里手写的 g_sle_adv_data 那 29 个字节分别是什么 TLV？", "should_trigger": true},
+  {"query": "我用 sle_adv_common_value 结构体，.length 取 sizeof(struct)-1，广播会有问题吗", "should_trigger": true},
+  {"query": "星闪 SLE 广播名 'sle_server' 的完整名称 TLV 长度应该填多少？", "should_trigger": true},
+  {"query": "帮我梳理一下经典蓝牙 BLE 的 GATT 服务发现流程", "should_trigger": false},
+  {"query": "BLE 广播里的 AD structure，flags 和 manufacturer specific data 怎么编码？", "should_trigger": false},
+  {"query": "星闪 SLE 的连接间隔、supervision timeout 参数怎么调优，连接老断", "should_trigger": false},
+  {"query": "SLE SSAP server 注册服务后手机连不上，ssaps_add_service_sync 返回 0 但没反应", "should_trigger": false},
+  {"query": "WS63 的 OHOS 编译报错找不到 samgr_lite，怎么解决", "should_trigger": false},
+  {"query": "怎么用 hb set 新增一个 bs21e 产品并让 hb build 通过", "should_trigger": false},
+  {"query": "帮我写一个 BLE 外设 GATT 服务，包含一个可读写特征和一个 CCCD", "should_trigger": false},
+  {"query": "星闪调试助手扫描（seek）时怎么过滤只显示特定名字的设备？", "should_trigger": false},
+  {"query": "帮我把一段 HEX 字符串转成二进制文件", "should_trigger": false},
+  {"query": "解释一下 UART 波特率和流控怎么设置", "should_trigger": false}
+]

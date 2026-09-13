@@ -1,0 +1,10 @@
+{
+  "parts": {
+    "device_fbb_bs21e": {
+      "module_list": [
+        "//device/soc/hisilicon/bs2xv107:bs21e"
+      ]
+    }
+  },
+  "subsystem": "device_fbb_bs21e"
+}

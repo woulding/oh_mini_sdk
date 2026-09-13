@@ -1,0 +1,69 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "kernel_snapshot_printer.h"
+
+#include "dfx_log.h"
+
+#include "kernel_snapshot_content_builder.h"
+namespace OHOS {
+namespace HiviewDFX {
+namespace {
+constexpr const char * const KBOX_SNAPSHOT_DUMP_PATH = "/data/log/faultlog/temp/";
+}
+
+bool KernelSnapshotPrinter::OutputToFile(const std::string& filePath, CrashMap& output)
+{
+    std::unique_ptr<FILE, decltype(&fclose)> file(fopen(filePath.c_str(), "w"), fclose);
+    if (!file) {
+        DFXLOGE("open file failed %{public}s errno %{public}d", filePath.c_str(), errno);
+        return false;
+    }
+
+    std::string outputCont = KernelSnapshotContentBuilder(output, true, true).GenerateSummary();
+    if (fwrite(outputCont.c_str(), sizeof(char), outputCont.length(), file.get()) != outputCont.length()) {
+        DFXLOGE("write file failed %{public}s errno %{public}d", filePath.c_str(), errno);
+        return false;
+    }
+    return true;
+}
+
+bool KernelSnapshotPrinter::SaveSnapshot(CrashMap& output)
+{
+    // kernel dump abort and die_catch will both dump snapshot, so skip the abort snapshot
+    if (output[CrashSection::SEQ_NUM].find("AB") != std::string::npos) {
+        DFXLOGW("no need to save abort snapshot");
+        return false;
+    }
+
+    if (output[CrashSection::PID].empty()) {
+        DFXLOGE("pid is empty, not save snapshot");
+        return false;
+    }
+
+    std::string filePath = std::string(KBOX_SNAPSHOT_DUMP_PATH) + "cppcrash-" +
+                            output[CrashSection::PID] + "-" +
+                            output[CrashSection::TIME_STAMP];
+    return OutputToFile(filePath, output);
+}
+
+void KernelSnapshotPrinter::SaveSnapshots(std::vector<CrashMap>& outputs)
+{
+    for (auto& output : outputs) {
+        SaveSnapshot(output);
+    }
+}
+} // namespace HiviewDFX
+} // namespace OHOS

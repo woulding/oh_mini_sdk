@@ -1,0 +1,166 @@
+# Copyright (C) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/huks/build/config.gni")
+import("//base/security/huks/huks.gni")
+import("//build/ohos.gni")
+
+config("huks_config") {
+  include_dirs = [
+    "include",
+    "../device_cert_manager/include",
+  ]
+}
+
+if (os_level == "standard") {
+  ohos_shared_library("huks_engine_core_standard") {
+    subsystem_name = "security"
+    part_name = "huks"
+    public_configs = [ ":huks_config" ]
+    defines = []
+    if (huks_use_mbedtls) {
+      defines += [ "HKS_USE_MBEDTLS" ]
+    }
+    include_dirs = [
+      "//base/security/huks/utils/crypto_adapter",
+      "//base/security/huks/utils/list",
+      "//base/security/huks/utils/mutex",
+    ]
+
+    sources = [
+      "src/hks_auth.c",
+      "src/hks_core_interfaces.c",
+      "src/hks_core_service_key_attest.c",
+      "src/hks_core_service_key_generate.c",
+      "src/hks_core_service_key_extension.c",
+      "src/hks_core_service_key_operate_one_stage.c",
+      "src/hks_core_service_key_operate_three_stage.c",
+      "src/hks_core_service_key_other.c",
+      "src/hks_core_service_three_stage.c",
+      "src/hks_keyblob.c",
+      "src/hks_keynode.c",
+      "src/hks_secure_access.c",
+      "src/hks_sm_import_wrap_key.c",
+    ]
+
+    deps = [
+      "//base/security/huks/frameworks/huks_standard/main/common:libhuks_common_standard_static",
+      "//base/security/huks/frameworks/huks_standard/main/crypto_engine:libhuks_crypto_engine_standard_static",
+      "//base/security/huks/frameworks/huks_standard/main/os_dependency:libhuks_mem_standard_static",
+      "//base/security/huks/frameworks/huks_standard/main/os_dependency:libhuks_util_standard_static",
+      "//base/security/huks/services/huks_standard/huks_engine/main/core_dependency:libhuks_core_hal_api_static",
+      "//base/security/huks/utils/crypto_adapter:libhuks_utils_client_service_adapter_static",
+      "//base/security/huks/utils/file_operator:libhuks_utils_file_operator_static",
+      "//base/security/huks/utils/list:libhuks_utils_list_static",
+      "//base/security/huks/utils/mutex:libhuks_utils_mutex_static",
+    ]
+
+    if (huks_security_level == "software" && enable_user_auth_framework) {
+      defines += [ "HKS_ENABLE_IS_PASSWORD_SET" ]
+      deps += [ "../../../huks_service/main/systemapi_wrap/useridm:libhuks_service_systemapi_wrap_static" ]
+    }
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      integer_overflow = true
+      cfi = true
+      debug = false
+      cfi_cross_dso = true
+      boundary_sanitize = true
+      ubsan = true
+    }
+    sources += [
+      "../device_cert_manager/src/dcm_asn1.c",
+      "../device_cert_manager/src/dcm_attest.c",
+      "../device_cert_manager/src/dcm_attest_utils.c",
+    ]
+
+    sources += [ "src/hks_upgrade_key.c" ]
+
+    configs = [
+      "//base/security/huks/frameworks/config/build:l2_standard_common_config",
+    ]
+    external_deps = [
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+  }
+} else {
+  ohos_shared_library("huks_engine_core_standard") {
+    public_configs = [ ":huks_config" ]
+    configs = [
+      "//base/security/huks/frameworks/config/build:l1_small_common_config",
+    ]
+
+    defines = []
+    if (huks_use_mbedtls) {
+      defines += [ "HKS_USE_MBEDTLS" ]
+    }
+    include_dirs = [
+      "//base/security/huks/utils/crypto_adapter",
+      "//base/security/huks/utils/list",
+      "//base/security/huks/utils/mutex",
+      "//base/security/huks/services/huks_standard/huks_service/main/core/include",
+      "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/include",
+    ]
+
+    sources = [
+      "src/hks_auth.c",
+      "src/hks_core_interfaces.c",
+      "src/hks_core_service_key_attest.c",
+      "src/hks_core_service_key_generate.c",
+      "src/hks_core_service_key_extension.c",
+      "src/hks_core_service_key_operate_one_stage.c",
+      "src/hks_core_service_key_operate_three_stage.c",
+      "src/hks_core_service_key_other.c",
+      "src/hks_core_service_three_stage.c",
+      "src/hks_keynode.c",
+      "src/hks_secure_access.c",
+      "src/hks_sm_import_wrap_key.c",
+    ]
+
+    sources += [ "src/hks_upgrade_key.c" ]
+
+    if (huks_use_lite_storage == true) {
+      sources += [ "src/hks_keyblob_lite.c" ]
+    } else {
+      sources += [ "src/hks_keyblob.c" ]
+    }
+
+    if (huks_use_lite_storage == true) {
+      sources += [
+        "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_adapter.c",
+        "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_lite.c",
+        "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_manager.c",
+        "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_utils.c",
+      ]
+    } else {
+      include_dirs += [ "//base/security/huks/services/huks_standard/huks_service/main/upgrade/lock/include" ]
+      sources += [
+        "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage.c",
+        "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_manager.c",
+        "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/src/hks_storage_utils.c",
+      ]
+    }
+
+    deps = [
+      "//base/security/huks/frameworks/huks_standard/main:huks_small_frameworks",
+      "//base/security/huks/utils/crypto_adapter:libhuks_utils_client_service_adapter_static",
+      "//base/security/huks/utils/file_operator:libhuks_utils_file_operator_static",
+      "//base/security/huks/utils/list:libhuks_utils_list_static",
+      "//base/security/huks/utils/mutex:libhuks_utils_mutex_static",
+    ]
+
+    external_deps = [ "hilog_lite:hilog_shared" ]
+  }
+}

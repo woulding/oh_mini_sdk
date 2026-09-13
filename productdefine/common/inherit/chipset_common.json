@@ -1,0 +1,176 @@
+{
+  "version": "3.0",
+  "subsystems": [
+    {
+      "subsystem": "hdf",
+      "components": [
+        {
+          "component": "hdf_core",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_bluetooth",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_input",
+          "features": [
+            "drivers_peripheral_input_feature_model = true",
+            "drivers_peripheral_input_feature_support_ddk = true"
+          ]
+        },
+        {
+          "component": "drivers_peripheral_display",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_thermal",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_wlan",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_sensor",
+          "features": [
+            "drivers_peripheral_sensor_feature_model = true"
+          ]
+        },
+        {
+          "component": "drivers_peripheral_motion",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_audio",
+          "features": [
+            "drivers_peripheral_audio_feature_mono_to_stereo = true"
+          ]
+        },
+        {
+          "component": "drivers_peripheral_usb",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_camera",
+          "features": []
+        },
+	{
+ 	  "component": "drivers_peripheral_clearplay",
+ 	  "features": []
+ 	},
+        {
+          "component": "drivers_peripheral_light",
+          "features": [
+            "drivers_peripheral_light_feature_model = true"
+          ]
+        },
+        {
+          "component": "drivers_peripheral_vibrator",
+          "features": [
+            "drivers_peripheral_vibrator_feature_model = true"
+          ]
+        },
+        {
+          "component": "drivers_peripheral_codec",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_power",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_battery",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_pin_auth",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_face_auth",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_user_auth",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_fingerprint_auth",
+          "features": []
+        },
+	{
+	  "component": "drivers_peripheral_huks",
+	  "features": []
+        },
+        {
+          "component": "drivers_peripheral_memorytracker",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_location_agnss",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_location_geofence",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_location_gnss",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_distributed_camera",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_distributed_audio",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_partitionslot",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_ril",
+          "features": []
+        },
+        {
+          "component": "drivers_peripheral_intelligent_voice",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem": "telephony",
+      "components": [
+        {
+          "component": "ril_adapter",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem": "graphic",
+      "components": [
+        {
+          "component": "graphic_surface",
+          "features": []
+        },
+        {
+          "component": "graphic_surface",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem": "global",
+      "components": [
+        {
+          "component": "font_manager",
+          "features": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"Kôd za povezivanje",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"Aplikacija %1$s na uređaju %2$s želi da pristupi ovom uređaju. Smatrati ovu aplikaciju pouzdanom?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Otkaži",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Unesite kôd za povezivanje",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Ovo je potrebno za sinhronizaciju podataka i usklađivanje na više uređaja.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Smatraj pouzdanim ovog puta",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Uvek smatraj pouzdanim",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"Smatraj pouzdanim samo ovog puta",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s želi da pristupi usluzi %2$s na vašem uređaju. Označiti ovaj uređaj kao pouzdan?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"Aplikacija %2$s na uređaju %1$s želi da pristupi usluzi %3$s na vašem uređaju. Smatrati ovu aplikaciju pouzdanom?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s želi da se poveže sa uslugama na vašem uređaju. Izaberite usluge za autorizaciju:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "decode-adv-bytes",
+  "prompt": "解码并检查 SLE 扫描响应 0c 02 06 0b 0b 73 6c 65 5f 73 65 72 76 65 72 的 TLV 是否正确、设备名是什么、给出正确字节。",
+  "assertions": []
+}

@@ -1,0 +1,161 @@
+/*
+ * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "faultlogger_service_stub.h"
+
+#include "ipc_types.h"
+#include "message_parcel.h"
+
+#include "faultlog_info_inner.h"
+#include "faultlog_info_ohos.h"
+#include "hiviewfaultlogger_ipc_interface_code.h"
+#include "hiview_logger.h"
+#include "xcollie_detection.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+DEFINE_LOG_LABEL(0xD002D11, "FaultLoggerServiceStub");
+int FaultLoggerServiceStub::HandleOtherRemoteRequest(uint32_t code, MessageParcel &data,
+    MessageParcel &reply, MessageOption &option)
+{
+    switch (code) {
+        case static_cast<uint32_t>(FaultLoggerServiceInterfaceCode::ENABLE_GWP_ASAN_GRAYSALE):
+            return HandleEnableGwpAsanGrayscale(data, reply);
+        case static_cast<uint32_t>(FaultLoggerServiceInterfaceCode::DISABLE_GWP_ASAN_GRAYSALE):
+            return HandleDisableGwpAsanGrayscale();
+        case static_cast<uint32_t>(FaultLoggerServiceInterfaceCode::GET_GWP_ASAN_GRAYSALE):
+            return HandleGetGwpAsanGrayscaleState(reply);
+        case static_cast<uint32_t>(FaultLoggerServiceInterfaceCode::ENABLE_GWP_ASAN_INNER):
+            return HandleEnableGwpAsanInner(data, reply);
+        default:
+            return IPCObjectStub::OnRemoteRequest(code, data, reply, option);
+    }
+}
+
+int FaultLoggerServiceStub::HandleEnableGwpAsanGrayscale(MessageParcel &data, MessageParcel &reply)
+{
+    XCollieDetector xcollie("EnableGwpAsanGrayscale");
+    bool alwaysEnabled = data.ReadBool();
+    double sampleRate = data.ReadDouble();
+    double maxSimutaneousAllocations = data.ReadDouble();
+    int32_t duration = data.ReadInt32();
+    bool isRecover = data.ReadBool();
+    if (sampleRate <= 0 || maxSimutaneousAllocations <= 0 || duration <= 0) {
+        HIVIEW_LOGE("failed to enable gwp asan grayscale, sampleRate: %{public}f"
+            ", maxSimutaneousAllocations: %{public}f,  duration: %{public}d.",
+            sampleRate, maxSimutaneousAllocations, duration);
+        return ERR_FLATTEN_OBJECT;
+    }
+    auto result = EnableGwpAsanGrayscale(alwaysEnabled, sampleRate, maxSimutaneousAllocations, duration, isRecover);
+    if (reply.WriteBool(result)) {
+        return ERR_OK;
+    }
+    HIVIEW_LOGE("failed to enable gwp asan grayscale.");
+    return ERR_FLATTEN_OBJECT;
+}
+
+int FaultLoggerServiceStub::HandleDisableGwpAsanGrayscale()
+{
+    XCollieDetector xcollie("DisableGwpAsanGrayscale");
+    DisableGwpAsanGrayscale();
+    return ERR_OK;
+}
+
+    
+int FaultLoggerServiceStub::HandleGetGwpAsanGrayscaleState(MessageParcel& reply)
+{
+    XCollieDetector xcollie("GetGwpAsanGrayscaleState");
+    auto result = GetGwpAsanGrayscaleState();
+    if (reply.WriteUint32(result)) {
+        return ERR_OK;
+    }
+    HIVIEW_LOGE("failed to get gwp asan grayscale state.");
+    return ERR_FLATTEN_OBJECT;
+}
+
+int FaultLoggerServiceStub::HandleEnableGwpAsanInner(MessageParcel& data, MessageParcel& reply)
+{
+    XCollieDetector xcollie("EnableGwpAsanInner");
+    std::string processName = data.ReadString();
+    bool alwaysEnabled = data.ReadBool();
+    double sampleRate = data.ReadDouble();
+    double maxSimutaneousAllocations = data.ReadDouble();
+    int32_t duration = data.ReadInt32();
+    if (sampleRate <= 0 || maxSimutaneousAllocations <= 0 || duration <= 0) {
+        HIVIEW_LOGE("failed to enable gwp asan inner, sampleRate: %{public}f"
+            ", maxSimutaneousAllocations: %{public}f,  duration: %{public}d.",
+            sampleRate, maxSimutaneousAllocations, duration);
+        return ERR_FLATTEN_OBJECT;
+    }
+    auto result = EnableGwpAsanInner(processName, alwaysEnabled, sampleRate, maxSimutaneousAllocations, duration);
+    if (reply.WriteBool(result)) {
+        return ERR_OK;
+    }
+    HIVIEW_LOGE("failed to enable gwp asan inner.");
+    return ERR_FLATTEN_OBJECT;
+}
+
+int FaultLoggerServiceStub::OnRemoteRequest(uint32_t code, MessageParcel &data,
+    MessageParcel &reply, MessageOption &option)
+{
+    std::u16string descripter = FaultLoggerServiceStub::GetDescriptor();
+    std::u16string remoteDescripter = data.ReadInterfaceToken();
+    if (descripter != remoteDescripter) {
+        HIVIEW_LOGE("read descriptor failed.");
+        return -1;
+    }
+
+    switch (code) {
+        case static_cast<uint32_t>(FaultLoggerServiceInterfaceCode::ADD_FAULTLOG): {
+            XCollieDetector xcollie("AddFaultLog", XCOLLIE_OTHER_THREAD_TIMEOUT_SECOND);
+            sptr<FaultLogInfoOhos> ohosInfo = FaultLogInfoOhos::Unmarshalling(data);
+            if (ohosInfo == nullptr) {
+                HIVIEW_LOGE("failed to Unmarshalling info.");
+                return ERR_FLATTEN_OBJECT;
+            }
+            if (data.ContainFileDescriptors()) {
+                ohosInfo->pipeFd = data.ReadFileDescriptor();
+            }
+            FaultLogInfoOhos info(*ohosInfo);
+            AddFaultLog(info);
+            return ERR_OK;
+        }
+        case static_cast<uint32_t>(FaultLoggerServiceInterfaceCode::QUERY_SELF_FAULTLOG): {
+            XCollieDetector xcollie("QuerySelfFaultLog", XCOLLIE_OTHER_THREAD_TIMEOUT_SECOND);
+            int32_t type = data.ReadInt32();
+            int32_t maxNum = data.ReadInt32();
+            auto result = QuerySelfFaultLog(type, maxNum);
+            if (result == nullptr) {
+                HIVIEW_LOGE("failed to query self log.");
+                return -1;
+            }
+
+            if (!reply.WriteRemoteObject(result)) {
+                HIVIEW_LOGE("failed to write query result.");
+                return ERR_FLATTEN_OBJECT;
+            }
+            return ERR_OK;
+        }
+        case static_cast<uint32_t>(FaultLoggerServiceInterfaceCode::DESTROY): {
+            XCollieDetector xcollie("Destroy", XCOLLIE_OTHER_THREAD_TIMEOUT_SECOND);
+            Destroy();
+            return ERR_OK;
+        }
+
+        default:
+            return HandleOtherRemoteRequest(code, data, reply, option);
+    }
+}
+} // namespace HiviewDFX
+} // namespace OHOS

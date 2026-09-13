@@ -1,0 +1,65 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("../../../../../appexecfwk.gni")
+
+module_output_path = "bundle_framework/bundle_framework"
+
+ohos_systemtest("BmsUninstallSystemTest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  sources = [ "bms_uninstall_system_test.cpp" ]
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+  deps = [
+    "${base_path}:appexecfwk_base",
+    "${bundle_framework_path}/test/sceneProject/systemtest/ohos_test:copy_ohos_test",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stSystemBundle/bmsSystemBundle1:bmsSystemBundle1",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stThirdBundle/bmsThirdBundle1:stbmsThirdBundle1",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stThirdBundle/bmsThirdBundle13:stbmsThirdBundle13",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stThirdBundle/bmsThirdBundle4:stbmsThirdBundle4",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stThirdBundle/bmsThirdBundle5:stbmsThirdBundle5",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stThirdBundle/bmsThirdBundle6:stbmsThirdBundle6",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stThirdBundle/bmsThirdBundle7:stbmsThirdBundle7",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stThirdBundle/bmsThirdBundle8:stbmsThirdBundle8",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stThirdBundle/bmsThirdBundle9:stbmsThirdBundle9",
+    "${bundle_framework_path}/test/sceneProject/systemtest/stVendorBundle/bmsVendorBundle1:bmsVendorBundle1",
+    "${common_path}:libappexecfwk_common",
+    "${core_path}:appexecfwk_core",
+    "${services_path}/test/moduletest/utils:tool_common",
+  ]
+
+  defines = [ "APP_LOG_TAG = \"BundleMgrTool\"" ]
+
+  external_deps = [
+    "ability_base:want",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "samgr:samgr_proxy",
+  ]
+}
+
+group("systemtest") {
+  testonly = true
+
+  deps = [ ":BmsUninstallSystemTest" ]
+}

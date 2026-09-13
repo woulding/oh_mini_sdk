@@ -1,0 +1,6 @@
+*.ko
+*.mod.c
+*.cmd
+Module.symvers
+modules.order
+modules.livepatch

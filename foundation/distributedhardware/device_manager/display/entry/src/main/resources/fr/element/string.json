@@ -1,0 +1,151 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"Code de connexion",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"L'application %1$s sur %2$s souhaite accéder à cet appareil. Faire confiance à cette application ?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Annuler",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Saisir le code de connexion",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Ceci est nécessaire pour la synchronisation des données et la collaboration multi-appareils.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Faire confiance cette fois",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Toujours faire confiance",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"Faire confiance cette fois uniquement",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_confirm_proxy",
+            "value":"\"%s\" souhaite se connecter à cet appareil. Veuillez sélectionner les services auxquels il peut accéder :",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_connect_code",
+            "value":"Veuillez saisir le code de connexion qui s'affiche sur l'autre appareil.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_confirm_title_cast",
+            "value":"%s souhaite mettre en miroir son écran sur votre appareil. Faire confiance à cet appareil ?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_is_trust_device",
+            "value":"%s Faites-vous confiance à cet appareil ?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_password_error",
+            "value":"Mot de passe incorrect. La connexion a échoué.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_bluetooth_dialog_close",
+            "value":"OK",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_authenticating",
+            "value":"Authentification en cours.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_connect_device",
+            "value":"%s souhaite se connecter à votre appareil.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_bluetooth_dialog_content",
+            "value":"Le Bluetooth doit être activé pour se connecter à un autre appareil. Veuillez l'activer, puis réessayez.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_connect",
+            "value":"Se connecter à %s",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s souhaite accéder au service %2$s sur votre appareil. Faire confiance à cet appareil ?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"L'application %2$s sur %1$s souhaite accéder au service %3$s sur votre appareil. Faire confiance à cette application ?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s souhaite se connecter aux services sur votre appareil. Veuillez sélectionner les services à autoriser :",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

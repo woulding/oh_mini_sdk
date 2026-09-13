@@ -1,0 +1,4 @@
+{
+  "name": "library_one.so",
+  "types": "./index.d.ts"
+}

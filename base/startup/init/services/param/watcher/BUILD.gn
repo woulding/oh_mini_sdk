@@ -1,0 +1,73 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+import("//build/ohos.gni")
+
+ohos_prebuilt_etc("param_watcher.rc") {
+  source = "etc/param_watcher.cfg"
+  relative_install_dir = "init"
+  part_name = "init"
+  subsystem_name = "startup"
+}
+
+ohos_shared_library("param_watcher") {
+  sources = [
+    "//base/startup/init/services/param/linux/param_message.c",
+    "proxy/watcher_manager.cpp",
+  ]
+
+  include_dirs = [
+    "//base/startup/init/services/param/include",
+    "//base/startup/init/interfaces/innerkits/include/param",
+    "//base/startup/init/services/param/linux",
+    "//base/startup/init/services/param/watcher/proxy",
+    "//base/startup/init/services/param/watcher/include",
+    "//base/startup/init/interfaces/innerkits/include",
+    "//base/startup/init/services/log",
+    "//base/startup/init/services/loopevent/include",
+  ]
+
+  deps = [
+    "//base/startup/init/interfaces/innerkits:libbegetutil",
+    "//base/startup/init/interfaces/innerkits/:param_watcher_stub",
+    "//base/startup/init/services/log:agent_log",
+  ]
+
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "access_token:libtokenid_sdk",
+    "ipc:ipc_single",
+  ]
+
+  if (init_paramwatcher_hicollie_enable) {
+    external_deps += [ "hicollie:libhicollie" ]
+    defines = [ "HICOLLIE_ENABLE" ]
+  }
+  shlib_type = "sa"
+  install_images = [ "system" ]
+  part_name = "init"
+  subsystem_name = "startup"
+}

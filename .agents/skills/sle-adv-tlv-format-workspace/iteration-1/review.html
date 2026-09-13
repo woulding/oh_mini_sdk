@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "sle-adv-tlv-format", "runs": [{"id": "eval-0-broken-tlv-scan-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "answer.md", "type": "text", "content": "# BS21E SLE \u5e7f\u64ad\u626b\u63cf\u4e0d\u5230\u8bbe\u5907\uff1a\u6839\u56e0\u4e0e\u4fee\u590d\n\n## \u7ed3\u8bba\uff08\u6839\u56e0\uff09\n\n\u8bbe\u5907\u7aef API \u5168\u90e8\u8fd4\u56de\u6210\u529f\uff0c\u662f\u56e0\u4e3a SLE \u534f\u8bae\u6808**\u4e0d\u6821\u9a8c\u5e7f\u64ad\u51c0\u8377\u7684 TLV \u683c\u5f0f**\uff0c\u6240\u4ee5\u9519\u8bef\u53ea\u5728\u7a7a\u53e3\u5b57\u8282\u4e0a\u4f53\u73b0\u3002\u4f60\u7684\u4e24\u6bb5\u6570\u636e\u90fd\u8fdd\u53cd\u4e86 SLE \u5e7f\u64ad\u7684 TLV \u7f16\u7801\u89c4\u5219\uff1a\n\n> \u7a7a\u53e3\u5e03\u5c40\u662f `[type][length][value...]`\uff0c\u5176\u4e2d `length` **\u53ea\u8ba1 value \u7684\u5b57\u8282\u6570**\uff0c\u65e2\u4e0d\u542b type\uff0c\u4e5f\u4e0d\u7b49\u4e8e `len(value)+1`\u3002\n\n\u5177\u4f53\u95ee\u9898\u6765\u81ea `sle_uart_server` \u793a\u4f8b\u91cc\u7684 helper \u7f16\u7801\u5668\uff08`struct sle_adv_common_value` / `sle_set_adv_data` / `sle_set_adv_local_name`\uff09\uff1a\n\n1. **length \u5168\u90e8\u591a\u7b97\u4e86 1**\uff1a\u7528 `sizeof(struct)-1` \u5f97\u5230 `2`\uff08\u6b63\u786e\u5e94\u4e3a `1`\uff09\uff0c\u4e8e\u662f\u6bcf\u4e2a TLV \u90fd\u591a\u5199\u4e00\u4e2a\u5b57\u8282\u3002\n2. **\u540d\u79f0 TLV \u7684 type/length \u88ab\u5199\u53cd**\uff1a\u4ee3\u7801\u5199\u6210 `adv_data[i++] = strlen(name)+1; adv_data[i++] = TYPE;`\uff0c\u5b9e\u9645\u53d1\u51fa\u7684\u662f `[length][type]`\uff0c\u4e14 length=`strlen+1`\u3002\u5bf9 `\"sle_server\"` \u6765\u8bf4 0x0B \u6070\u597d\u53c8\u7b49\u4e8e `COMPLETE_LOCAL_NAME`\uff0c\u6240\u4ee5\u8089\u773c\u5f88\u96be\u53d1\u73b0\u3002\n\n**\u4e3a\u4ec0\u4e48\u626b\u63cf\u4e0d\u5230**\uff1a`announce_data` \u7684\u53d1\u73b0\u7b49\u7ea7\uff08discovery level\uff09TLV \u88ab\u5199\u574f \u2014\u2014 `01 02 01 02 02 00` \u88ab\u89e3\u6790\u6210 `type=0x01 length=2 value=01 02`\uff0c\u968f\u540e\u518d\u89e3\u6790\u51fa `type=0x02 length=0` \u7684\u96f6\u957f TLV\uff0c\u89e3\u6790\u5b8c\u5168\u5931\u6b65\u3002\u4e25\u683c\u7684\u661f\u95ea\u8c03\u8bd5\u52a9\u624b\u4f1a\u628a\u8bbe\u5907\u5224\u5b9a\u4e3a\u201c\u4e0d\u53ef\u53d1\u73b0\u201d\u800c\u76f4\u63a5\u9690\u85cf\uff1b`seek_rsp_data` \u7684\u540d\u79f0 TLV `0b 0b` \u66f4\u662f\u58f0\u660e length=11 \u4f46\u5b9e\u9645\u53ea\u6709 10 \u5b57\u8282\uff0c\u957f\u5ea6\u8d8a\u754c\u3002\u8bbe\u5907\u4fa7 `announce enable cbk` \u4ecd\u7136\u6210\u529f\uff0c\u56e0\u6b64\u65e5\u5fd7\u770b\u8d77\u6765\u4e00\u5207\u6b63\u5e38\u3002\n\n## \u89e3\u7801\u5668\u9a8c\u8bc1\n\n\u7528 `scripts/decode_sle_adv.py` \u590d\u6838\u539f\u59cb\u5b57\u8282\uff1a\n\n- \u574f\u6570\u636e `01 02 01 02 02 00` \u2192 `RESULT: SUSPECT/MALFORMED`\uff080x01 \u957f\u5ea6\u5e94\u4e3a 1\uff0c\u4e14\u51fa\u73b0\u96f6\u957f TLV\uff09\n- \u574f\u6570\u636e `0c 02 06 0b 0b ...` \u2192 `RESULT: SUSPECT/MALFORMED`\uff080x0C \u957f\u5ea6\u5e94\u4e3a 1\uff1b0x0B \u58f0\u660e length=11 \u4f46\u7f13\u51b2\u533a\u53ea\u5269 10 \u5b57\u8282\uff0cLENGTH OVERRUNS\uff09\n\n## \u4fee\u590d\u540e\u7684\u5b57\u8282\uff08\u53ef\u76f4\u63a5\u66ff\u6362\uff09\n\n```\nannounce_data: 01 01 01 02 01 00\nseek_rsp_data: 0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72\n```\n\n\u89e3\u7801\u7ed3\u679c\uff08\u4e24\u6bb5\u5747 OK\uff09\uff1a\n\n```\nannounce_data:\n  offset 0: type=0x01 (DISCOVERY_LEVEL \u53d1\u73b0\u7b49\u7ea7) length=1 value=01\n  offset 3: type=0x02 (ACCESS_MODE \u63a5\u5165\u5c42\u80fd\u529b)   length=1 value=00\n  RESULT: OK\n\nseek_rsp_data:\n  offset 0: type=0x0C (TX_POWER_LEVEL \u53d1\u9001\u529f\u7387) length=1 value=06\n  offset 3: type=0x0B (COMPLETE_LOCAL_NAME \u5b8c\u6574\u540d\u79f0) length=10 value='sle_server'\n  RESULT: OK\n```\n\n\u5bf9\u6bd4\uff08\u574f \u2192 \u597d\uff09\uff1a\n\n| \u5b57\u6bb5 | \u574f | \u597d | \u53d8\u5316 |\n|---|---|---|---|\n| announce \u53d1\u73b0\u7b49\u7ea7 | `01 02 01` | `01 01 01` | length \u7531 2 \u6539\u56de 1 |\n| announce \u63a5\u5165\u5c42 | `02 02 00` | `02 01 00` | length \u7531 2 \u6539\u56de 1 |\n| seek \u53d1\u9001\u529f\u7387 | `0c 02 06` | `0c 01 06` | length \u7531 2 \u6539\u56de 1 |\n| seek \u5b8c\u6574\u540d\u79f0 | `0b 0b \"sle_server\"` | `0b 0a \"sle_server\"` | type/length \u5f52\u4f4d\uff0clength=10=strlen(name) |\n\n## \u4fee\u590d\u505a\u6cd5\uff08\u4ee3\u7801\u5c42\uff09\n\n1. \u82e5\u662f struct helper\uff1a`{type, length, value}` \u5b57\u6bb5\u987a\u5e8f\u672c\u8eab\u6ca1\u95ee\u9898\uff08type \u5728\u524d\uff09\uff0c**\u53ea\u628a `.length` \u8bbe\u4e3a\u771f\u5b9e\u7684 value \u5b57\u8282\u6570**\uff08\u5355\u5b57\u8282\u5b57\u6bb5\u5c31\u662f `1`\uff09\uff0c\u7edd\u4e0d\u80fd\u518d\u7528 `sizeof(struct)-1`\u3002\n2. \u82e5\u662f\u540d\u79f0 helper\uff1a\u52a1\u5fc5 type \u5728\u524d\uff0clength \u7528 `strlen(name)`\uff08\u4e0d\u52a0 1\uff09\uff1a\n   ```c\n   adv_data[i++] = SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME;  /* 0x0B */\n   adv_data[i++] = strlen(name);                            /* \u4e0d\u662f +1 */\n   memcpy(&adv_data[i], name, strlen(name));\n   i += strlen(name);\n   ```\n3. \u6539\u5b8c\u91cd\u65b0\u7f16\u8bd1\uff0c\u628a `announce_data` \u4e0e `seek_rsp_data` \u7684\u65e5\u5fd7\u5b57\u8282\u90fd\u4e22\u8fdb `decode_sle_adv.py` \u9a8c\u8bc1\uff0c**\u4e24\u6bb5\u90fd\u5fc5\u987b\u89e3\u7801\u5230 OK**\uff08\u53ea\u4fee\u5176\u4e2d\u4e00\u6bb5\u4e0d\u591f\uff0c`announce_data` \u7684\u53d1\u73b0\u7b49\u7ea7\u574f\u6389\u4e00\u9879\u5c31\u8db3\u4ee5\u8ba9\u8bbe\u5907\u4e0d\u53ef\u89c1\uff09\u3002\n\n> \u8865\u5145\uff1a\u82e5 TLV \u4fee\u597d\u540e\u4ecd\u626b\u4e0d\u5230\uff0c\u518d\u4f9d\u6b21\u6392\u67e5\u672c\u5730\u5730\u5740\uff08`sle_set_local_addr()` \u662f\u5426\u5728 `sle_set_announce_param()` \u4e4b\u524d\u8c03\u7528\u3001`sle_get_local_addr()` \u662f\u5426\u975e\u96f6\uff09\u4e0e\u89d2\u8272\u914d\u7f6e\uff08server/peripheral \u9700\u8981 `SUPPORT_SLE_BLE_PERIPHERAL`\uff0ccentral \u7248\u4e0d\u4f1a\u771f\u6b63\u53d1\u5305\uff09\u3002\n"}], "grading": {"eval_dir": "eval-0-broken-tlv-scan", "config": "with_skill", "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}, "expectations": [{"text": "states the TLV order is [type][length][value]", "passed": true, "evidence": "[type][length][value"}, {"text": "identifies the length off-by-one / type-inclusive root cause", "passed": true, "evidence": "value \u7684\u5b57\u8282\u6570"}, {"text": "gives corrected announce bytes 01 01 01 02 01 00", "passed": true, "evidence": "01 01 01 02 01 00"}, {"text": "gives corrected seek bytes 0c 01 06 0b 0a ...", "passed": true, "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"}, {"text": "explains a malformed discovery-level TLV makes the device invisible", "passed": true, "evidence": "\u53d1\u73b0\u7b49\u7ea7\uff08discovery level\uff09TLV \u88ab\u5199\u574f \u2014\u2014 `01 02 01 02 02 00` \u88ab\u89e3\u6790\u6210 `type=0x01 length=2 value=01 02`\uff0c"}]}}, {"id": "eval-0-broken-tlv-scan-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "answer.md", "type": "text", "content": "# BS21E SLE Server \u626b\u63cf\u4e0d\u5230\uff1a\u5e7f\u64ad TLV \u957f\u5ea6\u5b57\u6bb5\u591a\u7b97\u4e86 1 \u4e2a\u5b57\u8282\n\n## \u4e00\u3001\u6839\u56e0\n\nSLE \u7684\u5e7f\u64ad\u6570\u636e / \u626b\u63cf\u54cd\u5e94\u6570\u636e\u7531\u82e5\u5e72 AD \u7ed3\u6784\uff08TLV\uff09\u62fc\u63a5\u800c\u6210\uff0c\u683c\u5f0f\u4e3a\uff1a\n\n```\n[type: 1 \u5b57\u8282][length: 1 \u5b57\u8282][value: length \u5b57\u8282]\n```\n\n\u5173\u952e\u70b9\uff1a**`length` \u5fc5\u987b\u7b49\u4e8e value \u7684\u5b57\u8282\u6570\uff0c\u4e0d\u5305\u542b type \u548c length \u672c\u8eab**\uff08\u8fd9\u4e0e BLE \u7684 `[length][type][value]`\u3001\u4e14 length \u542b type \u7684\u7b97\u6cd5\u4e0d\u540c\uff09\u3002\n\n\u65e5\u5fd7\u91cc\u7684\u4e24\u6bb5\u6570\u636e\u6070\u597d\u80fd\u8bc1\u660e\u95ee\u9898\u662f\u201clength = value \u5b57\u8282\u6570 + 1\u201d\uff1a\n\n```\nannounce_data: 01 02 01 02 02 00\n  \u251c\u2500 01 02 01  -> type=0x01(\u53d1\u73b0\u7b49\u7ea7), length=0x02, value=0x01   \u2190 length \u591a\u4e86 1\n  \u2514\u2500 02 02 00  -> type=0x02(\u63a5\u5165\u5c42\u80fd\u529b), length=0x02, value=0x00   \u2190 length \u591a\u4e86 1\n\nseek_rsp_data: 0c 02 06 0b 0b 73 6c 65 5f 73 65 72 76 65 72\n  \u251c\u2500 0c 02 06              -> type=0x0C(\u53d1\u9001\u529f\u7387), length=0x02, value=0x06  \u2190 length \u591a\u4e86 1\n  \u2514\u2500 0b 0b \"sle_server\"    -> type=0x0B(\u5b8c\u6574\u672c\u5730\u540d\u79f0), length=0x0B, value=10 \u5b57\u8282 \u2190 length \u591a\u4e86 1\n```\n\n- \u53d1\u73b0\u7b49\u7ea7 / \u63a5\u5165\u5c42\u80fd\u529b / \u53d1\u9001\u529f\u7387\u7684\u503c\u672c\u6765\u90fd\u53ea\u6709 **1 \u5b57\u8282**\uff0c\u5374\u88ab\u5199\u6210 `length=0x02`\uff1b\n- \u672c\u5730\u540d\u79f0 `\"sle_server\"` \u53ea\u6709 **10(0x0A) \u5b57\u8282**\uff0c\u5374\u88ab\u5199\u6210 `length=0x0B`\u3002\n\n\u89e3\u6790\u65b9\u662f\u4e25\u683c\u6309 `length` \u8df3\u8f6c\u7684\uff1a\u6bcf\u4e2a TLV \u90fd\u4f1a\u591a\u541e\u6389 1 \u4e2a\u5b57\u8282\uff0c\u628a\u4e0b\u4e00\u6bb5\u7684 `type` \u5f53\u6210\u4e0a\u4e00\u6bb5\u7684 value\uff0c\u4e8e\u662f\u6574\u6761 AD \u7ed3\u6784\u9519\u4f4d\u3001\u975e\u6cd5\uff0c\u53d1\u73b0\u7b49\u7ea7\u548c\u5b8c\u6574\u540d\u79f0\u90fd\u89e3\u6790\u4e0d\u51fa\u6765\u3002\u661f\u95ea\u8c03\u8bd5\u52a9\u624b\u6309\u201c\u53ef\u53d1\u73b0\u7b49\u7ea7 / \u5b8c\u6574\u540d\u79f0\u201d\u8fc7\u6ee4\uff0c\u81ea\u7136\u626b\u63cf\u4e0d\u5230\u8bbe\u5907\u3002\n\n\u540c\u65f6\uff0c`sle_set_announce_data()` \u53ea\u6821\u9a8c**\u603b\u957f\u5ea6**\u662f\u5426\u8d8a\u754c\uff0c\u4e0d\u505a TLV \u8bed\u4e49\u6821\u9a8c\uff0c\u6240\u4ee5\u8bbe\u5907\u7aef\u4f9d\u65e7\u6253\u5370 `set announce data success`\u3001`announce enable cbk state:0`\uff0c\u9020\u6210\u201c\u65e5\u5fd7\u5168\u6210\u529f\u4f46\u626b\u4e0d\u5230\u201d\u7684\u5047\u8c61\u3002\n\n## \u4e8c\u3001\u4fee\u590d\u540e\u7684\u5b57\u8282\n\n`announce_data`\uff086 \u5b57\u8282\uff0c\u603b\u957f\u4e0d\u53d8\uff09\uff1a\n\n```\n01 01 01 02 01 00\n```\n\n- `01 01 01` = \u53d1\u73b0\u7b49\u7ea7\uff1atype=0x01, length=0x01, value=0x01\uff08`SLE_ANNOUNCE_LEVEL_NORMAL`\uff0c\u4e00\u822c\u53ef\u53d1\u73b0\uff09\n- `02 01 00` = \u63a5\u5165\u5c42\u80fd\u529b\uff1atype=0x02, length=0x01, value=0x00\n\n`seek_rsp_data`\uff0815 \u5b57\u8282\uff0c\u603b\u957f\u4e0d\u53d8\uff09\uff1a\n\n```\n0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72\n```\n\n- `0c 01 06` = \u53d1\u9001\u529f\u7387\uff1atype=0x0C, length=0x01, value=0x06\n- `0b 0a 73 6c 65 5f 73 65 72 76 65 72` = \u5b8c\u6574\u672c\u5730\u540d\u79f0\uff1atype=0x0B, length=0x0A, value=`\"sle_server\"`\uff0810 \u5b57\u8282\uff09\n\n\u4fee\u590d\u524d\u540e\u603b\u957f\u5ea6\u4e00\u81f4\uff08announce 6\u3001seek 15\uff09\uff0c\u53ea\u662f\u628a\u6bcf\u4e2a TLV \u7684 length \u51cf 1\u3002\n\n## \u4e09\u3001\u4ee3\u7801\u4fee\u6539\n\n\u6587\u4ef6\uff1a`applications/demo/ohos_bs21e/sle_server/src/sle_server_adv.c`\n\uff08\u5bf9\u5e94 `sle_set_adv_data()` / `sle_set_scan_response_data()` / `sle_set_adv_local_name()`\uff09\n\n\u628a length \u4ece\u201cvalue \u5b57\u8282\u6570 + 1\u201d\u6539\u4e3a\u201cvalue \u5b57\u8282\u6570\u201d\uff1a\n\n```c\n/* struct sle_adv_common_value { uint8_t type; uint8_t length; uint8_t value; } */\n\n/* \u53d1\u73b0\u7b49\u7ea7\uff1avalue \u53ea\u6709 1 \u5b57\u8282 */\nstruct sle_adv_common_value adv_disc_level = {\n    .length = 1,                              /* \u539f\u6765\u662f sizeof(struct) - 1 == 2 */\n    .type   = SLE_ADV_DATA_TYPE_DISCOVERY_LEVEL,\n    .value  = SLE_ANNOUNCE_LEVEL_NORMAL,      /* 0x01 */\n};\n\n/* \u63a5\u5165\u5c42\u80fd\u529b\uff1avalue \u53ea\u6709 1 \u5b57\u8282 */\nstruct sle_adv_common_value adv_access_mode = {\n    .length = 1,                              /* \u539f\u6765\u662f sizeof(struct) - 1 == 2 */\n    .type   = SLE_ADV_DATA_TYPE_ACCESS_MODE,\n    .value  = 0,\n};\n\n/* \u53d1\u9001\u529f\u7387\uff1avalue \u53ea\u6709 1 \u5b57\u8282 */\nstruct sle_adv_common_value tx_power_level = {\n    .length = 1,                              /* \u539f\u6765\u662f sizeof(struct) - 1 == 2 */\n    .type   = SLE_ADV_DATA_TYPE_TX_POWER_LEVEL,\n    .value  = SLE_ADV_TX_POWER,               /* 0x06 */\n};\n\n/* \u672c\u5730\u540d\u79f0\uff1alength = strlen(name)\uff0c\u4e0d\u8981 +1 */\nadv_data[index++] = SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME;\nadv_data[index++] = local_name_len;           /* \u539f\u6765\u662f local_name_len + 1 */\nmemcpy_s(&adv_data[index], max_len - index, local_name, local_name_len);\n```\n\n\u4e00\u53e5\u8bdd\u603b\u7ed3\uff1aSLE \u7684 TLV \u662f `[type][length=value \u5b57\u8282\u6570][value]`\uff0c\u628a length \u91cc\u591a\u7b97\u7684\u90a3\u4e2a\u5b57\u8282\u53bb\u6389\u5373\u53ef\uff0cAD \u603b\u957f\u5ea6\u4e0d\u7528\u6539\u3002\n"}], "grading": {"eval_dir": "eval-0-broken-tlv-scan", "config": "without_skill", "summary": {"passed": 4, "failed": 1, "total": 5, "pass_rate": 0.8}, "expectations": [{"text": "states the TLV order is [type][length][value]", "passed": false, "evidence": "not found"}, {"text": "identifies the length off-by-one / type-inclusive root cause", "passed": true, "evidence": "\u591a\u7b97"}, {"text": "gives corrected announce bytes 01 01 01 02 01 00", "passed": true, "evidence": "01 01 01 02 01 00"}, {"text": "gives corrected seek bytes 0c 01 06 0b 0a ...", "passed": true, "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"}, {"text": "explains a malformed discovery-level TLV makes the device invisible", "passed": true, "evidence": "\u53d1\u73b0\u7b49\u7ea7 / \u63a5\u5165\u5c42\u80fd\u529b / \u53d1\u9001\u529f\u7387\u7684\u503c\u672c\u6765\u90fd\u53ea\u6709 **1 \u5b57\u8282**\uff0c\u5374\u88ab\u5199\u6210 `length=0x02`\uff1b - \u672c\u5730\u540d\u79f0 `\"sle_server\"` \u53ea\u6709 **10(0x0A"}]}}, {"id": "eval-1-port-sle-uart-adv-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "answer.md", "type": "text", "content": "# \u628a sle_uart_server \u7684 SLE \u5e7f\u64ad\u6784\u9020\u79fb\u690d\u5230 OHOS `applications/demo/ohos_bs21e/sle_server` \u2014\u2014 \u5751\u4e0e\u53ef\u7528\u4ee3\u7801\n\n## 0. \u4e00\u53e5\u8bdd\u7ed3\u8bba\n\nSLE \u5e7f\u64ad/\u626b\u63cf\u54cd\u5e94\u662f\u4e00\u4e2a\u4e2a TLV \u76f4\u63a5\u62fc\u5728\u7f13\u51b2\u533a\u91cc\uff0c\u7a7a\u4e2d\u5e03\u5c40\u56fa\u5b9a\u4e3a\uff1a\n\n```\n[type] [length] [value ...]      length = value \u7684\u5b57\u8282\u6570\uff08\u4e0d\u542b type\uff0c\u4e5f\u4e0d\u662f len+1\uff09\n```\n\n\u8bbe\u5907\u7aef API \u4ece\u4e0d\u6821\u9a8c\u8fd9\u4e2a payload\uff0c\u6240\u4ee5\u4f60\u5373\u4f7f\u628a `length` \u5199\u9519\uff0c`sle_set_announce_data` \u4f9d\u7136\u8fd4\u56de\u6210\u529f\u3001`announce enable` \u56de\u8c03\u4f9d\u7136\u662f `state:0`\uff0c\u4f46\u624b\u673a\u4e0a\u7684\u661f\u95ea\u8c03\u8bd5\u52a9\u624b\u4f1a\u56e0\u4e3a\u53d1\u73b0\u7b49\u7ea7/\u540d\u5b57 TLV \u7578\u5f62\u800c\u628a\u8bbe\u5907\u5224\u5b9a\u4e3a\"\u4e0d\u53ef\u53d1\u73b0\"\uff0c\u76f4\u63a5\u626b\u63cf\u4e0d\u5230\u3002**\u4fee\u590d\u5fc5\u987b\u5148\u6539\u5b57\u8282\uff0c\u518d\u67e5\u5730\u5740/\u89d2\u8272\u3002**\n\n---\n\n## 1. \u76f4\u63a5\u7167\u6284 `sle_uart_server_adv.c` \u4f1a\u8e29\u7684\u5751\n\n\u5bf9\u7167 `device/soc/hisilicon/bs2xv107/sdk/application/samples/products/sle_uart/sle_uart_server/sle_uart_server_adv.c`\uff1a\n\n1. **\u626b\u63cf\u54cd\u5e94\u91cc TX Power \u7684\u957f\u5ea6\u591a\u7b97\u4e86 1**\uff08`:114`\uff09\uff1a\n   ```c\n   size_t scan_rsp_data_len = sizeof(struct sle_adv_common_value);   // = 3\n   struct sle_adv_common_value tx_power_level = {\n       .length = scan_rsp_data_len - 1,   // \u2190 3-1 = 2\uff0c\u9519\uff01\u5e94\u4e3a 1\n       .type = SLE_ADV_DATA_TYPE_TX_POWER_LEVEL,\n       .value = SLE_ADV_TX_POWER,\n   };\n   ```\n   \u8f93\u51fa `0c 02 06`\uff0c\u628a\u4e0b\u4e00\u4e2a TLV \u7684 type \u5b57\u8282\u541e\u6389\uff0c\u6574\u4e2a seek response \u89e3\u6790\u9519\u4f4d\u3002\n   \u5b9e\u6d4b\uff08`decode_sle_adv.py`\uff09\u539f\u59cb\u6837\u4f8b\u540d `sle_uart_server` \u65f6\uff1a\n   ```\n   seek: 0c 02 06 10 0b 73 6c 65 5f 75 61 72 74 5f 73 65 72 76 65 72\n   offset 0: type=0x0c (TX_POWER_LEVEL) length=2 ... WARNING: \u5fc5\u987b length=1\n   offset 4: type=0x0b (COMPLETE_LOCAL_NAME) length=115 ... LENGTH OVERRUNS\n   RESULT: SUSPECT/MALFORMED\n   ```\n\n2. **\u672c\u5730\u540d helper \u628a type/length \u987a\u5e8f\u5199\u53cd\uff0c\u4e14\u957f\u5ea6 +1**\uff08`:62-63`\uff09\uff1a\n   ```c\n   adv_data[index++] = local_name_len + 1;                       // \u5148\u5199 length+1\uff08\u9519\uff09\n   adv_data[index++] = SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME;    // \u540e\u5199 type\uff08\u9519\uff09\n   ```\n   \u5e94\u8be5\u662f `[type][length]`\uff0c\u4e14 `length = strlen(name)`\u3002\n   \u6700\u9634\u7684\u4e00\u70b9\uff1a\u5982\u679c\u4f60\u7684\u540d\u5b57\u6070\u597d\u662f `\"sle_server\"`\uff08strlen=10\uff09\uff0c`10+1 == 0x0B`\uff0c\u800c `0x0B` \u6b63\u597d\u53c8\u662f COMPLETE_LOCAL_NAME \u7684 type\uff0c\u4e8e\u662f `0b 0b` \u770b\u8d77\u6765\"\u50cf\u4e2a\u6b63\u7ecf TLV\"\uff0c\u8089\u773c\u5f88\u5bb9\u6613\u653e\u8fc7\u3002\u771f\u6b63\u7684\u540d\u5b57 TLV \u5e94\u4e3a `0b 0a \"sle_server\"`\u3002\n\n3. **\u4f9d\u8d56 `sizeof(struct)` / `sizeof(array)-1` \u8fd9\u79cd\u8868\u8fbe\u5f0f**\u3002\u539f `sle_set_adv_data()`\uff08`:80,83`\uff09\u7528 `.length = len - 2`\u3001`len = sizeof(struct sle_adv_common_value)`\u3002\u8fd9\u4e2a\u7ed3\u6784\u4f53\u53ea\u6709 3 \u4e2a `uint8_t`\u3001\u65e0 padding \u65f6 size=3\uff0c\u6240\u4ee5 `len-2=1` \u6070\u597d\u6b63\u786e\u2014\u2014**\u4f46\u8fd9\u662f\u5de7\u5408\uff0c\u4e0d\u662f\u89c4\u5219**\u3002\u4e00\u65e6\u7f16\u8bd1\u5668\u52a0 padding\u3001\u6216\u4f60\u7ed9\u7ed3\u6784\u4f53\u52a0\u5b57\u6bb5\uff0c\u5c31\u7acb\u523b\u9519\u4f4d\u3002\u90e8\u5206 SDK \u53d8\u4f53\u5199\u7684\u662f `.length = sizeof(struct) - 1`\uff08=2\uff09\uff0c\u4e8e\u662f\u8fde announce \u7684\u53d1\u73b0\u7b49\u7ea7\u90fd\u53d8\u6210 `01 02 01 ...`\uff1a\n   ```\n   announce: 01 02 01 02 02 00\n   offset 0: type=0x01 (DISCOVERY_LEVEL) length=2 ... WARNING\n   offset 4: type=0x02 (ACCESS_MODE)    length=0 ... WARNING zero-length\n   RESULT: SUSPECT/MALFORMED\n   ```\n   \u4e00\u4e2a\u574f\u7684\u53d1\u73b0\u7b49\u7ea7 TLV \u5c31\u8db3\u4ee5\u8ba9\u8bbe\u5907\u5728\u626b\u63cf\u5217\u8868\u91cc\u6d88\u5931\u3002\n\n4. **\u522b\u7528 `memcpy_s(..., struct, sizeof(struct))` \u53bb\u51d1 TLV**\u3002\u5e7f\u64ad\u5b57\u8282\u6d41\u7684\u8bed\u4e49\u662f\u9010\u5b57\u8282 TLV\uff0c\u4e0d\u662f\u7ed3\u6784\u4f53\u5feb\u7167\u3002\u79fb\u690d\u65f6\u6700\u7a33\u7684\u662f**\u663e\u5f0f\u9010\u5b57\u8282\u5199**\uff0c\u6216\u5199\u4e00\u4e2a\u7edf\u4e00\u7684 append \u51fd\u6570\u3002\n\n5. **\u957f\u5ea6\u4e0a\u9650\u4e0e\u7f13\u51b2**\uff1a`SLE_ADV_DATA_LEN_MAX = 251`\uff0c`memcpy_s` \u7684 destSize \u8981\u4f20\u5269\u4f59\u5bb9\u91cf `cap - idx`\uff0c\u5426\u5219\u8d8a\u754c\u6216\u8fd4\u56de\u5931\u8d25\u88ab\u5f53\u6210 `len=0` \u9759\u9ed8\u4e22\u6389\u6574\u6bb5\u6570\u636e\u3002\u540d\u5b57\u957f\u5ea6\u8981 `strlen`\uff0c**\u4e0d\u8981**\u628a\u7ed3\u5c3e `'\\0'` \u6216\u6570\u7ec4\u7a7a\u6d1e\u7b97\u8fdb\u53bb\u3002\n\n6. **\u540d\u5b57\u53ea\u51fa\u73b0\u5728\u626b\u63cf\u54cd\u5e94\uff08seek_rsp_data\uff09\u91cc**\u3002\u661f\u95ea\u8c03\u8bd5\u52a9\u624b\u5217\u8868\u663e\u793a\u7684\u5c31\u662f\u8fd9\u4e2a `COMPLETE_LOCAL_NAME`\uff1b\u5199\u9519 type/\u957f\u5ea6\u4f1a\u5bfc\u81f4\u8fde\u63a5\u524d\u5c31\u65e0\u6cd5\u8bc6\u522b\u3002\n\n7. **\u6b21\u8981\u56e0\u7d20\uff08TLV \u4fee\u597d\u540e\u518d\u67e5\uff09**\uff1a\n   - \u672c\u5730\u5730\u5740\uff1a`sle_uart_server` \u6ca1\u6709 `sle_set_local_addr()`\uff0c\u9760\u51fa\u5382/NV \u5730\u5740\uff1b\u6a21\u7ec4\u6ca1\u70e7\u5730\u5740\u65f6\u5e7f\u64ad\u5730\u5740\u975e\u6cd5 \u2192 \u626b\u63cf\u4e0d\u5230\u3002OHOS demo \u91cc\u663e\u5f0f\u8bbe\u7f6e\uff08`ble_sle_tag` \u7684\u505a\u6cd5\uff0c\u53c2\u8003\u5df2\u79fb\u690d\u7684 `sle_server_adv.c:135`\uff09\u3002\n   - \u89d2\u8272\uff1a\u5982\u679c\u662f central-only \u7684\u914d\u7f6e\uff0c\u53ef\u80fd\u6839\u672c\u4e0d\u4e0a\u62a5\u5e7f\u64ad\uff1bserver/peripheral \u4ea7\u54c1\u8981\u5f00 `SUPPORT_SLE_BLE_PERIPHERAL` \u5e76\u94fe peripheral \u9884\u7f16\u8bd1\u534f\u8bae\u5e93\u3002\n   - **\u4e1a\u52a1\u4e0d\u8981\u653e\u5728 enable \u56de\u8c03\u91cc**\uff1a\u56de\u8c03\u8fd0\u884c\u5728 SLE service \u7ebf\u7a0b\uff0c\u53ea\u7f6e\u6807\u5fd7\uff1b\u5728\u5e94\u7528\u4efb\u52a1\u91cc\u8f6e\u8be2\u6807\u5fd7\u540e\u6ce8\u518c service\u3001\u542f\u52a8\u5e7f\u64ad\uff08`ble_sle_tag` \u6a21\u5f0f\uff09\u3002\n\n> \u53c2\u8003\uff1a\u672c\u4ed3\u5e93\u5df2\u79fb\u690d\u597d\u7684 `applications/demo/ohos_bs21e/sle_server/src/sle_server_adv.c` \u5df2\u7ecf\u628a\u4e0a\u9762 1\u30012 \u4e24\u70b9\u6539\u5bf9\u4e86\uff08`:62-66` \u540d\u5b57\u987a\u5e8f\u3001`:82-98`/`:116-120` \u957f\u5ea6\u56fa\u5b9a\u4e3a 1\uff09\u3002\n> \u53ef\u4fe1 oracle \u662f `ble_sle_tag/sle_server/sle_server_adv.c` \u7684\u624b\u5199\u6570\u7ec4\uff1aseek = `{0x0B, 0x09, 's','l','e','s','e','r','v','e','r'}`\u3002\n\n---\n\n## 2. \u53ef\u76f4\u63a5\u4f7f\u7528\u7684\u5e7f\u64ad\u6784\u9020\u4ee3\u7801\n\n\u5efa\u8bae\u4e0d\u8981\u518d `memcpy` \u7ed3\u6784\u4f53\uff0c\u7528\u4e00\u4e2a\u5e26\u5bb9\u91cf\u68c0\u67e5\u7684 TLV \u8ffd\u52a0\u5668\uff0c\u8bed\u4e49\u6e05\u695a\u3001\u6c38\u4e0d\u5dee\u4e00\u3002\u628a\u4e0b\u9762\u4ee3\u7801\u653e\u8fdb `applications/demo/ohos_bs21e/sle_server/src/sle_server_adv.c`\uff08\u66ff\u6362\u539f\u6765\u7684 `sle_set_adv_data` / `sle_set_scan_response_data` / `sle_set_adv_local_name`\uff09\u3002\n\n```c\n#include \"securec.h\"\n#include \"sle_common.h\"\n#include \"sle_device_discovery.h\"\n#include \"sle_errcode.h\"\n#include \"sle_server_adv.h\"\n\n#define SLE_ADV_DATA_LEN_MAX        251\n#define SLE_ADV_HANDLE_DEFAULT      1\n#define SLE_ADV_TX_POWER            6\n\n/* \u661f\u95ea\u8c03\u8bd5\u52a9\u624b\u4e0a\u663e\u793a/\u8fc7\u6ee4\u7528\u7684\u540d\u5b57\uff1b\u53ea\u7b97\u5b57\u7b26\uff0c\u4e0d\u542b\u7ed3\u5c3e '\\0' */\nstatic const char g_sle_local_name[] = \"sle_server\";\n\n/* \u5e26\u5bb9\u91cf\u68c0\u67e5\u7684 TLV \u5199\u5165\u5668\uff1a\u7edf\u4e00\u4fdd\u8bc1 [type][length][value]\uff0clength \u53ea\u6570 value */\ntypedef struct {\n    uint8_t *buf;\n    uint16_t cap;\n    uint16_t len;\n} sle_tlv_writer_t;\n\nstatic bool sle_tlv_put(sle_tlv_writer_t *w, uint8_t type, const uint8_t *value, uint8_t value_len)\n{\n    if (w->buf == NULL || (uint32_t)w->len + 2u + value_len > w->cap) {\n        return false;\n    }\n    w->buf[w->len++] = type;\n    w->buf[w->len++] = value_len;              /* \u5173\u952e\uff1a\u53ea\u7b97 value \u5b57\u8282\uff0c\u4e0d\u542b type */\n    if (value_len != 0) {\n        if (memcpy_s(&w->buf[w->len], w->cap - w->len, value, value_len) != EOK) {\n            return false;\n        }\n        w->len += value_len;\n    }\n    return true;\n}\n\n/* announce_data\uff1a\u53d1\u73b0\u7b49\u7ea7 + \u63a5\u5165\u5c42\u80fd\u529b\u3002\n * \u53d1\u73b0\u7b49\u7ea7\u662f\u4e00\u5b57\u8282\uff0c\u957f\u5ea6\u5fc5\u987b=1\uff0c\u5426\u5219\u8c03\u8bd5\u52a9\u624b\u8ba4\u4e3a\u8bbe\u5907\u4e0d\u53ef\u53d1\u73b0\u3002 */\nstatic uint16_t sle_server_build_announce_data(uint8_t *buf, uint16_t cap)\n{\n    sle_tlv_writer_t w = { buf, cap, 0 };\n    uint8_t disc_level = (uint8_t)SLE_ANNOUNCE_LEVEL_NORMAL;  /* \u901a\u5e38 0x01 */\n    uint8_t access_mode = 0x00;\n\n    if (!sle_tlv_put(&w, SLE_ADV_DATA_TYPE_DISCOVERY_LEVEL, &disc_level, 1) ||\n        !sle_tlv_put(&w, SLE_ADV_DATA_TYPE_ACCESS_MODE, &access_mode, 1)) {\n        return 0;\n    }\n    return w.len;\n}\n\n/* seek_rsp_data\uff08\u626b\u63cf\u54cd\u5e94\uff09\uff1a\u53d1\u9001\u529f\u7387 + \u5b8c\u6574\u672c\u5730\u540d\u3002\n * \u540d\u5b57\u957f\u5ea6\u7528 strlen\uff0c\u5343\u4e07\u4e0d\u8981 +1\uff0c\u4e5f\u4e0d\u8981\u628a '\\0' \u7b97\u8fdb\u53bb\u3002 */\nstatic uint16_t sle_server_build_seek_rsp_data(uint8_t *buf, uint16_t cap)\n{\n    sle_tlv_writer_t w = { buf, cap, 0 };\n    uint8_t tx_power = SLE_ADV_TX_POWER;\n    uint8_t name_len = (uint8_t)(sizeof(g_sle_local_name) - 1);  /* \u4e0d\u542b '\\0' */\n\n    if (!sle_tlv_put(&w, SLE_ADV_DATA_TYPE_TX_POWER_LEVEL, &tx_power, 1) ||\n        !sle_tlv_put(&w, SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME,\n                     (const uint8_t *)g_sle_local_name, name_len)) {\n        return 0;\n    }\n    return w.len;\n}\n```\n\n\u63a5\u7740\u5728\u539f\u6765\u7684 `sle_set_default_announce_data()` \u91cc\u8fd9\u6837\u7528\uff08\u5176\u4f59\u53c2\u6570\u914d\u7f6e\u4e0d\u53d8\uff09\uff1a\n\n```c\nstatic int sle_server_set_default_announce_data(void)\n{\n    errcode_t ret;\n    sle_announce_data_t data = {0};\n    uint8_t adv_handle = SLE_ADV_HANDLE_DEFAULT;\n    static uint8_t announce_data[SLE_ADV_DATA_LEN_MAX] = {0};\n    static uint8_t seek_rsp_data[SLE_ADV_DATA_LEN_MAX] = {0};\n    uint16_t announce_len, seek_len, i;\n\n    announce_len = sle_server_build_announce_data(announce_data, sizeof(announce_data));\n    seek_len     = sle_server_build_seek_rsp_data(seek_rsp_data, sizeof(seek_rsp_data));\n    if (announce_len == 0 || seek_len == 0) {\n        sample_log_print(\"%s build adv data fail\\r\\n\", SLE_SERVER_LOG);\n        return ERRCODE_SLE_FAIL;\n    }\n\n    data.announce_data = announce_data;\n    data.announce_data_len = announce_len;\n    data.seek_rsp_data = seek_rsp_data;\n    data.seek_rsp_data_len = seek_len;\n\n    sample_log_print(\"%s announce(%u): \", SLE_SERVER_LOG, announce_len);\n    for (i = 0; i < announce_len; i++) {\n        sample_log_print(\"0x%02x \", announce_data[i]);\n    }\n    sample_log_print(\"%s seek(%u): \", SLE_SERVER_LOG, seek_len);\n    for (i = 0; i < seek_len; i++) {\n        sample_log_print(\"0x%02x \", seek_rsp_data[i]);\n    }\n    sample_log_print(\"\\r\\n\");\n\n    ret = sle_set_announce_data(adv_handle, &data);\n    if (ret != ERRCODE_SLE_SUCCESS) {\n        sample_log_print(\"%s set announce data fail:0x%x\\r\\n\", SLE_SERVER_LOG, ret);\n        return ret;\n    }\n    sample_log_print(\"%s set announce data success.\\r\\n\", SLE_SERVER_LOG);\n    return ERRCODE_SLE_SUCCESS;\n}\n```\n\n\u4e0a\u9762\u8fd9\u6bb5\u7684\u671f\u671b\u8f93\u51fa\uff08\u4f1a\u7528\u7b2c 3 \u8282\u9a8c\u8bc1\uff09\uff1a\n\n```\nannounce(6):  01 01 01 02 01 00\nseek(15):     0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72\n                    \u2514\u2500\u2500 type=0x0C, length=1, value=06 (TX power)\n                         type=0x0B, length=0x0A(=10), value=\"sle_server\"\n```\n\n\u5982\u679c\u4f60\u66f4\u60f3\"\u548c `ble_sle_tag` \u5b8c\u5168\u4e00\u6837\u7684 29 \u5b57\u8282 announce\"\uff0c\u4e5f\u53ef\u4ee5\u76f4\u63a5\u7528\u624b\u5199\u6570\u7ec4\uff08\u6c38\u4e0d\u5dee\u4e00\uff09\uff1a\n\n```c\nstatic uint8_t g_adv_data[29] = {\n    0x01, 0x01, 0x01,                     /* discovery level = 1 */\n    0x05, 0x04, 0x0B, 0x06, 0x09, 0x06,   /* 16-bit service uuids */\n    0x03, 0x12, 0x09, 0x06, 0x07, 0x03, 0x02, 0x05, 0x00, 0x06, 0x09,\n    0x73, 0x6c, 0x65, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72,   /* \"sleserver\" */\n};\n/* seek response: 0b 09 73 6c 65 73 65 72 76 65 72 */\n```\n\n---\n\n## 3. \u843d\u5730\u81ea\u68c0\uff08\u52a1\u5fc5\u5bf9\u4e24\u6bb5\u90fd\u8dd1\uff09\n\n\u6539\u5b8c\u7f16\u8bd1\u524d\uff0c\u5148\u628a\u8bbe\u5907\u65e5\u5fd7\u91cc\u6253\u5370\u7684\u539f\u59cb\u5b57\u8282\u7c98\u8fdb\u672c skill \u7684 decoder\uff1a\n\n```bash\npython3 .agents/skills/sle-adv-tlv-format/scripts/decode_sle_adv.py \"01 01 01 02 01 00\"\npython3 .agents/skills/sle-adv-tlv-format/scripts/decode_sle_adv.py \"0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72\"\n```\n\n\u5224\u5b9a\u6807\u51c6\uff1a\u6bcf\u4e2a TLV \u90fd\u80fd\u89e3\u6790\u3001`length` \u4e0d\u8d8a\u754c\u3001\u6d88\u8d39\u5b57\u8282\u6570 == \u4e0a\u62a5\u957f\u5ea6\u3001\u540d\u5b57\u6253\u5370\u4e3a `'sle_server'`\uff0c\u8f93\u51fa `RESULT: OK`\u3002**\u53ea\u4fee announce \u6216\u53ea\u4fee seek \u90fd\u4e0d\u591f**\u2014\u2014\u53ea\u8981\u6709\u4e00\u4e2a TLV \u7578\u5f62\uff0c\u8c03\u8bd5\u52a9\u624b\u5c31\u53ef\u80fd\u626b\u4e0d\u5230\u3002\n\n\u5bf9\u7167\u89e3\u7801\u7ed3\u679c\uff08\u5df2\u7528\u672c skill \u811a\u672c\u5b9e\u6d4b\uff09\uff1a\n\n| \u6570\u636e | \u5b57\u8282 | \u7ed3\u679c |\n|---|---|---|\n| \u4fee\u590d\u540e announce | `01 01 01 02 01 00` | `RESULT: OK` |\n| \u4fee\u590d\u540e seek | `0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72`\uff0cname=`'sle_server'` | `RESULT: OK` |\n| \u574f announce\uff08`sizeof-1`\uff09 | `01 02 01 02 02 00` | `SUSPECT/MALFORMED` |\n| \u574f seek\uff08\u539f\u6837\u4f8b\uff09 | `0c 02 06 10 0b 73 6c 65 5f 75 61 72 74 5f 73 65 72 76 65 72` | `LENGTH OVERRUNS` |\n\nTLV \u5168\u90e8 OK \u540e\u82e5\u4ecd\u626b\u4e0d\u5230\uff0c\u518d\u4f9d\u6b21\u68c0\u67e5\uff1a`sle_set_local_addr()` \u662f\u5426\u5728 `sle_set_announce_param()` \u4e4b\u524d\u8c03\u7528\u4e14\u5730\u5740\u975e\u96f6\uff1b\u4ea7\u54c1\u662f\u5426\u5177\u5907 peripheral \u89d2\u8272\uff1b\u6ce8\u518c service / \u542f\u52a8\u5e7f\u64ad\u662f\u5426\u5728\u5e94\u7528\u4efb\u52a1\u91cc\uff08\u800c\u975e enable \u56de\u8c03\uff09\u6267\u884c\u3002\n"}], "grading": {"eval_dir": "eval-1-port-sle-uart-adv", "config": "with_skill", "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}, "expectations": [{"text": "warns the sample name TLV is reversed and/or strlen+1", "passed": true, "evidence": "\u987a\u5e8f\u5199\u53cd"}, {"text": "states the layout is [type][length][value]", "passed": true, "evidence": "[type] [length] [value"}, {"text": "provides type-first TLV construction code", "passed": true, "evidence": "SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME"}, {"text": "references the ble_sle_tag oracle or the bundled decoder", "passed": true, "evidence": "decode_sle_adv"}, {"text": "mentions secondary checks (address / peripheral role / task context)", "passed": true, "evidence": "sle_set_local_addr"}]}}, {"id": "eval-1-port-sle-uart-adv-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "answer.md", "type": "text", "content": "# \u5c06 sle_uart_server \u5e7f\u64ad\u914d\u7f6e\u79fb\u690d\u5230 applications/demo/ohos_bs21e/sle_server\n\n\u76ee\u6807\u6587\u4ef6\uff1a`applications/demo/ohos_bs21e/sle_server/src/sle_server_adv.c`\n\u53c2\u8003\u6e90\uff1a`device/soc/hisilicon/bs2xv107/sdk/application/samples/products/sle_uart/sle_uart_server/sle_uart_server_adv.{c,h}`\n\n\u7ed3\u8bba\u5148\u8bf4\uff1a**\u539f SDK \u7684\u5e7f\u64ad\u6570\u636e\u6784\u9020\u672c\u8eab\u6709\u201c\u534a\u622a BLE \u98ce\u683c\u201d\u7684\u5751\uff0c\u76f4\u63a5\u7167\u6284\u4f1a\u51fa\u73b0\u201c\u80fd\u626b\u5230\u8bbe\u5907\u4f46\u540d\u5b57\u4e71\u7801/\u6309\u540d\u5b57\u8fc7\u6ee4\u626b\u4e0d\u5230/\u540e\u7eed TLV \u88ab\u541e\u201d\u3002** \u4e0b\u9762\u9010\u6761\u8bf4\u660e\uff0c\u518d\u7ed9\u53ef\u76f4\u63a5\u4f7f\u7528\u7684\u6784\u9020\u4ee3\u7801\u3002\n\n---\n\n## \u4e00\u3001\u79fb\u690d\u5e7f\u64ad\u6570\u636e\u6784\u9020\u90e8\u5206\u7684\u5751\n\n### 1. TLV \u5b57\u8282\u5e8f\uff1aSLE \u662f `[type][length][value]`\uff0c\u4e0d\u662f BLE \u7684 `[length][type][value]`\n\nSLE \u5e7f\u64ad\u6570\u636e\uff08\u8bbe\u5907\u516c\u5f00\u6570\u636e\uff09\u7684\u6743\u5a01\u7f16\u7801\u89c1\n`device/soc/hisilicon/bs2xv107/sdk/application/samples/bt/sle/service_common.c`\uff1a\n\n```c\ntypedef struct {           /* service_common.h */\n    uint8_t data_type;\n    uint8_t data_len;\n    uint8_t data[0];\n} sle_service_adv_encode_data;\n```\n\n\u5373\u5148 `type` \u540e `length`\uff0c\u5e76\u4e14 **`length` \u662f value \u7684\u5b57\u8282\u6570\uff0c\u4e0d\u5305\u542b type/length \u81ea\u8eab**\u3002\n`ble_sle_tag/sle_server/sle_server_adv.c` \u91cc\u786c\u7f16\u7801\u7684\u90a3\u6bb5\u5e7f\u64ad\u6570\u636e\u4e5f\u53ea\u6709\u6309\n`[type][length][value]` \u624d\u80fd\u89e3\u6790\u901a\uff08`01 01 01` = \u53d1\u73b0\u7b49\u7ea7/TLV\u957f1/\u503c1\uff0c\n`0B 0A \"sle_server\"` = \u5b8c\u6574\u672c\u5730\u540d/TLV\u957f10\uff09\u3002\n\n**\u4f46\u539f `sle_uart_server_adv.c` \u7684\u672c\u5730\u540d\u79f0\u51fd\u6570\u5199\u53cd\u4e86**\uff1a\n\n```c\n/* \u539f\u4ee3\u7801\uff08\u9519\u8bef\u793a\u8303\uff09 */\nadv_data[index++] = local_name_len + 1;                 /* \u628a\u201c\u957f\u5ea6\u201d\u5199\u5728\u4e86 type \u4f4d\u7f6e */\nadv_data[index++] = SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME; /* \u628a type \u5199\u5728\u4e86 length \u4f4d\u7f6e */\n```\n\n\u5b83\u751f\u6210\u7684\u662f BLE \u98ce\u683c `[name_len+1][0x0B][name...]`\u3002\u624b\u673a\u661f\u95ea\u8c03\u8bd5\u52a9\u624b\u662f\u6309 SLE TLV \u89e3\u6790\u7684\uff0c\n\u4f1a\u628a `name_len+1` \u5f53\u6210 type\u3001\u628a `0x0B` \u5f53\u6210 length\uff0c\u4e8e\u662f name \u53ea\u88ab\u8bfb\u8d70 11 \u4e2a\u5b57\u8282\uff0c\n\u5269\u4e0b\u51e0\u4e2a\u5b57\u8282\u53c8\u88ab\u5f53\u6210\u4e0b\u4e00\u6761 TLV \u7684\u5934\uff0c**\u540d\u79f0\u4e71\u7801\uff0c\u540e\u7eed TLV \u89e3\u6790\u9519\u4f4d**\u3002\u5982\u679c\u52a9\u624b\u6309\u8bbe\u5907\u540d\u8fc7\u6ee4\uff0c\n\u5c31\u76f4\u63a5\u201c\u626b\u4e0d\u5230\u201d\u3002\u6b63\u786e\u5199\u6cd5\u662f\uff1a\n\n```c\nadv[index++] = SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME; /* type */\nadv[index++] = (uint8_t)strlen(name);                  /* value \u5b57\u8282\u6570 */\nmemcpy(&adv[index], name, strlen(name));\n```\n\n> \u6ce8\u610f\uff1aSDK \u81ea\u5e26 client \u7528 `strstr(data, SERVER_NAME)` \u627e\u540d\u5b57\uff0c\u4e0d\u89e3\u6790 TLV\uff0c\u6240\u4ee5\u8001\u6837\u4f8b\u201c\u770b\u8d77\u6765\u80fd\u7528\u201d\uff1b\n> \u624b\u673a\u52a9\u624b\u662f\u4e25\u683c\u89e3\u6790 TLV \u7684\uff0c\u79fb\u690d\u5230 OHOS \u540e\u5fc5\u987b\u6309\u89c4\u8303\u6539\u5bf9\u3002\n\n### 2. `struct sle_adv_common_value` \u7684\u5b57\u6bb5\u987a\u5e8f = \u7ebf\u4e0a\u5b57\u8282\u987a\u5e8f\n\n\u539f\u4ee3\u7801\u628a\u7ed3\u6784\u4f53\u76f4\u63a5 `memcpy` \u8fdb\u5e7f\u64ad\u7f13\u51b2\u533a\uff0c\u6240\u4ee5**\u5b57\u6bb5\u58f0\u660e\u987a\u5e8f\u5c31\u662f\u5e7f\u64ad\u7ebf\u4e0a\u7684\u987a\u5e8f**\u3002\n`products/sle_uart/.../sle_uart_server_adv.h` \u662f `{type, length, value}`\uff08\u6070\u597d\u6b63\u786e\uff09\uff0c\n\u4f46 `products/sle_measure_dis/.../sle_measure_dis_server_adv.c` \u91cc\u540c\u540d\u7ed3\u6784\u662f\n`{length, type, value}`\uff08\u53cd\u7684\uff09\u3002\u79fb\u690d\u65f6\u5982\u679c\u4e0d\u5c0f\u5fc3\u590d\u5236\u4e86\u540e\u8005\uff0c\u6574\u6bb5 TLV \u4f1a\u6574\u4f53\u53cd\u5e8f\u3002\n\u6700\u7a33\u7684\u505a\u6cd5\u662f**\u4e0d\u8981\u7528\u8fd9\u4e2a\u7ed3\u6784\u4f53\uff0c\u76f4\u63a5\u9010\u5b57\u8282\u5199**\uff08\u89c1\u4e0b\u65b9\u4ee3\u7801\uff09\u3002\n\n### 3. `length` \u7684\u53d6\u503c\uff0c\u5404\u6837\u4f8b\u4e92\u76f8\u77db\u76fe\uff0c\u5fc5\u987b\u53ea\u586b value \u7684\u771f\u5b9e\u5b57\u8282\u6570\n\n| \u6765\u6e90 | \u5355\u503c TLV \u7684 length | \u540d\u79f0 TLV |\n|---|---|---|\n| `sle_uart_server_adv.c` | `.length = sizeof(struct)-2` = 1 \u2705 | `name_len+1` \u274c |\n| `sle_measure_dis_server_adv.c` | `.length = sizeof(struct)-1` = 2 \u274c | `name_len+1` \u274c |\n| `ws63 .../sle_uuid_server` | `.length = sizeof(struct)-1` = 2 \u274c | `name_len+1` \u274c |\n| \u6743\u5a01 `service_common.c` | `data_len = value \u5b9e\u9645\u957f\u5ea6` \u2705 | \u2014 |\n\n\u5355\u5b57\u8282 value\uff08\u53d1\u73b0\u7b49\u7ea7\u3001\u63a5\u5165\u80fd\u529b\u3001\u53d1\u5c04\u529f\u7387\uff09\u7684 `length` \u5fc5\u987b\u662f `1`\u3002\n\u586b\u6210 `2` \u4f1a\u628a\u4e0b\u4e00\u6761 TLV \u7684\u7b2c\u4e00\u4e2a\u5b57\u8282\u5f53\u6210\u672c\u6761 value\uff0c\u5bfc\u81f4\u540e\u9762\u5168\u90e8\u9519\u4f4d\u3002\n\n### 4. \u540d\u79f0\u957f\u5ea6\u4e0d\u8981\u7528 `sizeof(array)-1`\n\n\u539f\u4ee3\u7801 `NAME_MAX_LENGTH 16` \u914d `\"sle_uart_server\"`\uff0815 \u5b57\u7b26\uff09\u521a\u597d\u7b49\u4e8e `sizeof-1`\uff0c\n\u4e00\u65e6\u6539\u540d\u6216\u6362\u7f13\u51b2\u533a\uff0c`sizeof-1` \u4f1a\u628a\u6570\u7ec4\u91cc\u7684 `\\0`/\u6b8b\u7559\u6570\u636e\u7b97\u8fdb\u53bb\u3002\n\u7528 `strlen()`\uff1b\u82e5\u7528\u5b57\u7b26\u4e32\u5b57\u9762\u91cf\u521d\u59cb\u5316\uff0c\u5219 `sizeof(str)-1` \u624d\u53ef\u9760\u3002\n\n### 5. \u5e7f\u64ad\u6570\u636e vs \u626b\u63cf\u54cd\u5e94\u6570\u636e\u653e\u9519\u4f4d\u7f6e\n\n\u539f SDK \u7684\u5e03\u5c40\u662f\uff1a`announce_data` \u653e\u201c\u53d1\u73b0\u7b49\u7ea7 + \u63a5\u5165\u5c42\u80fd\u529b\u201d\uff0c\n`seek_rsp_data` \u653e\u201c\u53d1\u5c04\u529f\u7387 + \u5b8c\u6574\u672c\u5730\u540d\u201d\u3002\u624b\u673a\u901a\u5e38\u8981**\u4e3b\u52a8\u626b\u63cf**\u624d\u62ff\u5f97\u5230 seek response\u3002\n\u5982\u679c\u53ea\u586b `announce_data`\u3001`seek_rsp_data_len` \u7559 0\uff0c\u6216\u624b\u673a\u53ea\u663e\u793a\u5730\u5740\u4e0d\u663e\u793a\u540d\u5b57\uff0c\n\u53ef\u4ee5\u628a\u672c\u5730\u540d\u4e5f\u653e\u8fdb `announce_data`\uff0c\u6216\u8005\u8c03\u7528\u534f\u8bae\u6808 `sle_set_local_name()` \u8ba9\u6808\u81ea\u5df1\u5e26\u3002\n\uff08`dis/dis_server.c` \u73b0\u5728\u5c31\u662f\u7528 `sle_set_local_name(dev_name, len)`\uff0c\u4e0d\u518d\u624b\u6413 0x0B TLV\u3002\uff09\n\n### 6. \u7f13\u51b2\u533a\u751f\u547d\u5468\u671f\n\n\u539f\u4ee3\u7801\u7528\u51fd\u6570\u6808\u4e0a\u7684 `uint8_t announce_data[251]`\uff0c\u628a\u6307\u9488\u8d4b\u7ed9 `sle_announce_data_t` \u540e\u8c03\u7528\n`sle_set_announce_data()`\u3002\u82e5\u534f\u8bae\u6808\u662f\u5f02\u6b65\u6301\u6709\u8be5\u6307\u9488\uff0c\u51fd\u6570\u8fd4\u56de\u540e\u5c31\u662f\u60ac\u7a7a\u6307\u9488\uff0c\u5e7f\u64ad\u5185\u5bb9\u53d8\u968f\u673a\u3002\n\u79fb\u690d\u540e**\u7528 `static`/\u5168\u5c40\u7f13\u51b2\u533a**\u3002\n\n### 7. \u8c03\u7528\u65f6\u5e8f\uff1a\u5148\u4f7f\u80fd\uff0c\u518d\u8bbe\u53c2\u6570/\u6570\u636e\uff0c\u6700\u540e start\n\n`enable_sle()` \u662f\u5f02\u6b65\u7684\uff0c\u8981\u5728 `sle_enable_cb` \u7f6e\u4f4d\u540e\uff08\u4efb\u52a1\u4e0a\u4e0b\u6587\uff09\u518d\n`sle_set_announce_param` \u2192 `sle_set_announce_data` \u2192 `sle_start_announce`\u3002\n\u4e0d\u8981\u5728 SLE service \u56de\u8c03\u7ebf\u7a0b\u91cc\u76f4\u63a5\u505a\u8fd9\u4e9b\u8017\u65f6/\u963b\u585e\u52a8\u4f5c\uff08\u539f `sle_enable_cbk` \u76f4\u63a5\n`sle_enable_server_cbk()` \u7684\u5199\u6cd5\u5728 OHOS \u91cc\u8981\u6539\u6210\u201c\u7f6e\u6807\u5fd7 + \u4efb\u52a1\u8f6e\u8be2\u201d\uff09\u3002\n\n### 8. \u672c\u7aef\u5730\u5740\uff08\u5f71\u54cd\u624b\u673a\u80fd\u5426\u201c\u626b\u63cf\u5230/\u8fde\u63a5\u201d\uff09\n\n\u4e0d\u8981\u50cf\u539f\u4ee3\u7801\u90a3\u6837\u628a `param.own_addr` \u7559\u5168 0 \u53c8\u4e0d\u8bbe\u7f6e\u5730\u5740\u3002\u6a21\u7ec4\u6ca1\u70e7\u6709\u6548\u5730\u5740\u65f6\u624b\u673a\u4e0a\u53ef\u80fd\n\u770b\u4e0d\u5230\u6216\u8fde\u4e0d\u4e0a\u3002\u5148 `sle_set_local_addr()` \u4e00\u4e2a\u5408\u6cd5\u5730\u5740\uff0c\u518d `sle_set_announce_param()`\u3002\n\n### 9. \u5176\u5b83\u5c0f\u4e8b\n\n- \u7ed3\u6784\u4f53 `{uint8_t,uint8_t,uint8_t}` \u6b63\u597d 3 \u5b57\u8282\u65e0 padding\uff0c\u522b\u968f\u624b\u52a0\u5b57\u6bb5/\u6362 `uint16_t`\u3002\n- \u957f\u5ea6\u7edf\u4e00\u7528 `uint16_t`\uff08\u539f\u4ee3\u7801\u6709\u4e9b\u662f `uint8_t`\uff0c\u867d\u7136 251 \u4e0d\u6ea2\u51fa\uff09\u3002\n- \u65e5\u5fd7\u7528 OHOS \u7684 `soc_osal.h` / `osal_printk`\uff1b`osal_debug.h`\u3001`product.h` \u662f LiteOS SDK \u4e13\u6709\uff0c\u522b include\u3002\n- `sle_adv_put_tlv` \u91cc\u505a\u5bb9\u91cf\u68c0\u67e5\uff0c\u9632\u6b62 `max_len - index` \u4e0b\u6ea2\u3002\n\n---\n\n## \u4e8c\u3001\u53ef\u76f4\u63a5\u4f7f\u7528\u7684\u6784\u9020\u4ee3\u7801\n\n\u5c06\u4e0b\u9762\u5185\u5bb9\u66ff\u6362/\u5408\u5e76\u8fdb `applications/demo/ohos_bs21e/sle_server/src/sle_server_adv.c`\u3002\n\uff08`SLE_ADV_HANDLE_DEFAULT`\u3001`SLE_ADV_CHANNEL_MAP_DEFAULT` \u7b49\u5b8f\u6cbf\u7528\u672c demo \u5934\u6587\u4ef6\u5373\u53ef\u3002\uff09\n\n```c\n#include <string.h>\n#include \"securec.h\"\n#include \"sle_common.h\"\n#include \"sle_device_discovery.h\"\n#include \"sle_errcode.h\"\n#include \"soc_osal.h\"\n\n/* ---- \u5e7f\u64ad\u6570\u636e\u7c7b\u578b\uff08\u4e0e sle_server_adv.h \u7684\u679a\u4e3e\u4fdd\u6301\u4e00\u81f4\uff09 ---- */\n#define SLE_ADV_TYPE_DISCOVERY_LEVEL        0x01\n#define SLE_ADV_TYPE_ACCESS_MODE            0x02\n#define SLE_ADV_TYPE_COMPLETE_LOCAL_NAME    0x0B\n#define SLE_ADV_TYPE_TX_POWER_LEVEL         0x0C\n\n#define SLE_ADV_HANDLE_DEFAULT              1\n#define SLE_ADV_DATA_LEN_MAX                251\n#define SLE_ANNOUNCE_LEVEL_NORMAL           0x01\n#define SLE_ADV_TX_POWER                    6\n\n/* \u661f\u95ea\u8c03\u8bd5\u52a9\u624b\u770b\u5230\u7684\u8bbe\u5907\u540d\uff0c\u6309\u9700\u4fee\u6539 */\nstatic const uint8_t g_sle_local_name[] = \"sle_server\";\n\n#define SLE_ADV_LOG_TAG \"[sle adv]\"\n#define sle_adv_log(fmt, ...) osal_printk(fmt, ##__VA_ARGS__)\n\n/*\n * \u5199\u5165\u4e00\u6761 SLE \u5e7f\u64ad TLV\u3002\n * SLE \u5e7f\u64ad\u6570\u636e\u683c\u5f0f\uff08\u5bf9\u9f50 service_common.c / ble_sle_tag\uff09\uff1a\n *     +--------+----------+-------------------+\n *     |  type  |  length  |       value       |\n *     |  1Byte |  1Byte   |    length Byte    |\n *     +--------+----------+-------------------+\n * length = value \u7684\u5b57\u8282\u6570\uff0c\u4e0d\u542b type/length \u81ea\u8eab\u3002\n */\nstatic uint16_t sle_adv_put_tlv(uint8_t *buf, uint16_t buf_len, uint16_t off,\n                                uint8_t type, const uint8_t *value, uint8_t value_len)\n{\n    if ((uint32_t)off + 2u + value_len > (uint32_t)buf_len) {\n        sle_adv_log(\"%s TLV(0x%02x) overflow off=%u len=%u cap=%u\\r\\n\",\n                    SLE_ADV_LOG_TAG, type, off, value_len, buf_len);\n        return off;\n    }\n    buf[off++] = type;\n    buf[off++] = value_len;\n    if (value_len > 0 && value != NULL) {\n        if (memcpy_s(&buf[off], buf_len - off, value, value_len) != EOK) {\n            return (uint16_t)(off - 2); /* \u56de\u6eda\uff0c\u4e0d\u4ea7\u751f\u534a\u6761 TLV */\n        }\n    }\n    return (uint16_t)(off + value_len);\n}\n\n/* \u4e3b\u5e7f\u64ad\u6570\u636e\uff1a\u53d1\u73b0\u7b49\u7ea7 + \u63a5\u5165\u5c42\u80fd\u529b\uff08\u4fdd\u8bc1\u80fd\u88ab\u626b\u63cf\u5230\uff09 */\nstatic uint16_t sle_build_announce_data(uint8_t *adv_data, uint16_t max_len)\n{\n    uint16_t idx = 0;\n    uint8_t disc_level = SLE_ANNOUNCE_LEVEL_NORMAL; /* 0x01 */\n    uint8_t access_mode = 0x00;                     /* \u63a5\u5165\u5c42\u80fd\u529b\uff0c\u900f\u4f20\u586b 0 */\n\n    idx = sle_adv_put_tlv(adv_data, max_len, idx,\n                          SLE_ADV_TYPE_DISCOVERY_LEVEL, &disc_level, sizeof(disc_level));\n    idx = sle_adv_put_tlv(adv_data, max_len, idx,\n                          SLE_ADV_TYPE_ACCESS_MODE, &access_mode, sizeof(access_mode));\n    return idx;\n}\n\n/* \u626b\u63cf\u54cd\u5e94\u6570\u636e\uff1a\u53d1\u5c04\u529f\u7387 + \u5b8c\u6574\u672c\u5730\u540d\uff08\u624b\u673a\u663e\u793a\u7684\u540d\u5b57\u6765\u81ea\u8fd9\u91cc\uff09 */\nstatic uint16_t sle_build_scan_rsp_data(uint8_t *rsp_data, uint16_t max_len)\n{\n    uint16_t idx = 0;\n    int8_t tx_power = SLE_ADV_TX_POWER;\n\n    idx = sle_adv_put_tlv(rsp_data, max_len, idx,\n                          SLE_ADV_TYPE_TX_POWER_LEVEL,\n                          (const uint8_t *)&tx_power, sizeof(tx_power));\n    idx = sle_adv_put_tlv(rsp_data, max_len, idx,\n                          SLE_ADV_TYPE_COMPLETE_LOCAL_NAME,\n                          g_sle_local_name,\n                          (uint8_t)(sizeof(g_sle_local_name) - 1)); /* \u4e0d\u542b\u7ed3\u5c3e '\\0' */\n    return idx;\n}\n\n/* \u914d\u7f6e\u5e7f\u64ad\u53c2\u6570 + \u5e7f\u64ad\u6570\u636e\u5e76\u542f\u52a8\u3002\u5fc5\u987b\u5728\u672c\u7aef\u5730\u5740\u6709\u6548\u3001SLE \u4f7f\u80fd\u5b8c\u6210\u540e\u8c03\u7528\u3002 */\nerrcode_t sle_server_adv_init(void)\n{\n    /* ---------- 1. \u8bbe\u7f6e\u672c\u7aef\u5730\u5740\uff08\u6a21\u7ec4\u672a\u70e7\u5f55\u5730\u5740\u65f6\u5c24\u5176\u91cd\u8981\uff09 ---------- */\n    static const uint8_t local_addr[SLE_ADDR_LEN] = { 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 };\n    sle_addr_t addr = {0};\n    addr.type = 0; /* public */\n    if (memcpy_s(addr.addr, SLE_ADDR_LEN, local_addr, SLE_ADDR_LEN) != EOK) {\n        return ERRCODE_SLE_FAIL;\n    }\n    (void)sle_set_local_addr(&addr);\n\n    /* ---------- 2. \u5e7f\u64ad\u53c2\u6570\uff1a\u5fc5\u987b Connectable + Scannable \u624b\u673a\u624d\u80fd\u8fde ---------- */\n    sle_announce_param_t param = {0};\n    param.announce_mode = SLE_ANNOUNCE_MODE_CONNECTABLE_SCANABLE;\n    param.announce_handle = SLE_ADV_HANDLE_DEFAULT;\n    param.announce_gt_role = SLE_ANNOUNCE_ROLE_T_CAN_NEGO;\n    param.announce_level = SLE_ANNOUNCE_LEVEL_NORMAL;\n    param.announce_channel_map = SLE_ADV_CHANNEL_MAP_DEFAULT;\n    param.announce_interval_min = 0xC8; /* 25ms, \u5355\u4f4d125us */\n    param.announce_interval_max = 0xC8;\n    param.conn_interval_min = 0x64;     /* 12.5ms, \u5355\u4f4d125us */\n    param.conn_interval_max = 0x64;\n    param.conn_max_latency = 0x1F3;\n    param.conn_supervision_timeout = 0x1F4;\n    param.own_addr.type = 0;\n    if (memcpy_s(param.own_addr.addr, SLE_ADDR_LEN, local_addr, SLE_ADDR_LEN) != EOK) {\n        return ERRCODE_SLE_FAIL;\n    }\n    errcode_t ret = sle_set_announce_param(param.announce_handle, &param);\n    if (ret != ERRCODE_SLE_SUCCESS) {\n        sle_adv_log(\"%s set_announce_param fail:0x%x\\r\\n\", SLE_ADV_LOG_TAG, ret);\n        return ret;\n    }\n\n    /* ---------- 3. \u5e7f\u64ad\u6570\u636e\uff1a\u7528 static \u7f13\u51b2\u533a\uff0c\u522b\u628a\u6808\u4e0a\u6570\u7ec4\u4ea4\u7ed9\u534f\u8bae\u6808 ---------- */\n    static uint8_t s_announce_data[SLE_ADV_DATA_LEN_MAX];\n    static uint8_t s_seek_rsp_data[SLE_ADV_DATA_LEN_MAX];\n    (void)memset_s(s_announce_data, sizeof(s_announce_data), 0, sizeof(s_announce_data));\n    (void)memset_s(s_seek_rsp_data, sizeof(s_seek_rsp_data), 0, sizeof(s_seek_rsp_data));\n\n    sle_announce_data_t data = {0};\n    data.announce_data = s_announce_data;\n    data.announce_data_len = sle_build_announce_data(s_announce_data, sizeof(s_announce_data));\n    data.seek_rsp_data = s_seek_rsp_data;\n    data.seek_rsp_data_len = sle_build_scan_rsp_data(s_seek_rsp_data, sizeof(s_seek_rsp_data));\n\n    sle_adv_log(\"%s announce_data(%u): \", SLE_ADV_LOG_TAG, data.announce_data_len);\n    for (uint16_t i = 0; i < data.announce_data_len; i++) {\n        sle_adv_log(\"%02x \", data.announce_data[i]);\n    }\n    sle_adv_log(\"\\r\\n%s seek_rsp_data(%u): \", SLE_ADV_LOG_TAG, data.seek_rsp_data_len);\n    for (uint16_t i = 0; i < data.seek_rsp_data_len; i++) {\n        sle_adv_log(\"%02x \", data.seek_rsp_data[i]);\n    }\n    sle_adv_log(\"\\r\\n\");\n\n    ret = sle_set_announce_data(SLE_ADV_HANDLE_DEFAULT, &data);\n    if (ret != ERRCODE_SLE_SUCCESS) {\n        sle_adv_log(\"%s set_announce_data fail:0x%x\\r\\n\", SLE_ADV_LOG_TAG, ret);\n        return ret;\n    }\n\n    /* ---------- 4. \u542f\u52a8\u5e7f\u64ad ---------- */\n    ret = sle_start_announce(SLE_ADV_HANDLE_DEFAULT);\n    if (ret != ERRCODE_SLE_SUCCESS) {\n        sle_adv_log(\"%s start_announce fail:0x%x\\r\\n\", SLE_ADV_LOG_TAG, ret);\n    }\n    return ret;\n}\n```\n\n### \u81ea\u68c0\uff1a\u7528\u9ed8\u8ba4\u540d `\"sle_server\"`(10 \u5b57\u8282) \u65f6\uff0c\u4e32\u53e3\u5e94\u6253\u5370\n\n```\nannounce_data(6):   01 01 01  02 01 00\nseek_rsp_data(15):  0c 01 06  0b 0a 73 6c 65 5f 73 65 72 76 65 72\n                    \u2514tx power\u2518 \u25140x0B,len=10,\"sle_server\"\u2518\n```\n\n\u5982\u679c\u6253\u5370\u51fa\u6765\u7684\u540d\u79f0\u6bb5\u524d\u9762\u662f `0b <name_len>` \u5c31\u5bf9\u4e86\uff1b\u82e5\u662f `<name_len+1> 0b`\uff0c\u8bf4\u660e\u8fd8\u5728\u7528\u8001\u7684\nBLE \u98ce\u683c\u5199\u6cd5\uff0c\u624b\u673a\u52a9\u624b\u91cc\u540d\u79f0\u4f1a\u4e71\u7801\u3002\n\n\u62ff\u5230\u5e7f\u64ad\u540e\uff0c\u518d\u786e\u8ba4\uff1a`announce_mode` \u662f `SLE_ANNOUNCE_MODE_CONNECTABLE_SCANABLE`\u3001\nSLE \u662f\u5728 `sle_enable_cb` \u7f6e\u4f4d\u540e\u624d\u542f\u52a8\u5e7f\u64ad\u3001\u672c\u7aef\u5730\u5740\u975e\u5168 0\uff0c\u8fd9\u6837\u624b\u673a\u661f\u95ea\u8c03\u8bd5\u52a9\u624b\u5373\u53ef\u626b\u63cf\u5e76\u8fde\u63a5\u3002\n"}], "grading": {"eval_dir": "eval-1-port-sle-uart-adv", "config": "without_skill", "summary": {"passed": 5, "failed": 0, "total": 5, "pass_rate": 1.0}, "expectations": [{"text": "warns the sample name TLV is reversed and/or strlen+1", "passed": true, "evidence": "[length][type]"}, {"text": "states the layout is [type][length][value]", "passed": true, "evidence": "[type][length][value"}, {"text": "provides type-first TLV construction code", "passed": true, "evidence": "SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME"}, {"text": "references the ble_sle_tag oracle or the bundled decoder", "passed": true, "evidence": "ble_sle_tag"}, {"text": "mentions secondary checks (address / peripheral role / task context)", "passed": true, "evidence": "\u4efb\u52a1\u4e0a\u4e0b\u6587"}]}}, {"id": "eval-2-decode-adv-bytes-with_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "answer.md", "type": "text", "content": "# SLE \u626b\u63cf\u54cd\u5e94\uff08seek response\uff09\u89e3\u7801\u68c0\u67e5\n\n## \u8f93\u5165\u5b57\u8282\n\n```\n0x0c 0x02 0x06 0x0b 0x0b 0x73 0x6c 0x65 0x5f 0x73 0x65 0x72 0x76 0x65 0x72\n```\n\n\u539f\u59cb\u5b57\u8282\uff08\u5341\u516d\u8fdb\u5236\uff09\uff1a`0c 02 06 0b 0b 73 6c 65 5f 73 65 72 76 65 72`\uff0c\u5171 15 \u5b57\u8282\u3002\n\n## \u91c7\u7528\u89e3\u7801\u5668\u9a8c\u8bc1\u7684\u7ed3\u679c\n\n```\n$ python3 scripts/decode_sle_adv.py \"0c 02 06 0b 0b 73 6c 65 5f 73 65 72 76 65 72\"\ninput: 15 bytes: 0c 02 06 0b 0b 73 6c 65 5f 73 65 72 76 65 72\n  offset 0: type=0x0c (TX_POWER_LEVEL(\u53d1\u9001\u529f\u7387)) length=2 value=06 0b\n      WARNING: type 0x0c must have length=1, got 2 (length includes the type byte?)\n  offset 4: type=0x0b (COMPLETE_LOCAL_NAME(\u5b8c\u6574\u540d\u79f0)) length=115 needs 121 bytes but buffer has 15  <-- LENGTH OVERRUNS (off-by-one?)\n      value would consume: 6c 65 5f 73 65 72 76 65 72 (9 byte(s) available)\nRESULT: SUSPECT/MALFORMED\n```\n\n## TLV \u7ed3\u6784\u5206\u6790\uff08\u9519\u8bef\uff09\n\nSLE \u5e7f\u64ad/\u626b\u63cf\u54cd\u5e94\u7684 TLV \u5e03\u5c40\u662f\uff1a\n\n```\n[type] [length] [value ...]      length = \u4ec5 value \u7684\u5b57\u8282\u6570\uff08\u4e0d\u542b type\uff09\n```\n\n\u9010\u6bb5\u62c6\u89e3\u8f93\u5165\u6570\u636e\uff1a\n\n| \u504f\u79fb | \u5b57\u6bb5 | \u6570\u636e | \u95ee\u9898 |\n|---|---|---|---|\n| 0 | type = `0x0C` (TX_POWER_LEVEL \u53d1\u9001\u529f\u7387) | \u2014 | \u7c7b\u578b\u672c\u8eab\u5408\u6cd5 |\n| 1 | length = `0x02` | \u2014 | **\u9519\u8bef**\uff1a\u53d1\u9001\u529f\u7387\u7684 value \u53ea\u6709 1 \u5b57\u8282\uff0clength \u5e94\u4e3a `0x01`\uff08\u5199\u6210 2 \u662f\u5178\u578b\u7684 `len(value)+1` \u591a\u7b97\u4e86 type \u5b57\u8282\uff09 |\n| 2\u20133 | value = `0x06 0x0b` | \u2014 | \u56e0\u4e3a length=2\uff0c\u628a\u672c\u8be5\u5c5e\u4e8e\u4e0b\u4e00\u4e2a TLV \u7684 type \u5b57\u8282 `0x0b` \u541e\u6389\u4e86\uff0c\u5bfc\u81f4\u540e\u7eed\u6574\u4f53\u9519\u4f4d |\n| 4 | type = `0x0B` (COMPLETE_LOCAL_NAME \u5b8c\u6574\u540d\u79f0) | \u2014 | \u88ab\u9519\u4f4d\u540e\u8d77\u70b9\u6b63\u786e\uff0c\u7eaf\u5c5e\u5de7\u5408 |\n| 5 | length = `0x73` (=115) | \u2014 | **\u9519\u8bef**\uff1a\u8fd9\u5176\u5b9e\u662f\u540d\u5b57 `'s'` \u7684 ASCII \u7801\uff0c\u957f\u5ea6\u88ab\u89e3\u6790\u6210 115\uff0c\u8fdc\u8d85\u7f13\u51b2\u533a\uff0c\u6ea2\u51fa |\n\n\u7ed3\u8bba\uff1a**TLV \u7ed3\u6784\u4e0d\u6b63\u786e**\u3002\u6839\u56e0\u662f\u7b2c\u4e00\u4e2a TLV\uff08\u53d1\u9001\u529f\u7387\uff09\u7684 length \u88ab\u5199\u6210 `0x02`\uff08\u591a\u7b97\u4e86\u4e00\u4e2a type \u5b57\u8282\uff09\uff0c\u5bfc\u81f4\u89e3\u6790\u5668\u628a\u4e0b\u4e00\u4e2a TLV \u7684 type \u5f53\u6210\u53d1\u9001\u529f\u7387\u7684 value\uff0c\u6574\u4e2a\u6570\u636e\u6d41\u9519\u4f4d\uff1b\u968f\u540e\u540d\u79f0 TLV \u7684 length \u4f4d\u7f6e\u8bfb\u5230\u4e86\u5b57\u7b26 `'s'`\uff080x73\uff09\uff0c\u4ea7\u751f\u957f\u5ea6\u8d8a\u754c\u3002\u8fd9\u662f SDK \u6837\u4f8b\u4e2d\u5e38\u89c1\u7684 off-by-one \u7f16\u7801 bug\uff08`sle_adv_common_value` \u7528 `sizeof(struct)-1` \u6216 `strlen(name)+1`\uff09\u3002\n\n## \u8bbe\u5907\u540d\n\n\u4ece\u9519\u4f4d\u6570\u636e\u4e2d\u4ecd\u53ef\u8fa8\u8ba4\u51fa\u540d\u79f0 value \u4e3a `73 6c 65 5f 73 65 72 76 65 72`\uff0c\u5373 **`sle_server`**\uff089 \u4e2a ASCII \u5b57\u7b26\uff09\u3002\n\n## \u6b63\u786e\u7684\u5b57\u8282\n\n\u6309 `[type][length][value]`\u3001length \u53ea\u8ba1 value \u4fee\u590d\uff1a\n\n- \u53d1\u9001\u529f\u7387\uff1a`0C 01 06`\uff08type=0x0C\uff0clength=1\uff0cvalue=0x06\uff09\n- \u5b8c\u6574\u540d\u79f0\uff1a`0B 0A 73 6c 65 5f 73 65 72 76 65 72`\uff08type=0x0B\uff0clength=0x0A=10\uff0c\u5373 9 \u5b57\u8282 `'sle_server'` \u52a0\u7ed3\u5c3e `'\\0'`\uff1b\u82e5 SDK \u4e0d\u5e26\u7ed3\u5c3e\u7b26\u5219\u7528 `0B 09`\uff09\n\n```\n\u6b63\u786e\u5b57\u8282\uff08\u542b\u7ed3\u5c3e \\0\uff0c\u5171 14 \u5b57\u8282\uff09\uff1a\n0x0c 0x01 0x06 0x0b 0x0a 0x73 0x6c 0x65 0x5f 0x73 0x65 0x72 0x76 0x65 0x72\n\u5373\uff1a0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72\n```\n\n> \u8bf4\u660e\uff1a`ble_sle_tag` \u7684\u53c2\u8003\u5b9e\u73b0\u5728\u540d\u79f0\u957f\u5ea6\u4e0a\u53d6 `strlen(name)`\uff08\u4e0d\u542b `\\0`\uff0c\u5373 `0B 09`\uff09\u3002\u672c\u4efb\u52a1\u8f93\u5165\u7684\u539f\u610f\uff08`0x0b 0x0b`\uff09\u4e0e\u957f\u5ea6 10\uff089 \u5b57\u7b26 + `\\0`\uff09\u4e00\u81f4\uff0c\u4e14\u4e0e\u79bb\u7ebf\u53c2\u8003\u4fee\u590d\u793a\u4f8b `0c 01 06 0b 0a \"sle_server\"` \u5b8c\u5168\u543b\u5408\uff0c\u6545\u91c7\u7528 `0B 0A`\u3002\u82e5\u76ee\u6807 SDK \u8981\u6c42 length \u4e25\u683c\u7b49\u4e8e\u53ef\u89c1\u5b57\u7b26\u6570\uff0c\u5219\u4f7f\u7528 `0B 09 73 6c 65 5f 73 65 72 76 65 72`\u3002\n\n## \u4fee\u590d\u540e\u9a8c\u8bc1\n\n```\n$ python3 scripts/decode_sle_adv.py \"0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72\"\ninput: 14 bytes: 0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72\n  offset 0: type=0x0c (TX_POWER_LEVEL(\u53d1\u9001\u529f\u7387)) length=1 value=06\n  offset 3: type=0x0b (COMPLETE_LOCAL_NAME(\u5b8c\u6574\u540d\u79f0)) length=10 value=73 6c 65 5f 73 65 72 76 65 72\n      name = 'sle_server'\nRESULT: OK\n```\n\n## \u603b\u7ed3\n\n- **TLV \u7ed3\u6784**\uff1a\u4e0d\u6b63\u786e\uff08\u53d1\u9001\u529f\u7387 length \u591a\u7b97 1 \u5bfc\u81f4\u6574\u4f53\u9519\u4f4d\uff0c\u540d\u79f0 TLV \u957f\u5ea6\u8d8a\u754c\uff09\u3002\n- **\u8bbe\u5907\u540d**\uff1a`sle_server`\u3002\n- **\u6b63\u786e\u5b57\u8282**\uff1a`0x0c 0x01 0x06 0x0b 0x0a 0x73 0x6c 0x65 0x5f 0x73 0x65 0x72 0x76 0x65 0x72`\uff0814 \u5b57\u8282\uff09\u3002\n"}], "grading": {"eval_dir": "eval-2-decode-adv-bytes", "config": "with_skill", "summary": {"passed": 4, "failed": 0, "total": 4, "pass_rate": 1.0}, "expectations": [{"text": "flags TX power length=2 as invalid (should be 1)", "passed": true, "evidence": "0x0c (TX_POWER_LEVEL(\u53d1\u9001\u529f\u7387)) length=2 value=06 0b       WARNING: type 0x0c must have length"}, {"text": "identifies the device name as sle_server", "passed": true, "evidence": "sle_server"}, {"text": "gives corrected bytes 0c 01 06 0b 0a ...", "passed": true, "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"}, {"text": "states the name length should be 10 / 0x0A", "passed": true, "evidence": "0B 0A"}]}}, {"id": "eval-2-decode-adv-bytes-without_skill-run-1", "prompt": "(No prompt found)", "eval_id": null, "outputs": [{"name": "answer.md", "type": "text", "content": "# SLE \u626b\u63cf\u54cd\u5e94\uff08seek response\uff09\u89e3\u7801\u5206\u6790\n\n## \u539f\u59cb\u5b57\u8282\uff0815 \u5b57\u8282\uff09\n\n```\n0x0C 0x02 0x06 0x0B 0x0B 0x73 0x6C 0x65 0x5F 0x73 0x65 0x72 0x76 0x65 0x72\n```\n\n## \u4e00\u3001SLE AD/TLV \u7ed3\u6784\u7ea6\u5b9a\n\nSLE \u5e7f\u64ad/\u626b\u63cf\u54cd\u5e94\u7531\u82e5\u5e72\u4e2a AD \u5143\u7d20\u7ec4\u6210\uff0c\u6bcf\u4e2a\u5143\u7d20\u4e3a **TLV**\uff1a\n\n| \u5b57\u6bb5 | \u957f\u5ea6 | \u8bf4\u660e |\n|------|------|------|\n| Type | 1 \u5b57\u8282 | AD \u7c7b\u578b |\n| Length | 1 \u5b57\u8282 | \u7d27\u968f\u5176\u540e\u7684 Value \u5b57\u8282\u6570\uff08**\u4e0d\u542b** Type\u3001Length \u672c\u8eab\uff09|\n| Value | Length \u5b57\u8282 | \u6570\u636e |\n\n\u5e38\u7528 SLE AD \u7c7b\u578b\uff1a\n\n- `0x01` Discovery Level\n- `0x02` Access Mode\n- `0x0B` Local Name\uff08\u8bbe\u5907\u540d\uff09\n- `0x0C` TX Power Level\n- `0xFF` Manufacturer Specific Data\n\n## \u4e8c\u3001\u9010\u5b57\u8282\u89e3\u6790\uff08\u53d1\u73b0\u95ee\u9898\uff09\n\n\u6309 TLV \u89e3\u6790\uff1a\n\n- **TLV1**\uff1aType=`0x0C`\uff08TX Power Level\uff09\uff0cLength=`0x02` \u2192 Value \u53d6 2 \u5b57\u8282\uff1a`0x06 0x0B`\u3002\n  - \u4f46 TX Power Level \u7684 Value \u53ea\u6709 **1 \u5b57\u8282**\uff08dBm\uff09\uff0cLength \u5199\u6210 `0x02` \u591a\u7b97\u4e86 1 \u4e2a\u5b57\u8282\uff0c\u628a\u7d27\u63a5\u7740\u5c5e\u4e8e\u4e0b\u4e00\u4e2a TLV \u7684 Type `0x0B` \u541e\u6389\u4e86\u3002\n- \u7ee7\u7eed\u89e3\u6790\uff1a\u5269\u4f59\u5b57\u8282\u4e2d `0x73`\uff08's'\uff09\u88ab\u5f53\u6210 Type\uff0c`0x6C`\uff08'l'\uff09\u88ab\u5f53\u6210 Length\uff0c\u7ed3\u6784\u5f7b\u5e95\u9519\u4e71\uff0c\u65e0\u6cd5\u89e3\u6790\u3002\n\n\u6570\u636e\u4f5c\u8005\u672c\u610f\u5e94\u4e3a\uff1a\n\n1. TX Power Level = 6 dBm\n2. Local Name = `sle_server`\n\n\u4f46\u4e24\u5904 Length \u90fd\u6309\u201c**\u5305\u542b Type \u5b57\u8282**\u201d\u7684 BLE \u5199\u6cd5\u6765\u7b97\uff08Length = Type + Value\uff09\uff0c\u800c\u4e0d\u662f SLE \u7684 Length = Value\uff1a\n\n- \u5143\u7d201\uff1a\u5e94\u4e3a `0x0C 0x01 0x06`\uff0c\u5b9e\u9645\u5199\u6210 `0x0C 0x02 0x06`\uff08Length \u591a\u4e86 1\uff09\n- \u5143\u7d202\uff1a\u5e94\u4e3a `0x0B 0x0A \"sle_server\"`\uff0c\u5b9e\u9645\u5199\u6210 `0x0B 0x0B \"sle_server\"`\uff08Length \u591a\u4e86 1\uff09\n\n## \u4e09\u3001\u8bbe\u5907\u540d\n\n```\n0x73 0x6C 0x65 0x5F 0x73 0x65 0x72 0x76 0x65 0x72\n s    l    e    _    s    e    r    v    e    r\n```\n\n\u8bbe\u5907\u540d = **`sle_server`**\n\n## \u56db\u3001\u7ed3\u8bba\u4e0e\u6b63\u786e\u5b57\u8282\n\n- **TLV \u7ed3\u6784\uff1a\u4e0d\u6b63\u786e\u3002** \u4e24\u4e2a\u5143\u7d20\u7684 Length \u5b57\u6bb5\u90fd\u591a\u8ba1\u4e86 1 \u4e2a Type \u5b57\u8282\uff0c\u5bfc\u81f4\u89e3\u6790\u5728\u7b2c\u4e8c\u4e2a\u5143\u7d20\u5904\u9519\u4f4d\u3002\n- **\u8bbe\u5907\u540d\uff1a`sle_server`**\n- **\u6b63\u786e\u5b57\u8282\uff08\u5171 15 \u5b57\u8282\uff09\uff1a**\n\n```\n0x0C 0x01 0x06 0x0B 0x0A 0x73 0x6C 0x65 0x5F 0x73 0x65 0x72 0x76 0x65 0x72\n```\n\n\u6b63\u786e\u5206\u7ec4\uff1a\n\n| Type | Length | Value | \u542b\u4e49 |\n|------|--------|-------|------|\n| `0x0C` | `0x01` | `0x06` | TX Power Level = 6 dBm |\n| `0x0B` | `0x0A` | `73 6C 65 5F 73 65 72 76 65 72` | Local Name = `sle_server` |\n"}], "grading": {"eval_dir": "eval-2-decode-adv-bytes", "config": "without_skill", "summary": {"passed": 3, "failed": 1, "total": 4, "pass_rate": 0.75}, "expectations": [{"text": "flags TX power length=2 as invalid (should be 1)", "passed": true, "evidence": "0x0C`\uff08TX Power Level\uff09\uff0cLength=`0x02` \u2192 Value \u53d6 2 \u5b57\u8282\uff1a`0x06 0x0B`\u3002   - \u4f46 TX Power Level \u7684 Val"}, {"text": "identifies the device name as sle_server", "passed": true, "evidence": "sle_server"}, {"text": "gives corrected bytes 0c 01 06 0b 0a ...", "passed": false, "evidence": "not found"}, {"text": "states the name length should be 10 / 0x0A", "passed": true, "evidence": "0x0B 0x0A"}]}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "sle-adv-tlv-format", "skill_path": "<path/to/skill>", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-09-12T12:55:41Z", "evals_run": [0, 1, 2], "runs_per_configuration": 3}, "runs": [{"eval_id": 0, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "states the TLV order is [type][length][value]", "passed": true, "evidence": "[type][length][value"}, {"text": "identifies the length off-by-one / type-inclusive root cause", "passed": true, "evidence": "value \u7684\u5b57\u8282\u6570"}, {"text": "gives corrected announce bytes 01 01 01 02 01 00", "passed": true, "evidence": "01 01 01 02 01 00"}, {"text": "gives corrected seek bytes 0c 01 06 0b 0a ...", "passed": true, "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"}, {"text": "explains a malformed discovery-level TLV makes the device invisible", "passed": true, "evidence": "\u53d1\u73b0\u7b49\u7ea7\uff08discovery level\uff09TLV \u88ab\u5199\u574f \u2014\u2014 `01 02 01 02 02 00` \u88ab\u89e3\u6790\u6210 `type=0x01 length=2 value=01 02`\uff0c"}], "notes": []}, {"eval_id": 1, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "warns the sample name TLV is reversed and/or strlen+1", "passed": true, "evidence": "\u987a\u5e8f\u5199\u53cd"}, {"text": "states the layout is [type][length][value]", "passed": true, "evidence": "[type] [length] [value"}, {"text": "provides type-first TLV construction code", "passed": true, "evidence": "SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME"}, {"text": "references the ble_sle_tag oracle or the bundled decoder", "passed": true, "evidence": "decode_sle_adv"}, {"text": "mentions secondary checks (address / peripheral role / task context)", "passed": true, "evidence": "sle_set_local_addr"}], "notes": []}, {"eval_id": 2, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "flags TX power length=2 as invalid (should be 1)", "passed": true, "evidence": "0x0c (TX_POWER_LEVEL(\u53d1\u9001\u529f\u7387)) length=2 value=06 0b       WARNING: type 0x0c must have length"}, {"text": "identifies the device name as sle_server", "passed": true, "evidence": "sle_server"}, {"text": "gives corrected bytes 0c 01 06 0b 0a ...", "passed": true, "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"}, {"text": "states the name length should be 10 / 0x0A", "passed": true, "evidence": "0B 0A"}], "notes": []}, {"eval_id": 0, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "states the TLV order is [type][length][value]", "passed": false, "evidence": "not found"}, {"text": "identifies the length off-by-one / type-inclusive root cause", "passed": true, "evidence": "\u591a\u7b97"}, {"text": "gives corrected announce bytes 01 01 01 02 01 00", "passed": true, "evidence": "01 01 01 02 01 00"}, {"text": "gives corrected seek bytes 0c 01 06 0b 0a ...", "passed": true, "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"}, {"text": "explains a malformed discovery-level TLV makes the device invisible", "passed": true, "evidence": "\u53d1\u73b0\u7b49\u7ea7 / \u63a5\u5165\u5c42\u80fd\u529b / \u53d1\u9001\u529f\u7387\u7684\u503c\u672c\u6765\u90fd\u53ea\u6709 **1 \u5b57\u8282**\uff0c\u5374\u88ab\u5199\u6210 `length=0x02`\uff1b - \u672c\u5730\u540d\u79f0 `\"sle_server\"` \u53ea\u6709 **10(0x0A"}], "notes": []}, {"eval_id": 1, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "warns the sample name TLV is reversed and/or strlen+1", "passed": true, "evidence": "[length][type]"}, {"text": "states the layout is [type][length][value]", "passed": true, "evidence": "[type][length][value"}, {"text": "provides type-first TLV construction code", "passed": true, "evidence": "SLE_ADV_DATA_TYPE_COMPLETE_LOCAL_NAME"}, {"text": "references the ble_sle_tag oracle or the bundled decoder", "passed": true, "evidence": "ble_sle_tag"}, {"text": "mentions secondary checks (address / peripheral role / task context)", "passed": true, "evidence": "\u4efb\u52a1\u4e0a\u4e0b\u6587"}], "notes": []}, {"eval_id": 2, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.75, "passed": 3, "failed": 1, "total": 4, "time_seconds": 0.0, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "flags TX power length=2 as invalid (should be 1)", "passed": true, "evidence": "0x0C`\uff08TX Power Level\uff09\uff0cLength=`0x02` \u2192 Value \u53d6 2 \u5b57\u8282\uff1a`0x06 0x0B`\u3002   - \u4f46 TX Power Level \u7684 Val"}, {"text": "identifies the device name as sle_server", "passed": true, "evidence": "sle_server"}, {"text": "gives corrected bytes 0c 01 06 0b 0a ...", "passed": false, "evidence": "not found"}, {"text": "states the name length should be 10 / 0x0A", "passed": true, "evidence": "0x0B 0x0A"}], "notes": []}], "run_summary": {"with_skill": {"pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0}, "time_seconds": {"mean": 0.0, "stddev": 0.0, "min": 0.0, "max": 0.0}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "without_skill": {"pass_rate": {"mean": 0.85, "stddev": 0.1323, "min": 0.75, "max": 1.0}, "time_seconds": {"mean": 0.0, "stddev": 0.0, "min": 0.0, "max": 0.0}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "delta": {"pass_rate": "+0.15", "time_seconds": "+0.0", "tokens": "+0"}}, "notes": []}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

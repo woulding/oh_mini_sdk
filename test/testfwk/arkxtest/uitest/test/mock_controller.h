@@ -1,0 +1,135 @@
+/*
+ * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef MOCK_CONTROLLER_H
+#define MOCK_CONTROLLER_H
+
+#include "ui_controller.h"
+#include "ui_model.h"
+#include "element_node_iterator.h"
+
+namespace OHOS::uitest {
+    class MockController : public UiController {
+    public:
+        static std::unique_ptr<PointerMatrix> touch_event_records_;
+        MockController() : UiController() {}
+
+        ~MockController() = default;
+
+        bool GetWidgetsInWindow(const Window &winInfo,
+                                std::unique_ptr<ElementNodeIterator> &elementNodeIterator,
+                                AamsWorkMode mode) override
+        {
+            // copy ele
+            auto eleCopy = windowNodeMap.at(winInfo.id_);
+            elementNodeIterator = std::make_unique<MockElementNodeIterator>(eleCopy);
+            auto userIdIt = displayToUserMap_.find(winInfo.displayId_);
+            if (userIdIt != displayToUserMap_.end()) {
+                currentUser_ = userIdIt->second;
+            }
+            return true;
+        }
+
+        bool IsWorkable() const override
+        {
+            return true;
+        }
+
+        bool IsWearable() const override
+        {
+            return false;
+        }
+
+        bool IsPenKeySupported(bool shouldConnectPen) const override
+        {
+            return false;
+        }
+
+        bool IsAdjustWindowModeEnable() const override
+        {
+            return false;
+        }
+
+        bool IsKnuckleSnapshotEnable() const override
+        {
+            return false;
+        }
+
+        bool IsKnuckleRecordEnable() const override
+        {
+            return false;
+        }
+
+        void InjectTouchEventSequence(const PointerMatrix &events) const override
+        {
+            touch_event_records_ = std::make_unique<PointerMatrix>(events.GetFingers(), events.GetSteps());
+            for (int step = 0; step < events.GetSteps(); step++) {
+                for (int finger = 0; finger < events.GetFingers(); finger++) {
+                    touch_event_records_->PushAction(events.At(finger, step));
+                }
+            }
+        }
+
+        void AddWindowsAndNode(Window in, std::vector<MockAccessibilityElementInfo> eles)
+        {
+            testIn.emplace(in.id_, in);
+            windowNodeMap.emplace(in.id_, eles);
+        }
+        void RemoveWindowsAndNode(Window in)
+        {
+            testIn.erase(in.id_);
+            windowNodeMap.erase(in.id_);
+        }
+
+        void SetCurrentUser(int32_t userId)
+        {
+            currentUser_ = userId;
+        }
+
+        int32_t GetCurrentUser() const
+        {
+            return currentUser_;
+        }
+
+        void SetDisplayUserMapping(int32_t displayId, int32_t userId)
+        {
+            displayToUserMap_[displayId] = userId;
+        }
+
+        void GetUiWindows(std::map<int32_t, vector<Window>> &out, int32_t targetDisplay,
+            bool skipWaitForUiSteady, bool needAbilityInfo) override
+        {
+            vector<Window> winInfos;
+            for (auto iter = testIn.cbegin(); iter != testIn.cend(); ++iter) {
+                Window win = iter->second;
+                if (targetDisplay != -1 && win.displayId_ != targetDisplay) {
+                    continue;
+                }
+                winInfos.emplace_back(win);
+            }
+            out.insert(make_pair(targetDisplay, move(winInfos)));
+            auto userIdIt = displayToUserMap_.find(targetDisplay);
+            if (userIdIt != displayToUserMap_.end()) {
+                currentUser_ = userIdIt->second;
+            }
+        }
+    private:
+        std::map<int, Window> testIn;
+        std::map<int, std::vector<MockAccessibilityElementInfo>> windowNodeMap;
+        std::map<int32_t, int32_t> displayToUserMap_ = {{0, -1}, {1, -1}};
+        int32_t currentUser_ = -1;
+    };
+} // namespace OHOS::uitest
+#endif

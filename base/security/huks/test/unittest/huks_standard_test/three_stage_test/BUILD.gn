@@ -1,0 +1,239 @@
+# Copyright (C) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/huks/build/config.gni")
+import("//base/security/huks/huks.gni")
+import("//build/ohos.gni")
+import("//build/test.gni")
+
+module_output_path = "huks/huks/huks_UT_test"
+
+ohos_unittest("huks_UT_test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "src/asymmetric_alg_test/hks_dh_agree_test.cpp",
+    "src/asymmetric_alg_test/hks_ecc_sign_verify_part2_test.cpp",
+    "src/asymmetric_alg_test/hks_ecc_sign_verify_part3_test.cpp",
+    "src/asymmetric_alg_test/hks_ecc_sign_verify_test_common.cpp",
+    "src/asymmetric_alg_test/hks_ecdh_agree_part1_test.cpp",
+    "src/asymmetric_alg_test/hks_ecdh_agree_part2_test.cpp",
+    "src/asymmetric_alg_test/hks_ecdh_agree_test_common.cpp",
+    "src/asymmetric_alg_test/hks_ed25519_sign_verify_test.cpp",
+    "src/asymmetric_alg_test/hks_export_test.cpp",
+    "src/asymmetric_alg_test/hks_export_test_mt.cpp",
+    "src/asymmetric_alg_test/hks_ml_dsa_sign_verify_part1_test.cpp",
+    "src/asymmetric_alg_test/hks_ml_dsa_sign_verify_part2_test.cpp",
+    "src/asymmetric_alg_test/hks_ml_dsa_sign_verify_test_common.cpp",
+    "src/asymmetric_alg_test/hks_rsa_cipher_part3_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_cipher_part4_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_cipher_part5_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_cipher_part6_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_cipher_test_common.cpp",
+    "src/asymmetric_alg_test/hks_rsa_sign_verify_part10_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_sign_verify_part11_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_sign_verify_part5_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_sign_verify_part6_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_sign_verify_part7_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_sign_verify_part8_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_sign_verify_part9_test.cpp",
+    "src/asymmetric_alg_test/hks_rsa_sign_verify_test_common.cpp",
+    "src/asymmetric_alg_test/hks_sm2_cipher_test.cpp",
+    "src/hks_agree_test_common.cpp",
+    "src/hks_attest_key_nonids_test.cpp",
+    "src/hks_anon_local_attest_key_test.cpp",
+    "src/hks_attest_key_test_common.cpp",
+    "src/hks_backup_test.cpp",
+    "src/hks_batch_test.cpp",
+    #"src/hks_ukey_inner_test.cpp",
+
+    # "src/hks_ce_update_test.cpp",
+    "src/hks_check_pur_part_test.cpp",
+    "src/hks_cross_test.cpp",
+    "src/hks_cross_test_common.cpp",
+    "src/hks_get_error_msg_test.cpp",
+    "src/hks_hkdf_derive_part1_test.cpp",
+    "src/hks_hkdf_derive_part2_test.cpp",
+    "src/hks_hkdf_derive_test_common.cpp",
+    "src/hks_hmac_derive_part1_test.cpp",
+    "src/hks_hmac_derive_part2_test.cpp",
+    "src/hks_hmac_derive_test_common.cpp",
+    "src/hks_hmac_test.cpp",
+    "src/hks_local_sign_verify_test.cpp",
+    "src/hks_import_wrapped_ecdh_suite_test.cpp",
+    "src/hks_import_wrapped_sm2_suite_test.cpp",
+    "src/hks_import_wrapped_test_common.cpp",
+    "src/hks_import_wrapped_x25519_suite_test.cpp",
+    "src/hks_multiple_users_test.cpp",
+    "src/hks_pbkdf2_derive_part1_test.cpp",
+    "src/hks_pbkdf2_derive_part2_test.cpp",
+    "src/hks_pbkdf2_derive_test_common.cpp",
+    "src/hks_rename_part1_test.cpp",
+    "src/hks_rename_part2_test.cpp",
+    "src/hks_rename_part3_test.cpp",
+    "src/hks_three_stage_test_common.c",
+    "src/hks_x25519_agree_test.cpp",
+    "src/symmetric_alg_test/hks_3des_cipher_part1_test.cpp",
+    "src/symmetric_alg_test/hks_3des_cipher_test_common.cpp",
+    "src/symmetric_alg_test/hks_aead_length_test.cpp",
+    "src/symmetric_alg_test/hks_aes_cipher_ccm_test.cpp",
+    "src/symmetric_alg_test/hks_aes_cipher_part1_test.cpp",
+    "src/symmetric_alg_test/hks_aes_cipher_part2_test.cpp",
+    "src/symmetric_alg_test/hks_aes_cipher_part3_test.cpp",
+    "src/symmetric_alg_test/hks_aes_cipher_part4_test.cpp",
+    "src/symmetric_alg_test/hks_aes_cipher_test_common.cpp",
+    "src/symmetric_alg_test/hks_des_cipher_part1_test.cpp",
+    "src/symmetric_alg_test/hks_des_cipher_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_common_test/hks_mock_common/hks_mock_common.cpp",
+  ]
+
+  sources += [
+    "//base/security/huks/test/unittest/huks_common_test/src/hks_test_adapt_for_de.c",
+    "src/hks_import_agree_test.cpp",
+    "src/hks_import_key_test.cpp",
+    "src/hks_import_rsa_test.cpp",
+  ]
+
+  if (huks_security_level == "trusted_environment") {
+    sources += [
+      "src/hks_hkdf_derive_x25519_part1_test.cpp",
+      "src/hks_hkdf_derive_x25519_part2_test.cpp",
+    ]
+  }
+
+  defines = [ "TEMP_ISOLATION" ]
+  if (huks_security_level == "software") {
+    defines += [ "HKS_UNTRUSTED_RUNNING_ENV" ]
+    sources += [
+      "src/asymmetric_alg_test/hks_ecc_sign_verify_part1_test.cpp",
+      "src/asymmetric_alg_test/hks_rsa_cipher_part1_test.cpp",
+      "src/asymmetric_alg_test/hks_rsa_cipher_part2_test.cpp",
+      "src/asymmetric_alg_test/hks_rsa_sign_verify_part1_test.cpp",
+      "src/asymmetric_alg_test/hks_rsa_sign_verify_part2_test.cpp",
+      "src/asymmetric_alg_test/hks_rsa_sign_verify_part3_test.cpp",
+      "src/asymmetric_alg_test/hks_rsa_sign_verify_part4_test.cpp",
+      "src/hks_import_sign_verify_test.cpp",
+    ]
+  } else {
+    sources += [
+      "src/asymmetric_alg_test/hks_rsa_sign_verify_part12_test.cpp",
+      "src/hks_access_control_gen_test.cpp",
+      "src/hks_change_storage_level_part1_test.cpp",
+
+      # "src/hks_change_storage_level_part2_test.cpp",
+      "src/hks_cmac_test.cpp",
+
+      # "src/hks_derive_main_key_part1_test.cpp",
+      # "src/hks_derive_main_key_part2_test.cpp",
+      # "src/hks_derive_main_key_part3_test.cpp",
+      # "src/hks_derive_main_key_test_common.cpp",
+    ]
+  }
+
+  if (use_crypto_lib == "openssl") {
+    defines += [ "_USE_OPENSSL_" ]
+    sources += [
+      "src/hks_sm2_sign_verify_test.cpp",
+      "src/hks_sm4_cipher_part_test.cpp",
+      "src/hks_sm4_cipher_test_common.cpp",
+    ]
+    if (huks_security_level == "software") {
+      sources += [ "src/asymmetric_alg_test/hks_dsa_sign_verify_test.cpp" ]
+    }
+  }
+  if (use_crypto_lib == "mbedtls") {
+    defines += [ "_USE_MBEDTLS_" ]
+  }
+  if (enable_hks_mock) {
+    defines += [ "USE_HKS_MOCK" ]
+    sources += [
+      "src/hks_access_control_agree_test.cpp",
+      "src/hks_access_control_cipher_test.cpp",
+      "src/hks_access_control_derive_test.cpp",
+      "src/hks_access_control_mac_test.cpp",
+      "src/hks_access_control_rsa_sign_verify_test.cpp",
+      "src/hks_access_control_rsa_sign_verify_test_common.cpp",
+      "src/hks_access_control_secure_sign_test.cpp",
+      "src/hks_access_control_test_common.cpp",
+      "src/hks_access_control_user_mode_test.cpp",
+      "src/hks_check_auth_part_test.cpp",
+    ]
+  }
+
+  include_dirs = [
+    "include",
+    "include/asymmetric_alg_test",
+    "include/symmetric_alg_test",
+    "//base/security/huks/interfaces/inner_api/huks_standard/main/include",
+    "//base/security/huks/frameworks/huks_standard/main/common/include/",
+    "//base/security/huks/interfaces/kits/c/include",
+    "//base/security/huks/test/unittest/src/common/include",
+    "//base/security/huks/utils/crypto_adapter",
+    "//base/security/huks/utils/file_operator",
+    "//base/security/huks/services/huks_standard/huks_service/main/core/include",
+    "//base/security/huks/test/unittest/huks_common_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/include",
+    "//base/security/huks/test/unittest/huks_common_test/hks_mock_common"
+  ]
+  configs = [
+    "//base/security/huks/frameworks/config/build:l2_standard_common_config",
+  ]
+  deps = [
+    "//base/security/huks/frameworks/huks_standard/main:huks_standard_frameworks",
+    "//base/security/huks/interfaces/inner_api/huks_standard/main:libhukssdk",
+    "//base/security/huks/interfaces/kits/c:huks_ndk",
+    "//base/security/huks/services/huks_standard/huks_engine/main/core_dependency:libhuks_core_hal_api_static",
+  ]
+  if (huks_security_level == "software") {
+    deps += [ "//base/security/huks/services/huks_standard/huks_engine/main/core:huks_engine_core_standard" ]
+  }
+  deps += [
+    "//base/security/huks/services/huks_standard/huks_service/main/core:libhuks_service_core_standard_static",
+    "//base/security/huks/services/huks_standard/huks_service/main/os_dependency/idl:libhuks_service_idl_standard_static",
+    "//base/security/huks/utils/crypto_adapter:libhuks_utils_client_service_adapter_static",
+  ]
+  deps += [ "//base/security/huks/services/huks_standard/huks_service/main/os_dependency:libhuks_service_os_dependency_standard_static" ]
+
+  sources += [ "src/hks_chipset_platform_encrypt_test.cpp" ]
+
+  # used by hks_chipset_platform_encrypt_test.cpp
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "os_account:os_account_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken_shared",
+    "access_token:libtokenid_sdk",
+    "access_token:libtokensetproc_shared",
+  ]
+
+  if (os_level == "standard") {
+    external_deps += [
+      "access_token:libaccesstoken_sdk",
+      "access_token:libnativetoken_shared",
+      "access_token:libtokensetproc_shared",
+      "cJSON:cjson",
+      "openssl:libcrypto_shared",
+    ]
+    if (huks_security_level == "trusted_environment") {
+      external_deps += [ "init:libbegetutil" ]
+    }
+  }
+
+  defines += [ "L2_STANDARD" ]
+
+  if (enable_interact_across_local_accounts) {
+    defines += [ "HKS_INTERACT_ABILITY" ]
+  }
+}

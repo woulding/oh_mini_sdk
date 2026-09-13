@@ -1,0 +1,34 @@
+/*
+ * Copyright (C) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef WIFI_FUZZ_SCAN_STUB_H
+#define WIFI_FUZZ_SCAN_STUB_H
+
+#define FUZZ_PROJECT_NAME "wifiscanstub_fuzzer"
+
+enum class WifiScanInterfaceCode {
+    COMMAND_SET_SCAN_CONTROL_INFO = 1,
+    COMMAND_SCAN,
+    COMMAND_ADVANCE_SCAN,
+    COMMAND_IS_WIFI_CLOSED_SCAN,
+    COMMAND_GET_SCAN_INFO_LIST,
+    COMMAND_REGISTER_CALL_BACK,
+    COMMAND_GET_SUPPORTED_FEATURES,
+    COMMAND_SET_SCAN_ONLY_AVAILABLE,
+    COMMAND_GET_SCAN_ONLY_AVAILABLE,
+    COMMAND_START_WIFI_PNO_SCAN,
+};
+
+#endif

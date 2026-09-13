@@ -1,0 +1,1651 @@
+/*
+ * Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) 2020-2023 Huawei Device Co., Ltd. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ *    conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list
+ *    of conditions and the following disclaimer in the documentation and/or other materials
+ *    provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used
+ *    to endorse or promote products derived from this software without specific prior written
+ *    permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+ * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "los_task_pri.h"
+#include "los_base_pri.h"
+#include "los_event_pri.h"
+#include "los_exc.h"
+#include "los_hw_pri.h"
+#include "los_init.h"
+#include "los_memstat_pri.h"
+#include "los_mp.h"
+#include "los_mux_pri.h"
+#include "los_sched_pri.h"
+#include "los_sem_pri.h"
+#include "los_spinlock.h"
+#include "los_strncpy_from_user.h"
+#include "los_percpu_pri.h"
+#include "los_process_pri.h"
+#include "los_vm_map.h"
+#include "los_vm_syscall.h"
+#include "los_signal.h"
+#include "los_hook.h"
+
+#ifdef LOSCFG_KERNEL_CPUP
+#include "los_cpup_pri.h"
+#endif
+#ifdef LOSCFG_BASE_CORE_SWTMR_ENABLE
+#include "los_swtmr_pri.h"
+#endif
+#ifdef LOSCFG_KERNEL_LITEIPC
+#include "hm_liteipc.h"
+#endif
+#ifdef LOSCFG_ENABLE_OOM_LOOP_TASK
+#include "los_oom.h"
+#endif
+#ifdef LOSCFG_KERNEL_CONTAINER
+#include "los_container_pri.h"
+#endif
+
+#if (LOSCFG_BASE_CORE_TSK_LIMIT <= 0)
+#error "task maxnum cannot be zero"
+#endif  /* LOSCFG_BASE_CORE_TSK_LIMIT <= 0 */
+
+LITE_OS_SEC_BSS LosTaskCB    *g_taskCBArray;
+LITE_OS_SEC_BSS LOS_DL_LIST  g_losFreeTask;
+LITE_OS_SEC_BSS LOS_DL_LIST  g_taskRecycleList;
+LITE_OS_SEC_BSS UINT32       g_taskMaxNum;
+LITE_OS_SEC_BSS UINT32       g_taskScheduled; /* one bit for each cores */
+LITE_OS_SEC_BSS EVENT_CB_S   g_resourceEvent;
+/* spinlock for task module, only available on SMP mode */
+LITE_OS_SEC_BSS SPIN_LOCK_INIT(g_taskSpin);
+
+STATIC VOID OsConsoleIDSetHook(UINT32 param1,
+                               UINT32 param2) __attribute__((weakref("OsSetConsoleID")));
+
+/* temp task blocks for booting procedure */
+LITE_OS_SEC_BSS STATIC LosTaskCB                g_mainTask[LOSCFG_KERNEL_CORE_NUM];
+
+LosTaskCB *OsGetMainTask(VOID)
+{
+    return (LosTaskCB *)(g_mainTask + ArchCurrCpuid());
+}
+
+VOID OsSetMainTask(VOID)
+{
+    UINT32 i;
+    CHAR *name = "osMain";
+    SchedParam schedParam = { 0 };
+
+    schedParam.policy = LOS_SCHED_RR;
+    schedParam.basePrio = OS_PROCESS_PRIORITY_HIGHEST;
+    schedParam.priority = OS_TASK_PRIORITY_LOWEST;
+
+    for (i = 0; i < LOSCFG_KERNEL_CORE_NUM; i++) {
+        g_mainTask[i].taskStatus = OS_TASK_STATUS_UNUSED;
+        g_mainTask[i].taskID = LOSCFG_BASE_CORE_TSK_LIMIT;
+        g_mainTask[i].processCB = OS_KERNEL_PROCESS_GROUP;
+#ifdef LOSCFG_KERNEL_SMP_LOCKDEP
+        g_mainTask[i].lockDep.lockDepth = 0;
+        g_mainTask[i].lockDep.waitLock = NULL;
+#endif
+        (VOID)strncpy_s(g_mainTask[i].taskName, OS_TCB_NAME_LEN, name, OS_TCB_NAME_LEN - 1);
+        LOS_ListInit(&g_mainTask[i].lockList);
+        (VOID)OsSchedParamInit(&g_mainTask[i], schedParam.policy, &schedParam, NULL);
+    }
+}
+
+VOID OsSetMainTaskProcess(UINTPTR processCB)
+{
+    for (UINT32 i = 0; i < LOSCFG_KERNEL_CORE_NUM; i++) {
+        g_mainTask[i].processCB = processCB;
+#ifdef LOSCFG_PID_CONTAINER
+        g_mainTask[i].pidContainer = OS_PID_CONTAINER_FROM_PCB((LosProcessCB *)processCB);
+#endif
+    }
+}
+
+LITE_OS_SEC_TEXT WEAK VOID OsIdleTask(VOID)
+{
+    while (1) {
+        WFI;
+    }
+}
+
+VOID OsTaskInsertToRecycleList(LosTaskCB *taskCB)
+{
+    LOS_ListTailInsert(&g_taskRecycleList, &taskCB->pendList);
+}
+
+LITE_OS_SEC_TEXT_INIT VOID OsTaskJoinPostUnsafe(LosTaskCB *taskCB)
+{
+    if (taskCB->taskStatus & OS_TASK_FLAG_PTHREAD_JOIN) {
+        if (!LOS_ListEmpty(&taskCB->joinList)) {
+            LosTaskCB *resumedTask = OS_TCB_FROM_PENDLIST(LOS_DL_LIST_FIRST(&(taskCB->joinList)));
+            OsTaskWakeClearPendMask(resumedTask);
+            resumedTask->ops->wake(resumedTask);
+        }
+    }
+    taskCB->taskStatus |= OS_TASK_STATUS_EXIT;
+}
+
+LITE_OS_SEC_TEXT UINT32 OsTaskJoinPendUnsafe(LosTaskCB *taskCB)
+{
+    if (taskCB->taskStatus & OS_TASK_STATUS_INIT) {
+        return LOS_EINVAL;
+    }
+
+    if (taskCB->taskStatus & OS_TASK_STATUS_EXIT) {
+        return LOS_OK;
+    }
+
+    if ((taskCB->taskStatus & OS_TASK_FLAG_PTHREAD_JOIN) && LOS_ListEmpty(&taskCB->joinList)) {
+        OsTaskWaitSetPendMask(OS_TASK_WAIT_JOIN, taskCB->taskID, LOS_WAIT_FOREVER);
+        LosTaskCB *runTask = OsCurrTaskGet();
+        return runTask->ops->wait(runTask, &taskCB->joinList, LOS_WAIT_FOREVER);
+    }
+
+    return LOS_EINVAL;
+}
+
+LITE_OS_SEC_TEXT UINT32 OsTaskSetDetachUnsafe(LosTaskCB *taskCB)
+{
+    if (taskCB->taskStatus & OS_TASK_FLAG_PTHREAD_JOIN) {
+        if (LOS_ListEmpty(&(taskCB->joinList))) {
+            LOS_ListDelete(&(taskCB->joinList));
+            taskCB->taskStatus &= ~OS_TASK_FLAG_PTHREAD_JOIN;
+            return LOS_OK;
+        }
+        /* This error code has a special purpose and is not allowed to appear again on the interface */
+        return LOS_ESRCH;
+    }
+
+    return LOS_EINVAL;
+}
+
+LITE_OS_SEC_TEXT_INIT UINT32 OsTaskInit(UINTPTR processCB)
+{
+    UINT32 index;
+    UINT32 size;
+    UINT32 ret;
+
+    g_taskMaxNum = LOSCFG_BASE_CORE_TSK_LIMIT;
+    size = (g_taskMaxNum + 1) * sizeof(LosTaskCB);
+    /*
+     * This memory is resident memory and is used to save the system resources
+     * of task control block and will not be freed.
+     */
+    g_taskCBArray = (LosTaskCB *)LOS_MemAlloc(m_aucSysMem0, size);
+    if (g_taskCBArray == NULL) {
+        ret = LOS_ERRNO_TSK_NO_MEMORY;
+        goto EXIT;
+    }
+    (VOID)memset_s(g_taskCBArray, size, 0, size);
+
+    LOS_ListInit(&g_losFreeTask);
+    LOS_ListInit(&g_taskRecycleList);
+    for (index = 0; index < g_taskMaxNum; index++) {
+        g_taskCBArray[index].taskStatus = OS_TASK_STATUS_UNUSED;
+        g_taskCBArray[index].taskID = index;
+        g_taskCBArray[index].processCB = processCB;
+        LOS_ListTailInsert(&g_losFreeTask, &g_taskCBArray[index].pendList);
+    }
+
+    g_taskCBArray[index].taskStatus = OS_TASK_STATUS_UNUSED;
+    g_taskCBArray[index].taskID = index;
+    g_taskCBArray[index].processCB = processCB;
+
+    ret = OsSchedInit();
+
+EXIT:
+    if (ret != LOS_OK) {
+        PRINT_ERR("OsTaskInit error\n");
+    }
+    return ret;
+}
+
+UINT32 OsGetIdleTaskId(VOID)
+{
+    return OsSchedRunqueueIdleGet()->taskID;
+}
+
+LITE_OS_SEC_TEXT_INIT UINT32 OsIdleTaskCreate(UINTPTR processID)
+{
+    UINT32 ret;
+    TSK_INIT_PARAM_S taskInitParam;
+    UINT32 idleTaskID;
+
+    (VOID)memset_s((VOID *)(&taskInitParam), sizeof(TSK_INIT_PARAM_S), 0, sizeof(TSK_INIT_PARAM_S));
+    taskInitParam.pfnTaskEntry = (TSK_ENTRY_FUNC)OsIdleTask;
+    taskInitParam.uwStackSize = LOSCFG_BASE_CORE_TSK_IDLE_STACK_SIZE;
+    taskInitParam.pcName = "Idle";
+    taskInitParam.policy = LOS_SCHED_IDLE;
+    taskInitParam.usTaskPrio = OS_TASK_PRIORITY_LOWEST;
+    taskInitParam.processID = processID;
+#ifdef LOSCFG_KERNEL_SMP
+    taskInitParam.usCpuAffiMask = CPUID_TO_AFFI_MASK(ArchCurrCpuid());
+#endif
+    ret = LOS_TaskCreateOnly(&idleTaskID, &taskInitParam);
+    if (ret != LOS_OK) {
+        return ret;
+    }
+    LosTaskCB *idleTask = OS_TCB_FROM_TID(idleTaskID);
+    idleTask->taskStatus |= OS_TASK_FLAG_SYSTEM_TASK;
+    OsSchedRunqueueIdleInit(idleTask);
+
+    return LOS_TaskResume(idleTaskID);
+}
+
+/*
+ * Description : get id of current running task.
+ * Return      : task id
+ */
+LITE_OS_SEC_TEXT UINT32 LOS_CurTaskIDGet(VOID)
+{
+    LosTaskCB *runTask = OsCurrTaskGet();
+
+    if (runTask == NULL) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+    return runTask->taskID;
+}
+
+STATIC INLINE UINT32 TaskSyncCreate(LosTaskCB *taskCB)
+{
+#ifdef LOSCFG_KERNEL_SMP_TASK_SYNC
+    UINT32 ret = LOS_SemCreate(0, &taskCB->syncSignal);
+    if (ret != LOS_OK) {
+        return LOS_ERRNO_TSK_MP_SYNC_RESOURCE;
+    }
+#else
+    (VOID)taskCB;
+#endif
+    return LOS_OK;
+}
+
+STATIC INLINE VOID OsTaskSyncDestroy(UINT32 syncSignal)
+{
+#ifdef LOSCFG_KERNEL_SMP_TASK_SYNC
+    (VOID)LOS_SemDelete(syncSignal);
+#else
+    (VOID)syncSignal;
+#endif
+}
+
+#ifdef LOSCFG_KERNEL_SMP
+STATIC INLINE UINT32 OsTaskSyncWait(const LosTaskCB *taskCB)
+{
+#ifdef LOSCFG_KERNEL_SMP_TASK_SYNC
+    UINT32 ret = LOS_OK;
+
+    LOS_ASSERT(LOS_SpinHeld(&g_taskSpin));
+    LOS_SpinUnlock(&g_taskSpin);
+    /*
+     * gc soft timer works every OS_MP_GC_PERIOD period, to prevent this timer
+     * triggered right at the timeout has reached, we set the timeout as double
+     * of the gc period.
+     */
+    if (LOS_SemPend(taskCB->syncSignal, OS_MP_GC_PERIOD * 2) != LOS_OK) { /* 2: Wait 200 ms */
+        ret = LOS_ERRNO_TSK_MP_SYNC_FAILED;
+    }
+
+    LOS_SpinLock(&g_taskSpin);
+
+    return ret;
+#else
+    (VOID)taskCB;
+    return LOS_OK;
+#endif
+}
+#endif
+
+STATIC INLINE VOID OsTaskSyncWake(const LosTaskCB *taskCB)
+{
+#ifdef LOSCFG_KERNEL_SMP_TASK_SYNC
+    (VOID)OsSemPostUnsafe(taskCB->syncSignal, NULL);
+#else
+    (VOID)taskCB;
+#endif
+}
+
+STATIC INLINE VOID OsInsertTCBToFreeList(LosTaskCB *taskCB)
+{
+#ifdef LOSCFG_PID_CONTAINER
+    OsFreeVtid(taskCB);
+#endif
+    UINT32 taskID = taskCB->taskID;
+    (VOID)memset_s(taskCB, sizeof(LosTaskCB), 0, sizeof(LosTaskCB));
+    taskCB->taskID = taskID;
+    taskCB->processCB = (UINTPTR)OsGetDefaultProcessCB();
+    taskCB->taskStatus = OS_TASK_STATUS_UNUSED;
+    LOS_ListAdd(&g_losFreeTask, &taskCB->pendList);
+}
+
+STATIC VOID OsTaskKernelResourcesToFree(UINT32 syncSignal, UINTPTR topOfStack)
+{
+    OsTaskSyncDestroy(syncSignal);
+
+    (VOID)LOS_MemFree((VOID *)m_aucSysMem1, (VOID *)topOfStack);
+}
+
+STATIC VOID OsTaskResourcesToFree(LosTaskCB *taskCB)
+{
+    UINT32 syncSignal = LOSCFG_BASE_IPC_SEM_LIMIT;
+    UINT32 intSave;
+    UINTPTR topOfStack;
+
+#ifdef LOSCFG_KERNEL_VM
+    if ((taskCB->taskStatus & OS_TASK_FLAG_USER_MODE) && (taskCB->userMapBase != 0)) {
+        SCHEDULER_LOCK(intSave);
+        UINT32 mapBase = (UINTPTR)taskCB->userMapBase;
+        UINT32 mapSize = taskCB->userMapSize;
+        taskCB->userMapBase = 0;
+        taskCB->userArea = 0;
+        SCHEDULER_UNLOCK(intSave);
+
+        LosProcessCB *processCB = OS_PCB_FROM_TCB(taskCB);
+        LOS_ASSERT(!(OsProcessVmSpaceGet(processCB) == NULL));
+        UINT32 ret = OsUnMMap(OsProcessVmSpaceGet(processCB), (UINTPTR)mapBase, mapSize);
+        if ((ret != LOS_OK) && (mapBase != 0) && !OsProcessIsInit(processCB)) {
+            PRINT_ERR("process(%u) unmmap user task(%u) stack failed! mapbase: 0x%x size :0x%x, error: %d\n",
+                      processCB->processID, taskCB->taskID, mapBase, mapSize, ret);
+        }
+
+#ifdef LOSCFG_KERNEL_LITEIPC
+        LiteIpcRemoveServiceHandle(taskCB->taskID);
+#endif
+    }
+#endif
+
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        topOfStack = taskCB->topOfStack;
+        taskCB->topOfStack = 0;
+#ifdef LOSCFG_KERNEL_SMP_TASK_SYNC
+        syncSignal = taskCB->syncSignal;
+        taskCB->syncSignal = LOSCFG_BASE_IPC_SEM_LIMIT;
+#endif
+        OsTaskKernelResourcesToFree(syncSignal, topOfStack);
+
+        SCHEDULER_LOCK(intSave);
+#ifdef LOSCFG_KERNEL_VM
+        OsClearSigInfoTmpList(&(taskCB->sig));
+#endif
+        OsInsertTCBToFreeList(taskCB);
+        SCHEDULER_UNLOCK(intSave);
+    }
+    return;
+}
+
+LITE_OS_SEC_TEXT VOID OsTaskCBRecycleToFree(void)
+{
+    UINT32 intSave;
+
+    SCHEDULER_LOCK(intSave);
+    while (!LOS_ListEmpty(&g_taskRecycleList)) {
+        LosTaskCB *taskCB = OS_TCB_FROM_PENDLIST(LOS_DL_LIST_FIRST(&g_taskRecycleList));
+        LOS_ListDelete(&taskCB->pendList);
+        SCHEDULER_UNLOCK(intSave);
+
+        OsTaskResourcesToFree(taskCB);
+
+        SCHEDULER_LOCK(intSave);
+    }
+    SCHEDULER_UNLOCK(intSave);
+}
+
+/*
+ * Description : All task entry
+ * Input       : taskID     --- The ID of the task to be run
+ */
+LITE_OS_SEC_TEXT_INIT VOID OsTaskEntry(UINT32 taskID)
+{
+    LOS_ASSERT(!OS_TID_CHECK_INVALID(taskID));
+
+    /*
+     * task scheduler needs to be protected throughout the whole process
+     * from interrupt and other cores. release task spinlock and enable
+     * interrupt in sequence at the task entry.
+     */
+    LOS_SpinUnlock(&g_taskSpin);
+    (VOID)LOS_IntUnLock();
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    taskCB->joinRetval = taskCB->taskEntry(taskCB->args[0], taskCB->args[1],
+                                           taskCB->args[2], taskCB->args[3]); /* 2 & 3: just for args array index */
+    if (!(taskCB->taskStatus & OS_TASK_FLAG_PTHREAD_JOIN)) {
+        taskCB->joinRetval = 0;
+    }
+
+    OsRunningTaskToExit(taskCB, 0);
+}
+
+STATIC UINT32 TaskCreateParamCheck(const UINT32 *taskID, TSK_INIT_PARAM_S *initParam)
+{
+    UINT32 poolSize = OS_SYS_MEM_SIZE;
+
+    if (taskID == NULL) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+
+    if (initParam == NULL) {
+        return LOS_ERRNO_TSK_PTR_NULL;
+    }
+
+    if (!OsProcessIsUserMode((LosProcessCB *)initParam->processID)) {
+        if (initParam->pcName == NULL) {
+            return LOS_ERRNO_TSK_NAME_EMPTY;
+        }
+    }
+
+    if (initParam->pfnTaskEntry == NULL) {
+        return LOS_ERRNO_TSK_ENTRY_NULL;
+    }
+
+    if (initParam->usTaskPrio > OS_TASK_PRIORITY_LOWEST) {
+        return LOS_ERRNO_TSK_PRIOR_ERROR;
+    }
+
+    if (initParam->uwStackSize > poolSize) {
+        return LOS_ERRNO_TSK_STKSZ_TOO_LARGE;
+    }
+
+    if (initParam->uwStackSize == 0) {
+        initParam->uwStackSize = LOSCFG_BASE_CORE_TSK_DEFAULT_STACK_SIZE;
+    }
+    initParam->uwStackSize = (UINT32)ALIGN(initParam->uwStackSize, LOSCFG_STACK_POINT_ALIGN_SIZE);
+
+    if (initParam->uwStackSize < LOS_TASK_MIN_STACK_SIZE) {
+        return LOS_ERRNO_TSK_STKSZ_TOO_SMALL;
+    }
+
+    return LOS_OK;
+}
+
+STATIC VOID TaskCBDeInit(LosTaskCB *taskCB)
+{
+    UINT32 intSave;
+#ifdef LOSCFG_KERNEL_SMP_TASK_SYNC
+    if (taskCB->syncSignal != OS_INVALID_VALUE) {
+        OsTaskSyncDestroy(taskCB->syncSignal);
+        taskCB->syncSignal = OS_INVALID_VALUE;
+    }
+#endif
+
+    if (taskCB->topOfStack != (UINTPTR)NULL) {
+        (VOID)LOS_MemFree(m_aucSysMem1, (VOID *)taskCB->topOfStack);
+        taskCB->topOfStack = (UINTPTR)NULL;
+    }
+
+    SCHEDULER_LOCK(intSave);
+    LosProcessCB *processCB = OS_PCB_FROM_TCB(taskCB);
+    if (processCB != OsGetDefaultProcessCB()) {
+        LOS_ListDelete(&taskCB->threadList);
+        processCB->threadNumber--;
+        processCB->threadCount--;
+    }
+
+    OsInsertTCBToFreeList(taskCB);
+    SCHEDULER_UNLOCK(intSave);
+}
+
+STATIC VOID TaskCBBaseInit(LosTaskCB *taskCB, const TSK_INIT_PARAM_S *initParam)
+{
+    taskCB->stackPointer = NULL;
+    taskCB->args[0]      = initParam->auwArgs[0]; /* 0~3: just for args array index */
+    taskCB->args[1]      = initParam->auwArgs[1];
+    taskCB->args[2]      = initParam->auwArgs[2];
+    taskCB->args[3]      = initParam->auwArgs[3];
+    taskCB->topOfStack   = (UINTPTR)NULL;
+    taskCB->stackSize    = initParam->uwStackSize;
+    taskCB->taskEntry    = initParam->pfnTaskEntry;
+    taskCB->signal       = SIGNAL_NONE;
+#ifdef LOSCFG_KERNEL_SMP_TASK_SYNC
+    taskCB->syncSignal   = OS_INVALID_VALUE;
+#endif
+#ifdef LOSCFG_KERNEL_SMP
+    taskCB->currCpu      = OS_TASK_INVALID_CPUID;
+    taskCB->cpuAffiMask  = (initParam->usCpuAffiMask) ?
+                            initParam->usCpuAffiMask : LOSCFG_KERNEL_CPU_MASK;
+#endif
+    taskCB->taskStatus = OS_TASK_STATUS_INIT;
+    if (initParam->uwResved & LOS_TASK_ATTR_JOINABLE) {
+        taskCB->taskStatus |= OS_TASK_FLAG_PTHREAD_JOIN;
+        LOS_ListInit(&taskCB->joinList);
+    }
+
+    LOS_ListInit(&taskCB->lockList);
+    SET_SORTLIST_VALUE(&taskCB->sortList, OS_SORT_LINK_INVALID_TIME);
+#ifdef LOSCFG_KERNEL_VM
+    taskCB->futex.index = OS_INVALID_VALUE;
+#endif
+}
+
+STATIC UINT32 TaskCBInit(LosTaskCB *taskCB, const TSK_INIT_PARAM_S *initParam)
+{
+    UINT32 ret;
+    UINT32 numCount;
+    SchedParam schedParam = { 0 };
+    LosSchedParam initSchedParam = {0};
+    UINT16 policy = (initParam->policy == LOS_SCHED_NORMAL) ? LOS_SCHED_RR : initParam->policy;
+
+    TaskCBBaseInit(taskCB, initParam);
+
+    schedParam.policy = policy;
+    ret = OsProcessAddNewTask(initParam->processID, taskCB, &schedParam, &numCount);
+    if (ret != LOS_OK) {
+        return ret;
+    }
+
+    if (policy == LOS_SCHED_DEADLINE) {
+        initSchedParam.runTimeUs = initParam->runTimeUs;
+        initSchedParam.deadlineUs = initParam->deadlineUs;
+        initSchedParam.periodUs = initParam->periodUs;
+    } else {
+        initSchedParam.priority = initParam->usTaskPrio;
+    }
+    ret = OsSchedParamInit(taskCB, policy, &schedParam, &initSchedParam);
+    if (ret != LOS_OK) {
+        return ret;
+    }
+
+    if (initParam->pcName != NULL) {
+        ret = (UINT32)OsSetTaskName(taskCB, initParam->pcName, FALSE);
+        if (ret == LOS_OK) {
+            return LOS_OK;
+        }
+    }
+
+    if (snprintf_s(taskCB->taskName, OS_TCB_NAME_LEN, OS_TCB_NAME_LEN - 1, "thread%u", numCount) < 0) {
+        return LOS_NOK;
+    }
+    return LOS_OK;
+}
+
+STATIC UINT32 TaskStackInit(LosTaskCB *taskCB, const TSK_INIT_PARAM_S *initParam)
+{
+    VOID *topStack = (VOID *)LOS_MemAllocAlign(m_aucSysMem1, initParam->uwStackSize, LOSCFG_STACK_POINT_ALIGN_SIZE);
+    if (topStack == NULL) {
+        return LOS_ERRNO_TSK_NO_MEMORY;
+    }
+
+    taskCB->topOfStack = (UINTPTR)topStack;
+    taskCB->stackPointer = OsTaskStackInit(taskCB->taskID, initParam->uwStackSize, topStack, TRUE);
+#ifdef LOSCFG_KERNEL_VM
+    if (taskCB->taskStatus & OS_TASK_FLAG_USER_MODE) {
+        taskCB->userArea = initParam->userParam.userArea;
+        taskCB->userMapBase = initParam->userParam.userMapBase;
+        taskCB->userMapSize = initParam->userParam.userMapSize;
+        OsUserTaskStackInit(taskCB->stackPointer, (UINTPTR)taskCB->taskEntry, initParam->userParam.userSP);
+    }
+#endif
+    return LOS_OK;
+}
+
+STATIC LosTaskCB *GetFreeTaskCB(VOID)
+{
+    UINT32 intSave;
+
+    SCHEDULER_LOCK(intSave);
+    if (LOS_ListEmpty(&g_losFreeTask)) {
+        SCHEDULER_UNLOCK(intSave);
+        PRINT_ERR("No idle TCB in the system!\n");
+        return NULL;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_PENDLIST(LOS_DL_LIST_FIRST(&g_losFreeTask));
+    LOS_ListDelete(LOS_DL_LIST_FIRST(&g_losFreeTask));
+    SCHEDULER_UNLOCK(intSave);
+
+    return taskCB;
+}
+
+LITE_OS_SEC_TEXT_INIT UINT32 LOS_TaskCreateOnly(UINT32 *taskID, TSK_INIT_PARAM_S *initParam)
+{
+    UINT32 errRet = TaskCreateParamCheck(taskID, initParam);
+    if (errRet != LOS_OK) {
+        return errRet;
+    }
+
+    LosTaskCB *taskCB = GetFreeTaskCB();
+    if (taskCB == NULL) {
+        return LOS_ERRNO_TSK_TCB_UNAVAILABLE;
+    }
+
+    errRet = TaskCBInit(taskCB, initParam);
+    if (errRet != LOS_OK) {
+        goto DEINIT_TCB;
+    }
+
+    errRet = TaskSyncCreate(taskCB);
+    if (errRet != LOS_OK) {
+        goto DEINIT_TCB;
+    }
+
+    errRet = TaskStackInit(taskCB, initParam);
+    if (errRet != LOS_OK) {
+        goto DEINIT_TCB;
+    }
+
+    if (OsConsoleIDSetHook != NULL) {
+        OsConsoleIDSetHook(taskCB->taskID, OsCurrTaskGet()->taskID);
+    }
+
+    *taskID = taskCB->taskID;
+    OsHookCall(LOS_HOOK_TYPE_TASK_CREATE, taskCB);
+    return LOS_OK;
+
+DEINIT_TCB:
+    TaskCBDeInit(taskCB);
+    return errRet;
+}
+
+LITE_OS_SEC_TEXT_INIT UINT32 LOS_TaskCreate(UINT32 *taskID, TSK_INIT_PARAM_S *initParam)
+{
+    UINT32 ret;
+    UINT32 intSave;
+
+    if (initParam == NULL) {
+        return LOS_ERRNO_TSK_PTR_NULL;
+    }
+
+    if (OS_INT_ACTIVE) {
+        return LOS_ERRNO_TSK_YIELD_IN_INT;
+    }
+
+    if (OsProcessIsUserMode(OsCurrProcessGet())) {
+        initParam->processID = (UINTPTR)OsGetKernelInitProcess();
+    } else {
+        initParam->processID = (UINTPTR)OsCurrProcessGet();
+    }
+
+    ret = LOS_TaskCreateOnly(taskID, initParam);
+    if (ret != LOS_OK) {
+        return ret;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(*taskID);
+
+    SCHEDULER_LOCK(intSave);
+    taskCB->ops->enqueue(OsSchedRunqueue(), taskCB);
+    SCHEDULER_UNLOCK(intSave);
+
+    /* in case created task not running on this core,
+       schedule or not depends on other schedulers status. */
+    LOS_MpSchedule(OS_MP_CPU_ALL);
+    if (OS_SCHEDULER_ACTIVE) {
+        LOS_Schedule();
+    }
+
+    return LOS_OK;
+}
+
+LITE_OS_SEC_TEXT_INIT UINT32 LOS_TaskResume(UINT32 taskID)
+{
+    UINT32 intSave;
+    UINT32 errRet;
+    BOOL needSched = FALSE;
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    SCHEDULER_LOCK(intSave);
+
+    /* clear pending signal */
+    taskCB->signal &= ~SIGNAL_SUSPEND;
+
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        errRet = LOS_ERRNO_TSK_NOT_CREATED;
+        OS_GOTO_ERREND();
+    } else if (!(taskCB->taskStatus & OS_TASK_STATUS_SUSPENDED)) {
+        errRet = LOS_ERRNO_TSK_NOT_SUSPENDED;
+        OS_GOTO_ERREND();
+    }
+
+    errRet = taskCB->ops->resume(taskCB, &needSched);
+    SCHEDULER_UNLOCK(intSave);
+
+    LOS_MpSchedule(OS_MP_CPU_ALL);
+    if (OS_SCHEDULER_ACTIVE && needSched) {
+        LOS_Schedule();
+    }
+
+    return errRet;
+
+LOS_ERREND:
+    SCHEDULER_UNLOCK(intSave);
+    return errRet;
+}
+
+/*
+ * Check if needs to do the suspend operation on the running task.
+ * Return TRUE, if needs to do the suspension.
+ * Return FALSE, if meets following circumstances:
+ * 1. Do the suspension across cores, if SMP is enabled
+ * 2. Do the suspension when preemption is disabled
+ * 3. Do the suspension in hard-irq
+ * then LOS_TaskSuspend will directly return with 'ret' value.
+ */
+LITE_OS_SEC_TEXT_INIT STATIC BOOL OsTaskSuspendCheckOnRun(LosTaskCB *taskCB, UINT32 *ret)
+{
+    /* init default out return value */
+    *ret = LOS_OK;
+
+#ifdef LOSCFG_KERNEL_SMP
+    /* ASYNCHRONIZED. No need to do task lock checking */
+    if (taskCB->currCpu != ArchCurrCpuid()) {
+        taskCB->signal = SIGNAL_SUSPEND;
+        LOS_MpSchedule(taskCB->currCpu);
+        return FALSE;
+    }
+#endif
+
+    if (!OsPreemptableInSched()) {
+        /* Suspending the current core's running task */
+        *ret = LOS_ERRNO_TSK_SUSPEND_LOCKED;
+        return FALSE;
+    }
+
+    if (OS_INT_ACTIVE) {
+        /* suspend running task in interrupt */
+        taskCB->signal = SIGNAL_SUSPEND;
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+LITE_OS_SEC_TEXT STATIC UINT32 OsTaskSuspend(LosTaskCB *taskCB)
+{
+    UINT32 errRet;
+    UINT16 tempStatus = taskCB->taskStatus;
+    if (tempStatus & OS_TASK_STATUS_UNUSED) {
+        return LOS_ERRNO_TSK_NOT_CREATED;
+    }
+
+    if (tempStatus & OS_TASK_STATUS_SUSPENDED) {
+        return LOS_ERRNO_TSK_ALREADY_SUSPENDED;
+    }
+
+    if ((tempStatus & OS_TASK_STATUS_RUNNING) &&
+        !OsTaskSuspendCheckOnRun(taskCB, &errRet)) {
+        return errRet;
+    }
+
+    return taskCB->ops->suspend(taskCB);
+}
+
+LITE_OS_SEC_TEXT_INIT UINT32 LOS_TaskSuspend(UINT32 taskID)
+{
+    UINT32 intSave;
+    UINT32 errRet;
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    if (taskCB->taskStatus & OS_TASK_FLAG_SYSTEM_TASK) {
+        return LOS_ERRNO_TSK_OPERATE_SYSTEM_TASK;
+    }
+
+    SCHEDULER_LOCK(intSave);
+    errRet = OsTaskSuspend(taskCB);
+    SCHEDULER_UNLOCK(intSave);
+    return errRet;
+}
+
+STATIC INLINE VOID OsTaskStatusUnusedSet(LosTaskCB *taskCB)
+{
+    taskCB->taskStatus |= OS_TASK_STATUS_UNUSED;
+    taskCB->eventMask = 0;
+
+    OS_MEM_CLEAR(taskCB->taskID);
+}
+
+STATIC VOID OsTaskReleaseHoldLock(LosTaskCB *taskCB)
+{
+    LosMux *mux = NULL;
+    UINT32 ret;
+
+    while (!LOS_ListEmpty(&taskCB->lockList)) {
+        mux = LOS_DL_LIST_ENTRY(LOS_DL_LIST_FIRST(&taskCB->lockList), LosMux, holdList);
+        ret = OsMuxUnlockUnsafe(taskCB, mux, NULL);
+        if (ret != LOS_OK) {
+            LOS_ListDelete(&mux->holdList);
+            PRINT_ERR("mux ulock failed! : %u\n", ret);
+        }
+    }
+
+#ifdef LOSCFG_KERNEL_VM
+    if (taskCB->taskStatus & OS_TASK_FLAG_USER_MODE) {
+        OsFutexNodeDeleteFromFutexHash(&taskCB->futex, TRUE, NULL, NULL);
+    }
+#endif
+
+    OsTaskJoinPostUnsafe(taskCB);
+
+    OsTaskSyncWake(taskCB);
+}
+
+LITE_OS_SEC_TEXT VOID OsRunningTaskToExit(LosTaskCB *runTask, UINT32 status)
+{
+    UINT32 intSave;
+
+    if (OsIsProcessThreadGroup(runTask)) {
+        OsProcessThreadGroupDestroy();
+    }
+
+    OsHookCall(LOS_HOOK_TYPE_TASK_DELETE, runTask);
+
+    SCHEDULER_LOCK(intSave);
+    if (OsProcessThreadNumberGet(runTask) == 1) { /* 1: The last task of the process exits */
+        SCHEDULER_UNLOCK(intSave);
+
+        OsTaskResourcesToFree(runTask);
+        OsProcessResourcesToFree(OS_PCB_FROM_TCB(runTask));
+
+        SCHEDULER_LOCK(intSave);
+
+        OsProcessNaturalExit(OS_PCB_FROM_TCB(runTask), status);
+        OsTaskReleaseHoldLock(runTask);
+        OsTaskStatusUnusedSet(runTask);
+    } else if (runTask->taskStatus & OS_TASK_FLAG_PTHREAD_JOIN) {
+        OsTaskReleaseHoldLock(runTask);
+    } else {
+        SCHEDULER_UNLOCK(intSave);
+
+        OsTaskResourcesToFree(runTask);
+
+        SCHEDULER_LOCK(intSave);
+        OsInactiveTaskDelete(runTask);
+        OsEventWriteUnsafe(&g_resourceEvent, OS_RESOURCE_EVENT_FREE, FALSE, NULL);
+    }
+
+    OsSchedResched();
+    SCHEDULER_UNLOCK(intSave);
+    return;
+}
+
+LITE_OS_SEC_TEXT VOID OsInactiveTaskDelete(LosTaskCB *taskCB)
+{
+    UINT16 taskStatus = taskCB->taskStatus;
+
+    OsTaskReleaseHoldLock(taskCB);
+
+    taskCB->ops->exit(taskCB);
+    if (taskStatus & OS_TASK_STATUS_PENDING) {
+        LosMux *mux = (LosMux *)taskCB->taskMux;
+        if (LOS_MuxIsValid(mux) == TRUE) {
+            OsMuxBitmapRestore(mux, NULL, taskCB);
+        }
+    }
+
+    OsTaskStatusUnusedSet(taskCB);
+
+    OsDeleteTaskFromProcess(taskCB);
+
+    OsHookCall(LOS_HOOK_TYPE_TASK_DELETE, taskCB);
+}
+
+LITE_OS_SEC_TEXT_INIT UINT32 LOS_TaskDelete(UINT32 taskID)
+{
+    UINT32 intSave;
+    UINT32 ret = LOS_OK;
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+
+    if (OS_INT_ACTIVE) {
+        return LOS_ERRNO_TSK_YIELD_IN_INT;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    if (taskCB == OsCurrTaskGet()) {
+        if (!OsPreemptable()) {
+            return LOS_ERRNO_TSK_DELETE_LOCKED;
+        }
+
+        OsRunningTaskToExit(taskCB, OS_PRO_EXIT_OK);
+        return LOS_NOK;
+    }
+
+    SCHEDULER_LOCK(intSave);
+    if (OsTaskIsNotDelete(taskCB)) {
+        if (OsTaskIsUnused(taskCB)) {
+            ret = LOS_ERRNO_TSK_NOT_CREATED;
+        } else {
+            ret = LOS_ERRNO_TSK_OPERATE_SYSTEM_TASK;
+        }
+        OS_GOTO_ERREND();
+    }
+
+#ifdef LOSCFG_KERNEL_SMP
+    if (taskCB->taskStatus & OS_TASK_STATUS_RUNNING) {
+        taskCB->signal = SIGNAL_KILL;
+        LOS_MpSchedule(taskCB->currCpu);
+        ret = OsTaskSyncWait(taskCB);
+        OS_GOTO_ERREND();
+    }
+#endif
+
+    OsInactiveTaskDelete(taskCB);
+    OsEventWriteUnsafe(&g_resourceEvent, OS_RESOURCE_EVENT_FREE, FALSE, NULL);
+
+LOS_ERREND:
+    SCHEDULER_UNLOCK(intSave);
+    if (ret == LOS_OK) {
+        LOS_Schedule();
+    }
+    return ret;
+}
+
+LITE_OS_SEC_TEXT UINT32 LOS_TaskDelay(UINT32 tick)
+{
+    UINT32 intSave;
+
+    if (OS_INT_ACTIVE) {
+        PRINT_ERR("In interrupt not allow delay task!\n");
+        return LOS_ERRNO_TSK_DELAY_IN_INT;
+    }
+
+    LosTaskCB *runTask = OsCurrTaskGet();
+    if (runTask->taskStatus & OS_TASK_FLAG_SYSTEM_TASK) {
+        OsBackTrace();
+        return LOS_ERRNO_TSK_OPERATE_SYSTEM_TASK;
+    }
+
+    if (!OsPreemptable()) {
+        return LOS_ERRNO_TSK_DELAY_IN_LOCK;
+    }
+    OsHookCall(LOS_HOOK_TYPE_TASK_DELAY, tick);
+    if (tick == 0) {
+        return LOS_TaskYield();
+    }
+
+    SCHEDULER_LOCK(intSave);
+    UINT32 ret = runTask->ops->delay(runTask, OS_SCHED_TICK_TO_CYCLE(tick));
+    OsHookCall(LOS_HOOK_TYPE_MOVEDTASKTODELAYEDLIST, runTask);
+    SCHEDULER_UNLOCK(intSave);
+    return ret;
+}
+
+LITE_OS_SEC_TEXT_MINOR UINT16 LOS_TaskPriGet(UINT32 taskID)
+{
+    UINT32 intSave;
+    SchedParam param = { 0 };
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return (UINT16)OS_INVALID;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        SCHEDULER_UNLOCK(intSave);
+        return (UINT16)OS_INVALID;
+    }
+
+    taskCB->ops->schedParamGet(taskCB, &param);
+    SCHEDULER_UNLOCK(intSave);
+    return param.priority;
+}
+
+LITE_OS_SEC_TEXT_MINOR UINT32 LOS_TaskPriSet(UINT32 taskID, UINT16 taskPrio)
+{
+    UINT32 intSave;
+    SchedParam param = { 0 };
+
+    if (taskPrio > OS_TASK_PRIORITY_LOWEST) {
+        return LOS_ERRNO_TSK_PRIOR_ERROR;
+    }
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    if (taskCB->taskStatus & OS_TASK_FLAG_SYSTEM_TASK) {
+        return LOS_ERRNO_TSK_OPERATE_SYSTEM_TASK;
+    }
+
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_ERRNO_TSK_NOT_CREATED;
+    }
+
+    taskCB->ops->schedParamGet(taskCB, &param);
+
+    param.priority = taskPrio;
+
+    BOOL needSched = taskCB->ops->schedParamModify(taskCB, &param);
+    SCHEDULER_UNLOCK(intSave);
+
+    LOS_MpSchedule(OS_MP_CPU_ALL);
+    if (needSched && OS_SCHEDULER_ACTIVE) {
+        LOS_Schedule();
+    }
+    return LOS_OK;
+}
+
+LITE_OS_SEC_TEXT_MINOR UINT32 LOS_CurTaskPriSet(UINT16 taskPrio)
+{
+    return LOS_TaskPriSet(OsCurrTaskGet()->taskID, taskPrio);
+}
+
+LITE_OS_SEC_TEXT_MINOR UINT32 LOS_TaskYield(VOID)
+{
+    UINT32 intSave;
+
+    if (OS_INT_ACTIVE) {
+        return LOS_ERRNO_TSK_YIELD_IN_INT;
+    }
+
+    if (!OsPreemptable()) {
+        return LOS_ERRNO_TSK_YIELD_IN_LOCK;
+    }
+
+    LosTaskCB *runTask = OsCurrTaskGet();
+    if (OS_TID_CHECK_INVALID(runTask->taskID)) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+
+    SCHEDULER_LOCK(intSave);
+    /* reset timeslice of yielded task */
+    runTask->ops->yield(runTask);
+    SCHEDULER_UNLOCK(intSave);
+    return LOS_OK;
+}
+
+LITE_OS_SEC_TEXT_MINOR VOID LOS_TaskLock(VOID)
+{
+    UINT32 intSave;
+
+    intSave = LOS_IntLock();
+    OsSchedLock();
+    LOS_IntRestore(intSave);
+}
+
+LITE_OS_SEC_TEXT_MINOR VOID LOS_TaskUnlock(VOID)
+{
+    UINT32 intSave;
+
+    intSave = LOS_IntLock();
+    BOOL needSched = OsSchedUnlockResch();
+    LOS_IntRestore(intSave);
+
+    if (needSched) {
+        LOS_Schedule();
+    }
+}
+
+LITE_OS_SEC_TEXT_MINOR UINT32 LOS_TaskInfoGet(UINT32 taskID, TSK_INFO_S *taskInfo)
+{
+    UINT32 intSave;
+    SchedParam param = { 0 };
+
+    if (taskInfo == NULL) {
+        return LOS_ERRNO_TSK_PTR_NULL;
+    }
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_ERRNO_TSK_NOT_CREATED;
+    }
+
+    if (!(taskCB->taskStatus & OS_TASK_STATUS_RUNNING) || OS_INT_ACTIVE) {
+        taskInfo->uwSP = (UINTPTR)taskCB->stackPointer;
+    } else {
+        taskInfo->uwSP = ArchSPGet();
+    }
+
+    taskCB->ops->schedParamGet(taskCB, &param);
+    taskInfo->usTaskStatus = taskCB->taskStatus;
+    taskInfo->usTaskPrio = param.priority;
+    taskInfo->uwStackSize = taskCB->stackSize;
+    taskInfo->uwTopOfStack = taskCB->topOfStack;
+    taskInfo->uwEventMask = taskCB->eventMask;
+    taskInfo->taskEvent = taskCB->taskEvent;
+    taskInfo->pTaskMux = taskCB->taskMux;
+    taskInfo->uwTaskID = taskID;
+
+    if (strncpy_s(taskInfo->acName, LOS_TASK_NAMELEN, taskCB->taskName, LOS_TASK_NAMELEN - 1) != EOK) {
+        PRINT_ERR("Task name copy failed!\n");
+    }
+    taskInfo->acName[LOS_TASK_NAMELEN - 1] = '\0';
+
+    taskInfo->uwBottomOfStack = TRUNCATE(((UINTPTR)taskCB->topOfStack + taskCB->stackSize),
+                                         OS_TASK_STACK_ADDR_ALIGN);
+    taskInfo->uwCurrUsed = (UINT32)(taskInfo->uwBottomOfStack - taskInfo->uwSP);
+
+    taskInfo->bOvf = OsStackWaterLineGet((const UINTPTR *)taskInfo->uwBottomOfStack,
+                                         (const UINTPTR *)taskInfo->uwTopOfStack, &taskInfo->uwPeakUsed);
+    SCHEDULER_UNLOCK(intSave);
+    return LOS_OK;
+}
+
+LITE_OS_SEC_TEXT BOOL OsTaskCpuAffiSetUnsafe(UINT32 taskID, UINT16 newCpuAffiMask, UINT16 *oldCpuAffiMask)
+{
+#ifdef LOSCFG_KERNEL_SMP
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+
+    taskCB->cpuAffiMask = newCpuAffiMask;
+    *oldCpuAffiMask = CPUID_TO_AFFI_MASK(taskCB->currCpu);
+    if (!((*oldCpuAffiMask) & newCpuAffiMask)) {
+        taskCB->signal = SIGNAL_AFFI;
+        return TRUE;
+    }
+#else
+    (VOID)taskID;
+    (VOID)newCpuAffiMask;
+    (VOID)oldCpuAffiMask;
+#endif /* LOSCFG_KERNEL_SMP */
+    return FALSE;
+}
+
+LITE_OS_SEC_TEXT_MINOR UINT32 LOS_TaskCpuAffiSet(UINT32 taskID, UINT16 cpuAffiMask)
+{
+    BOOL needSched = FALSE;
+    UINT32 intSave;
+    UINT16 currCpuMask;
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_ERRNO_TSK_ID_INVALID;
+    }
+
+    if (!(cpuAffiMask & LOSCFG_KERNEL_CPU_MASK)) {
+        return LOS_ERRNO_TSK_CPU_AFFINITY_MASK_ERR;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_ERRNO_TSK_NOT_CREATED;
+    }
+    needSched = OsTaskCpuAffiSetUnsafe(taskID, cpuAffiMask, &currCpuMask);
+
+    SCHEDULER_UNLOCK(intSave);
+    if (needSched && OS_SCHEDULER_ACTIVE) {
+        LOS_MpSchedule(currCpuMask);
+        LOS_Schedule();
+    }
+
+    return LOS_OK;
+}
+
+LITE_OS_SEC_TEXT_MINOR UINT16 LOS_TaskCpuAffiGet(UINT32 taskID)
+{
+#ifdef LOSCFG_KERNEL_SMP
+#define INVALID_CPU_AFFI_MASK   0
+    UINT16 cpuAffiMask;
+    UINT32 intSave;
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return INVALID_CPU_AFFI_MASK;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        SCHEDULER_UNLOCK(intSave);
+        return INVALID_CPU_AFFI_MASK;
+    }
+
+    cpuAffiMask = taskCB->cpuAffiMask;
+    SCHEDULER_UNLOCK(intSave);
+
+    return cpuAffiMask;
+#else
+    (VOID)taskID;
+    return 1;
+#endif
+}
+
+/*
+ * Description : Process pending signals tagged by others cores
+ */
+LITE_OS_SEC_TEXT_MINOR VOID OsTaskProcSignal(VOID)
+{
+    UINT32 ret;
+
+    /*
+     * private and uninterruptable, no protection needed.
+     * while this task is always running when others cores see it,
+     * so it keeps receiving signals while follow code executing.
+     */
+    LosTaskCB *runTask = OsCurrTaskGet();
+    if (runTask->signal == SIGNAL_NONE) {
+        return;
+    }
+
+    if (runTask->signal & SIGNAL_KILL) {
+        /*
+         * clear the signal, and do the task deletion. if the signaled task has been
+         * scheduled out, then this deletion will wait until next run.
+         */
+        runTask->signal = SIGNAL_NONE;
+        ret = LOS_TaskDelete(runTask->taskID);
+        if (ret != LOS_OK) {
+            PRINT_ERR("Task proc signal delete task(%u) failed err:0x%x\n", runTask->taskID, ret);
+        }
+    } else if (runTask->signal & SIGNAL_SUSPEND) {
+        runTask->signal &= ~SIGNAL_SUSPEND;
+
+        /* suspend killed task may fail, ignore the result */
+        (VOID)LOS_TaskSuspend(runTask->taskID);
+#ifdef LOSCFG_KERNEL_SMP
+    } else if (runTask->signal & SIGNAL_AFFI) {
+        runTask->signal &= ~SIGNAL_AFFI;
+
+        /* priority queue has updated, notify the target cpu */
+        LOS_MpSchedule((UINT32)runTask->cpuAffiMask);
+#endif
+    }
+}
+
+LITE_OS_SEC_TEXT INT32 OsSetTaskName(LosTaskCB *taskCB, const CHAR *name, BOOL setPName)
+{
+    UINT32 intSave;
+    errno_t err;
+    const CHAR *namePtr = NULL;
+    CHAR nameBuff[OS_TCB_NAME_LEN] = { 0 };
+
+    if ((taskCB == NULL) || (name == NULL)) {
+        return EINVAL;
+    }
+
+    if (LOS_IsUserAddress((VADDR_T)(UINTPTR)name)) {
+        err = LOS_StrncpyFromUser(nameBuff, (const CHAR *)name, OS_TCB_NAME_LEN);
+        if (err < 0) {
+            return -err;
+        }
+        namePtr = nameBuff;
+    } else {
+        namePtr = name;
+    }
+
+    SCHEDULER_LOCK(intSave);
+
+    err = strncpy_s(taskCB->taskName, OS_TCB_NAME_LEN, (VOID *)namePtr, OS_TCB_NAME_LEN - 1);
+    if (err != EOK) {
+        err = EINVAL;
+        goto EXIT;
+    }
+
+    err = LOS_OK;
+    /* if thread is main thread, then set processName as taskName */
+    if (OsIsProcessThreadGroup(taskCB) && (setPName == TRUE)) {
+        err = (INT32)OsSetProcessName(OS_PCB_FROM_TCB(taskCB), (const CHAR *)taskCB->taskName);
+        if (err != LOS_OK) {
+            err = EINVAL;
+        }
+    }
+
+EXIT:
+    SCHEDULER_UNLOCK(intSave);
+    return err;
+}
+
+INT32 OsUserTaskOperatePermissionsCheck(const LosTaskCB *taskCB)
+{
+    return OsUserProcessOperatePermissionsCheck(taskCB, (UINTPTR)OsCurrProcessGet());
+}
+
+INT32 OsUserProcessOperatePermissionsCheck(const LosTaskCB *taskCB, UINTPTR processCB)
+{
+    if (taskCB == NULL) {
+        return LOS_EINVAL;
+    }
+
+    if (processCB == (UINTPTR)OsGetDefaultProcessCB()) {
+        return LOS_EINVAL;
+    }
+
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        return LOS_EINVAL;
+    }
+
+    if (processCB != taskCB->processCB) {
+        return LOS_EPERM;
+    }
+
+    return LOS_OK;
+}
+
+LITE_OS_SEC_TEXT_INIT STATIC UINT32 OsCreateUserTaskParamCheck(UINT32 processID, TSK_INIT_PARAM_S *param)
+{
+    UserTaskParam *userParam = NULL;
+
+    if (param == NULL) {
+        return OS_INVALID_VALUE;
+    }
+
+    userParam = &param->userParam;
+    if ((processID == OS_INVALID_VALUE) && !LOS_IsUserAddress(userParam->userArea)) {
+        return OS_INVALID_VALUE;
+    }
+
+    if (!LOS_IsUserAddress((UINTPTR)param->pfnTaskEntry)) {
+        return OS_INVALID_VALUE;
+    }
+
+    if (userParam->userMapBase && !LOS_IsUserAddressRange(userParam->userMapBase, userParam->userMapSize)) {
+        return OS_INVALID_VALUE;
+    }
+
+    if (!LOS_IsUserAddress(userParam->userSP)) {
+        return OS_INVALID_VALUE;
+    }
+
+    return LOS_OK;
+}
+
+LITE_OS_SEC_TEXT_INIT UINT32 OsCreateUserTask(UINTPTR processID, TSK_INIT_PARAM_S *initParam)
+{
+    UINT32 taskID;
+    UINT32 ret;
+    UINT32 intSave;
+    INT32 policy;
+    SchedParam param;
+
+    ret = OsCreateUserTaskParamCheck(processID, initParam);
+    if (ret != LOS_OK) {
+        return ret;
+    }
+
+    initParam->uwStackSize = OS_USER_TASK_SYSCALL_STACK_SIZE;
+    initParam->usTaskPrio = OS_TASK_PRIORITY_LOWEST;
+    if (processID == OS_INVALID_VALUE) {
+        SCHEDULER_LOCK(intSave);
+        LosProcessCB *processCB = OsCurrProcessGet();
+        initParam->processID = (UINTPTR)processCB;
+        initParam->consoleID = processCB->consoleID;
+        SCHEDULER_UNLOCK(intSave);
+        ret = LOS_GetProcessScheduler(processCB->processID, &policy, NULL);
+        if (ret != LOS_OK) {
+            return OS_INVALID_VALUE;
+        }
+        initParam->policy = policy;
+        if (policy == LOS_SCHED_DEADLINE) {
+            OsSchedProcessDefaultSchedParamGet((UINT16)policy, &param);
+            initParam->runTimeUs = param.runTimeUs;
+            initParam->deadlineUs = param.deadlineUs;
+            initParam->periodUs = param.periodUs;
+        }
+    } else {
+        initParam->policy = LOS_SCHED_RR;
+        initParam->processID = processID;
+        initParam->consoleID = 0;
+    }
+
+    ret = LOS_TaskCreateOnly(&taskID, initParam);
+    if (ret != LOS_OK) {
+        return OS_INVALID_VALUE;
+    }
+
+    return taskID;
+}
+
+LITE_OS_SEC_TEXT INT32 LOS_GetTaskScheduler(INT32 taskID)
+{
+    UINT32 intSave;
+    INT32 policy;
+    SchedParam param = { 0 };
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return -LOS_EINVAL;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        policy = -LOS_EINVAL;
+        OS_GOTO_ERREND();
+    }
+
+    taskCB->ops->schedParamGet(taskCB, &param);
+    policy = (INT32)param.policy;
+
+LOS_ERREND:
+    SCHEDULER_UNLOCK(intSave);
+    return policy;
+}
+
+LITE_OS_SEC_TEXT INT32 LOS_SetTaskScheduler(INT32 taskID, UINT16 policy, UINT16 priority)
+{
+    SchedParam param = { 0 };
+    UINT32 intSave;
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_ESRCH;
+    }
+
+    if (priority > OS_TASK_PRIORITY_LOWEST) {
+        return LOS_EINVAL;
+    }
+
+    if ((policy != LOS_SCHED_FIFO) && (policy != LOS_SCHED_RR)) {
+        return LOS_EINVAL;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    if (taskCB->taskStatus & OS_TASK_FLAG_SYSTEM_TASK) {
+        return LOS_EPERM;
+    }
+
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_EINVAL;
+    }
+
+    taskCB->ops->schedParamGet(taskCB, &param);
+    param.policy = policy;
+    param.priority = priority;
+    BOOL needSched = taskCB->ops->schedParamModify(taskCB, &param);
+    SCHEDULER_UNLOCK(intSave);
+
+    LOS_MpSchedule(OS_MP_CPU_ALL);
+    if (needSched && OS_SCHEDULER_ACTIVE) {
+        LOS_Schedule();
+    }
+
+    return LOS_OK;
+}
+
+STATIC UINT32 OsTaskJoinCheck(UINT32 taskID)
+{
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_EINVAL;
+    }
+
+    if (OS_INT_ACTIVE) {
+        return LOS_EINTR;
+    }
+
+    if (!OsPreemptable()) {
+        return LOS_EINVAL;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    if (taskCB->taskStatus & OS_TASK_FLAG_SYSTEM_TASK) {
+        return LOS_EPERM;
+    }
+
+    if (taskCB == OsCurrTaskGet()) {
+        return LOS_EDEADLK;
+    }
+
+    return LOS_OK;
+}
+
+UINT32 LOS_TaskJoin(UINT32 taskID, UINTPTR *retval)
+{
+    UINT32 intSave;
+    LosTaskCB *runTask = OsCurrTaskGet();
+    UINT32 errRet;
+
+    errRet = OsTaskJoinCheck(taskID);
+    if (errRet != LOS_OK) {
+        return errRet;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_EINVAL;
+    }
+
+    if (runTask->processCB != taskCB->processCB) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_EPERM;
+    }
+
+    errRet = OsTaskJoinPendUnsafe(taskCB);
+    SCHEDULER_UNLOCK(intSave);
+
+    if (errRet == LOS_OK) {
+        LOS_Schedule();
+
+        if (retval != NULL) {
+            *retval = (UINTPTR)taskCB->joinRetval;
+        }
+
+        (VOID)LOS_TaskDelete(taskID);
+        return LOS_OK;
+    }
+
+    return errRet;
+}
+
+UINT32 LOS_TaskDetach(UINT32 taskID)
+{
+    UINT32 intSave;
+    LosTaskCB *runTask = OsCurrTaskGet();
+    UINT32 errRet;
+
+    if (OS_TID_CHECK_INVALID(taskID)) {
+        return LOS_EINVAL;
+    }
+
+    if (OS_INT_ACTIVE) {
+        return LOS_EINTR;
+    }
+
+    LosTaskCB *taskCB = OS_TCB_FROM_TID(taskID);
+    SCHEDULER_LOCK(intSave);
+    if (taskCB->taskStatus & OS_TASK_STATUS_UNUSED) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_EINVAL;
+    }
+
+    if (runTask->processCB != taskCB->processCB) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_EPERM;
+    }
+
+    if (taskCB->taskStatus & OS_TASK_STATUS_EXIT) {
+        SCHEDULER_UNLOCK(intSave);
+        return LOS_TaskJoin(taskID, NULL);
+    }
+
+    errRet = OsTaskSetDetachUnsafe(taskCB);
+    SCHEDULER_UNLOCK(intSave);
+    return errRet;
+}
+
+LITE_OS_SEC_TEXT UINT32 LOS_GetSystemTaskMaximum(VOID)
+{
+    return g_taskMaxNum;
+}
+
+LosTaskCB *OsGetDefaultTaskCB(VOID)
+{
+    return &g_taskCBArray[g_taskMaxNum];
+}
+
+LITE_OS_SEC_TEXT VOID OsWriteResourceEvent(UINT32 events)
+{
+    (VOID)LOS_EventWrite(&g_resourceEvent, events);
+}
+
+LITE_OS_SEC_TEXT VOID OsWriteResourceEventUnsafe(UINT32 events)
+{
+    (VOID)OsEventWriteUnsafe(&g_resourceEvent, events, FALSE, NULL);
+}
+
+STATIC VOID OsResourceRecoveryTask(VOID)
+{
+    UINT32 ret;
+
+    while (1) {
+        ret = LOS_EventRead(&g_resourceEvent, OS_RESOURCE_EVENT_MASK,
+                            LOS_WAITMODE_OR | LOS_WAITMODE_CLR, LOS_WAIT_FOREVER);
+        if (ret & (OS_RESOURCE_EVENT_FREE | OS_RESOURCE_EVENT_OOM)) {
+            OsTaskCBRecycleToFree();
+
+            OsProcessCBRecycleToFree();
+        }
+
+#ifdef LOSCFG_ENABLE_OOM_LOOP_TASK
+        if (ret & OS_RESOURCE_EVENT_OOM) {
+            (VOID)OomCheckProcess();
+        }
+#endif
+    }
+}
+
+LITE_OS_SEC_TEXT UINT32 OsResourceFreeTaskCreate(VOID)
+{
+    UINT32 ret;
+    UINT32 taskID;
+    TSK_INIT_PARAM_S taskInitParam;
+
+    ret = LOS_EventInit((PEVENT_CB_S)&g_resourceEvent);
+    if (ret != LOS_OK) {
+        return LOS_NOK;
+    }
+
+    (VOID)memset_s((VOID *)(&taskInitParam), sizeof(TSK_INIT_PARAM_S), 0, sizeof(TSK_INIT_PARAM_S));
+    taskInitParam.pfnTaskEntry = (TSK_ENTRY_FUNC)OsResourceRecoveryTask;
+    taskInitParam.uwStackSize = OS_TASK_RESOURCE_STATIC_SIZE;
+    taskInitParam.pcName = "ResourcesTask";
+    taskInitParam.usTaskPrio = OS_TASK_RESOURCE_FREE_PRIORITY;
+    ret = LOS_TaskCreate(&taskID, &taskInitParam);
+    if (ret == LOS_OK) {
+        OS_TCB_FROM_TID(taskID)->taskStatus |= OS_TASK_FLAG_NO_DELETE;
+    }
+    return ret;
+}
+
+LOS_MODULE_INIT(OsResourceFreeTaskCreate, LOS_INIT_LEVEL_KMOD_TASK);
+

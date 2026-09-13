@@ -1,0 +1,117 @@
+/*
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef HIVIEWDFX_FREEZE_COMMON_H
+#define HIVIEWDFX_FREEZE_COMMON_H
+
+#include <list>
+#include <memory>
+#include <set>
+#include <vector>
+
+#include "rule_cluster.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+const std::string FREEZE_DETECTOR_PLUGIN_NAME = "FreezeDetector";
+const std::string FREEZE_DETECTOR_PLUGIN_VERSION = "1.0";
+class FreezeCommon {
+public:
+    static constexpr const char* EVENT_PID = "PID";
+    static constexpr const char* EVENT_TID = "TID";
+    static constexpr const char* EVENT_UID = "UID";
+    static constexpr const char* EVENT_SYS_UID = "uid_";
+    static constexpr const char* EVENT_PACKAGE_NAME = "PACKAGE_NAME";
+    static constexpr const char* EVENT_PROCESS_NAME = "PROCESS_NAME";
+    static constexpr const char* EVENT_MSG = "MSG";
+    static constexpr const char* HITRACE_TIME = "HITRACE_TIME";
+    static constexpr const char* SYSRQ_TIME = "SYSRQ_TIME";
+    static constexpr const char* TERMINAL_THREAD_STACK = "TERMINAL_THREAD_STACK";
+    static constexpr const char* TELEMETRY_ID = "TELEMETRY_ID";
+    static constexpr const char* TRACE_NAME = "TRACE_NAME";
+    static constexpr const char* FREEZE_HALF_HIVIEW_SUCCESS = "FREEZE_HALF_HIVIEW_LOG write success";
+    static constexpr const char* PB_EVENTS[] = {
+        "UI_BLOCK_3S", "THREAD_BLOCK_3S", "BUSSNESS_THREAD_BLOCK_3S", "LIFECYCLE_HALF_TIMEOUT",
+        "LIFECYCLE_HALF_TIMEOUT_WARNING", "SERVICE_WARNING"
+    };
+    static constexpr const char* EVENT_TRACE_ID = "HITRACE_ID";
+    static constexpr const char* PROC_STATM = "PROC_STATM";
+    static constexpr const char* HOST_RESOURCE_WARNING = "HOST_RESOURCE_WARNING";
+    static constexpr const char* FREEZE_INFO_PATH = "FREEZE_INFO_PATH";
+    static constexpr const char* EVENT_ENABLE_MAINTHREAD_SAMPLE = "ENABLE_MAINTHREAD_SAMPLE";
+    static constexpr const char* EVENT_APPLICATION_HEAP_INFO = "APPLICATION_HEAP_INFO";
+    static constexpr const char* EVENT_APPLICATION_GC_INFO = "APPLICATION_GC_INFO";
+    static constexpr const char* EVENT_APPLICATION_IO_INFO = "APPLICATION_IO_INFO";
+    static constexpr const char* EVENT_IS_BLOCK_IN_GC = "IS_BLOCK_IN_GC";
+    static constexpr const char* EVENT_PROCESS_LIFECYCLE_INFO = "PROCESS_LIFECYCLE_INFO";
+    static constexpr const char* APP_RUNNING_UNIQUE_ID = "APP_RUNNING_UNIQUE_ID";
+    static constexpr const char* FOREGROUND = "FOREGROUND";
+    static constexpr const char* EVENT_TASK_NAME = "TASK_NAME";
+    static constexpr const char* QNAME = "QNAME";
+    static constexpr const char* QOS = "QOS";
+    static constexpr const char* CLUSTER_RAW = "CLUSTER_RAW";
+    static constexpr const char* EVENT_TIMEOUT_EVENT_ID = "INPUT_ID";
+    static constexpr const char* EVENT_LAST_DISPATCH_EVENT_ID = "LAST_DISPATCH_EVENTID";
+    static constexpr const char* EVENT_LAST_PROCESS_EVENT_ID = "LAST_PROCESS_EVENTID";
+    static constexpr const char* EVENT_LAST_MARKED_EVENT_ID = "LAST_MARKED_EVENTID";
+    static constexpr const char* EVENT_THERMAL_LEVEL = "THERMAL_LEVEL";
+    static constexpr const char* EVENT_EXTERNAL_LOG = "EXTERNAL_LOG";
+    static constexpr const char* EVENT_IS_HICOLLIE = "IS_HICOLLIE";
+    static constexpr const char* EVENT_REPORT_LIFECYCLE_AS_APPFREEZE = "report_lifecycle_as_appfreeze";
+    static constexpr const char* EVENT_RENDER_PID = "pid_";
+    static constexpr const char* EVENT_RENDER_UID = "uid_";
+    static constexpr const char* WARNING_EVENTS[] = {
+        "THREAD_BLOCK_6S",
+        "LIFECYCLE_TIMEOUT",
+    };
+    static constexpr const char *const COLON_SEPARATOR = ":";
+    static constexpr const char *const COMMA_SEPARATOR = ",";
+    static constexpr const char *const FORMAT_COMMA_SEPARATOR = ", ";
+    static constexpr const char *const SPACE_SEPARATOR = " ";
+    static constexpr const char *const MAIN_HEAP = "MainHeap(bytes): ";
+    static constexpr const char *const SHARED_HEAP = "SharedHeap(bytes): ";
+    static constexpr const char *const USED_HEAP = "Used ";
+    static constexpr const char *const TOTAL_HEAP = ", Total ";
+    static constexpr const char *const GC_MAX_PAUSE = "maxPause";
+    static constexpr const char *const GC_MIN_PAUSE = "minPause";
+    static constexpr const char *const GC_AVERAGE_PAUSE = "averagePause";
+    static constexpr const char *const GC_LAST_START_TIME = "lastStartTime";
+    static constexpr const char *const GC_LAST_END_TIME = "lastEndTime";
+    static constexpr const char *const GC_PAUSE_UNIT = "ms";
+    static constexpr const char *const GC_STATUS = "GC Status: ";
+    static constexpr const char *const IO_STATUS = "I/O(bytes): ";
+    static constexpr int32_t FOUNDATION_UID = 5523;
+
+    FreezeCommon();
+    ~FreezeCommon();
+
+    bool Init();
+    bool IsFreezeEvent(const std::string& domain, const std::string& stringId) const;
+    bool IsApplicationEvent(const std::string& domain, const std::string& stringId) const;
+    bool IsSystemEvent(const std::string& domain, const std::string& stringId) const;
+    bool IsSysWarningEvent(const std::string& domain, const std::string& stringId) const;
+    bool IsAppFreezeWarningEvent(const std::string& domain, const std::string& stringId) const;
+    std::set<std::string> GetPrincipalStringIds() const;
+    std::shared_ptr<FreezeRuleCluster> GetFreezeRuleCluster() const;
+    static void WriteTimeInfoToFd(int fd, const std::string& msg, bool isStart = true);
+    static time_t GetFaultTime(const std::string& msg);
+    bool IsReportAppFreezeEvent(const std::string& stringId) const;
+private:
+    std::shared_ptr<FreezeRuleCluster> freezeRuleCluster_;
+    bool IsAssignedEvent(const std::string& domain, const std::string& stringId, int freezeId) const;
+};
+}  // namespace HiviewDFX
+}  // namespace OHOS
+#endif // HIVIEWDFX_FREEZE_COMMON_H

@@ -1,0 +1,852 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "dfx_lite_dump_request.h"
+
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <securec.h>
+#include <signal.h>
+#include <sigchain.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdatomic.h>
+#include <time.h>
+#include <unistd.h>
+#include <sys/capability.h>
+#include <sys/mman.h>
+#include <info/fatal_message.h>
+#include <sys/syscall.h>
+
+#include "dfx_cutil.h"
+#include "dfx_define.h"
+#include "dfx_dump_request.h"
+#include "dfx_log.h"
+#include "dfx_signalhandler_exception.h"
+#include "dfx_allocator.h"
+#include "faultlog_client.h"
+#include "safe_reader.h"
+
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D11
+#endif
+
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "DfxSignalHandler"
+#endif
+
+#define FD_TABLE_SIZE 128
+#define ARG_MAX_NUM 131072
+
+typedef struct FdEntry {
+    _Atomic(uint64_t) close_tag;
+    _Atomic(char) signal_flag;
+} FdEntry;
+
+typedef struct FdTableOverflow {
+    size_t len;
+    struct FdEntry entries[];
+} FdTableOverflow;
+
+typedef struct FdTable {
+    _Atomic(enum fdsan_error_level) error_level;
+    struct FdEntry entries[FD_TABLE_SIZE];
+    _Atomic(struct FdTableOverflow*) overflow;
+} FdTable;
+
+static void* g_mmapSpace = MAP_FAILED;
+static unsigned int g_mmapPos = 0;
+#if defined(__aarch64__)
+static _Atomic(int) g_threadStartCount = 0;
+#endif
+static _Atomic(int) g_threadCompletedCount = 0;
+static int g_threadSentCount = 0;
+static const int LOCALDUMP_TIMEOUT = 1000; // 1000 : 1 sec timeout
+
+static int g_totalMemorySize = 0;
+static const int FILE_PATH_LEN = 256;
+static const char * const PID_STR_NAME = "Pid:";
+static const char * const THREAD_SELF_STATUS_PATH = "/proc/thread-self/status";
+
+pid_t GetProcId(const char *statusPath, const char *item)
+{
+    pid_t pid = -1;
+    if (statusPath == NULL || item == NULL) {
+        return pid;
+    }
+
+    int fd = OHOS_TEMP_FAILURE_RETRY(SysOpen(statusPath, O_RDONLY));
+    if (fd < 0) {
+        DFXLOGE("GetRealPid:: open failed! pid:%{public}d, errno:%{public}d).", pid, errno);
+        return pid;
+    }
+
+    char buf[LINE_BUF_SIZE] = {0};
+    int i = 0;
+    char b;
+    ssize_t nRead = 0;
+    while (nRead >= 0) {
+        nRead = OHOS_TEMP_FAILURE_RETRY(syscall(SYS_read, fd, &b, sizeof(char)));
+        if (nRead <= 0 || b == '\0') {
+            DFXLOGE("GetRealPid:: read failed! pid:(%{public}d), errno:(%{public}d), nRead(%{public}zd), \
+                readchar(%{public}02X).", pid, errno, nRead, b);
+            break;
+        }
+
+        if (b == '\n' || i == LINE_BUF_SIZE) {
+            if (strncmp(buf, item, strlen(item)) != 0) {
+                i = 0;
+                (void)memset_s(buf, sizeof(buf), '\0', sizeof(buf));
+                continue;
+            }
+            if (sscanf_s(buf, "%*[^0-9]%d", &pid) != 1) {
+                DFXLOGE("GetRealPid sscanf failed! pid:%{public}d, err:%{public}d, buf%{public}s.", pid, errno, buf);
+            }
+            break;
+        }
+        buf[i] = b;
+        i++;
+    }
+    syscall(SYS_close, fd);
+    return pid;
+}
+
+bool MMapMemoryOnce(int mmapSize)
+{
+    DFXLOGI("lite dump start mmap memory");
+    g_mmapSpace = mmap(NULL, mmapSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (g_mmapSpace == MAP_FAILED) {
+        DFXLOGE("lite dump mmap failed %{public}d", errno);
+        return false;
+    }
+    g_totalMemorySize = mmapSize;
+    DFXLOGI("lite dump finish mmap memory");
+    return true;
+}
+
+void UnmapMemoryOnce(int mmapSize)
+{
+    if (g_mmapSpace == MAP_FAILED) {
+        return;
+    }
+    DFXLOGI("lite dump start unmap memory");
+    if (munmap(g_mmapSpace, mmapSize) == -1) {
+        DFXLOGE("lite dump munmap failed %{public}d", errno);
+    } else {
+        DFXLOGI("lite dump finish unmap memory");
+    }
+    g_mmapSpace = MAP_FAILED;
+}
+
+/**
+ * should collect stack in src process
+ */
+bool CollectStack(const struct ProcessDumpRequest *request)
+{
+    DFXLOGI("start collect process stack");
+    if (g_mmapSpace == MAP_FAILED) {
+        DFXLOGE("mmap failed");
+        return false;
+    }
+#if defined(__aarch64__)
+    if (g_mmapPos + PRIV_COPY_STACK_BUFFER_SIZE > g_totalMemorySize) {
+        DFXLOGE("collect statck mmap space is over flow");
+        return false;
+    }
+    char* destPtr = (char*)g_mmapSpace + g_mmapPos;
+    uintptr_t srcPtr =  ((ucontext_t)request->context).uc_mcontext.sp - PRIV_STACK_FORWARD_BUF_SIZE;
+    CopyReadableBufSafe((uintptr_t)destPtr, PRIV_COPY_STACK_BUFFER_SIZE, srcPtr, PRIV_COPY_STACK_BUFFER_SIZE);
+    DeInitPipe();
+#endif
+    g_mmapPos += PRIV_COPY_STACK_BUFFER_SIZE;
+    DFXLOGI("finish collect process stack");
+    CollectOtherThreadStack(request);
+    DeInitPipe();
+    return true;
+}
+
+bool CollectOtherThreadStack(const struct ProcessDumpRequest *request)
+{
+    InitSignalHandler();
+    SignalRequestThread(request);
+    int threadCompletedCount = WaitTimeout(LOCALDUMP_TIMEOUT);
+    int *cnt = (int*)((char*)g_mmapSpace + g_mmapPos);
+    *cnt = threadCompletedCount;
+
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGLOCAL_DUMP);
+    sigprocmask(SIG_BLOCK, &mask, NULL);
+
+    DFXLOGI("finish collect %{public}d thread stack", threadCompletedCount);
+    return true;
+}
+
+struct linux_dirent64 {
+    ino64_t ino;
+    off64_t off;
+    unsigned short reclen;
+    unsigned char type;
+    char name[];
+};
+
+void SignalRequestThread(const struct ProcessDumpRequest *request)
+{
+    char path[] = "/proc/self/task";
+    int pid = syscall(SYS_getpid);
+    int fd = SysOpen(path, O_RDONLY | O_DIRECTORY);
+    if (fd == -1) {
+        DFXLOGE("open dir err %{public}d", errno);
+        return;
+    }
+    char buf[LINE_BUF_SIZE] = {0};
+    int nread = -1;
+    while ((nread = syscall(SYS_getdents64, fd, buf, LINE_BUF_SIZE)) > 0) {
+        for (int pos = 0; pos < nread;) {
+            struct linux_dirent64 *d = (struct linux_dirent64*)(buf + pos);
+            if (strcmp(d->name, ".") == 0 || strcmp(d->name, "..") == 0) {
+                pos += d->reclen;
+                continue;
+            }
+            long tid;
+            if (!SafeStrtol(d->name, &tid, DECIMAL_BASE) || request->tid == (int)tid) {
+                pos += d->reclen;
+                continue;
+            }
+            int nstid = -1;
+            int ret = -1;
+            if (pid == request->pid) {
+                ret = syscall(SYS_tgkill, pid, (int)tid, SIGLOCAL_DUMP);
+            } else if ((nstid = TidToNstid(request->pid, (int)tid)) > 0) {
+                ret = syscall(SYS_tgkill, pid, nstid, SIGLOCAL_DUMP);
+            }
+            if (ret == 0) {
+                g_threadSentCount++;
+            }
+            if (g_threadSentCount >= MAX_DUMP_THREAD_NUM) {
+                syscall(SYS_close, fd);
+                return;
+            }
+            pos += d->reclen;
+        }
+    }
+    syscall(SYS_close, fd);
+}
+
+int WaitTimeout(int timeoutMs)
+{
+    while (timeoutMs > 0) {
+        if (g_threadCompletedCount >= g_threadSentCount || timeoutMs == 0) {
+            break;
+        }
+        SafeDelayOneMillSec();
+        timeoutMs--;
+    }
+    return g_threadCompletedCount;
+}
+
+void DfxBacktraceLocalSignalHandler(int sig, siginfo_t *si, void *context)
+{
+    if (si == NULL || context == NULL) {
+        return;
+    }
+
+#if defined(__aarch64__)
+    int pos = atomic_fetch_add(&g_threadStartCount, 1);
+    char* destPtr = (char*)g_mmapSpace + g_mmapPos + sizeof(int) +
+        pos * (sizeof(ThreadDumpRequest) + THREAD_STACK_BUFFER_SIZE);
+    ThreadDumpRequest request;
+    request.nsTid = syscall(SYS_gettid);
+    request.tid = GetProcId(THREAD_SELF_STATUS_PATH, PID_STR_NAME);
+    GetThreadNameByTid(request.tid, request.threadName, sizeof(request.threadName));
+    if (memcpy_s(&(request.context), sizeof(ucontext_t), context, sizeof(ucontext_t)) != 0) {
+        DFXLOGE("Failed to copy context.");
+        return;
+    }
+    if (memcpy_s(destPtr, sizeof(ThreadDumpRequest), &request, sizeof(ThreadDumpRequest)) != 0) {
+        DFXLOGE("Failed to copy ThreadDumpRequest.");
+        return;
+    }
+    destPtr += sizeof(ThreadDumpRequest);
+    uintptr_t srcPtr = ((ucontext_t *)context)->uc_mcontext.sp;
+    CopyReadableBufSafe((uintptr_t)destPtr, THREAD_STACK_BUFFER_SIZE, srcPtr, THREAD_STACK_BUFFER_SIZE);
+    g_threadCompletedCount++;
+#endif
+}
+
+void InitSignalHandler()
+{
+    struct sigaction action;
+    (void)memset_s(&action, sizeof(action), 0, sizeof(action));
+    sigemptyset(&action.sa_mask);
+    sigaddset(&action.sa_mask, SIGLOCAL_DUMP);
+    action.sa_flags = SA_RESTART | SA_SIGINFO;
+    action.sa_sigaction = DfxBacktraceLocalSignalHandler;
+    sigaction(SIGLOCAL_DUMP, &action, NULL);
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGLOCAL_DUMP);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
+    g_threadSentCount = 0;
+#if defined(__aarch64__)
+    g_threadStartCount = 0;
+#endif
+    g_threadCompletedCount = 0;
+}
+
+bool CollectStat(const struct ProcessDumpRequest *request)
+{
+    if (g_mmapSpace == MAP_FAILED) {
+        DFXLOGE("mmap failed");
+        return false;
+    }
+    if (g_mmapPos + PROC_STAT_BUF_SIZE > g_totalMemorySize) {
+        DFXLOGE("collect stat memory size over flow");
+        return false;
+    }
+
+    char path[FILE_PATH_LEN];
+    int ret = snprintf_s(path, sizeof(path), sizeof(path) - 1, "/proc/%d/stat", request->pid);
+    if (ret < 0) {
+        DFXLOGE("CollectStat :: snprintf_s failed, ret(%{public}d)", ret);
+        g_mmapPos += PROC_STAT_BUF_SIZE;
+        return false;
+    }
+    int fd = SysOpen(path, O_RDONLY);
+    if (fd < 0) {
+        DFXLOGI("failed open %{public}s errno %{public}d", path, errno);
+        g_mmapPos += PROC_STAT_BUF_SIZE;
+        return false;
+    }
+
+    char* stat = (char*)g_mmapSpace + g_mmapPos;
+    stat[PROC_STAT_BUF_SIZE - 1] = '\0';
+    ssize_t n = syscall(SYS_read, fd, stat, PROC_STAT_BUF_SIZE - 1);
+    g_mmapPos += PROC_STAT_BUF_SIZE;
+    if (n > 0) {
+        stat[n] = '\0';
+    }
+    DFXLOGI("finish collect proc stat");
+    syscall(SYS_close, fd);
+    return true;
+}
+
+bool CollectStatm(const struct ProcessDumpRequest *request)
+{
+    if (g_mmapSpace == MAP_FAILED) {
+        DFXLOGE("mmap failed");
+        return false;
+    }
+    if (g_mmapPos + PROC_STATM_BUF_SIZE > g_totalMemorySize) {
+        DFXLOGE("collect statm mmap space is over flow");
+        return false;
+    }
+    char path[FILE_PATH_LEN];
+    int ret = snprintf_s(path, sizeof(path), sizeof(path) - 1, "/proc/%d/statm", request->pid);
+    if (ret < 0) {
+        DFXLOGE("CollectStatm :: snprintf_s failed, ret(%{public}d)", ret);
+        g_mmapPos += PROC_STATM_BUF_SIZE;
+        return false;
+    }
+    int fd = SysOpen(path, O_RDONLY);
+    if (fd < 0) {
+        DFXLOGI("failed to open %{public}s errno %{public}d", path, errno);
+        g_mmapPos += PROC_STATM_BUF_SIZE;
+        return false;
+    }
+
+    char* statm = (char*)g_mmapSpace + g_mmapPos;
+    statm[PROC_STAT_BUF_SIZE - 1] = '\0';
+
+    ssize_t n = syscall(SYS_read, fd, statm, PROC_STATM_BUF_SIZE - 1);
+    g_mmapPos += PROC_STATM_BUF_SIZE;
+    if (n > 0) {
+        statm[n] = '\0';
+    }
+    DFXLOGI("finish collect proc stam");
+    syscall(SYS_close, fd);
+    return true;
+}
+
+bool CollectArkWebJitSymbol(const int pipeWriteFd, uint64_t arkWebJitSymbolAddr)
+{
+    if (arkWebJitSymbolAddr == 0) {
+        return false;
+    }
+    
+    if (!LoopWritePipe(pipeWriteFd, (void*)arkWebJitSymbolAddr, ARKWEB_JIT_SYMBOL_BUF_SIZE)) {
+        DFXLOGE("failed to write arkweb jit symbol buf %{public}d", errno);
+        return false;
+    }
+    DFXLOGI("Finish CollectArkWebJitSymbol");
+    return true;
+}
+
+bool WriteStack(const int pipeWriteFd)
+{
+    if (!LoopWritePipe(pipeWriteFd, g_mmapSpace, g_mmapPos)) {
+        DFXLOGE("failed to write mmap buf %{public}d", errno);
+        return false;
+    }
+    WriteOtherThreadStack(pipeWriteFd);
+    return true;
+}
+
+bool WriteOtherThreadStack(const int pipeWriteFd)
+{
+    char* ptr = (char*)g_mmapSpace + g_mmapPos;
+    int threadNum = *(int*)(ptr);
+    size_t length = sizeof(int) + threadNum * (sizeof(ThreadDumpRequest) + THREAD_STACK_BUFFER_SIZE);
+    LoopWritePipe(pipeWriteFd, ptr, length);
+    DFXLOGI("Finish WriteOtherThreadStack");
+    return true;
+}
+
+bool LoopWritePipe(const int pipeWriteFd, void* buf, size_t length)
+{
+    const size_t step = 1024 * 1024;
+    size_t writeSuccessSize = 0;
+    const size_t maxTryTimes = 1000;
+    size_t totalWriteSize = 0;
+    for (size_t i = 0; i < length; i += writeSuccessSize) {
+        size_t len = (i + step) < length ? step : length - i;
+        buf += writeSuccessSize;
+        int savedErrno = 0;
+        ssize_t writeSize = 0;
+        size_t tryTimes = 0;
+        do {
+            writeSize = syscall(SYS_write, pipeWriteFd, buf, len);
+            savedErrno = errno;
+            if (writeSize == -1 && savedErrno != EINTR && savedErrno != EAGAIN) {
+                return false;
+            }
+            if (writeSize > 0) {
+                writeSuccessSize = writeSize;
+                totalWriteSize += writeSize;
+            }
+            if (tryTimes > maxTryTimes && writeSize == -1) {
+                DFXLOGW("LoopWritePipe exceeding the maximum number of retries!");
+                return totalWriteSize == length;
+            }
+            if (writeSize == -1 && savedErrno == EAGAIN) {
+                ++tryTimes;
+                usleep(1000); // 1000 : sleep 1ms try again
+            }
+        } while (writeSize == -1 && (savedErrno == EINTR || savedErrno == EAGAIN));
+    }
+    return totalWriteSize == length;
+}
+
+typedef struct {
+    int regIndex;
+    bool isPcLr;
+    uintptr_t regAddr;
+} RegInfo;
+
+NO_SANITIZE bool CreateMemoryBlock(const int fd, const RegInfo info, int regIdx)
+{
+    const size_t size = sizeof(uintptr_t);
+    size_t count = COMMON_REG_MEM_SIZE;
+    uintptr_t forwardSize = COMMON_REG_MEM_FORWARD_SIZE;
+    if (info.isPcLr) {
+        forwardSize = SPECIAL_REG_MEM_FORWARD_SIZE;
+        count = SPECIAL_REG_MEM_SIZE;
+    }
+
+    size_t mmapSize = count * size;
+    void* mptr = mmap(NULL, mmapSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); //
+    if (mptr == MAP_FAILED) {
+        DFXLOGE("mmap failed! %{public}d", errno);
+        return false;
+    }
+
+    uintptr_t targetAddr = info.regAddr;
+    targetAddr = targetAddr & ~(size - 1);
+    targetAddr -= (forwardSize * size);
+    char *p = (char*)mptr;
+    (void)memset_s(p, mmapSize, -1, mmapSize);
+
+    CopyReadableBufSafe((uintptr_t)mptr, mmapSize, targetAddr, mmapSize);
+    if (!LoopWritePipe(fd, mptr, mmapSize)) {
+        DFXLOGE("failed to write memory block buf %{public}d", errno);
+    }
+    munmap(mptr, mmapSize);
+    return true;
+}
+
+bool CollectMemoryNearRegisters(int fd, ucontext_t *context)
+{
+    char start[50] = "start trans register";
+    if (!LoopWritePipe(fd, start, sizeof(start))) {
+        DFXLOGE("failed to write start trans register tag %{public}d", errno);
+        return false;
+    }
+#if defined(__aarch64__)
+    const uintptr_t pacMaskDefault = ~(uintptr_t)0xFFFFFF8000000000;
+    int lrIndex = 30;
+    for (uint16_t i = 0; i < lrIndex; i++) {
+        RegInfo info = {i, false, context->uc_mcontext.regs[i] & pacMaskDefault};
+        CreateMemoryBlock(fd, info, i);
+    }
+
+    RegInfo info = {lrIndex, true, context->uc_mcontext.regs[lrIndex] & pacMaskDefault};
+    CreateMemoryBlock(fd, info, lrIndex);
+
+    int spIndex = 31;
+    info.regIndex = spIndex;
+    info.isPcLr = false;
+    info.regAddr = (context->uc_mcontext.sp & pacMaskDefault);
+    CreateMemoryBlock(fd, info, spIndex);
+
+    int pcIndex = 32;
+    info.regIndex = pcIndex;
+    info.isPcLr = true;
+    info.regAddr = (context->uc_mcontext.pc & pacMaskDefault);
+    CreateMemoryBlock(fd, info, pcIndex);
+#endif
+    char end[50] = "end trans register";
+    if (!LoopWritePipe(fd, end, sizeof(end))) {
+        DFXLOGE("failed to write end trans register tag %{public}d", errno);
+        return false;
+    }
+    return true;
+}
+
+bool FindArkWebJitSymbol(const char* buf, size_t len, uint64_t* startAddr)
+{
+    const char subStr[] = "[anon:JS_JIT_symbol]";
+    char *pos = strstr(buf, subStr);
+    if (pos == NULL) {
+        return false;
+    }
+    while (--pos >= buf) {
+        if (*pos == '\n') {
+            break;
+        }
+    }
+    if (pos < buf || *pos != '\n') {
+        return false;
+    }
+    *startAddr = 0;
+    while (++pos < buf + len) {
+        unsigned char digit = *pos;
+        if (digit >= '0' && digit <= '9') {
+            digit -= '0';
+        } else if (digit >= 'a' && digit <= 'f') {
+            digit -= 'a' - 10; // 10 : base 10
+        } else if (digit >= 'A' && digit <= 'F') {
+            digit -= 'A' - 10; // 10 : base 10
+        } else {
+            break;
+        }
+        const uint64_t hex = 4;
+        *startAddr = (*startAddr << hex) | digit;
+    }
+    return true;
+}
+
+bool CollectMaps(const int pipeFd, const char* path, uint64_t* arkWebJitSymbolAddr)
+{
+    if (path == NULL || pipeFd < 0 || arkWebJitSymbolAddr == NULL) {
+        DFXLOGI("%{public}s path or pipeFd is invalid", __func__);
+        return false;
+    }
+
+    int fd = SysOpen(path, O_RDONLY);
+    if (fd < 0) {
+        DFXLOGI("open %{public}s failed, errno %{public}d", path, errno);
+        return false;
+    }
+
+    char buf[LINE_BUF_SIZE];
+    ssize_t n;
+    const int remainBufLen = 100;
+    char remainBuf[remainBufLen];
+    const int concatBufLen = 200;
+    char concatBuf[concatBufLen];
+    while ((n = syscall(SYS_read, fd, buf, sizeof(buf) - 1)) > 0) {
+        if (!LoopWritePipe(pipeFd, buf, n)) {
+            DFXLOGE("failed to write maps content %{public}d", errno);
+            syscall(SYS_close, fd);
+            return false;
+        }
+        if (*arkWebJitSymbolAddr != 0) { // if addr not equal zero, already found jit symbol start addr
+            continue;
+        }
+        if (strcpy_s(concatBuf, concatBufLen, remainBuf) != EOK) {
+            DFXLOGE("strcpy concatBuf failed errno %{public}d", errno);
+        }
+        if (strncat_s(concatBuf, concatBufLen - 1, buf, remainBufLen - 1) != EOK) {
+            DFXLOGE("strncat concatBuf failed errno %{public}d", errno);
+        }
+        if (!FindArkWebJitSymbol(buf, LINE_BUF_SIZE, arkWebJitSymbolAddr) &&
+            !FindArkWebJitSymbol(concatBuf, concatBufLen, arkWebJitSymbolAddr)) {
+            int remainStart = n - remainBufLen + 1;
+            (void)memset_s(remainBuf, remainBufLen, 0, remainBufLen);
+            int ret = remainStart > 0 ? strncpy_s(remainBuf, remainBufLen, buf + remainStart, remainBufLen - 1) :
+                strncpy_s(remainBuf, remainBufLen, buf, n);
+            if (ret != EOK) {
+                DFXLOGE("strcpy remainBuf failed errno %{public}d", errno);
+            }
+        }
+    }
+    syscall(SYS_close, fd);
+    char mapEndFlag[] = "Parse_Maps_Finish\n";
+    if (!LoopWritePipe(pipeFd, mapEndFlag, strlen(mapEndFlag))) {
+        DFXLOGE("failed to write maps finish tag %{public}d", errno);
+        return false;
+    }
+    return true;
+}
+
+typedef struct FdTableEntry {
+    struct FdEntry *entries;       // mmap分配的条目数组
+    size_t entryCount;             // 当前条目数
+} __attribute__((packed)) FdTableEntry;
+
+static void FillFdsaninfo(FdTableEntry *fdEntries, FdTableEntry *overflowEntries, const uint64_t fdTableAddr)
+{
+    size_t entryOffset = offsetof(FdTable, entries);
+    uint64_t addr = fdTableAddr + entryOffset;
+
+    fdEntries->entryCount = FD_TABLE_SIZE;
+    size_t mmapSize = FD_TABLE_SIZE * sizeof(FdEntry);
+    fdEntries->entries = mmap(NULL, mmapSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (fdEntries->entries == MAP_FAILED) {
+        DFXLOGE("mmap fdEntries failed!");
+        return;
+    }
+
+    if (CopyReadableBufSafe((uintptr_t)fdEntries->entries, mmapSize, addr, mmapSize) != mmapSize) {
+        DFXLOGE("%{public}s read FdEntry error %{public}d", __func__, errno);
+        return;
+    }
+
+    size_t overflowOffset = offsetof(FdTable, overflow);
+    uintptr_t overflow = 0;
+    addr = fdTableAddr + overflowOffset;
+    mmapSize = sizeof(overflow);
+    if ((CopyReadableBufSafe((uintptr_t)&overflow, mmapSize, addr, mmapSize) != mmapSize) || (overflow == 0)) {
+        DFXLOGE("read overflow error %{public}d", errno);
+        return;
+    }
+
+    size_t overflowLength;
+    mmapSize = sizeof(overflowLength);
+    if (CopyReadableBufSafe((uintptr_t)&overflowLength, mmapSize, overflow, mmapSize) != mmapSize) {
+        DFXLOGE("%{public}s read overflowLength error %{public}d", __func__, errno);
+        return;
+    }
+    if (overflowLength > ARG_MAX_NUM) {
+        return;
+    }
+
+    DFXLOGI("%{public}s overflow length %{public}zu", __func__, overflowLength);
+    overflowEntries->entryCount = overflowLength;
+    mmapSize = overflowEntries->entryCount * sizeof(FdEntry);
+    overflowEntries->entries = mmap(NULL, mmapSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (overflowEntries->entries == MAP_FAILED) {
+        DFXLOGE("mmap overflowEntries failed!");
+        return;
+    }
+
+    addr = overflow + offsetof(FdTableOverflow, entries);
+    if (CopyReadableBufSafe((uintptr_t)overflowEntries->entries, mmapSize, addr, mmapSize) != mmapSize) {
+        DFXLOGE("%{public}s read FdTableOverflow error %{public}d", __func__, errno);
+    }
+}
+
+static void FillFdsanOwner(FdTableEntry fdEntries, FdTableEntry overflowEntries, uint64_t* fdsanOwners)
+{
+    if (fdEntries.entries == MAP_FAILED) {
+        return;
+    }
+    for (size_t i = 0; i < fdEntries.entryCount; i++) {
+        struct FdEntry *entry = &(fdEntries.entries[i]);
+        if (entry->close_tag) {
+            fdsanOwners[i] = entry->close_tag;
+        }
+    }
+    munmap(fdEntries.entries, fdEntries.entryCount * sizeof(FdEntry));
+
+    if (overflowEntries.entries == MAP_FAILED) {
+        return;
+    }
+    for (size_t j = 0; j < overflowEntries.entryCount; j++) {
+        struct FdEntry *entry = &(overflowEntries.entries[j]);
+        if (entry->close_tag) {
+            fdsanOwners[FD_TABLE_SIZE + j] = entry->close_tag;
+        }
+    }
+    munmap(overflowEntries.entries, overflowEntries.entryCount * sizeof(FdEntry));
+}
+
+void WriteFileItems(int pipeWriteFd, DIR *dir, const char * path, const uint64_t* fdsanOwners, int fdMaxIndex)
+{
+    struct dirent *entry;
+    char target[FILE_PATH_LEN];
+    char linkpath[FILE_PATH_LEN];
+    ssize_t len;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        int ret = snprintf_s(linkpath, sizeof(linkpath), sizeof(linkpath) - 1, "%s/%s", path, entry->d_name);
+        if (ret < 0) {
+            DFXLOGE("CollectOpenFiles :: snprintf_s failed, ret(%{public}d)", ret);
+            continue;
+        }
+        len = readlink(linkpath, target, sizeof(target) - 1);
+        if (len != -1) {
+            target[len] = '\0';
+            long fd;
+            if (!SafeStrtol(entry->d_name, &fd, DECIMAL_BASE)) {
+                continue;
+            }
+            if (fd < 0 || fd >= fdMaxIndex) {
+                continue;
+            }
+            uint64_t tag = fdsanOwners[fd];
+            const char* type = fdsan_get_tag_type(tag);
+            uint64_t val = fdsan_get_tag_value(tag);
+            char output[512]; // 512 : output
+            ret = snprintf_s(output, sizeof(output), sizeof(output) - 1, "%d->%s %s %lu\n", fd, target, type, val);
+            if (ret < 0) {
+                DFXLOGE("CollectOpenFiles :: snprintf_s failed, ret(%{public}d)", ret);
+            }
+            LoopWritePipe(pipeWriteFd, output, strlen(output));
+        } else {
+            DFXLOGE("fd %{public}s -> (unreadable: %{public}d)\n", entry->d_name, errno);
+        }
+    }
+}
+
+bool CollectOpenFiles(int pipeWriteFd, const uint64_t fdTableAddr)
+{
+    char path[FILE_PATH_LEN];
+    int ret = snprintf_s(path, sizeof(path), sizeof(path) - 1, "/proc/%d/fd",
+        GetProcId(PROC_SELF_STATUS_PATH, PID_STR_NAME));
+    if (ret < 0) {
+        DFXLOGE("CollectOpenFiles :: snprintf_s failed, ret(%{public}d)", ret);
+        return false;
+    }
+
+    DIR *dir = opendir(path);
+    if (!dir) {
+        DFXLOGI("open files failed to open dir %{public}d", errno);
+        return false;
+    }
+
+    char openFiles[] = "OpenFiles:\n";
+    if (!LoopWritePipe(pipeWriteFd, openFiles, strlen(openFiles))) {
+        DFXLOGE("failed to write openfiles tag, %{public}d", errno);
+        closedir(dir);
+        return false;
+    }
+    FdTableEntry fdEntries = {0};
+    FdTableEntry overflowEntries = {0};
+    FillFdsaninfo(&fdEntries, &overflowEntries, fdTableAddr);
+    size_t entryCount = fdEntries.entryCount + overflowEntries.entryCount;
+
+    size_t mmapSize = entryCount * sizeof(uint64_t);
+    uint64_t* fdsanOwners = mmap(NULL, mmapSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (fdsanOwners == MAP_FAILED) {
+        closedir(dir);
+        DFXLOGE("mmap fdsanOwners failed!");
+        return false;
+    }
+    FillFdsanOwner(fdEntries, overflowEntries, fdsanOwners);
+    WriteFileItems(pipeWriteFd, dir, path, fdsanOwners, (int)entryCount);
+    closedir(dir);
+    munmap(fdsanOwners, mmapSize);
+    char endOpenfiles[] = "end trans openfiles\n";
+    if (!LoopWritePipe(pipeWriteFd, endOpenfiles, strlen(endOpenfiles))) {
+        DFXLOGE("failed to write end openfiles tag, %{public}d", errno);
+        return false;
+    }
+    return true;
+}
+
+bool LiteCrashHandler(struct ProcessDumpRequest *request)
+{
+    DFXLOGI("start enter %{public}s", __func__);
+    RegisterAllocator();
+    pid_t crashHandlerPid = GetProcId(PROC_SELF_STATUS_PATH, PID_STR_NAME);
+    RequestLimitedProcessDump(crashHandlerPid);
+    int pipeWriteFd = -1;
+    RequestLimitedPipeFd(PIPE_WRITE, &pipeWriteFd, crashHandlerPid, request->processName);
+    if (pipeWriteFd < 0) {
+        DFXLOGE("lite dump failed to request pipe %{public}d", errno);
+        UnregisterAllocator();
+        return false;
+    }
+    bool ret = true;
+    do {
+        if (!LoopWritePipe(pipeWriteFd, request, sizeof(struct ProcessDumpRequest))) {
+            DFXLOGE("failed to write dump request %{public}d", errno);
+            ret = false;
+            break;
+        }
+
+        if (!WriteStack(pipeWriteFd)) {
+            ret = false;
+            break;
+        }
+        if (request->type != DUMP_TYPE_DUMP_CATCH) {
+            if (!CollectMemoryNearRegisters(pipeWriteFd, &request->context)) {
+                ret = false;
+                break;
+            }
+        }
+
+        uint64_t arkWebJitSymbolAddr = 0;
+        if (!CollectMaps(pipeWriteFd, PROC_SELF_MAPS_PATH, &arkWebJitSymbolAddr)) {
+            ret = false;
+            break;
+        }
+        if (request->type != DUMP_TYPE_DUMP_CATCH) {
+            if (!CollectOpenFiles(pipeWriteFd, (uint64_t)fdsan_get_fd_table())) {
+                ret = false;
+                break;
+            }
+        }
+        ret = CollectArkWebJitSymbol(pipeWriteFd, arkWebJitSymbolAddr);
+    } while (false);
+    syscall(SYS_close, pipeWriteFd);
+    UnregisterAllocator();
+    DFXLOGI("finish %{public}s", __func__);
+    return ret;
+}
+
+void UpdateSanBoxProcess(struct ProcessDumpRequest *request)
+{
+    if (request == NULL) {
+        return;
+    }
+    request->pid = GetProcId(PROC_SELF_STATUS_PATH, PID_STR_NAME);
+    request->tid = GetProcId(THREAD_SELF_STATUS_PATH, PID_STR_NAME);
+    GetThreadNameByTid(request->tid, request->threadName, sizeof(request->threadName));
+}
+
+void ResetLiteDump(void)
+{
+    g_mmapPos = 0;
+}

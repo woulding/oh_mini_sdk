@@ -1,0 +1,167 @@
+#===============================================================================
+# @brief    Kconfig file.
+# Copyright (c) HiSilicon (Shanghai) Technologies Co., Ltd. 2023-2023. All rights reserved.
+#===============================================================================
+
+choice
+    prompt "Working mode, choose one of them"
+    default MCU_MODE_1
+
+    config MCU_MODE_1
+        bool "MCU_MODE_1: ARAM: 384K, CRAM: 96K, PKT:64K, BT:32K, DIAG:0K"
+
+    config MCU_MODE_2
+        bool "MCU_MODE_2: ARAM: 416K, CRAM: 88K, PKT:56K, BT:16K, DIAG:0K"
+
+    config MCU_MODE_3
+        bool "MCU_MODE_3: ARAM: 448K, CRAM: 64K, PKT:64K, BT:0K, DIAG:0K"
+
+    config MCU_MODE_4
+        bool "MCU_MODE_4: ARAM: 416K, CRAM: 96K, PKT:64K, BT:0K, DIAG:0K"
+
+    config DEVICE_MODE
+        bool "DEVICE_MODE: ARAM: 192K, CRAM: 288K, PKT:64K, BT:32K, DIAG:0K"
+
+    config DIAG_MODE
+        bool "DIAG_MODE: ARAM: 384K, CRAM: 104K, PKT:32K, BT:24K, DIAG:32K"
+
+endchoice
+
+config PRINTF_BUFFER_DYNAMIC
+    bool
+    prompt "support long size print over 128 Bytes"
+    default y
+
+config HSO_UART_SUPPORT
+    bool
+    prompt "support HSO uart"
+    default y
+
+choice
+    prompt "configure uart port for HSO, choose one of them."
+    default UART_HSO_PORT_H0
+    depends on HSO_UART_SUPPORT
+    config UART_HSO_PORT_L0
+        bool "UART_L0"
+    config UART_HSO_PORT_H1
+        bool "UART_H1"
+    config UART_HSO_PORT_H0
+        bool "UART_H0"
+endchoice
+
+config DIAG_BEAT_HEART_SUPPORT
+    bool
+    prompt "support HSO keepalive"
+    default n
+    depends on HSO_UART_SUPPORT
+
+config DIAG_BEAT_HEART_PER_TIME
+    int
+    prompt "HSO keepalive interval(ms)"
+    default 1000
+    help
+        This option is HSO keepalive interval
+    depends on DIAG_BEAT_HEART_SUPPORT
+
+config DIAG_BEAT_HEART_TOTAL_TIME
+    int
+    prompt "HSO keepalive threshold(s)"
+    default 2
+    help
+        This option is HSO keepalive threshold
+    depends on DIAG_BEAT_HEART_SUPPORT
+
+config HSO_UART_BAUD_RATE
+    int
+    prompt "configure uart port baud rate for HSO"
+    default 921600
+    help
+        This option means hso log uart baud rate
+    depends on HSO_UART_SUPPORT
+
+config DEBUG_UART_SUPPORT
+    bool
+    prompt "support DEBUG uart"
+    default y
+
+choice
+    prompt "configure uart port for debug, choose one of them."
+    default UART_DEBUG_PORT_L0
+    depends on DEBUG_UART_SUPPORT
+    config UART_DEBUG_PORT_L0
+        bool "UART_L0"
+    config UART_DEBUG_PORT_H1
+        bool "UART_H1"
+    config UART_DEBUG_PORT_H0
+        bool "UART_H0"
+endchoice
+
+config DEBUG_UART_BAUD_RATE
+    int
+    prompt "configure uart port baud rate for debug."
+    range 9600 2000000
+    default 115200
+    depends on DEBUG_UART_SUPPORT
+
+config AT_UART_SUPPORT
+    bool
+    prompt "support AT uart"
+    default y
+
+choice
+    prompt "configure uart port for AT, choose one of them."
+    default UART_AT_PORT_L0
+    depends on AT_UART_SUPPORT
+    config UART_AT_PORT_L0
+        bool "UART_L0"
+    config UART_AT_PORT_H1
+        bool "UART_H1"
+endchoice
+
+config AT_UART_BAUD_RATE
+    int
+    prompt "configure uart port baud rate for AT."
+    range 9600 2000000
+    default 115200
+    depends on AT_UART_SUPPORT
+
+choice
+    prompt "configure UART_H0 pin setting"
+    default UART_H0_PINSET_2
+    config UART_H0_PINSET_1
+        bool "TX MGPIO8 RX MGPIO9"
+    config UART_H0_PINSET_2
+        bool "TX MGPIO17 RX MGPIO18"
+endchoice
+
+config UART_SUPPORT_PORTTING_IRQ
+    bool
+    prompt "support uart portting irq"
+    default n
+
+config SEC_UPGRADE_VERSION_VALIDATE
+    bool
+    prompt "configure anti-rollback write version to efuse."
+    default n
+    depends on DRIVER_SUPPORT_EFUSE
+
+config DYNAMIC_UART_ID_BINDDING
+    bool
+    prompt "support specify uart bus id in runtime(may apply after reboot)"
+    depends on MIDDLEWARE_SUPPORT_NV
+    default n
+
+config UART_L0_NOT_SUPPORT_RX
+    bool
+    prompt "close uart l0 rx configuration"
+    default n
+
+config ACORE_CPU_TRACE
+    bool
+    prompt "support system mcpu trace"
+    default n
+
+config SUPPORT_RST_RSN_SAVE_TO_FLASH
+    bool
+    prompt "save reboot reason into flash"
+    default n

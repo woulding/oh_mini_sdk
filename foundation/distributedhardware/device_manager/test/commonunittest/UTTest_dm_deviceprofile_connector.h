@@ -1,0 +1,43 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_UTTEST_DM_DEVICEPROFILE_CONNECTOR_H
+#define OHOS_UTTEST_DM_DEVICEPROFILE_CONNECTOR_H
+
+#include <memory>
+#include <gtest/gtest.h>
+
+#include "deviceprofile_connector.h"
+#include "dm_crypto_mock.h"
+#include "dm_ipc_skeleton_mock.h"
+#include "multiple_user_connector_mock.h"
+#include "deviceprofile_connector_mock.h"
+
+namespace OHOS {
+namespace DistributedHardware {
+class DeviceProfileConnectorTest : public testing::Test {
+public:
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp();
+    void TearDown();
+    static inline std::shared_ptr<MultipleUserConnectorMock> multipleUserConnectorMock_ = nullptr;
+    static inline std::shared_ptr<CryptoMock> cryptoMock_ = nullptr;
+    static inline std::shared_ptr<DMIPCSkeletonMock> ipcSkeletonMock_ = std::make_shared<DMIPCSkeletonMock>();
+    static inline std::shared_ptr<DeviceProfileConnectorMock> deviceProfileConnectorMock_ = nullptr;
+};
+} // namespace DistributedHardware
+} // namespace OHOS
+#endif // OHOS_UTTEST_DM_DEVICEPROFILE_CONNECTOR_H

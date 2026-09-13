@@ -1,0 +1,80 @@
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../../../../../../dsoftbus.gni")
+libsoftbus_stream_sdk_path = "$dsoftbus_root_path/sdk/transmission/trans_channel/udp/stream/libsoftbus_stream"
+
+dstream_dep_file = "components/nstackx_enhanced/fillp/BUILD.gn"
+dstream_native_source_path = rebase_path(dstream_dep_file, "$dsoftbus_root_path")
+
+enhanced_path = get_path_info(dstream_native_source_path, "name")
+
+libsoftbus_stream_inc = [
+  "$libsoftbus_stream_sdk_path/include",
+  "$libsoftbus_stream_sdk_path",
+]
+
+if (enhanced_path == "BUILD.gn") {
+  libsoftbus_stream_inc += [
+    "$dsoftbus_root_path/components/nstackx_enhanced/fillp/include/",
+    "$dsoftbus_root_path/components/nstackx_enhanced/nstackx_adapter/include/",
+  ]
+} else {
+  libsoftbus_stream_inc +=
+      [ "$dsoftbus_root_path/components/nstackx/fillp/include/" ]
+}
+
+libsoftbus_stream_src = [
+  "$libsoftbus_stream_sdk_path/raw_stream_data.cpp",
+  "$libsoftbus_stream_sdk_path/stream_common_data.cpp",
+  "$libsoftbus_stream_sdk_path/stream_depacketizer.cpp",
+  "$libsoftbus_stream_sdk_path/stream_manager.cpp",
+  "$libsoftbus_stream_sdk_path/stream_msg_manager.cpp",
+  "$libsoftbus_stream_sdk_path/stream_packetizer.cpp",
+  "$libsoftbus_stream_sdk_path/vtp_instance.cpp",
+  "$libsoftbus_stream_sdk_path/vtp_stream_socket.cpp",
+]
+
+libsoftbus_stream_ext_deps = []
+
+if (defined(ohos_lite)) {
+  libsoftbus_stream_inc += [
+    "//third_party/cJSON",
+    "//third_party/openssl/include",
+    "//third_party/bounds_checking_function/include",
+  ]
+  if (enhanced_path == "BUILD.gn") {
+    libsoftbus_stream_deps =
+        [ "$dsoftbus_root_path/components/nstackx_enhanced/fillp:FillpSo" ]
+  } else {
+    libsoftbus_stream_deps =
+        [ "$dsoftbus_root_path/components/nstackx/fillp:FillpSo.open" ]
+  }
+  libsoftbus_stream_deps += [ "//third_party/openssl:libcrypto_shared" ]
+} else {
+  libsoftbus_stream_ext_deps += [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "openssl:libcrypto_shared",
+  ]
+  if (enhanced_path == "BUILD.gn") {
+    if (dsoftbus_feature_vtp == true) {
+      libsoftbus_stream_src += [ "$dsoftbus_root_path/components/nstackx_enhanced/nstackx_adapter/src/softbus_fillp_inner_api.c" ]
+    }
+    libsoftbus_stream_deps =
+        [ "$dsoftbus_root_path/components/nstackx_enhanced/fillp:FillpSo" ]
+  } else {
+    libsoftbus_stream_deps =
+        [ "$dsoftbus_root_path/components/nstackx/fillp:FillpSo.open" ]
+  }
+}

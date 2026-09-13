@@ -1,0 +1,148 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("../../../bundletool.gni")
+
+module_output_path = "bundle_tool/bundle_tool"
+
+config("tools_bm_config_systemtest") {
+  include_dirs = [ "${bundletool_test_path}/mock/" ]
+}
+
+ohos_systemtest("bm_command_install_system_test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "bm_command_install_system_test.cpp",
+    "tool_system_test.cpp",
+  ]
+
+  deps = [
+    "${bundletool_test_path}/systemtest/bm/ohos_test:copy_ohos_test",
+    "${bundletool_test_path}/sceneProject/tools/bm/test_app_one:test_app_one",
+  ]
+
+  configs = [
+    "${bundletool_path}:tools_bm_config",
+    ":tools_bm_config_systemtest",
+  ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:bundle_napi_common",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "os_account:os_account_innerkits",
+  ]
+
+  external_deps += bm_install_external_deps
+}
+
+ohos_systemtest("bm_command_uninstall_system_test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "bm_command_uninstall_system_test.cpp",
+    "tool_system_test.cpp",
+  ]
+
+  configs = [
+    "${bundletool_path}:tools_bm_config",
+    ":tools_bm_config_systemtest",
+  ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  deps = [
+    "${bundletool_test_path}/systemtest/bm/ohos_test:copy_ohos_test",
+    "${bundletool_test_path}/sceneProject/tools/bm/test_app_one:test_app_one",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:bundle_napi_common",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "os_account:os_account_innerkits",
+  ]
+
+  external_deps += bm_install_external_deps
+}
+
+ohos_systemtest("bm_command_dump_system_test") {
+  module_out_path = module_output_path
+
+  sources = [
+    "bm_command_dump_system_test.cpp",
+    "tool_system_test.cpp",
+  ]
+
+  configs = [
+    "${bundletool_path}:tools_bm_config",
+    ":tools_bm_config_systemtest",
+  ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  deps = [
+    "${bundletool_test_path}/systemtest/bm/ohos_test:copy_ohos_test",
+    "${bundletool_test_path}/sceneProject/tools/bm/test_app_one:test_app_one",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:configuration",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:bundle_napi_common",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+    "os_account:os_account_innerkits",
+  ]
+
+  external_deps += bm_install_external_deps
+}
+
+group("systemtest") {
+  testonly = true
+
+  deps = [
+    ":bm_command_dump_system_test",
+    ":bm_command_install_system_test",
+    ":bm_command_uninstall_system_test",
+  ]
+}

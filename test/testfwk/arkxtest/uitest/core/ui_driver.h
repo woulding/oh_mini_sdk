@@ -1,0 +1,185 @@
+/*
+ * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef UI_DRIVER_H
+#define UI_DRIVER_H
+
+#include "ui_controller.h"
+#include "ui_action.h"
+#include "widget_selector.h"
+
+namespace OHOS::uitest {
+    struct WindowCacheModel {
+        explicit WindowCacheModel(const Window &win) : window_(win), widgetIterator_(nullptr) {}
+        Window window_;
+        std::unique_ptr<ElementNodeIterator> widgetIterator_;
+    };
+    class UiDriver : public BackendClass {
+    public:
+        UiDriver() {}
+
+        ~UiDriver() override {}
+
+        /**Find widgets with the given selector. Results are arranged in the receiver in <b>DFS</b> order.
+         * @returns the widget object.
+         **/
+        void FindWidgets(const WidgetSelector &select, vector<unique_ptr<Widget>> &rev,
+            ApiCallErr &err, bool updateUi = true, bool skipWaitForUiSteady = false);
+
+        /**Wait for the matching widget appear in the given timeout.*/
+        std::unique_ptr<Widget> WaitForWidget(const WidgetSelector &select, const UiOpArgs &opt, ApiCallErr &err);
+        /**Find window matching the given matcher.*/
+        std::unique_ptr<Window> FindWindow(std::function<bool(const Window &)> matcher, ApiCallErr &err);
+
+        /**Retrieve widget from updated UI.*/
+        const Widget *RetrieveWidget(const Widget &widget, ApiCallErr &err, bool updateUi = true);
+
+        /**Retrieve window from updated UI.*/
+        Window *RetrieveWindow(const Window &window, ApiCallErr &err);
+
+        string GetHostApp(const Widget &widget);
+
+        /**Trigger the given key action. */
+        void TriggerKey(const KeyAction &key, const UiOpArgs &opt, ApiCallErr &error, int32_t displayId = -1);
+
+        void TriggerPenKey(const PenKeyAction &action, const UiOpArgs &opt, ApiCallErr &error, int32_t displayId = -1);
+
+        /**Perform the given touch action.*/
+        void PerformTouch(const TouchAction &touch, const UiOpArgs &opt, ApiCallErr &err);
+
+        void PerformMouseAction(const MouseAction &touch, const UiOpArgs &opt, ApiCallErr &err);
+
+        /**Delay current thread for given duration.*/
+        static void DelayMs(uint32_t ms);
+
+        /**Take screen capture, save to given file path as PNG.*/
+        void TakeScreenCap(int32_t fd, ApiCallErr &err, Rect rect, int32_t displayId = 0);
+
+        void DumpUiHierarchy(nlohmann::json &out, DumpOption &option, ApiCallErr &error);
+
+        const FrontEndClassDef &GetFrontendClassDef() const override
+        {
+            return DRIVER_DEF;
+        }
+
+        void SetDisplayRotation(DisplayRotation rotation, ApiCallErr &error);
+
+        DisplayRotation GetDisplayRotation(ApiCallErr &error, int32_t displayId = 0);
+
+        void SetDisplayRotationEnabled(bool enabled, ApiCallErr &error);
+
+        bool WaitForUiSteady(uint32_t idleThresholdMs, uint32_t timeoutSec, ApiCallErr &error);
+
+        void WakeUpDisplay(ApiCallErr &error);
+
+        Point GetDisplaySize(ApiCallErr &error, int32_t displayId = 0);
+
+        Point GetDisplayDensity(ApiCallErr &error, int32_t displayId = 0);
+
+        static void RegisterController(std::unique_ptr<UiController> controller);
+
+        bool CheckStatus(bool isConnected, ApiCallErr &error);
+
+        static void RegisterUiEventListener(std::shared_ptr<UiEventListener> listener);
+
+        void InputText(string_view text, ApiCallErr &error, const UiOpArgs &opt, int32_t displayId = -1);
+
+        bool IsTouchPadExist() const;
+
+        void PerformTouchPadAction(const TouchPadAction &touch, const UiOpArgs &opt, ApiCallErr &error);
+
+        void PerformPenTouch(const TouchAction &touch, const UiOpArgs &opt, ApiCallErr &err);
+
+        void PerformKnuckleAction(const TouchAction &touch, const UiOpArgs &opt, ApiCallErr &err);
+
+        void SetAamsWorkMode(const AamsWorkMode mode);
+
+        bool IsWearable() const;
+
+        bool IsPenKeySupported(bool shouldConnectPen) const;
+
+        bool IsAdjustWindowModeEnable() const;
+
+        bool CheckDisplayExist(int32_t displayId) const;
+
+        void CloseAamsEvent();
+
+        void OpenAamsEvent();
+
+        void ChangeWindowMode(int32_t windowId, WindowMode mode) const;
+
+        bool GetEventObserverEnable() const;
+
+        bool IsComponentPresentWhenLongClick(const WidgetSelector& selector, const TouchAction& action,
+            const UiOpArgs& uiOpArgs, ApiCallErr& error);
+
+        bool IsComponentPresentWhenDrag(const WidgetSelector& selector, const TouchAction& action,
+            const UiOpArgs& uiOpArgs, ApiCallErr& error);
+
+        bool IsComponentPresentWhenSwipe(const WidgetSelector& selector, const TouchAction& action,
+            const UiOpArgs& uiOpArgs, ApiCallErr& error);
+
+        bool IsKnuckleSnapshotEnable() const;
+
+        bool IsKnuckleRecordEnable() const;
+
+        bool IsPcWindowMode() const;
+
+    private:
+        // Struct to group timeout-related parameters
+        struct TimeoutParams {
+            int32_t startTime;
+            int32_t totalTimeout;
+            int32_t operationTime;
+            const UiOpArgs& uiOpArgs;
+            
+            TimeoutParams(int32_t start, int32_t total, int32_t operation, const UiOpArgs& args)
+                : startTime(start), totalTimeout(total), operationTime(operation), uiOpArgs(args) {}
+        };
+        
+        // Common helper methods for component presence checking
+        bool CheckComponentPresenceWithTimeout(const WidgetSelector& selector,
+            const TimeoutParams& timeoutParams, ApiCallErr& error);
+        int32_t CalculateOperationTime(const Point& from, const Point& to,
+            int32_t speed, const UiOpArgs& uiOpArgs) const;
+        bool TextToKeyEvents(string_view text, std::vector<KeyEvent> &events, ApiCallErr &error);
+        // UI objects that are needed to be updated before each interaction and used in the interaction
+        void UpdateUIWindows(ApiCallErr &error, int32_t targetDisplay = -1,
+            bool skipWaitForUiSteady = false, bool needAbilityInfo = false);
+        void DumpWindowsInfo(const DumpOption &option, Rect &mergeBounds, nlohmann::json &childDom);
+        
+        struct DisplayInfo {
+            Point topLeft;
+            Point size;
+        };
+        
+        // Handle cross-screen operations
+        void CalculateBoundaryPoints(const Point& from, const Point& to, Point& fromBoundary, Point& toBoundary,
+                                     ApiCallErr& err);
+        void CalculateCrossScreenBoundary(const Point& fromGlobal, const Point& toGlobal,
+                                          const DisplayInfo& fromDisplay, const DisplayInfo& toDisplay,
+                                          Point& boundary);
+        static std::unique_ptr<UiController> uiController_;
+        // CacheModel:
+        std::map<int32_t, vector<WindowCacheModel>> displayToWindowCacheMap_;
+        // unique widget object save
+        std::vector<Widget> visitWidgets_;
+        std::vector<int> targetWidgetsIndex_;
+        static AamsWorkMode mode_;
+        bool eventObserverEnable_ = true;
+    };
+} // namespace OHOS::uitest
+
+#endif

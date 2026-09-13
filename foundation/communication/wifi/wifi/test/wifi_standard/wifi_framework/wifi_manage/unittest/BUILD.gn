@@ -1,0 +1,323 @@
+# Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/communication/wifi/wifi/wifi.gni")
+
+################################################################################
+
+module_output_path = "wifi/wifi/manager_test"
+
+config("module_private_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/unittest",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/unittest/Mock",
+  ]
+}
+
+ohos_unittest("manager_unittest") {
+  module_out_path = module_output_path
+  sources = [
+    "$WIFI_ROOT_DIR/base/shared_util/wifi_notification_util.cpp",
+    "$WIFI_ROOT_DIR/base/state_machine/src/internal_message.cpp",
+    "$WIFI_ROOT_DIR/base/state_machine/src/state.cpp",
+    "$WIFI_ROOT_DIR/base/utils/wifi_datashare_utils.cpp",
+    "$WIFI_ROOT_DIR/frameworks/native/src/wifi_p2p_msg.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_self_cure/self_cure_utils.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/app_network_speed_limit/app_network_speed_limit_service.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/app_network_speed_limit/speed_limit_configs_writer.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/app_network_speed_limit/app_network_speed_limit_chr.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/block_connect_service.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/network_status_history/wifi_history_record_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/rdb/wifi_rdb_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_app_state_aware.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_auth_center.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_channel_helper.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_cmd_client.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_country_code/wifi_country_code_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_country_code/wifi_country_code_policy.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_dumper.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_internal_event_dispatcher.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_net_agent.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_net_observer.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_netlink.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_network_stats/wifi_net_stats_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_permission_helper.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_permission_utils.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_protect.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_protect_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_system_timer.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_sensor_scene.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/concrete_clientmode_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/concrete_manager_state_machine.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/multi_sta_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/multi_sta_state_machine.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/rpt_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/rpt_manager_state_machine.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/softap_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/softap_manager_state_machine.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/wifi_controller_state_machine.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller/wifi_service_scheduler.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/hdi_client/hdi_interface/wifi_hdi_util.c",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/hdi_client/hdi_interface/wifi_hdi_wpa_p2p_impl.c",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/hdi_client/hdi_interface/wifi_hdi_wpa_proxy.c",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/hdi_client/hdi_interface/wifi_hdi_wpa_sta_impl.c",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/hdi_client/wifi_hdi_wpa_callback.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/hdi_client/wifi_hdi_wpa_client.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/hal_device_manage/hal_device_manage.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/wifi_hal_interface/wifi_base_hal_interface.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/wifi_hal_interface/wifi_supplicant_hal_interface.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_service_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_common_service_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_event_subscriber_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_hotspot_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_location_mode_observer.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_multi_vap_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_p2p_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_scan_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_sta_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage/wifi_toggler_manager.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/base_address.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/ip_tools.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper/ipv6_address.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/wifi_chr_utils.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/wifi_common_event_helper.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils/wifi_global_func.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_ap/Mock/mock_ap_interface.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_ap/Mock/mock_wifi_ap_hal_interface.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_native/Mock/mock_wifi_sta_hal_interface.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_p2p/test/Mock/mock_p2p_interface.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_p2p/test/Mock/mock_wifi_p2p_hal_interface.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_pro/mock/mock_wifi_pro_interface.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_scan/Mock/mock_scan_interface.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_scan/Mock/mock_scan_service.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_sta/Mock/mock_sta_interface.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_sta/Mock/mock_state_machine.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_sta/Mock/net_conn_client.cpp",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_toolkit/unittest/Mock/mock_wifi_config_center.cpp",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_chr_adapter.cpp",
+    "Mock/mock_wifi_settings.cpp",
+    "common/app_network_speed_limit_service_test.cpp",
+    "common/block_connect_service_test.cpp",
+    "common/speed_limit_configs_writer_test.cpp",
+    "common/wifi_app_state_aware_test.cpp",
+    "common/wifi_auth_center_test.cpp",
+    "common/wifi_channel_helper_test.cpp",
+    "common/wifi_cmd_client_test.cpp",
+    "common/wifi_country_code_manager_test.cpp",
+    "common/wifi_country_code_policy_test.cpp",
+    "common/wifi_datashare_utils_test.cpp",
+    "common/wifi_dumper_test.cpp",
+    "common/wifi_history_record_manager_test.cpp",
+    "common/wifi_internal_event_dispatcher_test.cpp",
+    "common/wifi_net_agent_test.cpp",
+    "common/wifi_net_observer_test.cpp",
+    "common/wifi_net_stats_manager_test.cpp",
+    "common/wifi_netlink_test.cpp",
+    "common/wifi_permission_helper_test.cpp",
+    "common/wifi_permission_utils_test.cpp",
+    "common/wifi_protect_manager_test.cpp",
+    "common/wifi_protect_test.cpp",
+    "common/wifi_rdb_manager_test.cpp",
+    "common/wifi_system_timer_test.cpp",
+    "common/wifi_sensor_scene_test.cpp",
+    "mock_wifi_system_ability_listerner.cpp",
+    "wifi_manager_test.cpp",
+    "wifi_service_manager_test.cpp",
+  ]
+
+  include_dirs = [
+    "./Mock",
+    "$WIFI_ROOT_DIR/interfaces/kits/c",
+    "$WIFI_ROOT_DIR/base/state_machine/include",
+    "$WIFI_ROOT_DIR/base/utils",
+    "$WIFI_ROOT_DIR/base/shared_util",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/network_select",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/network_status_history",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_country_code",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/rdb",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/network_select",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_ext",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p/hid2d",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_self_cure",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro",
+    "$WIFI_ROOT_DIR/interfaces/inner_api",
+    "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/app_network_speed_limit",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_network_stats",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/common",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/wifi_hal_interface",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client/idl_interface",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_native/Mock",
+    "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_toolkit/unittest/Mock",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/hal_device_manage",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/hdi_client/hdi_interface",
+    "$WIFI_ROOT_DIR/base/cRPC/include",
+    "$WIFI_ROOT_DIR/utils/inc",
+    "$WIFI_ROOT_DIR/services/wifi_standard/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/hdi_client",
+  ]
+
+  deps = [
+    "$WIFI_ROOT_DIR/base:wifi_base",
+    "$WIFI_ROOT_DIR/utils:wifi_utils",
+  ]
+
+  ldflags = [
+    "-fPIC",
+    "--coverage",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_manager",
+    "ability_runtime:app_context",
+    "ability_runtime:app_manager",
+    "ability_runtime:connection_obs_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:extension_manager",
+    "ability_runtime:wantagent_innerkits",
+    "access_token:libaccesstoken_sdk",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "cJSON:cjson",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "dhcp:dhcp_sdk",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hdf_core:libhdf_ipc_adapter",
+    "hdf_core:libhdi",
+    "hdf_core:libpub_utils",
+    "hilog:libhilog",
+    "huks:libhukssdk",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "libxml2:libxml2",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_native_manager_if",
+    "netmanager_base:net_stats_manager_if",
+    "power_manager:powermgr_client",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "time_service:time_client",
+    "window_manager:libdm_lite",
+  ]
+  external_deps += [ "drivers_interface_wlan:libchip_proxy_2.0" ]
+  external_deps += [ "drivers_interface_wlan:libwpa_proxy_2.0" ]
+  external_deps += [ "drivers_interface_wlan:libhostapd_proxy_1.0" ]
+  defines = [
+    "HDI_WPA_INTERFACE_SUPPORT",
+    "HDI_CHIP_INTERFACE_SUPPORT",
+    "private = public",
+    "protected = public",
+    "UT_TEST",
+  ]
+
+  if (wifi_feature_wifi_pro_ctrl) {
+    defines += [ "FEATURE_WIFI_PRO_SUPPORT" ]
+  }
+
+  if (is_asan) {
+    sources += [ "$WIFI_ROOT_DIR/test/wifi_standard/wifi_framework/wifi_manage/wifi_scan/Mock/mock_scan_service_new.cpp" ]
+  }
+
+  if (wifi_feature_with_p2p) {
+    defines += [ "FEATURE_P2P_SUPPORT" ]
+  }
+
+  if (wifi_feature_with_rpt) {
+    defines += [ "FEATURE_RPT_SUPPORT" ]
+  }
+
+  if (wifi_feature_with_extensible_authentication) {
+    sources += [
+      "common/net_eap_observer_test.cpp",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/net_eap/net_eap_observer.cpp",
+      ]
+      include_dirs += ["$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/net_eap",]
+      defines += [ "EXTENSIBLE_AUTHENTICATION" ]
+      external_deps += ["netmanager_ext:ethernet_manager_if",]
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.telephony_core_service) &&
+      defined(global_parts_info.telephony_cellular_data)) {
+    external_deps += [
+        "cellular_data:tel_cellular_data_api",
+        "core_service:tel_core_service_api",]
+    defines += [ "TELEPHONE_CORE_SERVICE_ENABLE" ]
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.account_os_account)) {
+    external_deps += [ "os_account:os_account_innerkits" ]
+    defines += [ "HAS_ACCOUNT_PART" ]
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.powermgr_power_manager)) {
+    defines += [ "HAS_POWERMGR_PART" ]
+  }
+
+  defines += [
+    "FEATURE_AP_SUPPORT",
+    "FEATURE_STA_SUPPORT",
+    "STA_INSTANCE_MAX_NUM=$wifi_feature_with_sta_num",
+    "AP_INSTANCE_MAX_NUM=$wifi_feature_with_ap_num",
+  ]
+  defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+  configs = [ ":module_private_config" ]
+
+  # Do not modify the permission configuration of the unit test
+  defines += [ "PERMISSION_ALWAYS_GRANT" ]
+
+  if (wifi_ffrt_enable) {
+    external_deps += [ "ffrt:libffrt" ]
+    defines += [ "WIFI_FFRT_ENABLE" ]
+  }
+
+  if (wifi_feature_with_p2p_untrust_invitation) {
+    defines += [ "SUPPORT_P2P_UNTRUST_INVITATION" ]
+  }
+
+  if (wifi_feature_with_bt_proxy_speed_limit) {
+    defines += [ "FEATURE_BT_PROXY_SPEED_LIMIT" ]
+  }
+
+  part_name = "wifi"
+  subsystem_name = "communication"
+  testonly = true
+}

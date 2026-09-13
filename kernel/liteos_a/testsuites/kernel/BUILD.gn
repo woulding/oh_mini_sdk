@@ -1,0 +1,99 @@
+# Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2020-2021 Huawei Device Co., Ltd. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list
+# of conditions and the following disclaimer in the documentation and/or other materials
+# provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used
+# to endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import("//kernel/liteos_a/liteos.gni")
+
+declare_args() {
+  LOSCFG_ENABLE_KERNEL_TEST = false
+  LOSCFG_TEST_KERNEL_BASE = true
+  LOSCFG_TEST_KERNEL_EXTEND_CPUP = false
+  LOSCFG_TEST_POSIX = false
+}
+
+config("liteos_kernel_test_public") {
+  cflags = [ "-Wno-error" ]
+  include_dirs = [
+    "$LITEOSTOPDIR/kernel/include",
+    "$LITEOSTOPDIR/kernel/base/include",
+    "$LITEOSTOPDIR/kernel/common",
+    "$LITEOSTOPDIR/arch/arm/arm/include",
+    "$LITEOSTOPDIR/arch/arm/include",
+    "$LITEOSTOPDIR/extended/include",
+    "$THIRDPARTY_MUSL_DIR/porting/liteos_a/kernel/include",
+    "$THIRDPARTY_BOUNDS_CHECKING_FUNCTION_DIR/include/",
+    "$LITEOSTOPDIR/lib/libscrew/include",
+    "$LITEOSTOPDIR/fs/vfs",
+    "$LITEOSTOPDIR/fs/proc/include",
+    "$LITEOSTOPDIR/fs/jffs2/include",
+    "$LITEOSTOPDIR/fs/nfs/include",
+    "$LITEOSTOPDIR/bsd/compat/linuxkpi/include",
+    "include",
+  ]
+
+  if (LOSCFG_TEST_KERNEL_BASE) {
+    cflags += [ "-DLOSCFG_TEST_KERNEL_BASE=1" ]
+  }
+  if (LOSCFG_TEST_KERNEL_EXTEND_CPUP) {
+    cflags += [ "-DLOSCFG_TEST_KERNEL_EXTEND_CPUP=1" ]
+  }
+  if (LOSCFG_TEST_POSIX) {
+    cflags += [ "-DLOSCFG_TEST_POSIX=1" ]
+  }
+}
+
+group("kernel_test") {
+  deps = []
+
+  if (LOSCFG_ENABLE_KERNEL_TEST) {
+    deps += [ ":test_base" ]
+
+    if (LOSCFG_TEST_KERNEL_BASE) {
+      deps += [ "sample/kernel_base:kernel_base" ]
+    }
+
+    # KERNEL EXTEND TEST
+    if (LOSCFG_TEST_KERNEL_EXTEND_CPUP) {
+      deps += [ "sample/kernel_extend/cpup:test_cpup" ]
+    }
+
+    # COMPAT TEST
+    if (LOSCFG_TEST_POSIX) {
+      deps += [ "sample/posix:test_posix" ]
+    }
+  }
+}
+
+kernel_module("test_base") {
+  sources = [
+    "src/iCunit.c",
+    "src/osTest.c",
+  ]
+
+  public_configs = [ ":liteos_kernel_test_public" ]
+}

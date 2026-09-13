@@ -1,0 +1,19 @@
+{
+    "process": "foundation",
+    "systemability": [
+        {
+            "name": 401,
+            "libpath": "libbms.z.so",
+            "run-on-create": true,
+            "depend_time_out": 60000,
+            "distributed": false,
+            "bootphase": "CoreStartPhase",
+            "dump_level": 1,
+            "min_hdi_proxy_version": [],
+            "depend": [
+                3503
+            ],
+            "extension":["backup", "restore"]
+        }
+    ]
+}

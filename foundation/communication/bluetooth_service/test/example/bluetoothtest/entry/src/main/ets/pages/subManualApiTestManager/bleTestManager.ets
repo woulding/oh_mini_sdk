@@ -1,0 +1,221 @@
+﻿/**
+ * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import LogUtil from '../../Utils/LogUtil';
+import ConfigData from '../../Utils/ConfigData';
+import { testItemFromRouterOrPlaceholder} from '../../Utils/common'
+import BluetoothModel from '../../MainAbility/model/BluetoothModel';
+import bluetoothManager from '@ohos.bluetoothManager';
+import { PageTitle} from '../../Component/pageTitle';
+import { TestImageDisplay} from '../../Component/testImageDisplay';
+import { ContentTable} from '../../Component/contentTable';
+import { TestData} from '../../MainAbility/model/testData'
+import { initBleManagerApiData} from '../../MainAbility/model/testDataModelsManager'
+import { BleFilterTable} from '../../Component/bleFilterTable';
+
+/**
+ * BleManager Test Page Of Bluetooth test
+ */
+
+@Entry
+@Component
+struct BleTestManager {
+  private testItem: TestData = testItemFromRouterOrPlaceholder();
+  @State showList: boolean = true;
+  @State message: string = 'BleTest Result';
+  @State peripheralDeviceId: string = '6c:96:d7:3d:87:6f';// 88:36:CF:09:C1:90
+  @State currentClick: number = - 1;
+  @State btOnBLEDeviceFind: string = 'on("BLEDeviceFind"): void';
+  @State isBLEDeviceFindClick: boolean = false;
+
+  // input ble scan parameters:
+  /*ScanFilter*/
+  @State cbxBleScanFilter: boolean = false;
+  @State txtScanFilter_deviceId: string = '6c:96:d7:3d:87:6f';
+  @State txtScanFilter_name: string = "dudu-tiger";
+  @State txtScanFilter_serviceUuid: string = "0000180A-0000-1000-8000-00805f9b34fb";
+  @State curScanFilters: Array<bluetoothManager.ScanFilter> = [];
+
+  /*ScanOptions*/
+  @State cbxBleScanOptions: boolean = false;
+  @State txtScanOptions_interval: string = "0";
+  @State txtScanOptions_dutyMode: number = 0;//bluetoothManager.ScanDuty.SCAN_MODE_LOW_POWER;
+  @State rd3ScanOptions_dutyModeChecked: boolean = false;
+  @State rd2ScanOptions_dutyModeChecked: boolean = false;
+  @State rd1ScanOptions_dutyModeChecked: boolean = true;
+  @State txtScanOptions_matchMode: number = 1;
+  @State rd1ScanOptions_matchModeChecked: boolean = true;
+  @State rd2ScanOptions_matchModeChecked: boolean = false;
+  @State curScanOptions: bluetoothManager.ScanOptions = {
+    interval: 0,
+    dutyMode: 0,
+    matchMode: 1
+  }
+  @StorageLink('bleAvailableDevices') availBleDeviceIds: string[] = [];
+  @StorageLink('OnBLEDeviceFind') On_off_BLEDeviceFind: boolean = false;
+
+  aboutToAppear(){
+    AppStorage.setOrCreate("peripheralDeviceId", this.peripheralDeviceId)
+    AppStorage.setOrCreate('txtScanFilterDeviceId', this.txtScanFilter_deviceId);
+    AppStorage.setOrCreate('txtScanFilterName', this.txtScanFilter_name);
+    AppStorage.setOrCreate('txtScanFilterServiceUuid', this.txtScanFilter_serviceUuid);
+    AppStorage.setOrCreate('txtScanOptions_interval', this.txtScanOptions_interval);
+    AppStorage.setOrCreate('txtScanOptionsDutyMode', '0');
+    AppStorage.setOrCreate('txtScanOptionsMatchMode', '0');
+  }
+
+  build(){
+    Column(){
+      Stack({alignContent: Alignment.TopStart}){
+        TestImageDisplay({testItem: this.testItem})
+        PageTitle({testItem: this.testItem})
+            .accessibilityLevel('yes')
+            .id('pages_subManualApiTestManager_bleTestManager__pt_0')
+      }
+
+      Stack()
+        .height(ConfigData.VP_0_5)
+        .backgroundColor($r('app.color.black'));
+      Column(){
+        Row(){
+          Text($r('app.string.bluetoothtest_text_wsm'))
+            .fontSize(ConfigData.VP_18)
+            .height(ConfigData.VP_40)
+            .width(ConfigData.WH_25_100)
+            .align(Alignment.Start)
+
+          TextInput({text: this.peripheralDeviceId, placeholder: "input peripheral deviceId."})
+            .accessibilityLevel('yes')
+            .id('pages_subManualApiTestManager_bleTestManager__ti_0')
+            .fontSize(ConfigData.VP_18)
+            .onChange((strInput) => {
+              this.peripheralDeviceId = strInput;
+              AppStorage.setOrCreate("peripheralDeviceId", strInput)
+            })
+            .width(ConfigData.WH_55_100)
+            .padding({top: ConfigData.VP_5, left: ConfigData.VP_5})
+            .height(ConfigData.VP_40)
+            .borderStyle(BorderStyle.Dashed)
+            .backgroundColor($r("app.color.white"))
+          Image($r('app.media.Switch'))
+            .accessibilityLevel('yes')
+            .id('pages_subManualApiTestManager_bleTestManager__img_0')
+            .height(ConfigData.VP_50)
+            .width(ConfigData.PCT_15)
+            .padding({top: ConfigData.VP_5, bottom: ConfigData.VP_5, left: ConfigData.VP_10})
+            .onClick(() => {
+              this.showList = !this.showList;
+            })
+        }
+      }
+      .align(Alignment.TopStart)
+
+      if ( this.showList ){
+        ContentTable({apiItems: initBleManagerApiData()})
+      } else {
+        BleFilterTable({testItem: this.testItem})
+      }
+    }
+    .alignItems(HorizontalAlign.Center)
+    .backgroundColor($r("app.color.lead"))
+    .height(ConfigData.WH_100_100)
+  }
+
+  /**
+   * subscribeBLEDeviceFind
+   */
+  private subscribeBLEDeviceFind(){
+    //回调函数里的动作是过滤，已经过滤好了就不用再考虑了。
+    BluetoothModel.subscribeBLEDeviceFind((deviceItems: Array<bluetoothManager.ScanResult>) => {
+      LogUtil.info("BLE Test:" + 'available ble devices changed.');
+      deviceItems?.forEach(deviceItem => {
+        let device = this.availBleDeviceIds.find((availableBleDevice) => {
+          return availableBleDevice === deviceItem.deviceId
+        })
+        if ( !device ){
+          let newDevice = deviceItem.deviceId;
+          LogUtil.info("BLE Test:" + 'available bluetooth new device : ' + newDevice);
+          this.availBleDeviceIds.push(newDevice);
+          LogUtil.info("BLE Test:" + 'available bluetooth new device pushed. availableDevices length = ' + this.availBleDeviceIds.length);
+        }
+      })
+      AppStorage.setOrCreate('bluetoothAvailableDevices', this.availBleDeviceIds);
+    });
+  }
+
+  private buildBleScanFilters(){
+    this.curScanFilters as bluetoothManager.ScanFilter[];
+    if ( this.cbxBleScanFilter ){
+      let bleScanFilter: bluetoothManager.ScanFilter = {}
+
+      if ( this.txtScanFilter_deviceId.length > 0 && this.txtScanFilter_name.length > 0 && this.txtScanFilter_serviceUuid.length > 0 ){
+        (bleScanFilter as bluetoothManager.ScanFilter) = {
+          deviceId: this.txtScanFilter_deviceId,
+          name: this.txtScanFilter_name,
+          serviceUuid: this.txtScanFilter_serviceUuid
+        }
+        this.curScanFilters.push(bleScanFilter);
+      }
+      if ( this.txtScanFilter_deviceId === '' && this.txtScanFilter_name === '' && this.txtScanFilter_serviceUuid.length > 0 ){
+        (bleScanFilter as bluetoothManager.ScanFilter) = {
+          serviceUuid: this.txtScanFilter_serviceUuid
+        }
+        this.curScanFilters.push(bleScanFilter);
+      }
+      if ( this.txtScanFilter_deviceId === '' && this.txtScanFilter_name.length > 0 && this.txtScanFilter_serviceUuid === '' ){
+        (bleScanFilter as bluetoothManager.ScanFilter) = {
+          name: this.txtScanFilter_name
+        }
+        this.curScanFilters.push(bleScanFilter);
+      }
+      if ( this.txtScanFilter_deviceId.length > 0 && this.txtScanFilter_name === '' && this.txtScanFilter_serviceUuid === '' ){
+        (bleScanFilter as bluetoothManager.ScanFilter) = {
+          deviceId: this.txtScanFilter_deviceId
+        }
+        this.curScanFilters.push(bleScanFilter);
+      }
+      if ( this.txtScanFilter_deviceId === '' && this.txtScanFilter_name.length > 0 && this.txtScanFilter_serviceUuid.length > 0 ){
+        (bleScanFilter as bluetoothManager.ScanFilter) = {
+          name: this.txtScanFilter_name,
+          serviceUuid: this.txtScanFilter_serviceUuid
+        }
+        this.curScanFilters.push(bleScanFilter);
+      }
+      if ( this.txtScanFilter_deviceId.length > 0 && this.txtScanFilter_name === '' && this.txtScanFilter_serviceUuid.length > 0 ){
+        (bleScanFilter as bluetoothManager.ScanFilter) = {
+          deviceId: this.txtScanFilter_deviceId,
+          serviceUuid: this.txtScanFilter_serviceUuid
+        }
+        this.curScanFilters.push(bleScanFilter);
+      }
+      if ( this.txtScanFilter_deviceId.length > 0 && this.txtScanFilter_name.length > 0 && this.txtScanFilter_serviceUuid === '' ){
+        (bleScanFilter as bluetoothManager.ScanFilter) = {
+          deviceId: this.txtScanFilter_deviceId,
+          name: this.txtScanFilter_name
+        }
+        this.curScanFilters.push(bleScanFilter);
+      }
+    }
+  }
+
+  private buildBleScanOption(){
+    if ( this.cbxBleScanOptions ){
+      this.curScanOptions = {
+        interval: parseInt(this.txtScanOptions_interval),
+        dutyMode: this.txtScanOptions_dutyMode,
+        matchMode: this.txtScanOptions_matchMode}
+    }
+  }
+}

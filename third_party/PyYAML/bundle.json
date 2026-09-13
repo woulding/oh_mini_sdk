@@ -1,0 +1,33 @@
+{
+    "name": "@ohos/PyYAML",
+    "description": "A full-featured YAML processing framework for Python",
+    "version": "6.0.2",
+    "license": "MIT",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "third_party/PyYAML"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "PyYAML",
+        "subsystem": "thirdparty",
+        "syscap": [],
+        "features": [],
+        "adapted_system_type": [
+            "mini",
+            "standard"
+        ],
+        "rom": "",
+        "ram": "",
+        "deps": {
+            "components": [],
+            "third_party": []
+        },
+        "build": {
+            "sub_component": [],
+            "inner_kits": [],
+            "test": []
+        }
+    }
+}

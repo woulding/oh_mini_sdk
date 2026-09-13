@@ -1,0 +1,521 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+base_root = "../../../.."
+import("//build/config/components/ets_frontend/es2abc_config.gni")
+import("//build/config/components/ets_frontend/ets2abc_config.gni")
+import("//test/testfwk/arkxtest/arkxtest_config.gni")
+import("$base_root/build/ohos.gni")
+
+source_root = "$base_root/test/testfwk/arkxtest/uitest"
+
+config("uitest_common_configs") {
+  cflags = [
+    "-Wfloat-equal",
+    "-Wformat=2",
+    "-Wshadow",
+  ]
+}
+
+ohos_static_library("uitest_core") {
+  use_exceptions = true
+  configs = [ ":uitest_common_configs" ]
+  branch_protector_ret = "pac_ret"
+  sources = [
+    "${source_root}/core/dump_handler.cpp",
+    "${source_root}/core/frontend_api_handler.cpp",
+    "${source_root}/core/rect_algorithm.cpp",
+    "${source_root}/core/select_strategy.cpp",
+    "${source_root}/core/ui_action.cpp",
+    "${source_root}/core/ui_driver.cpp",
+    "${source_root}/core/ui_model.cpp",
+    "${source_root}/core/widget_operator.cpp",
+    "${source_root}/core/widget_selector.cpp",
+    "${source_root}/core/window_operator.cpp",
+  ]
+  external_deps = [
+    "hilog:libhilog",
+    "json:nlohmann_json_static",
+  ]
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"UiTestKit_Base\"",
+  ]
+
+  if (arkxtest_product_feature == "tablet") {
+    defines += [ "ARKXTEST_TABLET_FEATURE_ENABLE" ]
+  }
+  if (arkxtest_product_feature == "pc") {
+    defines += [ "ARKXTEST_PC_FEATURE_ENABLE" ]
+  }
+  if (arkxtest_product_feature == "phone" ||
+      arkxtest_product_feature == "tablet") {
+    defines += [ "ARKXTEST_KNUCKLE_ACTION_ENABLE" ]
+  }
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}
+
+ohos_static_library("uitest_input") {
+  use_exceptions = true
+  configs = [ ":uitest_common_configs" ]
+  branch_protector_ret = "pac_ret"
+  sources = [ "${source_root}/input/ui_input.cpp" ]
+  deps = [ ":uitest_core" ]
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"UiTestKit_Input\"",
+  ]
+  include_dirs = [ "${source_root}/core" ]
+  external_deps = [
+    "hilog:libhilog",
+    "json:nlohmann_json_static",
+  ]
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}
+
+ohos_static_library("uitest_record") {
+  use_exceptions = true
+  configs = [ ":uitest_common_configs" ]
+  branch_protector_ret = "pac_ret"
+  sources = [
+    "${source_root}/record/external_calls.cpp",
+    "${source_root}/record/find_widget.cpp",
+    "${source_root}/record/keyevent_tracker.cpp",
+    "${source_root}/record/least_square_impl.cpp",
+    "${source_root}/record/matrix3.cpp",
+    "${source_root}/record/pointer_info.cpp",
+    "${source_root}/record/pointer_tracker.cpp",
+    "${source_root}/record/ui_record.cpp",
+    "${source_root}/record/velocity_tracker.cpp",
+  ]
+  deps = [ ":uitest_core" ]
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"UiTestKit_Base\"",
+  ]
+  include_dirs = [ "${source_root}/core" ]
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_manager",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+  ]
+
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}
+common_external_deps = [
+  "c_utils:utils",
+  "hilog:libhilog",
+]
+
+ohos_static_library("uitest_ipc") {
+  configs = [ ":uitest_common_configs" ]
+  branch_protector_ret = "pac_ret"
+  sources = [ "${source_root}/connection/ipc_transactor.cpp" ]
+  include_dirs = [ "${source_root}/core" ]
+  deps = [ "${source_root}/../testserver/src:test_server_client" ]
+  external_deps = [
+    "ability_base:want",
+    "common_event_service:cesfwk_innerkits",
+    "ipc:ipc_core",
+    "json:nlohmann_json_static",
+    "samgr:samgr_proxy",
+  ]
+
+  external_deps += common_external_deps
+
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"UiTestKit_Conn\"",
+  ]
+}
+
+ohos_static_library("uitest_addon") {
+  configs = [ ":uitest_common_configs" ]
+  branch_protector_ret = "pac_ret"
+  sources = [
+    "${source_root}/addon/extension_executor.cpp",
+    "${source_root}/addon/screen_copy.cpp",
+  ]
+  include_dirs = [
+    "${source_root}/core",
+    "${source_root}/record",
+  ]
+  deps = [ ":uitest_core" ]
+  external_deps = [
+    "graphic_2d:librender_service_base",
+    "image_framework:image_native",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "json:nlohmann_json_static",
+    "libjpeg-turbo:turbojpeg_static",
+    "window_manager:libdm",
+    "window_manager:libwm",
+  ]
+  external_deps += common_external_deps
+
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"UiTestKit_Addon\"",
+  ]
+}
+
+ohos_executable("uitest_server") {
+  configs = [ ":uitest_common_configs" ]
+  branch_protector_ret = "pac_ret"
+  sources = [
+    "${source_root}/server/element_node_iterator_impl.cpp",
+    "${source_root}/server/server_main.cpp",
+    "${source_root}/server/system_ui_controller.cpp",
+  ]
+  include_dirs = [
+    "${source_root}/core",
+    "${source_root}/connection",
+    "${source_root}/record",
+    "${source_root}/addon",
+    "${source_root}/input",
+  ]
+
+  # static link the uitest_core as server end
+  deps = [
+    ":uitest_addon",
+    ":uitest_core",
+    ":uitest_input",
+    ":uitest_ipc",
+    ":uitest_record",
+    "${source_root}/../testserver/src:test_server_client",
+  ]
+
+  #dependencies for screencap
+  external_deps = [
+    "ability_runtime:ability_manager",
+    "accessibility:accessibility_common",
+    "accessibility:accessibleability",
+    "graphic_2d:librender_service_client",
+    "hisysevent:libhisysevent",
+    "image_framework:image_native",
+    "image_framework:image_packer",
+    "init:libbegetutil",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "libpng:libpng",
+    "window_manager:libdm",
+    "window_manager:libwm",
+  ]
+
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+  output_name = "uitest"
+  install_enable = true
+  external_deps += common_external_deps
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"UiTestKit_Server\"",
+  ]
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.hiviewdfx_hidumper)) {
+    external_deps += [
+      "hidumper:hidumper_client",
+      "samgr:samgr_proxy",
+    ]
+    defines += [ "HIDUMPER_ENABLED" ]
+  }
+  if (arkxtest_product_feature == "watch") {
+    defines += [ "ARKXTEST_WATCH_FEATURE_ENABLE" ]
+  }
+  if (arkxtest_product_feature == "pc" ||
+      arkxtest_product_feature == "tablet" ||
+      arkxtest_product_feature == "phone") {
+    defines += [ "ARKXTEST_ADJUST_WINDOWMODE_ENABLE" ]
+    defines += [ "ARKXTEST_TRIGGER_PEN_KEY_ENABLE" ]
+  }
+}
+
+es2abc_gen_abc("gen_uitest_exporter_abc") {
+  src_js = rebase_path("${source_root}/napi/uitest_exporter.js")
+  dst_file = rebase_path(target_out_dir + "/uitest_exporter.abc")
+  in_puts = [ "${source_root}/napi/uitest_exporter.js" ]
+  out_puts = [ target_out_dir + "/uitest_exporter.abc" ]
+  extra_args = [ "--module" ]
+}
+
+gen_js_obj("uitest_exporter_js") {
+  input = "${source_root}/napi/uitest_exporter.js"
+  output = target_out_dir + "/uitest_exporter.o"
+}
+
+gen_js_obj("uitest_exporter_abc") {
+  input = get_label_info(":gen_exporter_abc", "target_out_dir") +
+          "/uitest_exporter.abc"
+  output = target_out_dir + "/uitest_exporter_abc.o"
+  dep = ":gen_uitest_exporter_abc"
+}
+
+ohos_shared_library("uitest_client") {
+  configs = [ ":uitest_common_configs" ]
+  branch_protector_ret = "pac_ret"
+  sources = [
+    "${source_root}/napi/ui_event_observer_napi.cpp",
+    "${source_root}/napi/uitest_napi.cpp",
+  ]
+  include_dirs = [
+    "${source_root}/core",
+    "${source_root}/connection",
+  ]
+  deps = [
+    ":uitest_exporter_abc",
+    ":uitest_exporter_js",
+    ":uitest_ipc",
+    "${source_root}/../testserver/src:test_server_client",
+  ]
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+  output_name = "uitest"
+  external_deps = common_external_deps
+  external_deps += [
+    "ability_base:want",
+    "common_event_service:cesfwk_innerkits",
+    "image_framework:image_native",
+    "ipc:ipc_single",
+    "libuv:uv",
+    "napi:ace_napi",
+    "samgr:samgr_proxy",
+  ]
+  relative_install_dir = "module"
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"UiTestKit_Client\"",
+  ]
+  if (arkxtest_api_metrics_enable) {
+    defines += [ "ARKXTEST_API_METRICS_ENABLE" ]
+    external_deps += [ "api_metrics:histogrammanager" ]
+  }
+}
+
+ohos_unittest("uitest_core_unittest") {
+  sources = [
+    "${source_root}/test/common_utilities_test.cpp",
+    "${source_root}/test/frontend_api_handler_test.cpp",
+    "${source_root}/test/rect_algorithm_test.cpp",
+    "${source_root}/test/select_strategy_test.cpp",
+    "${source_root}/test/ui_action_test.cpp",
+    "${source_root}/test/ui_driver_test.cpp",
+    "${source_root}/test/ui_model_test.cpp",
+    "${source_root}/test/widget_operator_test.cpp",
+    "${source_root}/test/widget_selector_test.cpp",
+  ]
+  deps = [ ":uitest_core" ]
+  external_deps = [
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "json:nlohmann_json_static",
+  ]
+  include_dirs = [ "${source_root}/core" ]
+  cflags = [ "-g" ]
+  cflags_cc = [ "-g" ]
+  use_exceptions = true
+  module_out_path = "arkxtest/uitest"
+  testonly = true
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}
+
+ohos_shared_library("uitest_ani") {
+  configs = [ ":uitest_common_configs" ]
+  branch_protector_ret = "pac_ret"
+  external_deps = common_external_deps
+  include_dirs = [
+    "${source_root}/core",
+    "${source_root}/connection",
+  ]
+  sources = [
+    "./ets/ani/src/ui_event_observer_ani.cpp",
+    "./ets/ani/src/uitest_ani.cpp",
+  ]
+  deps = [
+    ":uitest_ipc",
+    "${source_root}/../testserver/src:test_server_client",
+  ]
+  external_deps += [
+    "common_event_service:cesfwk_innerkits",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "json:nlohmann_json_static",
+    "runtime_core:ani",
+    "runtime_core:ani_helpers",
+    "runtime_core:libarkruntime",
+  ]
+  defines = []
+  if (arkxtest_api_metrics_enable) {
+    defines += [ "ARKXTEST_API_METRICS_ENABLE" ]
+    external_deps += [ "api_metrics:histogrammanager" ]
+  }
+  output_extension = "so"
+  part_name = "arkxtest"
+  subsystem_name = "testfwk"
+}
+
+generate_static_abc("uitest_abc") {
+  base_url = "./ets/ani/ets"
+  files = [ "./ets/ani/ets/@ohos.UiTest.ets" ]
+  is_boot_abc = "True"
+  dst_file = "$target_out_dir/@ohos.UiTest.abc"
+  out_puts = [ "$target_out_dir/@ohos.UiTest.abc" ]
+  device_dst_file = "/system/framework/@ohos.UiTest.abc"
+}
+
+ohos_prebuilt_etc("uitest_etc") {
+  source = "$target_out_dir/@ohos.UiTest.abc"
+  module_install_dir = "framework"
+  part_name = "arkxtest"
+  subsystem_name = "testfwk"
+  deps = [ ":uitest_abc" ]
+}
+
+ohos_unittest("uitest_ipc_unittest") {
+  sources = [ "${source_root}/test/ipc_transactor_test.cpp" ]
+  deps = [ ":uitest_ipc" ]
+  include_dirs = [
+    "${source_root}/connection",
+    "${source_root}/core",
+  ]
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+  cflags = [ "-g" ]
+  cflags_cc = [ "-g" ]
+  module_out_path = "arkxtest/uitest"
+  testonly = true
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}
+
+ohos_unittest("uitest_extension_unittest") {
+  sources = [ "${source_root}/test/extension_test.cpp" ]
+  deps = [
+    ":uitest_addon",
+    ":uitest_core",
+    ":uitest_record",
+  ]
+  include_dirs = [
+    "${source_root}/addon",
+    "${source_root}/core",
+    "${source_root}/record",
+  ]
+  external_deps = [
+    "hilog:libhilog",
+    "json:nlohmann_json_static",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+  ]
+  cflags = [ "-g" ]
+  cflags_cc = [ "-g" ]
+  module_out_path = "arkxtest/uitest"
+  testonly = true
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}
+
+ohos_shared_library("uitest_dummy_extension") {
+  branch_protector_ret = "pac_ret"
+  sources = [ "${source_root}/test/dummy_extension.cpp" ]
+  include_dirs = [ "${source_root}/addon" ]
+  testonly = true
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}
+
+group("uitestkit") {
+  deps = [
+    ":cj_ui_test_ffi",
+    ":uitest_ani",
+    ":uitest_client",
+    ":uitest_etc",
+    ":uitest_server",
+  ]
+}
+
+group("uitestkit_test") {
+  testonly = true
+  deps = [
+    ":uitest_core_unittest",
+    ":uitest_dummy_extension",
+    ":uitest_extension_unittest",
+    ":uitest_ipc_unittest",
+  ]
+}
+
+ohos_shared_library("cj_ui_test_ffi") {
+  branch_protector_ret = "pac_ret"
+  cflags = [
+    "-Wfloat-equal",
+    "-Wformat=2",
+    "-Wshadow",
+  ]
+
+  defines = [
+    "__OHOS__=1",
+    "LOG_TAG=\"UiTestKit_Client\"",
+  ]
+
+  sources = [
+    "${source_root}/cj/ui_event_observer_impl.cpp",
+    "${source_root}/cj/uitest_ffi.cpp",
+  ]
+
+  include_dirs = [
+    "${source_root}/core",
+    "${source_root}/connection",
+  ]
+
+  if (product_name == "ohos-sdk") {
+    defines += [ "PREVIEWER" ]
+    sources = [ "${source_root}/cj/uitest_mock.cpp" ]
+  }
+
+  deps = [
+    ":uitest_ipc",
+    "${source_root}/../testserver/src:test_server_client",
+  ]
+
+  external_deps = common_external_deps
+  external_deps += [
+    "ability_base:want",
+    "common_event_service:cesfwk_innerkits",
+    "image_framework:image_native",
+    "ipc:ipc_single",
+    "json:nlohmann_json_static",
+    "napi:cj_bind_ffi",
+    "napi:cj_bind_native",
+    "samgr:samgr_proxy",
+  ]
+
+  relative_install_dir = "platformsdk"
+  subsystem_name = "testfwk"
+  part_name = "arkxtest"
+}

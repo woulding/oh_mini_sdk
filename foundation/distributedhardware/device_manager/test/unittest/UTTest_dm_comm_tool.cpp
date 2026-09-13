@@ -1,0 +1,1201 @@
+/*
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "UTTest_dm_comm_tool.h"
+#include <memory>
+#include "dm_error_type.h"
+
+using namespace testing;
+using namespace testing::ext;
+
+namespace OHOS {
+namespace DistributedHardware {
+void DMCommToolTest::SetUp()
+{
+    dmCommTool = DMCommTool::GetInstance();
+    dmCommTool->Init();
+}
+void DMCommToolTest::TearDown()
+{
+    if (dmTransportMock_ != nullptr) {
+        ::testing::Mock::VerifyAndClearExpectations(dmTransportMock_.get());
+    }
+    if (softbusCacheMock_ != nullptr) {
+        ::testing::Mock::VerifyAndClearExpectations(softbusCacheMock_.get());
+    }
+    if (dmCommToolMock_ != nullptr) {
+        ::testing::Mock::VerifyAndClearExpectations(dmCommToolMock_.get());
+    }
+}
+void DMCommToolTest::SetUpTestCase()
+{
+    DmDMTransport::dMTransport_ = dmTransportMock_;
+    DmSoftbusCache::dmSoftbusCache = softbusCacheMock_;
+    DMCommToolMock::dmDMCommTool = dmCommToolMock_;
+}
+void DMCommToolTest::TearDownTestCase()
+{
+    DmDMTransport::dMTransport_ = nullptr;
+    dmTransportMock_ = nullptr;
+    DmSoftbusCache::dmSoftbusCache = nullptr;
+    softbusCacheMock_ = nullptr;
+    dmCommToolMock_ = nullptr;
+}
+
+/**
+ * @tc.name: GetEventHandler_NotNull
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, GetEventHandler_NotNull, testing::ext::TestSize.Level1)
+{
+    auto handler = dmCommTool->GetEventHandler();
+    EXPECT_NE(handler, nullptr);
+}
+
+/**
+ * @tc.name: GetDMTransportPtr_NotNull
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, GetDMTransportPtr_NotNull, testing::ext::TestSize.Level1)
+{
+    auto transportPtr = dmCommTool->GetDMTransportPtr();
+    EXPECT_NE(transportPtr, nullptr);
+}
+
+HWTEST_F(DMCommToolTest, ProcessResponseUserIdsEvent_001, testing::ext::TestSize.Level1)
+{
+    std::string remoteNetworkId = "network******12";
+    std::string strMsg = R"({
+        "MsgType": "0",
+        "userId": "12345",
+        "syncUserIdFlag": 1,
+        "foregroundUserIds": [10, 11, 12],
+        "backgroundUserIds": [101, 112, 123],
+        "userIds": [
+            {"type": 1, "userId": 111},
+            {"type": 0, "userId": 222}
+        ]
+    })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, strMsg);
+    int32_t socketId = 0;
+    std::shared_ptr<InnerCommMsg> InnerCommMsg_ = std::make_shared<InnerCommMsg>(remoteNetworkId, commMsg_, socketId);
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(""), Return(ERR_DM_FAILED)));
+    dmCommTool->ProcessResponseUserIdsEvent(InnerCommMsg_);
+
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>("rmtUdid"), Return(ERR_DM_FAILED)));
+    dmCommTool->ProcessResponseUserIdsEvent(InnerCommMsg_);
+
+    std::string rmtNetworkId = "";
+    std::vector<uint32_t> foregroundUserIds;
+    std::vector<uint32_t> backgroundUserIds;
+    int32_t ret = dmCommTool->SendUserIds(rmtNetworkId, foregroundUserIds, backgroundUserIds);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DMCommToolTest, UnInit_001, testing::ext::TestSize.Level1)
+{
+    dmCommTool->dmTransportPtr_ = nullptr;
+
+    dmCommTool->UnInit();
+}
+
+HWTEST_F(DMCommToolTest, UnInit_002, testing::ext::TestSize.Level1)
+{
+    EXPECT_CALL(*dmTransportMock_, UnInit()).Times(1);
+
+    dmCommTool->UnInit();
+}
+
+HWTEST_F(DMCommToolTest, SendMsg_001, testing::ext::TestSize.Level1)
+{
+    std::string invalidNetworkId = "";
+    int32_t msgType = 1;
+    std::string msg = "test message";
+
+    int32_t ret = dmCommTool->SendMsg(invalidNetworkId, msgType, msg);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DMCommToolTest, SendMsg_002, testing::ext::TestSize.Level1)
+{
+    dmCommTool->dmTransportPtr_ = nullptr;
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t msgType = 1;
+    std::string msg = "test message";
+
+    int32_t ret = dmCommTool->SendMsg(rmtNetworkId, msgType, msg);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DMCommToolTest, SendMsg_003, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t msgType = 1;
+    std::string msg = "test message";
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+
+    int32_t ret = dmCommTool->SendMsg(rmtNetworkId, msgType, msg);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, SendMsg_004, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t msgType = 1;
+    std::string msg = "test message";
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(-1), Return(DM_OK)));
+
+    int32_t ret = dmCommTool->SendMsg(rmtNetworkId, msgType, msg);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, SendMsg_005, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t msgType = 1;
+    std::string msg = "test message";
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, 1))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+
+    int32_t ret = dmCommTool->SendMsg(rmtNetworkId, msgType, msg);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, SendMsg_006, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t msgType = 1;
+    std::string msg = "test message";
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, 1))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(DM_OK));
+
+    int32_t ret = dmCommTool->SendMsg(rmtNetworkId, msgType, msg);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DMCommToolTest, SendUserStop_001, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t stopUserId = 12345;
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1)).WillOnce(Return(DM_OK));
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).Times(0);
+
+    int32_t ret = dmCommTool->SendUserStop(rmtNetworkId, stopUserId);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, SendUserStop_002, testing::ext::TestSize.Level1)
+{
+    std::string invalidNetworkId = "";
+    int32_t stopUserId = 12345;
+
+    int32_t ret = dmCommTool->SendUserStop(invalidNetworkId, stopUserId);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DMCommToolTest, SendUserStop_003, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t stopUserId = 12345;
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, 1))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+
+    int32_t ret = dmCommTool->SendUserStop(rmtNetworkId, stopUserId);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, SendUserStop_004, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t stopUserId = 12345;
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+
+    int32_t ret = dmCommTool->SendUserStop(rmtNetworkId, stopUserId);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, SendUserStop_005, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t stopUserId = 12345;
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, 1))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(DM_OK));
+
+    int32_t ret = dmCommTool->SendUserStop(rmtNetworkId, stopUserId);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DMCommToolTest, ParseUserStopMessage_001, testing::ext::TestSize.Level1)
+{
+    std::string invalidJson = "invalid_json";
+    int32_t stopUserId = -1;
+
+    int32_t result = DMCommTool::GetInstance()->ParseUserStopMessage(invalidJson, stopUserId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, ParseUserStopMessage_002, testing::ext::TestSize.Level1)
+{
+    std::string jsonWithoutKey = R"({ "otherKey": 12345 })";
+    int32_t stopUserId = -1;
+
+    int32_t result = DMCommTool::GetInstance()->ParseUserStopMessage(jsonWithoutKey, stopUserId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, ParseUserStopMessage_003, testing::ext::TestSize.Level1)
+{
+    std::string jsonWithInvalidValue = R"({ "stopUserId": "not_a_number" })";
+    int32_t stopUserId = -1;
+
+    int32_t result = DMCommTool::GetInstance()->ParseUserStopMessage(jsonWithInvalidValue, stopUserId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, ParseUserStopMessage_004, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "stopUserId": 12345 })";
+    int32_t stopUserId = -1;
+
+    int32_t result = DMCommTool::GetInstance()->ParseUserStopMessage(validJson, stopUserId);
+    EXPECT_EQ(result, DM_OK);
+    EXPECT_EQ(stopUserId, 12345);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUserStopEvent_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<InnerCommMsg> commMsg = nullptr;
+
+    dmCommTool->ProcessReceiveUserStopEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUserStopEvent_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "{}");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(""), Return(ERR_DM_FAILED)));
+
+    dmCommTool->ProcessReceiveUserStopEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUserStopEvent_003, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "invalid_json");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>("validUdid"), Return(DM_OK)));
+
+    dmCommTool->ProcessReceiveUserStopEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUserStopEvent_004, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "stopUserId": 12345 })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>("validUdid"), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).Times(1);
+
+    dmCommTool->ProcessReceiveUserStopEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, RspUserStop_001, testing::ext::TestSize.Level1)
+{
+    dmCommTool->dmTransportPtr_ = nullptr;
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t socketId = 1;
+    int32_t stopUserId = 12345;
+
+    dmCommTool->RspUserStop(rmtNetworkId, socketId, stopUserId);
+}
+
+HWTEST_F(DMCommToolTest, RspUserStop_002, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t invalidSocketId = -1;
+    int32_t stopUserId = 12345;
+
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, invalidSocketId))
+    .WillOnce(Return(ERR_DM_FAILED));
+
+    dmCommTool->RspUserStop(rmtNetworkId, invalidSocketId, stopUserId);
+}
+
+HWTEST_F(DMCommToolTest, RspUserStop_003, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t socketId = 1;
+    int32_t stopUserId = 12345;
+
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, socketId))
+        .WillOnce(Return(ERR_DM_FAILED));
+
+    dmCommTool->RspUserStop(rmtNetworkId, socketId, stopUserId);
+}
+
+HWTEST_F(DMCommToolTest, RspUserStop_004, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t socketId = 1;
+    int32_t stopUserId = 12345;
+
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, socketId))
+        .WillOnce(Return(DM_OK));
+
+    dmCommTool->RspUserStop(rmtNetworkId, socketId, stopUserId);
+}
+
+HWTEST_F(DMCommToolTest, ProcessResponseUserStopEvent_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<InnerCommMsg> commMsg = nullptr;
+
+    dmCommTool->ProcessResponseUserStopEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessResponseUserStopEvent_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "{}");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(""), Return(ERR_DM_FAILED)));
+
+    dmCommTool->ProcessResponseUserStopEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessResponseUserStopEvent_003, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "invalid_json");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>("validUdid"), Return(DM_OK)));
+
+    dmCommTool->ProcessResponseUserStopEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessResponseUserStopEvent_004, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "stopUserId": 12345 })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>("validUdid"), Return(DM_OK)));
+
+    dmCommTool->ProcessResponseUserStopEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, SendUninstAppObj_001, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 0;
+    int32_t tokenId = 0;
+    std::string networkId = "";
+    int32_t result = dmCommTool->SendUninstAppObj(userId, tokenId, networkId);
+    EXPECT_EQ(result, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DMCommToolTest, SendUninstAppObj_002, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 0;
+    int32_t tokenId = 0;
+    std::string networkId = "123456";
+    dmCommTool->dmTransportPtr_ = nullptr;
+    int32_t result = dmCommTool->SendUninstAppObj(userId, tokenId, networkId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, SendUninstAppObj_003, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 0;
+    int32_t tokenId = 0;
+    std::string networkId = "123456";
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    int32_t result = dmCommTool->SendUninstAppObj(userId, tokenId, networkId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    result = dmCommTool->SendUninstAppObj(userId, tokenId, networkId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(DM_OK));
+    result = dmCommTool->SendUninstAppObj(userId, tokenId, networkId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DMCommToolTest, RspAppUninstall_001, testing::ext::TestSize.Level1)
+{
+    int32_t socketId = 0;
+    std::string rmtNetworkId = "";
+    dmCommTool->dmTransportPtr_ = nullptr;
+    int32_t result = dmCommTool->RspAppUninstall(rmtNetworkId, socketId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, RspAppUninstall_002, testing::ext::TestSize.Level1)
+{
+    int32_t socketId = 0;
+    std::string rmtNetworkId = "";
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(ERR_DM_FAILED));
+    int32_t result = dmCommTool->RspAppUninstall(rmtNetworkId, socketId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, RspAppUninstall_003, testing::ext::TestSize.Level1)
+{
+    int32_t socketId = 0;
+    std::string rmtNetworkId = "";
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(DM_OK));
+    int32_t result = dmCommTool->RspAppUninstall(rmtNetworkId, socketId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DMCommToolTest, RspAppUnbind_001, testing::ext::TestSize.Level1)
+{
+    int32_t socketId = 0;
+    std::string rmtNetworkId = "";
+    dmCommTool->dmTransportPtr_ = nullptr;
+    int32_t result = dmCommTool->RspAppUnbind(rmtNetworkId, socketId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, RspAppUnbind_002, testing::ext::TestSize.Level1)
+{
+    int32_t socketId = 0;
+    std::string rmtNetworkId = "";
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(ERR_DM_FAILED));
+    int32_t result = dmCommTool->RspAppUnbind(rmtNetworkId, socketId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, RspAppUnbind_003, testing::ext::TestSize.Level1)
+{
+    int32_t socketId = 0;
+    std::string rmtNetworkId = "";
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(DM_OK));
+    int32_t result = dmCommTool->RspAppUnbind(rmtNetworkId, socketId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DMCommToolTest, SendUnBindAppObj_001, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 0;
+    int32_t tokenId = 0;
+    std::string extra = "";
+    std::string networkId = "";
+    std::string udid = "12211";
+    int32_t result = dmCommTool->SendUnBindAppObj(userId, tokenId, extra, networkId, udid);
+    EXPECT_EQ(result, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DMCommToolTest, SendUnBindAppObj_002, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 0;
+    int32_t tokenId = 0;
+    std::string extra = "";
+    std::string networkId = "123456";
+    std::string udid = "12211";
+    dmCommTool->dmTransportPtr_ = nullptr;
+    int32_t result = dmCommTool->SendUnBindAppObj(userId, tokenId, extra, networkId, udid);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+HWTEST_F(DMCommToolTest, SendUnBindAppObj_003, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 0;
+    int32_t tokenId = 0;
+    std::string extra = "";
+    std::string networkId = "123456";
+    std::string udid = "12211";
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    int32_t result = dmCommTool->SendUnBindAppObj(userId, tokenId, extra, networkId, udid);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    result = dmCommTool->SendUnBindAppObj(userId, tokenId, extra, networkId, udid);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(DM_OK));
+    result = dmCommTool->SendUnBindAppObj(userId, tokenId, extra, networkId, udid);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUninstAppEvent_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<InnerCommMsg> commMsg = nullptr;
+    dmCommTool->ProcessReceiveUninstAppEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUninstAppEvent_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "invalid_json");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    dmCommTool->ProcessReceiveUninstAppEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUninstAppEvent_003, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "aaa" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(DM_OK));
+    dmCommTool->ProcessReceiveUninstAppEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUninstAppEvent_004, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "1234", "tokenId": "1234" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(DM_OK));
+    dmCommTool->ProcessReceiveUninstAppEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUnBindAppEvent_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<InnerCommMsg> commMsg = nullptr;
+    dmCommTool->ProcessReceiveUnBindAppEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUnBindAppEvent_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "invalid_json");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    dmCommTool->ProcessReceiveUnBindAppEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUnBindAppEvent_003, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "aaa", "tokenId": "bbb" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(DM_OK));
+    dmCommTool->ProcessReceiveUnBindAppEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveUnBindAppEvent_004, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "1234", "tokenId": "1234" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(DM_OK));
+    dmCommTool->ProcessReceiveUnBindAppEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, StopSocket_001, testing::ext::TestSize.Level1)
+{
+    std::string networkId = "123456";
+    dmCommTool->dmTransportPtr_ = nullptr;
+    dmCommTool->StopSocket(networkId);
+}
+
+HWTEST_F(DMCommToolTest, StopSocket_002, testing::ext::TestSize.Level1)
+{
+    std::string networkId = "123456";
+    dmCommTool->StopSocket(networkId);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUninstallEvent_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<InnerCommMsg> commMsg = nullptr;
+    dmCommTool->ProcessReceiveRspAppUninstallEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUninstallEvent_002, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "1234", "tokenId": "1234" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    dmCommTool->dmTransportPtr_ = nullptr;
+    dmCommTool->ProcessReceiveRspAppUninstallEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUninstallEvent_003, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "1234", "tokenId": "1234" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(""), Return(ERR_DM_FAILED)));
+    dmCommTool->ProcessReceiveRspAppUninstallEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUninstallEvent_004, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "1234", "tokenId": "1234" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>("validUdid"), Return(DM_OK)));
+    dmCommTool->ProcessReceiveRspAppUninstallEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUnbindEvent_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<InnerCommMsg> commMsg = nullptr;
+    dmCommTool->ProcessReceiveRspAppUnbindEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUnbindEvent_002, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "1234", "tokenId": "1234" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    dmCommTool->dmTransportPtr_ = nullptr;
+    dmCommTool->ProcessReceiveRspAppUnbindEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUnbindEvent_003, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "1234", "tokenId": "1234" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(""), Return(ERR_DM_FAILED)));
+    dmCommTool->ProcessReceiveRspAppUnbindEvent(commMsg);
+}
+
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUnbindEvent_004, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "userId": "1234", "tokenId": "1234" })";
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, validJson);
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>("validUdid"), Return(DM_OK)));
+    dmCommTool->ProcessReceiveRspAppUnbindEvent(commMsg);
+}
+
+/**
+ * @tc.name: CreateUserStopMessage_001
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, CreateUserStopMessage_001, testing::ext::TestSize.Level1)
+{
+    int32_t stopUserId = 999;
+    std::string msgStr;
+    int32_t ret = DMCommTool::GetInstance()->CreateUserStopMessage(stopUserId, msgStr);
+    EXPECT_EQ(ret, DM_OK);
+    EXPECT_FALSE(msgStr.empty());
+}
+
+/**
+ * @tc.name: RspUserStop_005
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, RspUserStop_005, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t socketId = 1;
+    int32_t stopUserId = 12345;
+
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, socketId))
+        .WillOnce(Return(DM_OK));
+
+    dmCommTool->RspUserStop(rmtNetworkId, socketId, stopUserId);
+}
+
+/**
+ * @tc.name: SendUnBindServiceProxyObj_001
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, SendUnBindServiceProxyObj_001, testing::ext::TestSize.Level1)
+{
+    UnbindServiceProxyParam param;
+    param.peerNetworkId = "";
+    int32_t result = dmCommTool->SendUnBindServiceProxyObj(param);
+    EXPECT_EQ(result, ERR_DM_INPUT_PARA_INVALID);
+}
+
+/**
+ * @tc.name: SendUnBindServiceProxyObj_002
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, SendUnBindServiceProxyObj_002, testing::ext::TestSize.Level1)
+{
+    UnbindServiceProxyParam param;
+    param.peerNetworkId = "123456";
+    dmCommTool->dmTransportPtr_ = nullptr;
+    int32_t result = dmCommTool->SendUnBindServiceProxyObj(param);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: SendUnBindServiceProxyObj_003
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, SendUnBindServiceProxyObj_003, testing::ext::TestSize.Level1)
+{
+    UnbindServiceProxyParam param;
+    param.peerNetworkId = "validNetworkId";
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    int32_t result = dmCommTool->SendUnBindServiceProxyObj(param);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    result = dmCommTool->SendUnBindServiceProxyObj(param);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(_, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(DM_OK));
+    result = dmCommTool->SendUnBindServiceProxyObj(param);
+    EXPECT_EQ(result, DM_OK);
+}
+
+/**
+ * @tc.name: RspServiceUnbindProxy_001
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, RspServiceUnbindProxy_001, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t socketId = 1;
+    dmCommTool->dmTransportPtr_ = nullptr;
+    int32_t result = dmCommTool->RspServiceUnbindProxy(rmtNetworkId, socketId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: RspServiceUnbindProxy_002
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, RspServiceUnbindProxy_002, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t socketId = 1;
+
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, socketId))
+        .WillOnce(Return(ERR_DM_FAILED));
+    int32_t result = dmCommTool->RspServiceUnbindProxy(rmtNetworkId, socketId);
+    EXPECT_EQ(result, ERR_DM_FAILED);
+
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, socketId))
+        .WillOnce(Return(DM_OK));
+    result = dmCommTool->RspServiceUnbindProxy(rmtNetworkId, socketId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+/**
+ * @tc.name: ProcessReceiveServiceUnbindProxyEvent_001
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, ProcessReceiveServiceUnbindProxyEvent_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<InnerCommMsg> commMsg = nullptr;
+    dmCommTool->ProcessReceiveServiceUnbindProxyEvent(commMsg);
+}
+
+/**
+ * @tc.name: ProcessReceiveServiceUnbindProxyEvent_002
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, ProcessReceiveServiceUnbindProxyEvent_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "{}");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*dmTransportMock_, Send(_, _, _)).WillOnce(Return(DM_OK));
+    dmCommTool->ProcessReceiveServiceUnbindProxyEvent(commMsg);
+}
+
+/**
+ * @tc.name: ProcessReceiveRspServiceUnbindProxyEvent_001
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, ProcessReceiveRspServiceUnbindProxyEvent_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<InnerCommMsg> commMsg = nullptr;
+    dmCommTool->ProcessReceiveRspServiceUnbindProxyEvent(commMsg);
+}
+
+/**
+ * @tc.name: ProcessReceiveRspServiceUnbindProxyEvent_002
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, ProcessReceiveRspServiceUnbindProxyEvent_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "{}");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("", commMsg_, 0);
+    dmCommTool->ProcessReceiveRspServiceUnbindProxyEvent(commMsg);
+}
+
+/**
+ * @tc.name: ProcessReceiveRspServiceUnbindProxyEvent_003
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, ProcessReceiveRspServiceUnbindProxyEvent_003, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "{}");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("networkId", commMsg_, 0);
+    EXPECT_CALL(*softbusCacheMock_, GetUdidFromCache(_, _))
+        .WillOnce(DoAll(SetArgReferee<1>(""), Return(ERR_DM_FAILED)));
+    dmCommTool->ProcessReceiveRspServiceUnbindProxyEvent(commMsg);
+}
+
+/**
+ * @tc.name: ProcessReceiveRspAppUninstallEvent_005
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUninstallEvent_005, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "{}");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("", commMsg_, 0);
+    dmCommTool->ProcessReceiveRspAppUninstallEvent(commMsg);
+}
+
+/**
+ * @tc.name: ProcessReceiveRspAppUnbindEvent_005
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, ProcessReceiveRspAppUnbindEvent_005, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<CommMsg> commMsg_ = std::make_shared<CommMsg>(1, "{}");
+    std::shared_ptr<InnerCommMsg> commMsg = std::make_shared<InnerCommMsg>("", commMsg_, 0);
+    dmCommTool->ProcessReceiveRspAppUnbindEvent(commMsg);
+}
+
+/**
+ * @tc.name: StartCommonEvent_001
+ * @tc.type: FUNC
+ */
+HWTEST_F(DMCommToolTest, StartCommonEvent_001, testing::ext::TestSize.Level1)
+{
+    int32_t ret = dmCommTool->StartCommonEvent("", nullptr);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+/**
+ * @tc.name: StartCommonEvent_002
+ * @tc.desc: Verify StartCommonEvent returns DM_OK with a valid event type and callback.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, StartCommonEvent_002, testing::ext::TestSize.Level1)
+{
+    bool called = false;
+    auto callback = [&called]() { called = true; };
+    int32_t ret = dmCommTool->StartCommonEvent("testEvent", callback);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: StartCommonEvent_003
+ * @tc.desc: Verify StartCommonEvent returns invalid when event type is empty but callback is set.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, StartCommonEvent_003, testing::ext::TestSize.Level1)
+{
+    auto callback = []() {};
+    int32_t ret = dmCommTool->StartCommonEvent("", callback);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+/**
+ * @tc.name: SendUserIds_002
+ * @tc.desc: Verify SendUserIds returns failed when StartSocket fails.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, SendUserIds_002, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    std::vector<uint32_t> foregroundUserIds{1, 2};
+    std::vector<uint32_t> backgroundUserIds{3, 4};
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    int32_t ret = dmCommTool->SendUserIds(rmtNetworkId, foregroundUserIds, backgroundUserIds);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: SendUserIds_003
+ * @tc.desc: Verify SendUserIds returns ok on full success path.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, SendUserIds_003, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    std::vector<uint32_t> foregroundUserIds{1, 2};
+    std::vector<uint32_t> backgroundUserIds{3, 4};
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, 1))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = dmCommTool->SendUserIds(rmtNetworkId, foregroundUserIds, backgroundUserIds);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: SendLogoutAccountInfo_001
+ * @tc.desc: Verify SendLogoutAccountInfo returns invalid for empty networkId.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, SendLogoutAccountInfo_001, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "";
+    std::string accountId = "acct_001";
+    int32_t userId = 100;
+    int32_t ret = dmCommTool->SendLogoutAccountInfo(rmtNetworkId, accountId, userId);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+/**
+ * @tc.name: SendLogoutAccountInfo_002
+ * @tc.desc: Verify SendLogoutAccountInfo returns invalid for empty accountId.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, SendLogoutAccountInfo_002, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    std::string accountId = "";
+    int32_t userId = 100;
+    int32_t ret = dmCommTool->SendLogoutAccountInfo(rmtNetworkId, accountId, userId);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+/**
+ * @tc.name: SendLogoutAccountInfo_003
+ * @tc.desc: Verify SendLogoutAccountInfo returns failed when StartSocket fails.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, SendLogoutAccountInfo_003, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    std::string accountId = "acct_001";
+    int32_t userId = 100;
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    int32_t ret = dmCommTool->SendLogoutAccountInfo(rmtNetworkId, accountId, userId);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: SendLogoutAccountInfo_004
+ * @tc.desc: Verify SendLogoutAccountInfo returns ok on full success path.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, SendLogoutAccountInfo_004, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    std::string accountId = "acct_001";
+    int32_t userId = 100;
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(1), Return(DM_OK)));
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, 1))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = dmCommTool->SendLogoutAccountInfo(rmtNetworkId, accountId, userId);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: CreateUserStopMessage_002
+ * @tc.desc: Verify CreateUserStopMessage and ParseUserStopMessage round-trip preserves the user id.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, CreateUserStopMessage_002, testing::ext::TestSize.Level1)
+{
+    int32_t stopUserId = 42;
+    std::string msgStr;
+    int32_t ret = DMCommTool::GetInstance()->CreateUserStopMessage(stopUserId, msgStr);
+    EXPECT_EQ(ret, DM_OK);
+    EXPECT_FALSE(msgStr.empty());
+
+    int32_t parsedUserId = -1;
+    ret = DMCommTool::GetInstance()->ParseUserStopMessage(msgStr, parsedUserId);
+    EXPECT_EQ(ret, DM_OK);
+    EXPECT_EQ(parsedUserId, stopUserId);
+}
+
+/**
+ * @tc.name: ParseUserStopMessage_005
+ * @tc.desc: Verify ParseUserStopMessage succeeds for a zero stopUserId.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, ParseUserStopMessage_005, testing::ext::TestSize.Level1)
+{
+    std::string validJson = R"({ "stopUserId": 0 })";
+    int32_t stopUserId = -1;
+    int32_t result = DMCommTool::GetInstance()->ParseUserStopMessage(validJson, stopUserId);
+    EXPECT_EQ(result, DM_OK);
+    EXPECT_EQ(stopUserId, 0);
+}
+
+/**
+ * @tc.name: SendMsg_007
+ * @tc.desc: Verify SendMsg returns failed when socketId is negative after StartSocket succeeds.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, SendMsg_007, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    int32_t msgType = 3;
+    std::string msg = "test message";
+
+    EXPECT_CALL(*dmTransportMock_, StartSocket(rmtNetworkId, _))
+        .Times(::testing::AtMost(1))
+        .WillOnce(DoAll(SetArgReferee<1>(-1), Return(DM_OK)));
+    int32_t ret = dmCommTool->SendMsg(rmtNetworkId, msgType, msg);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: RspLocalFrontOrBackUserIds_001
+ * @tc.desc: Verify RspLocalFrontOrBackUserIds returns early when dmTransportPtr_ is null.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, RspLocalFrontOrBackUserIds_001, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    std::vector<uint32_t> foregroundUserIds{1, 2};
+    std::vector<uint32_t> backgroundUserIds{3, 4};
+    int32_t socketId = 1;
+    dmCommTool->dmTransportPtr_ = nullptr;
+    dmCommTool->RspLocalFrontOrBackUserIds(rmtNetworkId, foregroundUserIds, backgroundUserIds, socketId);
+}
+
+/**
+ * @tc.name: RspLocalFrontOrBackUserIds_002
+ * @tc.desc: Verify RspLocalFrontOrBackUserIds sends with a valid transport and send fails.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, RspLocalFrontOrBackUserIds_002, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    std::vector<uint32_t> foregroundUserIds{1, 2};
+    std::vector<uint32_t> backgroundUserIds{3, 4};
+    int32_t socketId = 1;
+
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, socketId))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(ERR_DM_FAILED));
+    dmCommTool->RspLocalFrontOrBackUserIds(rmtNetworkId, foregroundUserIds, backgroundUserIds, socketId);
+}
+
+/**
+ * @tc.name: RspLocalFrontOrBackUserIds_003
+ * @tc.desc: Verify RspLocalFrontOrBackUserIds sends successfully.
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(DMCommToolTest, RspLocalFrontOrBackUserIds_003, testing::ext::TestSize.Level1)
+{
+    std::string rmtNetworkId = "validNetworkId";
+    std::vector<uint32_t> foregroundUserIds{1, 2};
+    std::vector<uint32_t> backgroundUserIds{3, 4};
+    int32_t socketId = 1;
+
+    EXPECT_CALL(*dmTransportMock_, Send(rmtNetworkId, _, socketId))
+        .Times(::testing::AtMost(1))
+        .WillOnce(Return(DM_OK));
+    dmCommTool->RspLocalFrontOrBackUserIds(rmtNetworkId, foregroundUserIds, backgroundUserIds, socketId);
+}
+
+} // DistributedHardware
+} // OHOS

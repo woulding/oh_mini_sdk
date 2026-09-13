@@ -1,0 +1,580 @@
+# Copyright (C) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/device_auth/deviceauth_env.gni")
+
+group_auth_path = "${services_path}/legacy/group_auth"
+authenticators_path = "${services_path}/legacy/authenticators"
+protocol_path = "${services_path}/protocol"
+ext_plugin_manager_path = "${services_path}/ext_plugin_manager"
+group_data_manager_path = "${services_path}/data_manager/group_data_manager"
+cred_data_manager_path = "${services_path}/data_manager/cred_data_manager"
+operation_data_manager_path = "${services_path}/data_manager/operation_data_manager"
+cred_listener_path = "${services_path}/identity_service/listener"
+cred_session_path = "${services_path}/identity_service/session"
+privacy_enhancement_path = "${services_path}/privacy_enhancement"
+dev_frameworks_path = "${services_path}/frameworks"
+group_manager_path = "${services_path}/legacy/group_manager"
+session_manager_path = "${services_path}/session_manager"
+creds_manager_path = "${services_path}/legacy/creds_manager"
+mk_agree_path = "${services_path}/mk_agree"
+identity_manager_path = "${services_path}/legacy/identity_manager"
+identity_service_path = "${services_path}/identity_service"
+device_auth_common = "${services_path}/common"
+
+enable_broadcast = true
+deviceauth_defines = []
+
+identity_service_inc = [
+  "${identity_service_path}/inc",
+  "${cred_data_manager_path}/inc",
+  "${cred_listener_path}/inc",
+  "${cred_session_path}/inc",
+]
+identity_service_files = [
+  "${identity_service_path}/src/identity_service.c",
+  "${identity_service_path}/src/identity_operation.c",
+  "${identity_service_path}/src/identity_service_impl.c",
+  "${cred_data_manager_path}/src/credential_data_manager.c",
+  "${cred_data_manager_path}/src/cred_tlv_parser.c",
+  "${cred_listener_path}/src/cred_listener.c",
+  "${cred_session_path}/src/cred_session_util.c",
+]
+identity_service_mock_files = [
+  "${identity_service_path}/src/mock/identity_service_mock.c",
+  "${identity_service_path}/src/mock/identity_operation_mock.c",
+  "${cred_data_manager_path}/src/mock/credential_data_manager_mock.c",
+  "${cred_listener_path}/src/mock/cred_listener_mock.c",
+  "${cred_session_path}/src/mock/cred_session_util_mock.c",
+]
+
+inc_path = [
+  "${inner_api_path}",
+  "${device_auth_common}/inc",
+  "${services_path}/sa/inc/cache_common_event_handler",
+  "${services_path}/sa/inc/critical_handler",
+  "${services_path}/sa/inc/unload_handler",
+  "${frameworks_path}/inc",
+  "${ext_plugin_manager_path}/inc",
+  "${ext_plugin_manager_path}/inc/account_related",
+  "${group_data_manager_path}/inc",
+  "${operation_data_manager_path}/inc",
+  "${privacy_enhancement_path}/inc",
+  "${group_auth_path}/inc",
+  "${group_auth_path}/inc/account_unrelated_group_auth",
+  "${group_auth_path}/inc/account_related_group_auth",
+  "${group_manager_path}/inc",
+  "${group_manager_path}/inc/broadcast_manager",
+  "${group_manager_path}/inc/callback_manager",
+  "${group_manager_path}/inc/channel_manager",
+  "${group_manager_path}/inc/channel_manager/soft_bus_channel",
+  "${dev_frameworks_path}/inc/",
+  "${dev_frameworks_path}/inc/module",
+  "${dev_frameworks_path}/inc/session",
+  "${dev_frameworks_path}/inc/os_account_adapter",
+  "${dev_frameworks_path}/inc/plugin_adapter",
+  "${dev_frameworks_path}/inc/task_manager",
+  "${dev_frameworks_path}/inc/security_label_adapter",
+  "${dev_frameworks_path}/inc/account_task_manager",
+  "${authenticators_path}/inc/account_related",
+  "${authenticators_path}/inc/account_related/auth/iso_auth_task",
+  "${authenticators_path}/inc/account_related/auth/pake_v2_auth_task",
+  "${authenticators_path}/inc/account_related/creds_manager",
+  "${authenticators_path}/inc/account_unrelated",
+  "${authenticators_path}/inc/account_unrelated/iso_task",
+  "${authenticators_path}/inc/account_unrelated/iso_task/iso_protocol_task",
+  "${authenticators_path}/inc/account_unrelated/iso_task/lite_exchange_task",
+  "${authenticators_path}/inc/account_unrelated/pake_task",
+  "${authenticators_path}/inc/account_unrelated/pake_task/pake_v1_task",
+  "${authenticators_path}/inc/account_unrelated/pake_task/pake_v2_task",
+  "${protocol_path}/inc",
+  "${protocol_path}/inc/pake_protocol",
+  "${protocol_path}/inc/pake_protocol/pake_v1_protocol",
+  "${protocol_path}/inc/pake_protocol/pake_v2_protocol",
+  "${protocol_path}/inc/pake_protocol/pake_protocol_dl_common",
+  "${protocol_path}/inc/pake_protocol/pake_protocol_ec_common",
+  "${protocol_path}/inc/iso_protocol",
+  "${session_manager_path}/inc",
+  "${session_manager_path}/inc/session",
+  "${session_manager_path}/inc/session/mini_session",
+  "${session_manager_path}/inc/session/v1",
+  "${session_manager_path}/inc/session/v1/compatible_bind_sub_session",
+  "${session_manager_path}/inc/session/v1/compatible_auth_sub_session",
+  "${session_manager_path}/inc/session/v2",
+  "${session_manager_path}/inc/session/v2/auth_sub_session",
+  "${session_manager_path}/inc/session/v2/auth_sub_session/protocol_lib",
+  "${session_manager_path}/inc/session/v2/expand_sub_session",
+  "${session_manager_path}/inc/session/v2/expand_sub_session/expand_process_lib",
+  "${creds_manager_path}/inc",
+  "${creds_manager_path}/inc/account_related",
+  "${mk_agree_path}/inc",
+]
+
+inc_path += identity_service_inc
+
+deviceauth_common_files = [
+  "${services_path}/device_auth.c",
+  "${device_auth_common}/src/hisysevent_common.c",
+  "${device_auth_common}/src/device_auth_common.c",
+  "${group_manager_path}/src/group_manager.c",
+  "${group_manager_path}/src/channel_manager/channel_manager.c",
+  "${group_manager_path}/src/callback_manager/callback_manager.c",
+  "${protocol_path}/src/protocol_common.c",
+  "${protocol_path}/src/iso_protocol/iso_protocol_common.c",
+  "${protocol_path}/src/pake_protocol/pake_common.c",
+  "${protocol_path}/src/pake_protocol/pake_v1_protocol/pake_v1_protocol_common.c",
+  "${protocol_path}/src/pake_protocol/pake_protocol_dl_common/pake_protocol_dl_common.c",
+  "${protocol_path}/src/pake_protocol/pake_protocol_ec_common/pake_protocol_ec_common.c",
+  "${protocol_path}/src/pake_protocol/pake_v2_protocol/pake_v2_protocol_common.c",
+]
+
+dev_frameworks_files = [
+  "${dev_frameworks_path}/src/module/dev_auth_module_manager.c",
+  "${dev_frameworks_path}/src/task_manager/task_manager.c",
+]
+
+os_account_adapter_files =
+    [ "${dev_frameworks_path}/src/os_account_adapter/os_account_adapter.cpp" ]
+
+os_account_adapter_mock_files = [ "${dev_frameworks_path}/src/os_account_adapter_mock/os_account_adapter_mock.cpp" ]
+
+security_label_adapter_files = [
+  "${dev_frameworks_path}/src/security_label_adapter/security_label_adapter.c",
+]
+
+security_label_adapter_mock_files = [ "${dev_frameworks_path}/src/security_label_adapter_mock/security_label_adapter_mock.c" ]
+
+permission_adapter_files =
+    [ "${dev_frameworks_path}/src/permission_adapter/permission_adapter.cpp" ]
+
+cache_common_event_handler_files =
+    [ "${services_path}/sa/src/cache_common_event_handler/cache_common_event_handler.cpp" ]
+cache_common_event_handler_mock_files =
+    [ "${services_path}/sa/src/cache_common_event_handler/mock/cache_common_event_handler_mock.cpp" ]
+critical_handler_files =
+    [ "${services_path}/sa/src/critical_handler/critical_handler.cpp" ]
+critical_handler_mock_files =
+    [ "${services_path}/sa/src/critical_handler/mock/critical_handler_mock.cpp" ]
+unload_handler_files =
+    [ "${services_path}/sa/src/unload_handler/unload_handler.cpp" ]
+unload_handler_mock_files =
+    [ "${services_path}/sa/src/unload_handler/mock/unload_handler_mock.cpp" ]
+sdk_load_on_demand_files = 
+    [ "${frameworks_path}/sdk/sa_load_on_demand/src/sa_load_on_demand.cpp" ]
+sdk_load_on_demand_mock_files = 
+    [ "${frameworks_path}/sdk/sa_load_on_demand/src/mock/sa_load_on_demand_mock.cpp" ]
+
+sa_load_on_demand_files = cache_common_event_handler_files + critical_handler_files
+sa_load_on_demand_mock_files = cache_common_event_handler_mock_files + critical_handler_mock_files + unload_handler_mock_files
+
+hiview_adapter_files = [
+  "${dev_frameworks_path}/src/hiview_adapter/hidump_adapter.c",
+  "${dev_frameworks_path}/src/hiview_adapter/hisysevent_adapter.cpp",
+  "${dev_frameworks_path}/src/hiview_adapter/hitrace_adapter.cpp",
+  "${dev_frameworks_path}/src/hiview_adapter/performance_dumper.c",
+]
+
+account_subscriber_files =
+    [ "${dev_frameworks_path}/src/account_subscriber/account_subscriber.cpp" ]
+
+sa_subscriber_files =
+    [ "${dev_frameworks_path}/src/sa_subscriber/sa_subscriber.cpp" ]
+
+net_observer_files =
+    [ "${dev_frameworks_path}/src/net_observer/net_observer.cpp" ]
+
+group_auth_files = [
+  "${group_auth_path}/src/group_auth_manager/group_auth_common/group_auth_data_operation.c",
+  "${group_auth_path}/src/group_auth_manager/group_auth_manager.c",
+]
+
+group_auth_account_unrelated_files = [ "${group_auth_path}/src/group_auth_manager/account_unrelated_group_auth/account_unrelated_group_auth.c" ]
+group_auth_account_unrelated_mock_files = [ "${group_auth_path}/src/group_auth_manager/account_unrelated_group_auth_mock/account_unrelated_group_auth_mock.c" ]
+group_auth_account_related_mock_files = [ "${group_auth_path}/src/group_auth_manager/account_related_group_auth_mock/account_related_group_auth_mock.c" ]
+
+account_related_cred_plugin_mock_files = [ "${ext_plugin_manager_path}/src/account_related_mock/account_related_cred_plugin_mock.c" ]
+
+account_auth_plugin_files = [ "${dev_frameworks_path}/src/plugin_adapter/ext_part/account_auth_plugin/account_auth_plugin_proxy.c" ]
+account_auth_plugin_mock_files = [ "${dev_frameworks_path}/src/plugin_adapter_mock/account_auth_plugin_proxy_mock.c" ]
+
+account_task_manager_files =
+    [ "${dev_frameworks_path}/src/account_task_manager/account_task_manager.c" ]
+account_task_manager_mock_files = [ "${dev_frameworks_path}/src/account_task_manager_mock/account_task_manager_mock.c" ]
+
+ext_plugin_manager_files =
+    [ "${ext_plugin_manager_path}/src/ext_plugin_manager.c" ]
+
+group_database_manager_files =
+    [ "${group_data_manager_path}/src/group_data_manager.c" ]
+
+operation_database_manager_files = 
+    [ "${operation_data_manager_path}/src/operation_data_manager.c" ]
+
+privacy_enhancement_files =
+    [ "${privacy_enhancement_path}/src/pseudonym_manager.c" ]
+privacy_enhancement_mock_files =
+    [ "${privacy_enhancement_path}/src/mock/pseudonym_manager_mock.c" ]
+
+mk_agree_files = [
+  "${session_manager_path}/src/session/v2/expand_sub_session/expand_process_lib/mk_agree.c",
+  "${mk_agree_path}/src/key_manager.c",
+  "${mk_agree_path}/src/mk_agree_task.c",
+]
+
+mk_agree_mock_files = [
+  "${mk_agree_path}/src/mock/key_manager_mock.c",
+  "${mk_agree_path}/src/mock/mk_agree_task_mock.c",
+]
+
+group_manager_files = [
+  "${group_manager_path}/src/group_operation/group_operation.c",
+  "${group_manager_path}/src/group_operation/group_operation_common/group_operation_common.c",
+]
+
+session_manager_files = [
+  "${session_manager_path}/src/dev_session_mgr.c",
+  "${session_manager_path}/src/session/dev_session_fwk.c",
+]
+
+session_mini_files = [
+  "${session_manager_path}/src/session/mini_session/mini_session_manager.c",
+]
+
+session_v1_files = [
+  "${session_manager_path}/src/session/v1/compatible_sub_session.c",
+  "${session_manager_path}/src/session/v1/compatible_bind_sub_session/compatible_bind_sub_session.c",
+  "${session_manager_path}/src/session/v1/compatible_bind_sub_session/compatible_bind_sub_session_common.c",
+  "${session_manager_path}/src/session/v1/compatible_bind_sub_session/compatible_bind_sub_session_util.c",
+  "${session_manager_path}/src/session/v1/compatible_auth_sub_session/compatible_auth_sub_session.c",
+  "${session_manager_path}/src/session/v1/compatible_auth_sub_session/compatible_auth_sub_session_common.c",
+  "${session_manager_path}/src/session/v1/compatible_auth_sub_session/compatible_auth_sub_session_util.c",
+]
+
+session_v2_files = [
+  "${session_manager_path}/src/session/v2/dev_session_v2.c",
+  "${session_manager_path}/src/session/v2/dev_session_util.c",
+  "${session_manager_path}/src/session/v2/auth_sub_session/auth_sub_session.c",
+  "${session_manager_path}/src/session/v2/expand_sub_session/expand_sub_session.c",
+]
+session_v2_mock_files =
+    [ "${session_manager_path}/src/session/v2_mock/dev_session_v2_mock.c" ]
+
+session_mini_mock_files =
+    [ "${session_manager_path}/src/session/mini_mock/mini_session_mock.c" ]
+
+iso_protocol_files = [ "${session_manager_path}/src/session/v2/auth_sub_session/protocol_lib/iso_protocol.c" ]
+dl_speke_protocol_files = [ "${session_manager_path}/src/session/v2/auth_sub_session/protocol_lib/dl_speke_protocol.c" ]
+ec_speke_protocol_files = [ "${session_manager_path}/src/session/v2/auth_sub_session/protocol_lib/ec_speke_protocol.c" ]
+
+auth_code_import_files = [ "${session_manager_path}/src/session/v2/expand_sub_session/expand_process_lib/auth_code_import.c" ]
+pub_key_exchange_files = [ "${session_manager_path}/src/session/v2/expand_sub_session/expand_process_lib/pub_key_exchange.c" ]
+save_trusted_info_files = [ "${session_manager_path}/src/session/v2/expand_sub_session/expand_process_lib/save_trusted_info.c" ]
+
+creds_manager_files = [ "${creds_manager_path}/src/creds_manager.c" ]
+account_related_creds_manager_mock_files =
+    [ "${identity_manager_path}/src/mock/cert_operation_mock.c" ]
+
+group_manager_peer_to_peer_files = [ "${group_manager_path}/src/group_operation/peer_to_peer_group/peer_to_peer_group.c" ]
+group_manager_peer_to_peer_mock_files = [ "${group_manager_path}/src/group_operation/peer_to_peer_group_mock/peer_to_peer_group_mock.c" ]
+group_manager_identical_account_mock_files = [ "${group_manager_path}/src/group_operation/identical_account_group_mock/identical_account_group_mock.c" ]
+group_manager_across_account_mock_files = [ "${group_manager_path}/src/group_operation/across_account_group_mock/across_account_group_mock.c" ]
+
+authenticators_p2p_files = [
+  "${authenticators_path}/src/account_unrelated/common/das_task_common.c",
+  "${authenticators_path}/src/account_unrelated/das_module.c",
+  "${authenticators_path}/src/account_unrelated/common/das_version_util.c",
+  "${authenticators_path}/src/account_unrelated/das_task_main.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_task_common.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_message_util.c",
+]
+authenticators_p2p_mock_files =
+    [ "${authenticators_path}/src/account_unrelated_mock/das_module_mock.c" ]
+authenticators_account_related_mock_files =
+    [ "${authenticators_path}/src/account_related_mock/account_module_mock.c" ]
+authenticators_p2p_iso_files = [
+  "${authenticators_path}/src/account_unrelated/iso_task/iso_client_task.c",
+  "${authenticators_path}/src/account_unrelated/iso_task/iso_server_task.c",
+  "${authenticators_path}/src/account_unrelated/iso_task/iso_task_common/iso_task_common.c",
+  "${authenticators_path}/src/account_unrelated/iso_task/iso_task_main.c",
+  "${authenticators_path}/src/account_unrelated/iso_task/iso_protocol_task/iso_client_protocol_task.c",
+  "${authenticators_path}/src/account_unrelated/iso_task/iso_protocol_task/iso_server_protocol_task.c",
+  "${authenticators_path}/src/account_unrelated/creds_manager/das_lite_token_manager.c",
+  "${authenticators_path}/src/account_unrelated/iso_task/lite_exchange_task/iso_client_bind_exchange_task.c",
+  "${authenticators_path}/src/account_unrelated/iso_task/lite_exchange_task/iso_server_bind_exchange_task.c",
+]
+authenticators_p2p_iso_mock_files = [ "${authenticators_path}/src/account_unrelated/iso_task_mock/iso_task_main_mock.c" ]
+authenticators_p2p_pake_files = [
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_task_main.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_client_task.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_server_task.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_protocol_task/pake_v1_client_protocol_task.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_protocol_task/pake_v1_server_protocol_task.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task/pake_v1_protocol_task/pake_v1_protocol_task_common.c",
+
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v2_task_mock/pake_v2_task_main_mock.c",
+]
+authenticators_p2p_pake_mock_files = [
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v1_task_mock/pake_v1_task_main_mock.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/pake_v2_task_mock/pake_v2_task_main_mock.c",
+]
+
+authenticators_standard_exchange_task_files = [
+  "${authenticators_path}/src/account_unrelated/pake_task/standard_exchange_task/common_standard_bind_exchange.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/standard_exchange_task/standard_client_bind_exchange_task.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/standard_exchange_task/standard_server_bind_exchange_task.c",
+  "${authenticators_path}/src/account_unrelated/creds_manager/das_standard_token_manager.c",
+  "${authenticators_path}/src/account_unrelated/pake_task/standard_exchange_task/standard_exchange_message_util.c",
+]
+authenticators_standard_exchange_task_mock_files = [ "${authenticators_path}/src/account_unrelated/pake_task/standard_exchange_task_mock/standard_exchange_task_mock.c" ]
+
+soft_bus_channel_files = [ "${group_manager_path}/src/channel_manager/soft_bus_channel/soft_bus_channel.c" ]
+soft_bus_channel_mock_files = [ "${group_manager_path}/src/channel_manager/soft_bus_channel_mock/soft_bus_channel_mock.c" ]
+
+broadcast_manager_files =
+    [ "${group_manager_path}/src/broadcast_manager/broadcast_manager.c" ]
+broadcast_manager_mock_files = [
+  "${group_manager_path}/src/broadcast_manager_mock/broadcast_manager_mock.c",
+]
+
+deviceauth_files = dev_frameworks_files + deviceauth_common_files +
+                   session_manager_files + creds_manager_files
+
+if (enable_pseudonym == true) {
+  deviceauth_defines += [ "ENABLE_PSEUDONYM" ]
+  deviceauth_files += privacy_enhancement_files
+  deviceauth_files += mk_agree_files
+} else {
+  deviceauth_files += privacy_enhancement_mock_files
+  deviceauth_files += mk_agree_mock_files
+}
+
+if (enable_p2p_bind_lite_protocol_check) {
+  deviceauth_defines += [ "ENABLE_P2P_BIND_LITE_PROTOCOL_CHECK" ]
+}
+
+if (enable_session_v2 == true) {
+  deviceauth_files += session_v2_files
+  if (enable_p2p_bind_lite_protocol) {
+    deviceauth_defines += [ "ENABLE_P2P_BIND_ISO" ]
+  }
+  if (enable_p2p_bind_dl_speke_protocol) {
+    deviceauth_files += dl_speke_protocol_files
+    deviceauth_defines += [ "ENABLE_P2P_BIND_DL_SPEKE" ]
+  }
+  if (enable_p2p_bind_standard_protocol) {
+    deviceauth_defines += [ "ENABLE_P2P_BIND_EC_SPEKE" ]
+  }
+  if (enable_p2p_auth_lite_protocol) {
+    deviceauth_defines += [ "ENABLE_P2P_AUTH_ISO" ]
+  }
+  if (enable_p2p_auth_standard_protocol) {
+    deviceauth_defines += [ "ENABLE_P2P_AUTH_EC_SPEKE" ]
+  }
+  if (enable_account || enable_p2p_bind_lite_protocol ||
+      enable_p2p_auth_lite_protocol) {
+    deviceauth_defines += [ "ENABLE_ISO" ]
+    deviceauth_files += iso_protocol_files
+    deviceauth_defines += [ "ENABLE_AUTH_CODE_IMPORT" ]
+    deviceauth_files += auth_code_import_files
+  }
+  if (enable_account || enable_p2p_bind_standard_protocol ||
+      enable_p2p_auth_standard_protocol) {
+    deviceauth_defines += [ "ENABLE_EC_SPEKE" ]
+    deviceauth_files += ec_speke_protocol_files
+    deviceauth_defines += [ "ENABLE_PUB_KEY_EXCHANGE" ]
+    deviceauth_files += pub_key_exchange_files
+  }
+  deviceauth_defines += [ "ENABLE_SAVE_TRUSTED_INFO" ]
+  deviceauth_files += save_trusted_info_files
+} else {
+  deviceauth_files += session_v2_mock_files
+}
+
+if (enable_session_mini == true) {
+  deviceauth_files += session_mini_files
+} else {
+  deviceauth_files += session_mini_mock_files
+}
+
+if (enable_session_v1 == true) {
+  deviceauth_files += session_v1_files
+}
+
+if (enable_p2p_pake_dl_prime_len_384 == true) {
+  deviceauth_defines += [ "P2P_PAKE_DL_PRIME_LEN_384" ]
+}
+if (enable_p2p_pake_dl_prime_len_256 == true) {
+  deviceauth_defines += [ "P2P_PAKE_DL_PRIME_LEN_256" ]
+}
+
+deviceauth_files += group_auth_files + group_manager_files +
+                    group_database_manager_files + ext_plugin_manager_files + operation_database_manager_files
+
+account_unrelated_deviceauth =
+    enable_p2p_bind_lite_protocol || enable_p2p_auth_lite_protocol ||
+    enable_p2p_bind_standard_protocol || enable_p2p_auth_standard_protocol
+
+if (account_unrelated_deviceauth == true) {
+  deviceauth_files +=
+      group_auth_account_unrelated_files + group_manager_peer_to_peer_files
+} else {
+  deviceauth_files += group_auth_account_unrelated_mock_files +
+                      group_manager_peer_to_peer_mock_files
+}
+
+if (account_unrelated_deviceauth == true) {
+  deviceauth_files += authenticators_p2p_files
+} else {
+  deviceauth_files += authenticators_p2p_mock_files
+}
+
+if (enable_p2p_bind_lite_protocol || enable_p2p_auth_lite_protocol) {
+  deviceauth_files += authenticators_p2p_iso_files
+} else {
+  deviceauth_files += authenticators_p2p_iso_mock_files
+}
+
+if (enable_p2p_bind_standard_protocol == true ||
+    enable_p2p_auth_standard_protocol == true) {
+  deviceauth_defines += [ "P2P_PAKE_EC_TYPE" ]
+  deviceauth_files += authenticators_p2p_pake_files
+} else {
+  deviceauth_files += authenticators_p2p_pake_mock_files
+}
+
+if (enable_p2p_auth_standard_protocol == true) {
+  deviceauth_files += authenticators_standard_exchange_task_files
+} else {
+  deviceauth_files += authenticators_standard_exchange_task_mock_files
+}
+
+if (enable_account == true) {
+  import("//base/security/device_auth/services/deviceauth_account.gni")
+  deviceauth_defines += account_related_defines
+  inc_path += account_related_inc_path
+  deviceauth_files += account_related_files
+} else {
+  deviceauth_files += group_auth_account_related_mock_files +
+                      group_manager_identical_account_mock_files +
+                      group_manager_across_account_mock_files +
+                      authenticators_account_related_mock_files +
+                      account_related_cred_plugin_mock_files +
+                      account_related_creds_manager_mock_files
+}
+
+if (device_auth_enable_run_on_demand_qos == true) {
+  deviceauth_defines += [ "DEVAUTH_ENABLE_RUN_ON_DEMAND_QOS" ]
+}
+
+if (enable_extend_plugin) {
+  deviceauth_files += account_auth_plugin_files
+  deviceauth_files += account_task_manager_files
+} else {
+  deviceauth_files += account_auth_plugin_mock_files
+  deviceauth_files += account_task_manager_mock_files
+}
+
+if (device_auth_enable_soft_bus_channel == true) {
+  deviceauth_files += soft_bus_channel_files
+} else {
+  deviceauth_files += soft_bus_channel_mock_files
+}
+
+if (enable_broadcast == true) {
+  deviceauth_files += broadcast_manager_files
+} else {
+  deviceauth_files += broadcast_manager_mock_files
+}
+
+if (!defined(ohos_lite) && (!defined(global_parts_info) ||
+                            defined(global_parts_info.account_os_account))) {
+  deviceauth_files += os_account_adapter_files
+  support_os_account = true
+} else {
+  deviceauth_files += os_account_adapter_mock_files
+  support_os_account = false
+}
+
+if (defined(global_parts_info) &&
+    defined(global_parts_info.notification_common_event_service)) {
+  common_event_enabled = true
+} else {
+  common_event_enabled = false
+}
+
+if (defined(global_parts_info) && 
+    defined(global_parts_info.resourceschedule_memmgr_override)) {
+  timeline_memmgr_enable = true
+} else {
+  timeline_memmgr_enable = false
+}
+
+if (defined(global_parts_info) && 
+    defined(global_parts_info.notification_eventhandler)) {
+  event_handler_enabled = true
+} else {
+  event_handler_enabled = false
+}
+
+if (defined(ohos_lite)) {
+  deviceauth_files += security_label_adapter_mock_files
+} else {
+  deviceauth_files += security_label_adapter_files
+}
+
+if (target_os == "linux") {
+  build_flags += [ "-D__LINUX__" ]
+}
+
+ipc_src_suffix = "cpp"
+ipc_adapt_path = "standard"
+if (defined(ohos_lite)) {
+  ipc_src_suffix = "c"
+  ipc_adapt_path = "lite"
+}
+
+deviceauth_ipc_files = [
+  "${frameworks_path}/src/${ipc_adapt_path}/ipc_adapt.${ipc_src_suffix}",
+  "${frameworks_path}/src/${ipc_adapt_path}/ipc_dev_auth_proxy.${ipc_src_suffix}",
+  "${frameworks_path}/src/${ipc_adapt_path}/ipc_dev_auth_stub.${ipc_src_suffix}",
+  "${frameworks_path}/src/${ipc_adapt_path}/ipc_callback_proxy.${ipc_src_suffix}",
+  "${frameworks_path}/src/${ipc_adapt_path}/ipc_callback_stub.${ipc_src_suffix}",
+]
+
+identity_manager_inc = [ "${identity_manager_path}/inc" ]
+
+declare_args() {
+  identity_manager_files = []
+}
+
+if (enable_session_v2 == true) {
+  identity_manager_files = [
+    "${identity_manager_path}/src/identity_manager.c",
+    "${identity_manager_path}/src/credential_operator.c",
+    "${identity_manager_path}/src/identity_common.c",
+    "${identity_manager_path}/src/identity_group.c",
+    "${identity_manager_path}/src/identity_p2p.c",
+    "${identity_manager_path}/src/identity_pin.c",
+  ]
+  if (enable_identity_service) {
+    identity_manager_files += [ "${identity_manager_path}/src/identity_cred.c" ]
+  } else {
+    identity_manager_files +=
+        [ "${identity_manager_path}/src/mock/identity_cred_mock.c" ]
+  }
+} else {
+  identity_manager_files = [
+    "${identity_manager_path}/src/mock/identity_manager_mock.c",
+    "${identity_manager_path}/src/mock/identity_common_mock.c",
+  ]
+}

@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef HIVIEWDFX_HIVIEW_TRACE_DYNAMIC_STATE_H
+#define HIVIEWDFX_HIVIEW_TRACE_DYNAMIC_STATE_H
+
+#include "time_util.h"
+#include "trace_common.h"
+#include "trace_base_state.h"
+
+namespace OHOS::HiviewDFX {
+class DynamicState : public TraceBaseState {
+public:
+    explicit DynamicState(int32_t appPid) : appPid_(appPid)
+    {
+        taskBeginTime_ = TimeUtil::GetMilliseconds();
+    }
+
+    TraceRet DumpTrace(const std::string& scenarioName, uint32_t maxDuration, uint64_t happenTime,
+        TraceRetInfo &info, const std::string& outputPath) override;
+
+    std::pair<int32_t, uint64_t> GetCurrentAppInfo() override
+    {
+        return {appPid_, taskBeginTime_};
+    }
+
+protected:
+    std::string GetStateScenario() const override
+    {
+        return ScenarioName::APP_DYNAMIC;
+    }
+
+    uint32_t GetStateLevel() const override
+    {
+        return ScenarioLevel::APP_DYNAMIC;
+    }
+
+private:
+    int32_t appPid_ = -1;
+    uint64_t taskBeginTime_ = 0;
+};
+}
+#endif //HIVIEWDFX_HIVIEW_TRACE_DYNAMIC_STATE_H

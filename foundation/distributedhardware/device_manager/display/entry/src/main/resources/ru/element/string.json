@@ -1,0 +1,151 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"Код подключения",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"Приложение %1$s на устройстве %2$s хочет получить доступ к этому устройству. Доверять этому приложению?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Отмена",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Введите код подключения",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Это необходимо для синхронизации данных и взаимодействия между устройствами.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Доверять сейчас",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Всегда доверять",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"Доверять только сейчас",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_confirm_proxy",
+            "value":"%s хочет подключиться к этому устройству. Выберите службы, к которым у него будет доступ:",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_connect_code",
+            "value":"Введите код подключения, отобразившийся на другом устройстве.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_confirm_title_cast",
+            "value":"%s хочет транслировать контент экрана на вашем устройстве. Доверять этому устройству?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_is_trust_device",
+            "value":"%s Доверять этому устройству?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_password_error",
+            "value":"Неверный пароль. Сбой подключения.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_bluetooth_dialog_close",
+            "value":"OK",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_authenticating",
+            "value":"Аутентификация...",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_connect_device",
+            "value":"%s хочет подключиться к вашему устройству.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_bluetooth_dialog_content",
+            "value":"Для подключения к другому устройству необходимо включить Bluetooth. Включите и повторите попытку.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_connect",
+            "value":"Подключение к %s",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"Устройство %1$s хочет получить доступ к сервису %2$s на вашем устройстве. Доверять этому устройству?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"Приложение %2$s на устройстве %1$s хочет получить доступ к сервису %3$s на вашем устройстве. Доверять этому приложению?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"Устройство %s хочет подключиться к сервисам на вашем устройстве. Выберите, к каким сервисам предоставить право доступа:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

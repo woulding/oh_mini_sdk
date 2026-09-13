@@ -1,0 +1,47 @@
+{
+  "name": "@ohos/drivers_peripheral_battery",
+  "description": "battery hdf",
+  "version": "3.1",
+  "license": "Apache License 2.0",
+  "publishAs": "code-segment",
+  "segment": {
+    "destPath": "drivers/peripheral/battery"
+  },
+  "dirs": {},
+  "scripts": {},
+  "component": {
+    "name": "drivers_peripheral_battery",
+    "subsystem": "hdf",
+    "adapted_system_type": ["standard", "small"],
+    "rom": "600KB",
+    "ram": "7400KB",
+    "features": [
+      "drivers_peripheral_battery_feature_config_policy",
+      "drivers_peripheral_battery_feature_c_utils",
+      "drivers_peripheral_battery_feature_hicollie"
+    ],
+    "deps": {
+      "components": [
+        "cJSON",
+        "c_utils",
+        "config_policy",
+        "drivers_interface_battery",
+        "hdf_core",
+        "hicollie",
+        "hilog",
+        "ipc"
+      ]
+    },
+    "build": {
+      "sub_component": [
+        "//drivers/peripheral/battery:battery_entry"
+      ],
+      "test": [
+        "//drivers/peripheral/battery/interfaces/hdi_service/test:unittest",
+        "//drivers/peripheral/battery/interfaces/hdi_service/test:systemtest",
+        "//drivers/peripheral/battery/interfaces/hdi_service/test:fuzzer"
+      ],
+      "inner_kits": []
+    }
+  }
+}

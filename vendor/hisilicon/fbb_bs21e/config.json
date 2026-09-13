@@ -1,0 +1,90 @@
+{
+  "product_name": "fbb_bs21e",
+  "type": "mini",
+  "version": "3.0",
+  "ohos_version": "OpenHarmony 7.0",
+  "device_company": "hisilicon",
+  "device_build_path": "device/board/hisilicon/fbb_bs21e",
+  "board": "fbb_bs21e",
+  "kernel_type": "liteos_m",
+  "kernel_is_prebuilt": true,
+  "kernel_version": "",
+  "subsystems": [
+    {
+      "subsystem": "applications",
+      "components": [
+        {
+          "component": "wifi_iot_sample_app",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem": "iothardware",
+      "components": [
+        {
+          "component": "peripheral",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem": "hiviewdfx",
+      "components": [
+        {
+          "component": "hilog_lite",
+          "features": []
+        },
+        {
+          "component": "hievent_lite",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem": "systemabilitymgr",
+      "components": [
+        {
+          "component": "samgr_lite",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem": "startup",
+      "components": [
+        {
+          "component": "bootstrap_lite",
+          "features": []
+        },
+        {
+          "component": "init",
+          "features": [
+            "init_feature_begetctl_liteos = true",
+            "init_lite_use_thirdparty_mbedtls = true"
+          ]
+        }
+      ]
+    },
+    {
+      "subsystem": "commonlibrary",
+      "components": [
+        {
+          "component": "utils_lite",
+          "features": []
+        }
+      ]
+    },
+    {
+      "subsystem": "developtools",
+      "components": [
+        {
+          "component": "syscap_codec",
+          "features": []
+        }
+      ]
+    }
+  ],
+  "third_party_dir": "//device/soc/hisilicon/bs2xv107/sdk/open_source",
+  "product_adapter_dir": "//vendor/hisilicon/fbb_bs21e/hals"
+}

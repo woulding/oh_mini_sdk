@@ -1,0 +1,71 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("../../../../dsoftbus.gni")
+import("../../../../sdk/frame/frame_sdk.gni")
+
+module_output_path = "dsoftbus/soft_bus/transmission"
+
+ohos_unittest("SoftBusFrameStandardTest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+  sources = [ "softbus_frame_standard_test.cpp" ]
+
+  include_dirs = [
+    "${dsoftbus_root_path}/br_proxy",
+    "${dsoftbus_root_path}/core/frame/standard/init/include",
+    "${dsoftbus_root_path}/interfaces/kits/common",
+    "${dsoftbus_root_path}/interfaces/kits/discovery",
+    "${dsoftbus_root_path}/sdk/bus_center/manager/include",
+    "${dsoftbus_root_path}/sdk/bus_center/ipc/include",
+    "${dsoftbus_root_path}/sdk/frame/common/include",
+    "${dsoftbus_root_path}/sdk/frame/standard/include",
+    "${dsoftbus_root_path}/sdk/frame/standard/src",
+    "${dsoftbus_root_path}/sdk/transmission/session/include",
+    "${dsoftbus_root_path}/sdk/transmission/ipc/include",
+    "${dsoftbus_root_path}/sdk/transmission/trans_channel/manager/include",
+    "${dsoftbus_root_path}/sdk/transmission/trans_channel/udp/common/include",
+    "${dsoftbus_root_path}/interfaces/kits/connection",
+    "${dsoftbus_root_path}/sdk/connection/service/include",
+    "${dsoftbus_root_path}/sdk/connection/ipc/include",
+    "${dsoftbus_root_path}/components/nstackx/fillp/include",
+    "$dsoftbus_root_path/adapter/common/security/access_token/include",
+  ]
+
+  deps = [
+    "$dsoftbus_root_path/tests/sdk:softbus_client_static",
+    "${dsoftbus_root_path}/core/common:softbus_utils",
+    "${dsoftbus_root_path}/core/frame:softbus_server",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+
+  if (is_standard_system) {
+    external_deps += [ "ipc:ipc_single" ]
+  }
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":SoftBusFrameStandardTest" ]
+}

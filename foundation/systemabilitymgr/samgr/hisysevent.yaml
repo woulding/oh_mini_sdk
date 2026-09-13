@@ -1,0 +1,115 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+domain: SAMGR
+
+SA_MAIN_EXIT:
+  __BASE: {type: FAULT, level: CRITICAL, desc: sa main abnormal exit}
+  REASON: {type: STRING, desc: sa main abnormal exit reason}
+
+PROCESS_STOP_DURATION:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: ondemand process stop time cost}
+  PROCESS_NAME: {type: STRING, desc: process name}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  DURATION: {type: INT64, desc: process stop time cost}
+
+PROCESS_START_DURATION:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: ondemand process start time cost}
+  PROCESS_NAME: {type: STRING, desc: process name}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  DURATION: {type: INT64, desc: process start time cost}
+
+PROCESS_STOP_FAIL:
+  __BASE: {type: FAULT, level: CRITICAL, desc: ondemand process stop failed event}
+  PROCESS_NAME: {type: STRING, desc: process name}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  REASON: {type: STRING, desc: process stop fail reason}
+
+PROCESS_START_FAIL:
+  __BASE: {type: FAULT, level: CRITICAL, desc: ondemand process start failed event}
+  PROCESS_NAME: {type: STRING, desc: process name}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  REASON: {type: STRING, desc: process start fail reason}
+
+SA_CRASH:
+  __BASE: {type: FAULT, level: CRITICAL, desc: sa crash}
+  SAID: {type: INT32, desc: system ability id}
+
+SA_LOAD_DURATION:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: samgr sa load time cost}
+  SAID: {type: INT32, desc: system ability id}
+  KEY_STAGE: {type: INT32, desc: load sa key stage}
+  DURATION: {type: INT64, desc: time cost}
+
+SA_UNLOAD_DURATION:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: samgr sa unload time cost}
+  SAID: {type: INT32, desc: system ability id}
+  KEY_STAGE: {type: INT32, desc: unload sa key stage}
+  DURATION: {type: INT64, desc: time cost}
+
+SA_UNLOAD_FAIL:
+  __BASE: {type: FAULT, level: CRITICAL, desc: samgr sa unload failed event}
+  SAID: {type: INT32, desc: system ability id}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  REASON: {type: STRING, desc: fail reason}
+
+ONDEMAND_SA_LOAD_FAIL:
+  __BASE: {type: FAULT, level: CRITICAL, desc: samgr sa load failed event}
+  SAID: {type: INT32, desc: system ability id}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  REASON: {type: STRING, desc: fail reason}
+
+ONDEMAND_SA_LOAD:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: samgr sa load event}
+  SAID: {type: INT32, desc: system ability id}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  EVENT: {type: INT32, desc: load event id}
+
+ONDEMAND_SA_UNLOAD:
+  __BASE: {type: BEHAVIOR, level: CRITICAL, desc: samgr sa unload event}
+  SAID: {type: INT32, desc: system ability id}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  EVENT: {type: INT32, desc: unload event id}
+
+GETSA_FREQUENCY:
+  __BASE: {type: STATISTIC, level: CRITICAL, desc: get system ability times event}
+  CALLER_UID: {type: UINT32, desc: caller uid}
+  SAID: {type: UINT32, desc: system ability id}
+  COUNT: {type: INT32, desc: the caller process get sa count}
+
+ADD_SYSTEMABILITY_FAIL:
+  __BASE: {type: FAULT, level: CRITICAL, desc: add system ability failed event}
+  SAID: {type: INT32, desc: system ability id}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: INT32, desc: caller uid}
+  FILE_NAME: {type: STRING, desc: file name}
+
+SERVICE_BLOCK:
+  __BASE: {type: FAULT, level: CRITICAL, desc: workhander watchdog block}
+  PID: {type: INT32, desc: caller pid}
+  UID: {type: UINT32, desc: caller uid}
+  MSG: {type: STRING, desc: time msg}
+
+SA_ABNORMALLY_FROZEN:
+  __BASE: {type: FAULT, level: CRITICAL, desc: SA abnormally frozen}
+  SAID: {type: INT32, desc: system ability id}
+  PROCESS_NAME: {type: STRING, desc: process name}
+  REASON: {type: STRING, desc: SA abnormally frozen reason}

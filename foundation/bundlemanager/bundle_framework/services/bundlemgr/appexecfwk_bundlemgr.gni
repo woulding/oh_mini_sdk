@@ -1,0 +1,305 @@
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../../appexecfwk.gni")
+
+install_daemon_sources = [
+  "${services_path}/bundlemgr/src/aot/aot_args.cpp",
+  "${services_path}/bundlemgr/src/aot/aot_executor.cpp",
+  "${services_path}/bundlemgr/src/bundle_util.cpp",
+  "${services_path}/bundlemgr/src/code_sign_helper.cpp",
+  "${services_path}/bundlemgr/src/common/single_delayed_task_mgr.cpp",
+  "${services_path}/bundlemgr/src/driver_install_ext.cpp",
+  "${services_path}/bundlemgr/src/installd/binary_security_wrapper.cpp",
+  "${services_path}/bundlemgr/src/installd/installd_host_impl.cpp",
+  "${services_path}/bundlemgr/src/installd/installd_load_callback.cpp",
+  "${services_path}/bundlemgr/src/installd/installd_operator.cpp",
+  "${services_path}/bundlemgr/src/installd/installd_permission_mgr.cpp",
+  "${services_path}/bundlemgr/src/installd/installd_service.cpp",
+  "${services_path}/bundlemgr/src/installd_client.cpp",
+  "${services_path}/bundlemgr/src/installd_death_recipient.cpp",
+  "${services_path}/bundlemgr/src/ipc/check_encryption_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/code_signature_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/create_dir_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/critical_manager.cpp",
+  "${services_path}/bundlemgr/src/ipc/encryption_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/extract_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/file_stat.cpp",
+  "${services_path}/bundlemgr/src/ipc/install_hnp_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/installd_host.cpp",
+  "${services_path}/bundlemgr/src/ipc/installd_proxy.cpp",
+  "${services_path}/bundlemgr/src/ipc/verify_bin_param.cpp",
+]
+
+bundle_install_sources = [
+  "${services_path}/bundlemgr/src/ability_manager_helper.cpp",
+  "${services_path}/bundlemgr/src/aot/aot_args.cpp",
+  "${services_path}/bundlemgr/src/aot/aot_handler.cpp",
+  "${services_path}/bundlemgr/src/app_service_fwk/app_service_fwk_installer.cpp",
+  "${services_path}/bundlemgr/src/base_bundle_installer.cpp",
+  "${services_path}/bundlemgr/src/bundle_exception_handler.cpp",
+  "${services_path}/bundlemgr/src/bundle_install_checker.cpp",
+  "${services_path}/bundlemgr/src/bundle_installer.cpp",
+  "${services_path}/bundlemgr/src/bundle_installer_host.cpp",
+  "${services_path}/bundlemgr/src/bundle_installer_manager.cpp",
+  "${services_path}/bundlemgr/src/bundle_permission_mgr.cpp",
+  "${services_path}/bundlemgr/src/bundle_permissions.cpp",
+  "${services_path}/bundlemgr/src/bundle_stream_installer_host_impl.cpp",
+  "${services_path}/bundlemgr/src/bundle_util.cpp",
+  "${services_path}/bundlemgr/src/bundle_verify_mgr.cpp",
+  "${services_path}/bundlemgr/src/data/inner_ability_info.cpp",
+  "${services_path}/bundlemgr/src/data/inner_extension_info.cpp",
+  "${services_path}/bundlemgr/src/data_clone_install_helper.cpp",
+  "${services_path}/bundlemgr/src/driver/driver_installer.cpp",
+  "${services_path}/bundlemgr/src/driver_install_ext.cpp",
+  "${services_path}/bundlemgr/src/event_report.cpp",
+  "${services_path}/bundlemgr/src/exception/exception_util.cpp",
+  "${services_path}/bundlemgr/src/hmp_bundle_installer.cpp",
+  "${services_path}/bundlemgr/src/inner_bundle_clone_info.cpp",
+  "${services_path}/bundlemgr/src/inner_bundle_info.cpp",
+  "${services_path}/bundlemgr/src/inner_bundle_user_info.cpp",
+  "${services_path}/bundlemgr/src/inner_cli_sandbox_info.cpp",
+  "${services_path}/bundlemgr/src/installd/installd_load_callback.cpp",
+  "${services_path}/bundlemgr/src/installd_client.cpp",
+  "${services_path}/bundlemgr/src/installd_death_recipient.cpp",
+  "${services_path}/bundlemgr/src/installer_bundle_tmp_info.cpp",
+  "${services_path}/bundlemgr/src/ipc/check_encryption_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/code_signature_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/create_dir_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/critical_manager.cpp",
+  "${services_path}/bundlemgr/src/ipc/encryption_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/extract_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/file_stat.cpp",
+  "${services_path}/bundlemgr/src/ipc/install_hnp_param.cpp",
+  "${services_path}/bundlemgr/src/ipc/installd_host.cpp",
+  "${services_path}/bundlemgr/src/ipc/installd_proxy.cpp",
+  "${services_path}/bundlemgr/src/ipc/verify_bin_param.cpp",
+  "${services_path}/bundlemgr/src/module_json_updater.cpp",
+  "${services_path}/bundlemgr/src/oobe_preload_uninstall_mgr.cpp",
+  "${services_path}/bundlemgr/src/plugin/plugin_installer.cpp",
+  "${services_path}/bundlemgr/src/pre_install_bundle_info.cpp",
+  "${services_path}/bundlemgr/src/pre_install_exception_mgr.cpp",
+  "${services_path}/bundlemgr/src/sandbox_app/bundle_sandbox_app_helper.cpp",
+  "${services_path}/bundlemgr/src/share_file_helper.cpp",
+  "${services_path}/bundlemgr/src/shared/inner_shared_bundle_installer.cpp",
+  "${services_path}/bundlemgr/src/shared/shared_bundle_installer.cpp",
+  "${services_path}/bundlemgr/src/skills_installer/independent_skills_installer.cpp",
+  "${services_path}/bundlemgr/src/skills_installer/skills_installer_util.cpp",
+  "${services_path}/bundlemgr/src/status_receiver_proxy.cpp",
+  "${services_path}/bundlemgr/src/system_bundle_installer.cpp",
+  "${services_path}/bundlemgr/src/utd/utd_handler.cpp",
+  "${services_path}/bundlemgr/src/xcollie_helper.cpp",
+  "${services_path}/bundlemgr/src/xml_util.cpp",
+]
+
+aging = [
+  "${services_path}/bundlemgr/src/aging/aging_handler_chain.cpp",
+  "${services_path}/bundlemgr/src/aging/aging_request.cpp",
+  "${services_path}/bundlemgr/src/aging/aging_util.cpp",
+  "${services_path}/bundlemgr/src/aging/bundle_aging_mgr.cpp",
+  "${services_path}/bundlemgr/src/aging/recently_unused_bundle_aging_handler.cpp",
+]
+
+free_install = [
+  "${services_path}/bundlemgr/src/free_install/bundle_connect_ability_mgr.cpp",
+  "${services_path}/bundlemgr/src/free_install/bms_ecological_rule_mgr_service_client.cpp",
+  "${services_path}/bundlemgr/src/free_install/bms_ecological_rule_mgr_service_param.cpp",
+  "${services_path}/bundlemgr/src/free_install/service_center_connection.cpp",
+  "${services_path}/bundlemgr/src/free_install/service_center_death_recipient.cpp",
+  "${services_path}/bundlemgr/src/free_install/service_center_status_callback.cpp",
+  "${services_path}/bundlemgr/src/free_install/service_center_status_callback_stub.cpp",
+]
+
+distributed_manager = [
+  "${services_path}/bundlemgr/src/distributed_manager/bundle_distributed_manager.cpp",
+  "${services_path}/bundlemgr/src/distributed_manager/bundle_manager_callback_proxy.cpp",
+  "${services_path}/bundlemgr/src/distributed_manager/bundle_manager_callback_stub.cpp",
+  "${services_path}/bundlemgr/src/distributed_manager/bundle_manager_callback.cpp",
+]
+
+default_app = [
+  "${services_path}/bundlemgr/src/default_app/default_app_data.cpp",
+  "${services_path}/bundlemgr/src/default_app/default_app_host_impl.cpp",
+  "${services_path}/bundlemgr/src/default_app/default_app_mgr.cpp",
+]
+
+sandbox_app = [
+  "${services_path}/bundlemgr/src/sandbox_app/bundle_sandbox_data_mgr.cpp",
+  "${services_path}/bundlemgr/src/sandbox_app/bundle_sandbox_installer.cpp",
+  "${services_path}/bundlemgr/src/sandbox_app/bundle_sandbox_manager_rdb.cpp",
+]
+
+quick_fix = [
+  "${services_path}/bundlemgr/src/quick_fix/inner_app_quick_fix.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fix_boot_scanner.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fix_checker.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fix_data_mgr.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fix_manager_host_impl.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fixer.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fix_mgr.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fix_deployer.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fix_switcher.cpp",
+  "${services_path}/bundlemgr/src/quick_fix/quick_fix_deleter.cpp",
+  "${services_path}/bundlemgr/include/quick_fix/state/src/quick_fix_delete_state.cpp",
+  "${services_path}/bundlemgr/include/quick_fix/state/src/quick_fix_deploy_state.cpp",
+  "${services_path}/bundlemgr/include/quick_fix/state/src/quick_fix_switch_state.cpp",
+]
+
+app_control = [
+  "${services_path}/bundlemgr/src/app_control/app_control_manager_host_impl.cpp",
+  "${services_path}/bundlemgr/src/app_control/app_control_manager_rdb.cpp",
+  "${services_path}/bundlemgr/src/app_control/app_control_manager.cpp",
+  "${services_path}/bundlemgr/src/app_control/app_jump_interceptor_event_subscriber.cpp",
+  "${services_path}/bundlemgr/src/app_control/app_jump_interceptor_manager_rdb.cpp",
+]
+
+overlay_installation = [
+  "${services_path}/bundlemgr/src/overlay/bundle_overlay_data_manager.cpp",
+  "${services_path}/bundlemgr/src/overlay/bundle_overlay_install_checker.cpp",
+  "${services_path}/bundlemgr/src/overlay/bundle_overlay_manager_host_impl.cpp",
+  "${services_path}/bundlemgr/src/overlay/bundle_overlay_manager.cpp",
+]
+
+default_app +=
+    [ "${services_path}/bundlemgr/src/default_app/default_app_rdb.cpp" ]
+quick_fix +=
+    [ "${services_path}/bundlemgr/src/quick_fix/quick_fix_manager_rdb.cpp" ]
+
+bundle_install_deps = [
+  "${extension_path}:bundlemgr_extension",
+  "${services_path}/bundlemgr:bundle_parser",
+  "${services_path}/bundlemgr:parser_common",
+]
+
+bundle_install_external_deps = [
+  "app_file_service:remote_file_share_native",
+  "appspawn:appspawn_client",
+  "dfs_service:distributed_file_daemon_kit_inner",
+  "dfs_service:libdecompress",
+  "ffrt:libffrt",
+  "hitrace:libhitracechain",
+  "icu:shared_icuuc",
+  "libxml2:libxml2",
+  "memmgr:memmgrclient",
+  "openssl:libcrypto_shared",
+  "os_account:libaccountkits",
+  "safwk:api_cache_manager",
+  "storage_service:storage_manager_acl",
+  "window_manager:libmodal_system_ui_extension_client",
+  "zlib:shared_libz",
+]
+
+if (bundle_framework_power_mgr_enable) {
+  aot_external_deps = [
+    "battery_manager:batterysrv_client",
+    "display_manager:displaymgr",
+    "power_manager:powermgr_client",
+  ]
+}
+
+bundle_mgr_source = [
+  "${services_path}/bundlemgr/src/account_helper.cpp",
+  "${services_path}/bundlemgr/src/aot/aot_device_idle_listener.cpp",
+  "${services_path}/bundlemgr/src/app_clone_preference/app_clone_preference_data_mgr.cpp",
+  "${services_path}/bundlemgr/src/app_clone_preference/app_clone_preference_storage.cpp",
+  "${services_path}/bundlemgr/src/app_disable_forbidden/app_disable_forbidden_mgr.cpp",
+  "${services_path}/bundlemgr/src/app_disable_forbidden/disable_forbidden_rdb.cpp",
+  "${services_path}/bundlemgr/src/app_provision_info/app_provision_info_manager.cpp",
+  "${services_path}/bundlemgr/src/app_provision_info/app_provision_info_rdb.cpp",
+  "${services_path}/bundlemgr/src/bms_extension/bms_extension_client.cpp",
+  "${services_path}/bundlemgr/src/bms_key_event_mgr.cpp",
+  "${services_path}/bundlemgr/src/bms_param.cpp",
+  "${services_path}/bundlemgr/src/bundle_common_event_mgr.cpp",
+  "${services_path}/bundlemgr/src/bundle_cache_mgr.cpp",
+  "${services_path}/bundlemgr/src/bundle_backup/bundle_backup_service.cpp",
+  "${services_path}/bundlemgr/src/bundle_backup/bundle_backup_mgr.cpp",
+  "${services_path}/bundlemgr/src/bundle_data_mgr.cpp",
+  "${services_path}/bundlemgr/src/bundle_event_callback_death_recipient.cpp",
+  "${services_path}/bundlemgr/src/bundle_mgr_host_impl.cpp",
+  "${services_path}/bundlemgr/src/bundle_mgr_service.cpp",
+  "${services_path}/bundlemgr/src/bundle_mgr_service_event_handler.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource_helper.cpp",
+  "${services_path}/bundlemgr/src/bundle_scanner.cpp",
+  "${services_path}/bundlemgr/src/bundle_state_storage.cpp",
+  "${services_path}/bundlemgr/src/bundle_status_callback_death_recipient.cpp",
+  "${services_path}/bundlemgr/src/bundle_user_mgr_host_impl.cpp",
+  "${services_path}/bundlemgr/src/bundle_multiuser_installer.cpp",
+  "${services_path}/bundlemgr/src/cli_sandbox/bundle_cli_sandbox_installer.cpp",
+  "${services_path}/bundlemgr/src/clone/bundle_clone_installer.cpp",
+  "${services_path}/bundlemgr/src/common/bundle_app_spawn_client.cpp",
+  "${services_path}/bundlemgr/src/common/bundle_hitrace_chain.cpp",
+  "${services_path}/bundlemgr/src/memory/memory_compactor.cpp",
+  "${services_path}/bundlemgr/src/common/serial_queue.cpp",
+  "${services_path}/bundlemgr/src/common/single_delayed_task_mgr.cpp",
+  "${services_path}/bundlemgr/src/el5_filekey_callback.cpp",
+  "${services_path}/bundlemgr/src/extend_resource/extend_resource_manager_host_impl.cpp",
+  "${services_path}/bundlemgr/src/first_install_data_mgr/first_install_bundle_info.cpp",
+  "${services_path}/bundlemgr/src/first_install_data_mgr/first_install_data_mgr_storage_rdb.cpp",
+  "${services_path}/bundlemgr/src/hidump_helper.cpp",
+  "${services_path}/bundlemgr/src/local_plugin_installer_host.cpp",
+  "${services_path}/bundlemgr/src/local_plugin_stream_installer_host.cpp",
+  "${services_path}/bundlemgr/src/local_plugin_stream_installer_host_impl.cpp",
+  "${services_path}/bundlemgr/src/uninstall_data_mgr/uninstall_bundle_info.cpp",
+  "${services_path}/bundlemgr/src/uninstall_data_mgr/uninstall_data_mgr_storage_rdb.cpp",
+  "${services_path}/bundlemgr/src/navigation/router_data_storage_rdb.cpp",
+  "${services_path}/bundlemgr/src/navigation/router_item_compare.cpp",
+  "${services_path}/bundlemgr/src/navigation/router_map_helper.cpp",
+  "${services_path}/bundlemgr/src/navigation/sem_ver.cpp",
+  "${services_path}/bundlemgr/src/new_bundle_data_dir_mgr.cpp",
+  "${services_path}/bundlemgr/src/shortcut_data_storage_rdb.cpp",
+  "${services_path}/bundlemgr/src/shortcut_enabled_data_storage_rdb.cpp",
+  "${services_path}/bundlemgr/src/shortcut_visible_data_storage_rdb.cpp",
+  "${services_path}/bundlemgr/src/system_ability_helper.cpp",
+  "${services_path}/bundlemgr/src/user_unlocked_event_subscriber.cpp",
+  "${services_path}/bundlemgr/src/verify/verify_manager_host_impl.cpp",
+  "${services_path}/bundlemgr/src/verify/verify_util.cpp",
+  "${services_path}/bundlemgr/src/patch_data_storage_rdb.cpp",
+  "${services_path}/bundlemgr/src/inner_patch_info.cpp",
+  "${services_path}/bundlemgr/src/patch_data_mgr.cpp",
+  "${services_path}/bundlemgr/src/bundlemgr_ext/bundle_mgr_ext_host_impl.cpp",
+  "${services_path}/bundlemgr/src/install_exception_mgr.cpp",
+  "${services_path}/bundlemgr/src/install_exception_mgr_rdb.cpp",
+  "${services_path}/bundlemgr/src/idle_condition_mgr/bms_update_selinux_mgr.cpp",
+  "${services_path}/bundlemgr/src/idle_condition_mgr/idle_condition_listener.cpp",
+  "${services_path}/bundlemgr/src/idle_condition_mgr/idle_condition_mgr.cpp",
+  "${services_path}/bundlemgr/src/idle_condition_mgr/idle_condition_event_subscribe.cpp",
+  "${services_path}/bundlemgr/src/idle_condition_mgr/idle_param_util.cpp",
+  "${services_path}/bundlemgr/src/idle_condition_mgr/idle_manager_rdb.cpp",
+  "${services_path}/bundlemgr/src/on_demand_install/on_demand_install_data_mgr.cpp",
+  "${services_path}/bundlemgr/src/on_demand_install/on_demand_install_data_storage_rdb.cpp",
+  "${services_path}/bundlemgr/src/skills_installer/skills_description_manager.cpp",
+  "${services_path}/bundlemgr/src/skills_installer/skills_description_rdb.cpp",
+  "${services_path}/bundlemgr/src/bundle_skill/skill_manager_host_impl.cpp",
+]
+
+bundle_resource = [
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_callback.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_configuration.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_drawable.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_event_subscriber.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_host_impl.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_icon_rdb.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_image_info.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_manager.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_observer.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_param.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_parser.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_process.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_rdb.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_register.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/bundle_resource_theme_process.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/resource_info.cpp",
+  "${services_path}/bundlemgr/src/bundle_resource/uninstall_bundle_resource_rdb.cpp",
+]
+
+user_auth = [ "${services_path}/bundlemgr/src/user_auth/migrate_data_user_auth_callback.cpp" ]

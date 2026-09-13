@@ -1,0 +1,481 @@
+# Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  import("//foundation/communication/wifi/wifi/wifi_lite.gni")
+
+  shared_library("wifi_sdk") {
+    sources = [
+      "c_adapter/src/wifi_c_device.cpp",
+      "c_adapter/src/wifi_c_utils.cpp",
+      "src/network_selection.cpp",
+      "src/wifi_device.cpp",
+      "src/wifi_device_callback_stub_lite.cpp",
+      "src/wifi_device_impl.cpp",
+      "src/wifi_device_proxy_lite.cpp",
+      "src/wifi_msg.cpp",
+      "src/wifi_scan.cpp",
+      "src/wifi_scan_callback_stub_lite.cpp",
+      "src/wifi_scan_impl.cpp",
+      "src/wifi_scan_proxy_lite.cpp",
+    ]
+
+    include_dirs = [
+      "$WIFI_ROOT_DIR/interfaces",
+      "$WIFI_ROOT_DIR/interfaces/inner_api",
+      "$WIFI_ROOT_DIR/frameworks/native/include",
+      "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+      "$WIFI_ROOT_DIR/frameworks/native/c_adapter/inc",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log/",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+      "$WIFI_ROOT_DIR/utils/inc",
+      "//base/hiviewdfx/hilog_lite/interfaces/native/innerkits",
+      "//foundation/communication/ipc/interfaces/innerkits/c/ipc/include",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/innerkits/registry",
+      "//foundation/systemabilitymgr/samgr_lite/interfaces/innerkits/samgr",
+      "//third_party/bounds_checking_function/include",
+      "//commonlibrary/c_utils/base/include",
+    ]
+
+    deps = [
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//foundation/communication/ipc/interfaces/innerkits/c/ipc:ipc_single",
+      "//foundation/systemabilitymgr/samgr_lite/samgr:samgr",
+    ]
+
+    external_deps = [ "bounds_checking_function:libsec_shared" ]
+
+    configs -= [ "//build/lite/config:language_cpp" ]
+    cflags = memory_optimization_cflags
+    cflags_cc = memory_optimization_cflags_cc
+    ldflags = memory_optimization_ldflags
+    cflags_cc += [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+    defines = [ "OHOS_ARCH_LITE" ]
+    ldflags += [
+      "-fPIC",
+      "-Wl,-E",
+    ]
+  }
+} else {
+  import("//build/ohos.gni")
+  import("//foundation/communication/wifi/wifi/wifi.gni")
+  import("//build/config/components/idl_tool/idl.gni")
+
+  ################################################################################
+
+  config("wifi_sdk_header") {
+    include_dirs = [
+      "$WIFI_ROOT_DIR/interfaces",
+      "$WIFI_ROOT_DIR/interfaces/inner_api",
+      "$WIFI_ROOT_DIR/frameworks/native/include",
+      "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+      "$WIFI_ROOT_DIR/frameworks/native/c_adapter/inc",
+      "$WIFI_ROOT_DIR/frameworks/native/src",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log/",
+      "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+      "$WIFI_ROOT_DIR/interfaces/innerkits",
+      "$WIFI_ROOT_DIR/utils/inc",
+    ]
+  }
+
+  config("wifi_sdk_config") {
+    visibility = [ ":*" ]
+    include_dirs = [ ":wifi_fw_common_header" ]
+    cflags = [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+    cflags_cc = [
+      "-std=c++17",
+      "-fno-rtti",
+      "-Os",
+    ]
+
+    if (target_cpu == "arm") {
+      cflags += [ "-DBINDER_IPC_32BIT" ]
+    }
+  }
+
+  config("wifi_scan_config") {
+  include_dirs = [ "${target_gen_dir}" ]
+}
+ 
+  idl_gen_interface("wifi_scan_interface") {
+  sources = [
+    "IWifiScan.idl",
+    "IWifiScanMgr.idl",
+  ]
+ 
+  configs = [ ":wifi_sdk_header" ]
+ 
+  log_domainid = "0xD001560"
+  log_tag = "WifiScanIpc"
+  part_name = "wifi"
+  subsystem_name = "communication"
+}
+ 
+ohos_source_set("wifi_scan_stub") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [      
+      "src/scan_ashmem_parcel.cpp",
+      "src/scan_control_info_parcel.cpp",
+      "src/wifi_scan_params_parcel.cpp",
+      ]
+    output_values = get_target_outputs(":wifi_scan_interface")
+    sources += filter_include(output_values, [ "*wifi_scan_stub.cpp" ])
+    sources += filter_include(output_values, [ "*wifi_scan_mgr_stub.cpp" ])
+    configs = [ 
+      ":wifi_scan_config",
+      ":wifi_sdk_header"
+       ]
+    
+    defines = []
+    if (wifi_feature_with_local_security_detect) {
+      defines += [ "WIFI_LOCAL_SECURITY_DETECT_ENABLE" ]
+    }
+ 
+    deps = [":wifi_scan_interface"]
+ 
+    external_deps = [
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+      "bounds_checking_function:libsec_shared",
+    ]
+}
+
+  config("wifi_hotspot_config") {
+    include_dirs = [ "${target_gen_dir}" ]
+  }
+ 
+  idl_gen_interface("wifi_hotspot_interface") {
+  sources = [
+    "IWifiHotspot.idl",
+    "IWifiHotspotMgr.idl",
+  ]
+  sources_common = [
+    "HotspotTypes.idl",
+  ]
+ 
+  configs = [ ":wifi_sdk_header" ]
+ 
+  log_domainid = "0xD001560"
+  log_tag = "WifiHotspotIpc"
+  part_name = "wifi"
+  subsystem_name = "communication"
+}
+ 
+  ohos_source_set("wifi_hotspot_stub") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [      
+      "src/hotspot_config_parcel.cpp",
+      ]
+    output_values = get_target_outputs(":wifi_hotspot_interface")
+    sources += filter_include(output_values, [ "*wifi_hotspot_stub.cpp" ])
+    sources += filter_include(output_values, [ "*wifi_hotspot_mgr_stub.cpp" ])
+    sources += filter_include(output_values, [ "*hotspot_types.cpp" ])
+    configs = [ 
+      ":wifi_hotspot_config",
+      ":wifi_sdk_header"
+       ]
+ 
+    deps = [":wifi_hotspot_interface"]
+ 
+    external_deps = [
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+      "bounds_checking_function:libsec_shared",
+    ]
+}
+
+  ohos_source_set("wifi_device_proxy_impl") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [
+      "src/wifi_device_impl.cpp",
+      "src/wifi_device_mgr_proxy.cpp",
+      "src/wifi_device_proxy.cpp",
+    ]
+
+    configs = [
+      ":wifi_sdk_config",
+      ":wifi_sdk_header",
+    ]
+
+    defines = []
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+    if (wifi_feature_with_local_security_detect) {
+      defines += [ "WIFI_LOCAL_SECURITY_DETECT_ENABLE" ]
+    }
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+    ]
+  }
+
+  ohos_source_set("wifi_hotspot_proxy_impl") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [
+      "src/wifi_hotspot_impl.cpp",
+      "src/hotspot_config_parcel.cpp",
+    ]
+    output_values = get_target_outputs(":wifi_hotspot_interface")
+    sources += filter_include(output_values, [ "*wifi_hotspot_proxy.cpp" ])
+    sources += filter_include(output_values, [ "*wifi_hotspot_mgr_proxy.cpp" ])
+    sources += filter_include(output_values, [ "*hotspot_types.cpp" ])
+
+    configs = [
+      ":wifi_sdk_config",
+      ":wifi_sdk_header",
+      ":wifi_hotspot_config",
+    ]
+
+    defines = []
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+
+    deps = [":wifi_hotspot_interface"]
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+    ]
+  }
+
+  ohos_source_set("wifi_scan_proxy_impl") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [
+      "src/wifi_scan_impl.cpp",
+      "src/scan_ashmem_parcel.cpp",
+      "src/scan_control_info_parcel.cpp",
+      "src/wifi_scan_params_parcel.cpp",
+    ]
+    output_values = get_target_outputs(":wifi_scan_interface")
+    sources += filter_include(output_values, [ "*wifi_scan_proxy.cpp" ])
+    sources += filter_include(output_values, [ "*wifi_scan_mgr_proxy.cpp" ])
+
+    configs = [
+      ":wifi_sdk_config",
+      ":wifi_sdk_header",
+      ":wifi_scan_config",
+    ]
+
+    defines = []
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+    if (wifi_feature_with_local_security_detect) {
+      defines += [ "WIFI_LOCAL_SECURITY_DETECT_ENABLE" ]
+    }
+
+    deps = [":wifi_scan_interface"]
+ 
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+    ]
+  }
+
+  ohos_source_set("wifi_p2p_proxy_impl") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    part_name = "wifi"
+    subsystem_name = "communication"
+    sources = [
+      "src/wifi_p2p_impl.cpp",
+      "src/wifi_p2p_proxy.cpp",
+    ]
+
+    configs = [
+      ":wifi_sdk_config",
+      ":wifi_sdk_header",
+    ]
+
+    defines = []
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+    ]
+  }
+
+  ohos_shared_library("wifi_sdk") {
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      cfi = true  # Enable/disable control flow integrity detection
+      boundary_sanitize = false  # Enable boundary san detection
+      cfi_cross_dso = true  # Cross-SO CFI Checks
+      integer_overflow = false  # Enable integer overflow detection
+      ubsan = false  # Enable some Ubsan options
+      cfi_vcall_icall_only = true
+      debug = false
+    }
+    install_enable = true
+    sources = [
+      "c_adapter/src/wifi_c_device.cpp",
+      "c_adapter/src/wifi_c_event.cpp",
+      "c_adapter/src/wifi_c_hid2d.cpp",
+      "c_adapter/src/wifi_c_hotspot.cpp",
+      "c_adapter/src/wifi_c_p2p.cpp",
+      "c_adapter/src/wifi_c_utils.cpp",
+      "src/network_selection.cpp",
+      "src/wifi_device.cpp",
+      "src/wifi_device_callback_stub.cpp",
+      "src/wifi_hid2d.cpp",
+      "src/wifi_hid2d_msg.cpp",
+      "src/wifi_hotspot.cpp",
+      "src/wifi_hotspot_callback_stub.cpp",
+      "src/wifi_msg.cpp",
+      "src/wifi_p2p.cpp",
+      "src/wifi_p2p_callback_stub.cpp",
+      "src/wifi_p2p_msg.cpp",
+      "src/wifi_sa_event.cpp",
+      "src/wifi_scan.cpp",
+      "src/wifi_scan_callback_stub.cpp",
+    ]
+
+    deps = [
+      ":wifi_device_proxy_impl",
+      ":wifi_hotspot_proxy_impl",
+      ":wifi_p2p_proxy_impl",
+      ":wifi_scan_proxy_impl",
+      "$WIFI_ROOT_DIR/utils:wifi_utils",
+    ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+    ]
+
+    defines = [
+      "STA_INSTANCE_MAX_NUM=$wifi_feature_with_sta_num",
+      "AP_INSTANCE_MAX_NUM=$wifi_feature_with_ap_num",
+    ]
+
+    if (wifi_feature_with_random_mac_addr) {
+      defines += [ "SUPPORT_RANDOM_MAC_ADDR" ]
+    }
+    cflags = memory_optimization_cflags
+    cflags_cc = memory_optimization_cflags_cc
+    ldflags = memory_optimization_ldflags
+    cflags_cc += [
+      "-std=c++17",
+      "-fno-rtti",
+    ]
+
+    ldflags += [
+      "-fPIC",
+      "-Wl,-E",
+    ]
+
+    public_configs = [ 
+      ":wifi_sdk_header",
+      ":wifi_scan_config",
+      ":wifi_hotspot_config",
+    ]
+
+    part_name = "wifi"
+    subsystem_name = "communication"
+    innerapi_tags = [ "platformsdk" ]
+    version_script = "libwifi_sdk.map"
+  }
+}

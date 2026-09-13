@@ -1,0 +1,46 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef LNN_OHOS_ACCOUNT_ADAPTER_H
+#define LNN_OHOS_ACCOUNT_ADAPTER_H
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int32_t GetOsAccountId(char *id, uint32_t idLen, uint32_t *len);
+int32_t GetOsAccountIdByUserId(int32_t userId, char **id, uint32_t *len);
+int32_t GetCurrentAccount(int64_t *account);
+int32_t GetActiveOsAccountIds(void);
+bool IsActiveOsAccountUnlocked(void);
+int32_t GetOsAccountUid(char *id, uint32_t idLen, uint32_t *len);
+int32_t GetOsAccountUidByUserId(char *id, uint32_t idLen, uint32_t *len, int32_t userId);
+int32_t JudgeDeviceTypeAndGetOsAccountIds(void);
+int32_t GetOsAccountLocalIdFromUid(int32_t uid, int32_t *userId);
+
+int32_t LnnInitOsAccountAdapter(void);
+void LnnDeinitOsAccountAdapter(void);
+void LnnClearOsAccountAdapterStatus(void);
+bool LnnIsOsAccountConstraint(void);
+void LnnUpdateConstraintMapForCurrentAccount(void);
+
+int32_t GetAllForegroundAccountIds(int32_t **userIds, uint32_t *userIdsLen);
+bool IsForegroundUserId(int32_t userId);
+#ifdef __cplusplus
+}
+#endif
+#endif /* LNN_OHOS_ACCOUNT_ADAPTER_H */

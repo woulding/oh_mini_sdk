@@ -1,0 +1,130 @@
+{
+    "string":[
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"Sito desktop",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"actions_menu_user_agent",
+            "value":"Browser UA",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"Annulla",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"Apri nel Browser",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"Sito mobile",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"Il certificato SSL del sito è scaduto o non è affidabile. Proseguendo, potrebbero verificarsi rischi per la sicurezza.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"continue_visit",
+            "value":"Vuoi continuare su questo sito?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"Impostazioni %s",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"Continua",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"HarmonyOS",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"Nega",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"Il sito in questione potrebbe includere contenuti inappropriati o proibiti. Procedi con cautela.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"Accesso a contenuti dannosi",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"Vuoi consentire a %s di utilizzare la fotocamera?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"Per scattare foto e riprendere video.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"Consenti",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ok",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"Messaggio da %s:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

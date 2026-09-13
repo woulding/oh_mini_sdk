@@ -1,0 +1,30 @@
+{
+    "coredumpProfiles": {
+        "FULL": {
+            "process": {
+                "prpsinfo": true,
+                "multiThread": true,
+                "auxv": true,
+                "dumpMappings": true
+            },
+            "threads": {
+                "prstatus": true,
+                "fpregset": true,
+                "siginfo": true,
+                "dumpAll": true,
+                "armPacMask": true,
+                "armTaggedAddrCtrl": true
+            },
+            "dumpType": "FULL",
+            "outputPath": "/data/storage/el2/base/files",
+            "maxCoredumpSize": 0,
+            "coredumpSwitch": false,
+            "dumperThreadCount": 2,
+            "loadCfg": {
+                "coredumpFilter": 0,
+                "excludePaths": "[vvar]",
+                "requiredPriority": "rp"
+            }
+        }
+    }
+}

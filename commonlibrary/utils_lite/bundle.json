@@ -1,0 +1,66 @@
+{
+    "name": "@ohos/utils_lite",
+    "version": "4.0.2",
+    "license": "Apache License 2.0",
+    "description": "Basic macro and type definitions",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "commonlibrary/utils_lite"
+    },
+    "dirs": {},
+    "scripts": {},
+    "author": {},
+    "homePage": "https://gitcode.com/openharmony",
+    "repository": "https://gitcode.com/openharmony/commonlibrary_utils_lite",
+    "supplier": "Organization: OpenHarmony",
+    "component": {
+        "name": "utils_lite",
+        "subsystem": "commonlibrary",
+        "features": [
+            "utils_lite_feature_file",
+            "utils_lite_feature_kal_timer",
+            "utils_lite_feature_timer_task",
+            "utils_lite_feature_js_builtin"
+        ],
+        "adapted_system_type": [
+            "mini",
+            "small"
+        ],
+        "deps": {
+            "third_party": [],
+            "kernel_special": {},
+            "board_special": {},
+            "components": [
+                "ability_lite",
+                "init",
+                "graphic_utils_lite",
+                "resource_management_lite",
+                "ui_lite",
+                "ace_engine_lite",
+                "bounds_checking_function",
+                "musl"
+            ]
+        },
+        "build": {
+            "sub_component": [ "//commonlibrary/utils_lite:utils_lite" ],
+            "inner_kits": [
+                {
+                    "name": "//commonlibrary/utils_lite:utils_lite"
+                },
+                {
+                    "name": "//commonlibrary/utils_lite/js/builtin/simulator:ace_kit_common_simulator"
+                },
+                {
+                    "name": "//commonlibrary/utils_lite/js/builtin/simulator:ace_kit_deviceinfo_simulator"
+                },
+                {
+                    "name": "//commonlibrary/utils_lite/js/builtin/simulator:ace_kit_file_simulator"
+                },
+                {
+                    "name": "//commonlibrary/utils_lite/js/builtin/simulator:ace_kit_kvstore_simulator"
+                }
+            ],
+            "test": []
+        }
+    }
+}

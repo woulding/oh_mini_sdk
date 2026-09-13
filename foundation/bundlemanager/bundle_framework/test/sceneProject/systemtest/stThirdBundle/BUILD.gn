@@ -1,0 +1,50 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+group("stThirdBundle") {
+  testonly = true
+  deps = []
+
+  deps += [
+    # deps file
+    "bmsThirdBundle1:stbmsThirdBundle1",
+    "bmsThirdBundle10:stbmsThirdBundle10",
+    "bmsThirdBundle12:stbmsThirdBundle12",
+    "bmsThirdBundle13:stbmsThirdBundle13",
+    "bmsThirdBundle17:stbmsThirdBundle17",
+    "bmsThirdBundle2:stbmsThirdBundle2",
+    "bmsThirdBundle24:stbmsThirdBundle24",
+    "bmsThirdBundle25:stbmsThirdBundle25",
+    "bmsThirdBundle26:stbmsThirdBundle26",
+    "bmsThirdBundle28:stbmsThirdBundle28",
+    "bmsThirdBundle3:stbmsThirdBundle3",
+    "bmsThirdBundle4:stbmsThirdBundle4",
+    "bmsThirdBundle41:stbmsThirdBundle41",
+    "bmsThirdBundle42:stbmsThirdBundle42",
+    "bmsThirdBundle43:stbmsThirdBundle43",
+    "bmsThirdBundle44:stbmsThirdBundle44",
+    "bmsThirdBundle45:stbmsThirdBundle45",
+    "bmsThirdBundle5:stbmsThirdBundle5",
+    "bmsThirdBundle6:stbmsThirdBundle6",
+    "bmsThirdBundle7:stbmsThirdBundle7",
+    "bmsThirdBundle8:stbmsThirdBundle8",
+    "bmsThirdBundle9:stbmsThirdBundle9",
+    "bmsThirdBundles1:stbmsThirdBundles1",
+    "e21Test:e21Test",
+    "e23Test:e23Test",
+    "e3Test:e3Test",
+    "e4Test:e4Test",
+    "e5Test:e5Test",
+    "e6Test:e6Test",
+  ]
+}

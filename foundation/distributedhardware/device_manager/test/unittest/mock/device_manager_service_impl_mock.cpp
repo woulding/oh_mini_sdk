@@ -1,0 +1,145 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "device_manager_service_impl_mock.h"
+
+#include "gtest/gtest.h"
+
+namespace OHOS {
+namespace DistributedHardware {
+int32_t DeviceManagerServiceImpl::StopAuthenticateDevice(const std::string &pkgName)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->StopAuthenticateDevice(pkgName);
+}
+
+int32_t DeviceManagerServiceImpl::GetBindLevel(const std::string &pkgName, const std::string &localUdid,
+    const std::string &udid, uint64_t &tokenId)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->GetBindLevel(pkgName, localUdid, udid, tokenId);
+}
+
+int32_t DeviceManagerServiceImpl::UnBindDevice(const std::string &pkgName, const std::string &udid,
+    int32_t bindLevel)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->UnBindDevice(pkgName, udid, bindLevel);
+}
+
+std::multimap<std::string, int32_t> DeviceManagerServiceImpl::GetDeviceIdAndUserId(int32_t userId,
+    const std::string &accountId)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->GetDeviceIdAndUserId(userId, accountId);
+}
+
+std::multimap<std::string, int32_t> DeviceManagerServiceImpl::GetDeviceIdAndUserId(int32_t userId)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->GetDeviceIdAndUserId(userId);
+}
+std::map<std::string, int32_t> DeviceManagerServiceImpl::GetDeviceIdAndBindLevel(int32_t localUserId)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->GetDeviceIdAndBindLevel(localUserId);
+}
+
+std::unordered_map<std::string, DmAuthForm> DeviceManagerServiceImpl::GetAppTrustDeviceIdList(std::string pkgname)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->GetAppTrustDeviceIdList(pkgname);
+}
+
+int32_t DeviceManagerServiceImpl::UnAuthenticateDevice(const std::string &pkgName, const std::string &udid,
+    int32_t bindLevel)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->UnAuthenticateDevice(pkgName, udid, bindLevel);
+}
+
+int32_t DeviceManagerServiceImpl::UnBindDevice(const std::string &pkgName, const std::string &udid,
+    int32_t bindLevel, const std::string &extra)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->UnBindDevice(pkgName, udid, bindLevel, extra);
+}
+
+bool DeviceManagerServiceImpl::CheckSharePeerSrc(const std::string &peerUdid, const std::string &localUdid)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->CheckSharePeerSrc(peerUdid, localUdid);
+}
+
+void DeviceManagerServiceImpl::HandleCredentialDeleted(const char *credId,
+    const char *credInfo, const std::string &localUdid, std::string &remoteUdid, bool &isSendBroadCast)
+{
+    DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->HandleCredentialDeleted(credId,
+        credInfo, localUdid, remoteUdid, isSendBroadCast);
+}
+void DeviceManagerServiceImpl::HandleShareUnbindBroadCast(const std::string &credId,
+    const int32_t &userId, const std::string &localUdid)
+{
+    DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->HandleShareUnbindBroadCast(credId, userId, localUdid);
+}
+
+int32_t DeviceManagerServiceImpl::CheckDeviceInfoPermission(const std::string &localUdid,
+    const std::string &peerDeviceId)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->CheckDeviceInfoPermission(localUdid, peerDeviceId);
+}
+
+void DeviceManagerServiceImpl::HandleAppUnBindEvent(int32_t remoteUserId, const std::string &remoteUdid,
+    int32_t tokenId)
+{
+    DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->HandleAppUnBindEvent(remoteUserId, remoteUdid, tokenId);
+}
+
+void DeviceManagerServiceImpl::HandleAppUnBindEvent(int32_t remoteUserId, const std::string &remoteUdid,
+    int32_t tokenId, int32_t peerTokenId)
+{
+    DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->HandleAppUnBindEvent(remoteUserId, remoteUdid,
+        tokenId, peerTokenId);
+}
+
+bool DeviceManagerServiceImpl::CheckAccessControl(const DmAccessCaller &caller, const std::string &srcUdid,
+    const DmAccessCallee &callee, const std::string &sinkUdid)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->CheckAccessControl(caller, srcUdid, callee,
+        sinkUdid);
+}
+
+bool DeviceManagerServiceImpl::CheckIsSameAccount(const DmAccessCaller &caller, const std::string &srcUdid,
+    const DmAccessCallee &callee, const std::string &sinkUdid)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->CheckIsSameAccount(caller, srcUdid, callee,
+        sinkUdid);
+}
+
+int32_t DeviceManagerServiceImpl::DeleteAclExtraDataServiceId(int64_t serviceId, int64_t tokenIdCaller,
+    std::string &udid, int32_t &bindLevel)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->DeleteAclExtraDataServiceId(serviceId, tokenIdCaller,
+        udid, bindLevel);
+}
+
+int32_t DeviceManagerServiceImpl::ExportAuthInfo(DmAuthInfo &dmAuthInfo, uint32_t pinLength)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->ExportAuthInfo(dmAuthInfo, pinLength);
+}
+
+int32_t DeviceManagerServiceImpl::ImportAuthInfo(const DmAuthInfo &dmAuthInfo)
+{
+    return DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->ImportAuthInfo(dmAuthInfo);
+}
+
+void DeviceManagerServiceImpl::InitTaskOfDelTimeOutAcl(const std::string &peerUdid, int32_t peerUserId,
+    int32_t localUserId)
+{
+    DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl->InitTaskOfDelTimeOutAcl(peerUdid,
+        peerUserId, localUserId);
+}
+} // namespace DistributedHardware
+} // namespace OHOS

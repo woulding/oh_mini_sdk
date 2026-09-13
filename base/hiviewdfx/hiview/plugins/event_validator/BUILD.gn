@@ -1,0 +1,86 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("event_validator_config") {
+  include_dirs = [
+    "control/config/include",
+    "control/db/include",
+    "control/include",
+    "include",
+  ]
+  cflags_cc = [ "-D__HIVIEW_OHOS__" ]
+}
+
+ohos_source_set("event_validator") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  configs = [ ":event_validator_config" ]
+
+  sources = [
+    "control/config/daily_config.cpp",
+    "control/daily_controller.cpp",
+    "control/db/daily_db_helper.cpp",
+    "event_delayed_util.cpp",
+    "event_param_watcher.cpp",
+    "event_period_info_util.cpp",
+    "event_validator.cpp",
+    "event_verify_util.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "$hiview_core:hiview_core",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+    "jsoncpp:jsoncpp",
+    "relational_store:native_rdb",
+    "zlib:shared_libz",
+  ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+group("unittest") {
+  testonly = true
+  deps = [
+    "test/unittest/common:DailyControllerTest",
+    "test/unittest/common:EventValidatorTest",
+  ]
+}
+
+group("moduletest") {
+  testonly = true
+  deps = []
+}
+
+group("fuzztest") {
+  testonly = true
+  deps = []
+}

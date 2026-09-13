@@ -1,0 +1,188 @@
+/*
+ * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "bundle_exception_handler.h"
+
+#include "installd_client.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+    const std::vector<std::string> KEEP_DATA = {};
+}
+BundleExceptionHandler::BundleExceptionHandler(const std::shared_ptr<IBundleDataStorage> &dataStorage)
+    : dataStorage_(dataStorage)
+{
+    APP_LOGD("create bundle exception handler instance");
+}
+
+BundleExceptionHandler::~BundleExceptionHandler()
+{
+    APP_LOGD("destroy bundle exception handler instance");
+}
+
+
+void BundleExceptionHandler::HandleInvalidBundle(InnerBundleInfo &info, bool &isBundleValid)
+{
+    InnerHandleInvalidBundle(info, isBundleValid);
+    if (isBundleValid && (info.GetApplicationBundleType() == BundleType::APP_SERVICE_FWK)) {
+        InnerCheckSystemHspPath(info);
+    }
+    if (isBundleValid && (info.GetApplicationBundleType() == BundleType::SHARED)) {
+        CheckSharedAndRmvInvalidModule(info, isBundleValid);
+    }
+}
+
+void BundleExceptionHandler::CheckSharedAndRmvInvalidModule(InnerBundleInfo &info, bool &isBundleValid)
+{
+    auto sharedInfos = info.GetInnerSharedModuleInfos();
+    for (auto &modulesIt : sharedInfos) {
+        BaseSharedBundleInfo maxShared;
+        bool needBreak = false;
+        if (info.GetMaxVerBaseSharedBundleInfo(modulesIt.first, maxShared)) {
+            auto versionCode = maxShared.versionCode;
+            for (auto module : modulesIt.second) {
+                if (module.versionCode == static_cast<uint32_t>(versionCode) &&
+                    module.hapPath.find(Constants::BUNDLE_CODE_DIR) == 0 &&
+                    access(module.hapPath.c_str(), F_OK) != 0) {
+                    APP_LOGI("-v %{public}u %{public}s not exist, need rmv", versionCode,
+                        module.hapPath.c_str());
+                    info.DeleteHspModuleByVersion(versionCode);
+                    needBreak = true;
+                    break;
+                }
+            }
+        }
+        if (needBreak) {
+            break;
+        }
+    }
+    if (info.GetInnerSharedModuleInfos().size() == 0) {
+        isBundleValid = false;
+        DeleteBundleInfoFromStorage(info);
+    }
+}
+
+void BundleExceptionHandler::InnerCheckSystemHspPath(const InnerBundleInfo &info)
+{
+    auto innerModuleInfos = info.GetInnerModuleInfos();
+    for (const auto &item : innerModuleInfos) {
+        if (access(item.second.hapPath.c_str(), F_OK) != 0) {
+            APP_LOGE("-n %{public}s system hsp path %{public}s not exist", info.GetBundleName().c_str(),
+                item.second.hapPath.c_str());
+        }
+    }
+}
+
+bool BundleExceptionHandler::RemoveBundleAndDataDir(const std::string &bundleDir,
+    const std::string &bundleOrModuleDir, int32_t userId) const
+{
+    std::string bundleName = bundleOrModuleDir;
+    auto hapsPos = bundleOrModuleDir.find(ServiceConstants::HAPS);
+    if (hapsPos != std::string::npos) {
+        bundleName = bundleOrModuleDir.substr(0, hapsPos);
+    }
+    ErrCode result = InstalldClient::GetInstance()->RemoveDir(bundleDir, BundleDirScene::REMOVE_MODULE_DIR, bundleName);
+    if (result != ERR_OK) {
+        APP_LOGE("fail to remove bundle dir %{public}s, error is %{public}d", bundleDir.c_str(), result);
+        return false;
+    }
+
+    for (const auto &bundle : KEEP_DATA) {
+        if (bundleDir.find(bundle) != std::string::npos) {
+            APP_LOGW("%{public}s need keep data", bundle.c_str());
+            return true;
+        }
+    }
+
+    if (bundleOrModuleDir.find(ServiceConstants::HAPS) != std::string::npos) {
+        result = InstalldClient::GetInstance()->RemoveModuleDataDir(bundleOrModuleDir, userId);
+        if (result != ERR_OK) {
+            APP_LOGE("fail to remove module data dir %{public}s, error is %{public}d", bundleOrModuleDir.c_str(),
+                result);
+            return false;
+        }
+    } else {
+        result = InstalldClient::GetInstance()->RemoveBundleDataDir(bundleOrModuleDir, userId);
+        if (result != ERR_OK) {
+            APP_LOGE("fail to remove bundle data dir %{public}s, error is %{public}d", bundleOrModuleDir.c_str(),
+                result);
+            return false;
+        }
+    }
+    return true;
+}
+
+void BundleExceptionHandler::DeleteBundleInfoFromStorage(const InnerBundleInfo &info)
+{
+    auto storage = dataStorage_.lock();
+    if (storage) {
+        APP_LOGD("remove bundle info of %{public}s from the storage", info.GetBundleName().c_str());
+        storage->DeleteStorageBundleInfo(info);
+    } else {
+        APP_LOGE(" fail to remove bundle info of %{public}s from the storage", info.GetBundleName().c_str());
+    }
+}
+
+void BundleExceptionHandler::InnerHandleInvalidBundle(InnerBundleInfo &info, bool &isBundleValid)
+{
+    auto mark = info.GetInstallMark();
+    if (mark.status == InstallExceptionStatus::INSTALL_FINISH) {
+        return;
+    }
+    APP_LOGW_NOFUNC("handle -n %{public}s status is %{public}d", info.GetBundleName().c_str(), mark.status);
+    std::string appCodePath = std::string(Constants::BUNDLE_CODE_DIR) +
+        ServiceConstants::PATH_SEPARATOR + info.GetBundleName();
+    auto moduleDir = appCodePath + ServiceConstants::PATH_SEPARATOR + mark.packageName;
+    auto moduleDataDir = info.GetBundleName() + ServiceConstants::HAPS + mark.packageName;
+
+    // install and update failed before service restart
+    if (mark.status == InstallExceptionStatus::INSTALL_START) {
+        // unable to distinguish which user failed the installation
+        (void)RemoveBundleAndDataDir(appCodePath, info.GetBundleName(), info.GetUserId());
+        DeleteBundleInfoFromStorage(info);
+        isBundleValid = false;
+    } else if (mark.status == InstallExceptionStatus::UPDATING_EXISTED_START) {
+        if (InstalldClient::GetInstance()->RemoveDir(moduleDir + ServiceConstants::TMP_SUFFIX,
+            BundleDirScene::REMOVE_MODULE_DIR, info.GetBundleName()) == ERR_OK) {
+            info.SetBundleStatus(InnerBundleInfo::BundleStatus::ENABLED);
+        }
+    } else if (mark.status == InstallExceptionStatus::UPDATING_NEW_START &&
+        RemoveBundleAndDataDir(moduleDir, moduleDataDir, info.GetUserId())) {
+        info.SetBundleStatus(InnerBundleInfo::BundleStatus::ENABLED);
+    } else if (mark.status == InstallExceptionStatus::UNINSTALL_BUNDLE_START &&
+        RemoveBundleAndDataDir(appCodePath, info.GetBundleName(), info.GetUserId())) {  // continue to uninstall
+        DeleteBundleInfoFromStorage(info);
+        isBundleValid = false;
+    } else if (mark.status == InstallExceptionStatus::UNINSTALL_PACKAGE_START) {
+        if (info.IsOnlyModule(mark.packageName) &&
+            RemoveBundleAndDataDir(appCodePath, info.GetBundleName(), info.GetUserId())) {
+            DeleteBundleInfoFromStorage(info);
+            isBundleValid = false;
+            return;
+        }
+        if (RemoveBundleAndDataDir(moduleDir, moduleDataDir, info.GetUserId())) {
+            info.RemoveModuleInfo(mark.packageName);
+            info.SetBundleStatus(InnerBundleInfo::BundleStatus::ENABLED);
+        }
+    } else if (mark.status == InstallExceptionStatus::UPDATING_FINISH) {
+        if (InstalldClient::GetInstance()->RenameModuleDir(moduleDir + ServiceConstants::TMP_SUFFIX, moduleDir,
+            info.GetBundleName(), BundleDirScene::BUNDLE_CODE_DIR) != ERR_OK) {
+            APP_LOGI_NOFUNC("%{public}s rename module failed, may not exist", info.GetBundleName().c_str());
+        }
+    }
+}
+}  // namespace AppExecFwkConstants
+}  // namespace OHOS

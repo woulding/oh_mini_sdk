@@ -1,0 +1,51 @@
+{
+    "name": "@ohos/safwk_lite",
+    "description": "system ability framework",
+    "homePage": "https://gitee.com/openharmony",
+    "version": "3.1",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/systemabilitymgr_safwk_lite",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/systemabilitymgr/safwk_lite"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "safwk_lite",
+        "subsystem": "systemabilitymgr",
+        "adapted_system_type": [
+            "small"
+        ],
+        "adapted_kernel": [
+            "liteos_a",
+            "linux"
+        ],
+        "features": [
+            "safwk_lite_feature_enable_abilityms ",
+            "safwk_lite_feature_enable_bundlems ",
+            "safwk_lite_feature_enable_dtbschedmgr "
+        ],
+        "rom": "100KB",
+        "ram": "2048KB",
+        "deps": {
+            "components": [
+                "ability_lite",
+                "bundle_framework_lite",
+                "dmsfwk_lite",
+                "hilog_lite",
+                "permission_lite",
+                "samgr_lite"
+            ],
+            "third_party": [
+                "bounds_checking_function",
+                "cJSON"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//foundation/systemabilitymgr/safwk_lite:foundation"
+            ]
+        }
+    }
+}

@@ -1,0 +1,358 @@
+# Copyright (C) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/huks/build/config.gni")
+import("//base/security/huks/huks.gni")
+import("//build/ohos.gni")
+import("//build/test.gni")
+
+module_output_path = "huks/huks/huks_module_test"
+
+ohos_unittest("huks_module_test") {
+  module_out_path = module_output_path
+  defines = []
+
+  include_dirs = [
+    "//base/security/huks/services/huks_standard/huks_service/main/core/include",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/include/asymmetric_alg_test",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/include/symmetric_alg_test",
+    "//base/security/huks/test/unittest/huks_standard_test/crypto_engine_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/utils_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/interface_test/include",
+    "//base/security/huks/utils/condition",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/idl/passthrough/core/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_engine/core/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_engine/core_dependency/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/systemapi_mock/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/include",
+    "//base/security/huks/services/huks_standard/huks_engine/main/core/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/os_dependency_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/include",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/upgrade_key_test/include",
+    "//base/security/huks/test/unittest/huks_common_test/include",
+    "//base/security/huks/services/huks_standard/huks_service/main/os_dependency/idl/ipc",  # hks_response.h
+    "//base/security/huks/services/huks_standard/huks_service/main/plugin_proxy/include",
+    "//base/security/huks/services/huks_standard/huks_service/main/hks_storage/include",
+    "//base/security/huks/service/huks_standard/huks_service/main/ha/include",
+  ]
+
+  sources = []
+
+  # interface sdk_test
+  sources += [
+    "//base/security/huks/test/unittest/huks_common_test/src/hks_bn_exp_mod_test_func.cpp",
+    "//base/security/huks/test/unittest/huks_common_test/src/hks_test_adapt_for_de.c",
+    "//base/security/huks/test/unittest/huks_common_test/src/hks_test_aes_func.cpp",
+    "//base/security/huks/test/unittest/huks_common_test/src/hks_test_cipher_func.cpp",
+    "//base/security/huks/test/unittest/huks_common_test/src/hks_test_common_func.cpp",
+    "//base/security/huks/test/unittest/huks_common_test/src/hks_test_curve25519_func.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_agreement_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_bn_exp_mod_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_cipher_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_curve25519_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_delete_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_derive_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_exist_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_generate_key_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_generate_random_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_hash_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_mac_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_others_test.cpp",
+  ]
+
+  sources += [ "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_session_max_test.cpp" ]
+  defines += [ "HUKS_MODULE_TEST_HKS_SESSION_MAX_TEST_CPP" ]
+
+  sources += [
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_test_aes.c",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_test_api_performance.c",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_test_cipher.c",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_test_common.c",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_test_curve25519.c",
+    "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/src/hks_test_mem.c",
+  ]
+
+  # interface three_stage_test
+  sources += [
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_access_control_agree_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_access_control_cipher_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_access_control_derive_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_access_control_mac_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_access_control_rsa_sign_verify_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_access_control_rsa_sign_verify_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_access_control_secure_sign_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_access_control_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/symmetric_alg_test/hks_aes_cipher_part1_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/symmetric_alg_test/hks_aes_cipher_part2_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/symmetric_alg_test/hks_aes_cipher_part3_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/symmetric_alg_test/hks_aes_cipher_part4_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/symmetric_alg_test/hks_aes_cipher_test_common.cpp",
+
+    # "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_attest_key_nonids_test.cpp",
+    # "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_attest_key_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_dh_agree_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_ecc_sign_verify_part1_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_ecc_sign_verify_part2_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_ecc_sign_verify_part3_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_ecc_sign_verify_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_ecdh_agree_part1_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_ecdh_agree_part2_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_ecdh_agree_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_ed25519_sign_verify_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_export_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_export_test_mt.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_cipher_part1_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_cipher_part2_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_cipher_part3_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_cipher_part4_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_cipher_part5_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_cipher_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_part1_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_part2_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_part3_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_part4_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_part5_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_part6_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_part7_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_part8_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/asymmetric_alg_test/hks_rsa_sign_verify_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_agree_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_batch_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_check_auth_part_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_check_pur_part_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_cross_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_cross_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_hkdf_derive_part1_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_hkdf_derive_part2_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_hkdf_derive_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_hmac_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_import_agree_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_import_key_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_import_rsa_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_import_sign_verify_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_import_wrapped_ecdh_suite_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_import_wrapped_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_import_wrapped_x25519_suite_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_pbkdf2_derive_part1_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_pbkdf2_derive_part2_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_pbkdf2_derive_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_sm2_sign_verify_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_sm4_cipher_part_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_sm4_cipher_test_common.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_three_stage_test_common.c",
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_x25519_agree_test.cpp",
+  ]
+
+  # framework test
+  sources += [
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/src/hks_base_check_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/src/hks_check_paramset_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/src/hks_common_check_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/src/hks_crypto_hal_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/src/hks_errorcode_adapter_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/src/hks_param_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/src/hks_template_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/common_test/src/hks_ukey_common_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/os_dependency_test/src/hks_client_ipc_serialization_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/os_dependency_test/src/hks_ipc_check_test.cpp",
+  ]
+
+  # interface test
+  sources += [
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/interface_test/src/hks_api_test.cpp",
+
+    #"//base/security/huks/test/unittest/huks_standard_test/module_test/interface_test/src/hks_get_key_info_list_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/interface_test/src/hks_refresh_key_info_test.cpp",
+  ]
+
+  # utils test
+  sources += [
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/utils_test/src/hks_attest_utils_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/utils_test/src/hks_client_service_adapter_common_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/utils_test/src/hks_client_service_adapter_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/utils_test/src/hks_condition_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/utils_test/src/hks_double_list_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/utils_test/src/hks_file_operator_test.cpp",
+  ]
+
+  if (huks_security_level != "software") {
+    sources += [ "//base/security/huks/test/unittest/huks_standard_test/module_test/utils_test/src/hks_get_hash_test.cpp" ]
+  }
+
+  # service test
+  sources += [
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_client_check_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_mlkem_service_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_client_service_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_report_common_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_report_data_size_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_se_session_manager_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_storage_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_report_one_stage_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_report_three_stage_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/src/hks_bms_api_wrap_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/src/huks_sa_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/systemapi_mock/src/useridm_mock_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_ha_plugin_test.cpp"
+  ]
+
+  if (huks_enable_ukey_config == true) {
+    sources += [
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_report_ukey_event_test.cpp",
+    ]
+    defines += [ "HKS_UKEY_EXTENSION_CRYPTO" ]
+  }
+
+  if (huks_security_level != "software") {
+    sources += [ "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/src/hks_dcm_callback_handler_test.cpp" ]
+    sources += [ "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/src/hks_osaccount_check_test.cpp" ]
+  }
+
+  # engine test
+  sources += [
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_engine/core/src/hks_asn1_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_engine/core/src/hks_core_service_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_engine/core/src/hks_keyblob_test.cpp",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_engine/core/src/hks_keynode_test.cpp",
+  ]
+
+  if (huks_enable_upgrade_key) {
+    # upgrade key test
+    sources += [
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_engine/core/src/hks_upgrade_key_c_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/core/src/hks_upgrade_key_accesser_test.cpp",
+    ]
+  }
+
+  defines += [
+    "UNAVAILABLE_FOR_SM4_GCM",
+    "UNAVAILABLE_FOR_RSA_FLEX",
+    "_HUKS_LOG_ENABLE_",
+    "L2_STANDARD",
+    "HKS_ENABLE_CLEAN_FILE",
+    "SUPPORT_STORAGE_BACKUP",
+  ]
+  if (use_crypto_lib == "openssl") {
+    defines += [
+      "_USE_OPENSSL_",
+      "OPENSSL_SUPPRESS_DEPRECATED",
+    ]
+  }
+
+  if (huks_security_level == "software") {
+    defines += [ "HKS_UNTRUSTED_RUNNING_ENV" ]
+    sources += [
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/src/hks_openssl_aes_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/src/hks_openssl_common_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/src/hks_openssl_curve_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/src/hks_openssl_engine_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/src/hks_openssl_hash_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/src/hks_openssl_hmac_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/src/hks_openssl_rsa_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/framework_test/crypto_engine_test/src/hks_openssl_sm4_test.cpp",
+    ]
+  }
+
+  include_dirs += [ "//base/security/huks/test/unittest/huks_standard_test/interface_inner_test/sdk_test/include" ]
+
+  cflags = [
+    "-DHKS_KEY_VERSION=${huks_key_version}",
+    "-Wall",
+    "-Werror",
+    "-fPIC",
+  ]
+  if (!huks_use_rkc_in_standard) {
+    defines += [ "_HARDWARE_ROOT_KEY_" ]
+  }
+  if (enable_bundle_framework) {
+    cflags += [ "-DHKS_SUPPORT_GET_BUNDLE_INFO" ]
+  }
+  if (huks_enable_upgrade_key) {
+    defines += [ "HKS_ENABLE_UPGRADE_KEY" ]
+
+    if (huks_enable_upgrade_derive_key_alg) {
+      # enable upgrade key derivation algorithm from PBKDF2 to HKDF
+      defines += [ "HKS_CHANGE_DERIVE_KEY_ALG_TO_HKDF" ]
+    }
+  }
+  if (enable_user_auth_framework) {
+    cflags += [ "-DHKS_SUPPORT_USER_AUTH_ACCESS_CONTROL" ]
+  }
+
+  if (huks_enable_upgrade_key_storage_secure_level) {
+    defines += [ "HUKS_ENABLE_UPGRADE_KEY_STORAGE_SECURE_LEVEL" ]
+    cflags += [
+      "-DHUKS_SA_UPGRADE_CONFIG=${huks_sa_upgrade_config}",
+      "-DHUKS_HAP_UPGRADE_CONFIG=${huks_hap_upgrade_config}",
+      "-DHUKS_SA_SKIP_UPGRADE_CONFIG=${huks_sa_skip_upgrade_config}",
+      "-DHUKS_HAP_SKIP_UPGRADE_CONFIG=${huks_hap_skip_upgrade_config}",
+    ]
+  }
+  if (huks_use_rkc_in_standard) {
+    cflags +=
+        [ "-DHKS_CONFIG_RKC_STORE_PATH=\"${huks_use_rkc_in_standard_path}\"" ]
+    defines += [ "HKS_USE_RKC_IN_STANDARD" ]
+  }
+  cflags +=
+      [ "-DHKS_CONFIG_KEY_STORE_PATH=\"${huks_key_store_standard_path}\"" ]
+  sources += [
+    "//base/security/huks/test/unittest/huks_standard_test/three_stage_test/src/hks_attest_key_test_common.cpp",
+    "//base/security/huks/utils/condition/hks_condition.c",
+  ]
+
+  deps = [
+    "//base/security/huks/services/huks_standard/huks_service/main/ha:libhuks_service_ha_static",
+    "//base/security/huks/test/unittest/huks_standard_test/module_test/inner_kits_passthrough:libhukssdk_static",
+    "//base/security/huks/test/unittest/modify_old_version_key_test_util:huks_modify_old_version_key_util",
+  ]
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "hitrace:libhitracechain",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+  ]
+
+  if (os_level == "standard") {
+    sources += [
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/src/hks_sa_interface_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/src/hks_xcollie_test.cpp",
+    ]
+    external_deps += [
+      "openssl:libcrypto_shared",
+      "safwk:system_ability_fwk",
+      "hicollie:libhicollie",
+    ]
+  }
+
+  if (support_jsapi) {
+    sources += [
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/src/huks_event_observer_test.cpp",
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/src/hks_upgrade_lock_mock.cpp",
+    ]
+    include_dirs += [
+      "//base/security/huks/test/unittest/huks_standard_test/module_test/service_test/huks_service/os_dependency/sa/include",
+    ]
+    external_deps += [
+      "ability_base:want",
+      "common_event_service:cesfwk_innerkits",
+    ]
+  }
+}

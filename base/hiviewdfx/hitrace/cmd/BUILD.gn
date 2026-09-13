@@ -1,0 +1,84 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hitrace/hitrace.gni")
+import("//build/ohos.gni")
+
+ohos_executable("hitrace") {
+  branch_protector_ret = "pac_ret"
+  install_enable = true
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+  include_dirs = [
+    "$hitrace_common_path",
+    "$hitrace_frameworks_path/include",
+    "$hitrace_interfaces_path/native/innerkits/include",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_meter",
+    "$hitrace_interfaces_path/native/innerkits/include/hitrace_option",
+    "$hitrace_utils_path",
+  ]
+
+  sources = [ "hitrace_cmd.cpp" ]
+
+  deps = [
+    "$hitrace_config_path:hitrace_tags",
+    "$hitrace_interfaces_path/native/innerkits:hitrace_dump",
+    "$hitrace_interfaces_path/native/innerkits:libhitrace_option",
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_file_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+    "hisysevent:libhisysevent",
+    "cJSON:cjson",
+    "init:libbegetutil",
+  ]
+
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  if (support_jsapi && hitrace_support_executable_file) {
+    external_deps += [ "hiview:libucollection_client" ]
+  }
+
+  if (use_shared_libz) {
+    external_deps += [ "zlib:shared_libz" ]
+  }
+
+  cflags_cc = [ "-Os" ]
+
+  ldflags = [ "-Wl,--gc-sections" ]
+
+  symlink_target_name = [ "bytrace" ]
+
+  if (hitrace_feature_support_usr_symlink) {
+    symlink_target_name += [
+      "../usr/bin/hitrace",
+    ]
+  }
+
+  subsystem_name = "hiviewdfx"
+  part_name = "hitrace"
+}
+
+group("hitrace_target") {
+  if (support_jsapi && hitrace_support_executable_file &&
+      hiview_enable) {
+    deps = [ ":hitrace" ]
+  }
+}

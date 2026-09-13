@@ -1,0 +1,115 @@
+# Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/huks/build/config.gni")
+import("//base/security/huks/huks.gni")
+
+config("l2_standard_common_config") {
+  cflags = []
+  if (enable_hks_coverage) {
+    cflags += [ "--coverage" ]
+    ldflags = [ "--coverage" ]
+  }
+  cflags += [
+    "-DHKS_KEY_VERSION=${huks_key_version}",
+    "-Wall",
+    "-Werror",
+    "-fPIC",
+  ]
+
+  cflags +=
+      [ "-DHKS_CONFIG_KEY_STORE_PATH=\"${huks_key_store_standard_path}\"" ]
+
+  defines = [
+    "_HUKS_LOG_ENABLE_",
+    "L2_STANDARD",
+    "HKS_ENABLE_CLEAN_FILE",
+    "SUPPORT_STORAGE_BACKUP",
+  ]
+  if (!huks_use_rkc_in_standard) {
+    defines += [ "_HARDWARE_ROOT_KEY_" ]
+  }
+  if (huks_enable_upgrade_key) {
+    defines += [ "HKS_ENABLE_UPGRADE_KEY" ]
+
+    if (huks_enable_upgrade_derive_key_alg) {
+      # enable upgrade key derivation algorithm from PBKDF2 to HKDF
+      defines += [ "HKS_CHANGE_DERIVE_KEY_ALG_TO_HKDF" ]
+    }
+  }
+  if (enable_user_auth_framework) {
+    cflags += [ "-DHKS_SUPPORT_USER_AUTH_ACCESS_CONTROL" ]
+  }
+  if (enable_bundle_framework) {
+    cflags += [ "-DHKS_SUPPORT_GET_BUNDLE_INFO" ]
+  }
+  if (huks_use_rkc_in_standard) {
+    cflags +=
+        [ "-DHKS_CONFIG_RKC_STORE_PATH=\"${huks_use_rkc_in_standard_path}\"" ]
+    defines += [ "HKS_USE_RKC_IN_STANDARD" ]
+  }
+  if (huks_enable_upgrade_key_storage_secure_level) {
+    defines += [ "HUKS_ENABLE_UPGRADE_KEY_STORAGE_SECURE_LEVEL" ]
+    cflags += [
+      "-DHUKS_SA_UPGRADE_CONFIG=${huks_sa_upgrade_config}",
+      "-DHUKS_HAP_UPGRADE_CONFIG=${huks_hap_upgrade_config}",
+      "-DHUKS_SA_SKIP_UPGRADE_CONFIG=${huks_sa_skip_upgrade_config}",
+      "-DHUKS_HAP_SKIP_UPGRADE_CONFIG=${huks_hap_skip_upgrade_config}",
+    ]
+    if (huks_enable_skip_upgrade_key_storage_secure_level) {
+      defines += [ "HUKS_ENABLE_SKIP_UPGRADE_KEY_STORAGE_SECURE_LEVEL" ]
+    }
+  }
+}
+
+config("l1_small_common_config") {
+  cflags = []
+  cflags += [
+    "-DHKS_KEY_VERSION=${huks_key_version}",
+    "-Wall",
+    "-Werror",
+    "-fPIC",
+  ]
+  if (huks_use_hardware_root_key == true) {
+    cflags += [ "-D_HARDWARE_ROOT_KEY_" ]
+  }
+  if (huks_config_file != "") {
+    print(huks_config_file)
+    cflags += [ "-DHKS_CONFIG_FILE=\"${huks_config_file}\"" ]
+  }
+
+  cflags += [ "-DGET_DEV_UDID_ENABLE" ]
+
+  defines = [
+    "_HUKS_LOG_ENABLE_",
+    "HKS_L1_SMALL",
+  ]
+  if (huks_enable_upgrade_key) {
+    defines += [ "HKS_ENABLE_UPGRADE_KEY" ]
+
+    if (huks_enable_upgrade_small_to_service) {
+      # enable upgrade key for huks transformed to service in small device
+      defines += [ "HKS_ENABLE_SMALL_TO_SERVICE" ]
+
+      if (!hks_enable_test) {
+        # enable if old path is empty stop upgrade operation for small_to_service
+        defines += [ "HKS_ENABLE_MARK_CLEARED_FOR_SMALL_TO_SERVICE" ]
+      }
+    }
+
+    if (huks_enable_upgrade_derive_key_alg) {
+      # enable upgrade key derivation algorithm from PBKDF2 to HKDF
+      defines += [ "HKS_CHANGE_DERIVE_KEY_ALG_TO_HKDF" ]
+    }
+  }
+}

@@ -1,0 +1,74 @@
+# Copyright (c) 2026 Hihope Open Source Organization.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/lite/config/component/lite_component.gni")
+import("//test/xts/tools/lite/hctest/hctest_opt_args.gni")
+
+declare_args() {
+  build_ws53_sdk_open = false
+  enable_hos_vendor_wifiiot_xts = false
+  enable_oh_device_lite_auth = true
+  build_ws53_mode = "normal"
+  enable_product_config_patch = false
+}
+
+build_env = "BUILD_WS53_MODE=${build_ws53_mode} ENABLE_PRODUCT_CONFIG_PATCH=${enable_product_config_patch}"
+if (build_xts) {
+  build_env += " BUILD_XTS=1"
+}
+build_env += " XTS_OVERLAY_ARG=${xts_overlay} HCTEST_RODATA_OPT_ARG=${hctest_rodata_opt}"
+group("nearllink_sdk") {
+  deps = [ ":sdk" ]
+}
+
+build_ext_component("run_sdk_build") {
+  exec_path = rebase_path(".", root_build_dir)
+  outdir = rebase_path(root_out_dir)
+  command ="env $build_env bash hm_build.sh $outdir $build_ws53_sdk_open"
+  deps = [
+    ":sdk",
+    "//build/lite:ohos"
+  ]
+  if (enable_oh_device_lite_auth) {
+    deps += ["//base/security/device_auth/frameworks/deviceauth_lite:hichainsdk"]
+  }
+  if (enable_hos_vendor_wifiiot_xts) {
+    deps += [ "//build/lite/config/subsystem/xts:xts" ]
+  }
+
+  # The SDK cmake link (ws53_liteos_app/xts) requires libdevattest_sdk.a /
+  # libdevattest_core.a (and other OHOS libs) to be copied into interim_binary
+  # by hm_build.sh BEFORE cmake runs. hm_build.sh snapshots all of
+  # out/<product>/libs/*.a at start, so every .a must be finished first.
+  # The generic "all" phony gives ninja no ordering guarantee between the
+  # copy action and parallel AR steps, which caused intermittent
+  # "No rule to make target ... libdevattest_sdk.a" link failures.
+  # Explicit deps force archiving to complete before the copy starts.
+  if (ohos_kernel_type == "liteos_m") {
+    deps += [
+      "//test/xts/device_attest_lite/framework:devattest_sdk",
+      "//test/xts/device_attest_lite/services/core:devattest_core",
+    ]
+  }
+}
+
+lite_component("sdk") {
+  features = []
+
+  deps = [
+    "//build/lite/config/component/cJSON:cjson_static",
+    "//device/soc/hisilicon/ws53v106/adapter/hals/communication/ble_lite",
+    "//device/soc/hisilicon/ws53v106/adapter/hals/communication/sle_lite",
+    "//device/soc/hisilicon/ws53v106/adapter/hals/communication/wifi_lite/wifiservice",
+  ]
+}

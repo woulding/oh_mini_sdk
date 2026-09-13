@@ -1,0 +1,6 @@
+{
+  "eval_id": 0,
+  "eval_name": "broken-tlv-scan-fail",
+  "prompt": "SLE 设备端日志全成功但星闪调试助手扫描不到；给定 announce_data=01 02 01 02 02 00 与 seek_rsp_data=0c 02 06 0b 0b 73 6c 65 5f 73 65 72 76 65 72，定位原因并给出修复字节。",
+  "assertions": []
+}

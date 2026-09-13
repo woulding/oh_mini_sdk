@@ -1,0 +1,269 @@
+/*
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "hks_event_observer.h"
+
+#include "common_event_support.h"
+#include "rwlock.h"
+#include <cstdint>
+#include <string>
+#include <sstream>
+#include <vector>
+#ifdef HAS_OS_ACCOUNT_PART
+#include "os_account_manager.h"
+#endif
+#include "hks_client_service.h"
+#include "hks_client_service_common.h"
+#include "hks_log.h"
+#include "hks_mem.h"
+#include "hks_plugin_adapter.h"
+#include "hks_type_inner.h"
+#include "hks_template.h"
+#include "hks_upgrade.h"
+#include "hks_upgrade_lock.h"
+#include "hks_report_data_size.h"
+#include "securec.h"
+#ifdef HKS_SUPPORT_GET_BUNDLE_INFO
+#include "hks_bms_api_wrap.h"
+#endif
+#include "hks_storage.h"
+
+const static std::string DEVELOPER_ID = "developerId";
+const static std::string ASSET_ACCESS_GROUPS = "assetAccessGroups";
+const char GROUP_SEPARATOR = ',';
+
+#define USER_ID_ROOT                  "0"
+#ifndef HAS_OS_ACCOUNT_PART
+constexpr static int UID_TRANSFORM_DIVISOR = 200000;
+#endif // HAS_OS_ACCOUNT_PART
+static int32_t GetOsAccountIdFromUid(int uid, int &osAccountId)
+{
+#ifdef HAS_OS_ACCOUNT_PART
+    OHOS::ErrCode ret = OHOS::AccountSA::OsAccountManager::GetOsAccountLocalIdFromUid(uid, osAccountId);
+    HKS_IF_TRUE_LOGE_RETURN(ret != OHOS::ERR_OK, HKS_FAILURE,
+        "GetOsAccountLocalIdFromUid failed, ret: %" LOG_PUBLIC "d", ret)
+#else
+    osAccountId = uid / UID_TRANSFORM_DIVISOR;
+#endif
+    return HKS_SUCCESS;
+}
+
+static int32_t GetProcessInfo(int userId, int uid, struct HksProcessInfo *processInfo)
+{
+    HksBlob tempUserId = {0};
+    HksBlob tempProcessName = {0};
+    int32_t ret = HKS_SUCCESS;
+
+    do {
+        ret = HKS_ERROR_MALLOC_FAIL;
+        uint32_t userSize = userId != 0 ? sizeof(userId) : strlen(USER_ID_ROOT);
+        tempUserId.size = userSize;
+        tempUserId.data = static_cast<uint8_t *>(HksMalloc(userSize));
+        HKS_IF_NULL_LOGE_BREAK(tempUserId.data, "userId malloc failed.")
+
+        uint32_t uidSize = sizeof(uid);
+        tempProcessName.size = uidSize;
+        tempProcessName.data = static_cast<uint8_t *>(HksMalloc(uidSize));
+        HKS_IF_NULL_LOGE_BREAK(tempProcessName.data, "uid malloc failed.")
+
+        ret = HKS_ERROR_INSUFFICIENT_MEMORY;
+        HKS_IF_NOT_EOK_LOGE_BREAK(memcpy_s(tempUserId.data, userSize, userId == 0 ? USER_ID_ROOT :
+            reinterpret_cast<const char*>(&userId), userSize), "memcpy userId failed.")
+        
+        HKS_IF_NOT_EOK_LOGE_BREAK(memcpy_s(tempProcessName.data, uidSize, &uid, uidSize), "memcpy uid failed.")
+
+        processInfo->userId = tempUserId;
+        processInfo->processName = tempProcessName;
+        processInfo->userIdInt = userId;
+
+        return HKS_SUCCESS;
+    } while (0);
+
+    HKS_FREE(tempUserId.data);
+    HKS_FREE(tempProcessName.data);
+    return ret;
+}
+
+static void GetUserId(int userId, struct HksBlob *userIdBlob)
+{
+    uint32_t userIdSize = sizeof(userId);
+    uint8_t *userIdData = static_cast<uint8_t *>(HksMalloc(userIdSize));
+    HKS_IF_NULL_LOGE_RETURN_VOID(userIdData, "uid malloc failed.")
+    (void)memcpy_s(userIdData, userIdSize, &userId, userIdSize);
+    userIdBlob->size = userIdSize;
+    userIdBlob->data = userIdData;
+}
+
+#ifdef L2_STANDARD
+static void ParseGroups(const std::string groupsStr, std::vector<std::string> &thisGroups)
+{
+    std::stringstream ss(groupsStr);
+    std::string group{};
+    while (std::getline(ss, group, GROUP_SEPARATOR)) {
+        thisGroups.push_back(group);
+    }
+}
+
+static void HksServiceDeleteGroupKey(const struct HksProcessInfo *processInfo, const OHOS::AAFwk::Want &want)
+{
+    std::string developerId = want.GetStringParam(DEVELOPER_ID);
+    std::string groupsStr = want.GetStringParam(ASSET_ACCESS_GROUPS);
+    HKS_IF_TRUE_LOGI_RETURN_VOID(groupsStr.size() == 0, "not belong to any group")
+
+    std::vector<std::string> thisGroups{};
+    ParseGroups(groupsStr, thisGroups);
+
+    std::vector<std::string> deleteGroups{};
+#ifdef HKS_SUPPORT_GET_BUNDLE_INFO
+    int32_t ret = HksGetDeleteGroups(processInfo, developerId, thisGroups, deleteGroups);
+    HKS_IF_NOT_SUCC_LOGE_RETURN_VOID(ret, "get delete groups fail")
+#endif
+
+    for (auto &deleteGroup : deleteGroups) {
+        HksServiceDeleteGroupKeyFile(processInfo, developerId.c_str(), deleteGroup.c_str());
+    }
+}
+#endif
+
+namespace OHOS {
+namespace Security {
+namespace Hks {
+std::shared_ptr<SystemEventSubscriber> SystemEventObserver::systemEventSubscriber_ = nullptr;
+std::shared_ptr<SystemEventSubscriber> SystemEventObserver::backUpEventSubscriber_ = nullptr;
+const int32_t BACKUP_UID = 1089;
+constexpr static const char *UID = "uid";
+constexpr static const char *IS_BMS_EXTENSION_UNINSTALLED = "isBmsExtensionUninstalled";
+
+static void DealAllSystemEvent(const OHOS::EventFwk::CommonEventData &data)
+{
+    auto want = data.GetWant();
+    struct HksProcessInfo processInfo = { { 0, nullptr }, { 0, nullptr } };
+    std::string action = want.GetAction();
+    if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED ||
+        action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_SANDBOX_PACKAGE_REMOVED) {
+        int uid = want.GetIntParam(UID, -1);
+        int userId = -1;
+        int32_t ret = HKS_FAILURE;
+        bool anco = want.GetBoolParam(IS_BMS_EXTENSION_UNINSTALLED, true);
+        if (!anco) {
+            ret = GetOsAccountIdFromUid(uid, userId);
+            HKS_IF_NOT_SUCC_LOGE_RETURN_VOID(ret, "get local user if failed")
+        } else {
+            ret = HksPluginGetAncoUser(&userId);
+            HKS_IF_NOT_SUCC_LOGE_RETURN_VOID(ret, "can not get anco user id")
+        }
+
+        HKS_LOG_I("package removed: uid: %" LOG_PUBLIC "d userId: %" LOG_PUBLIC "d, anco: %" LOG_PUBLIC "d",
+            uid, userId, anco);
+
+        ret = GetProcessInfo(userId, uid, &processInfo);
+        HKS_IF_TRUE_EXCU(ret == HKS_SUCCESS, HksServiceDeleteProcessInfo(&processInfo, anco));
+#ifdef L2_STANDARD
+        HksServiceDeleteGroupKey(&processInfo, want);
+#endif
+    } else if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_USER_REMOVED) {
+        int userId = data.GetCode();
+        HKS_LOG_I("HksService user removed: userId is %" LOG_PUBLIC "d", userId);
+
+        GetUserId(userId, &(processInfo.userId));
+        HksServiceDeleteProcessInfo(&processInfo, false);
+    } else if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_USER_UNLOCKED) {
+        HKS_LOG_I("the credential-encrypted storage has become unlocked");
+        int userId = data.GetCode();
+        HKS_LOG_I("user %" LOG_PUBLIC "d unlocked.", userId);
+        HksUpgradeOnUserUnlock(userId);
+    } else if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_OFF) {
+        HksSetScreenState(false);
+    } else if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_ON) {
+        HksSetScreenState(true);
+    } else if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED) {
+        int userId = data.GetCode();
+        ReportDataSizeEvent(userId);
+    }
+    HKS_FREE_BLOB(processInfo.userId);
+    HKS_FREE_BLOB(processInfo.processName);
+}
+
+void SystemEventSubscriber::OnReceiveEvent(const OHOS::EventFwk::CommonEventData &data)
+{
+#ifdef HUKS_ENABLE_UPGRADE_KEY_STORAGE_SECURE_LEVEL
+    // judge whether is upgrading, wait for upgrade finished
+    HKS_IF_NOT_SUCC_LOGE_RETURN_VOID(HksWaitIfPowerOnUpgrading(), "wait on upgrading failed.")
+    HksUpgradeOrRequestLockRead();
+#endif
+
+    DealAllSystemEvent(data);
+
+#ifdef HUKS_ENABLE_UPGRADE_KEY_STORAGE_SECURE_LEVEL
+    HksUpgradeOrRequestUnlockRead();
+#endif
+    HksPluginOnReceiveEvent(&data);
+}
+
+SystemEventObserver::~SystemEventObserver()
+{
+    UnSubscribeEvent();
+}
+
+bool SystemEventObserver::SubscribeSystemEvent()
+{
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED);
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SANDBOX_PACKAGE_REMOVED);
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_USER_REMOVED);
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_USER_UNLOCKED);
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_OFF);
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_ON);
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
+    HksPluginSubSystemEvent(&matchingSkills);
+    OHOS::EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    systemEventSubscriber_ = std::make_shared<SystemEventSubscriber>(subscriberInfo);
+
+    HKS_IF_NULL_LOGE_RETURN(systemEventSubscriber_, false, "huks system subscriber nullptr")
+
+    return OHOS::EventFwk::CommonEventManager::SubscribeCommonEvent(systemEventSubscriber_);
+}
+
+bool SystemEventObserver::SubscribeBackUpEvent()
+{
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_START);
+    OHOS::EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    subscriberInfo.SetPublisherUid(BACKUP_UID);
+    backUpEventSubscriber_ = std::make_shared<SystemEventSubscriber>(subscriberInfo);
+
+    HKS_IF_NULL_LOGE_RETURN(backUpEventSubscriber_, false, "huks Backup subscriber nullptr")
+
+    return OHOS::EventFwk::CommonEventManager::SubscribeCommonEvent(backUpEventSubscriber_);
+}
+
+bool SystemEventObserver::SubscribeEvent()
+{
+    return SubscribeSystemEvent() && SubscribeBackUpEvent();
+}
+
+bool SystemEventObserver::DoUnSubscribe(std::shared_ptr<SystemEventSubscriber> subscriber)
+{
+    HKS_IF_NULL_LOGE_RETURN(subscriber, false, "huks system subscriber nullptr");
+    return OHOS::EventFwk::CommonEventManager::UnSubscribeCommonEvent(subscriber);
+}
+
+bool SystemEventObserver::UnSubscribeEvent()
+{
+    return DoUnSubscribe(systemEventSubscriber_) && DoUnSubscribe(backUpEventSubscriber_);
+}
+} // namespace Hks
+} // namespace Security
+} // namespace OHOS

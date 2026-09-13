@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) HiSilicon (Shanghai) Technologies Co., Ltd. 2023-2023. All rights reserved.
+ * Description: Common Boot for Standard Application Core
+ *
+ * Create: 2023-01-09
+ */
+
+#ifndef BOOT_ERRCODE_H
+#define BOOT_ERRCODE_H
+
+#include "errcode.h"
+
+/* Generic errno */
+#define ERRCODE_BOOT_YMODEM_TIMEOUT                         0xC35A69A6
+#define ERRCODE_BOOT_YMODEM_CANCEL                          0xC35A69A7
+#define ERRCODE_BOOT_YMODEM_FRAME                           0xC35A69A8
+#define ERRCODE_BOOT_YMODEM_CS                              0xC35A69A9
+#define ERRCODE_BOOT_YMODEM_EOT                             0xC35A69AA
+#define ERRCODE_BOOT_YMODEM_SEQ                             0xC35A69AB
+#define ERRCODE_BOOT_YMODEM_LENTH                           0xC35A69AC
+
+/* secure verify v2 errcode. 0x800015C0~0x800015CF */
+/* verify_puiblic_rootkey */
+#define ERRCODE_BOOT_VERIFY_PARAM_NULL                              0x800015C0
+#define ERRCODE_BOOT_VERIFY_INVALID_ROOTKEY_TYPE                    0x800015C1
+#define ERRCODE_BOOT_VERIFY_ROOT_KEY_HASH_LOCK_EFUSE_READ_FAIL      0x800015C2
+#define ERRCODE_BOOT_VERIFY_ROOT_KEY_HASH_EFUSE_READ_FAIL           0x800015C3
+#define ERRCODE_BOOT_VERIFY_GET_ROOT_KEY_EFUSE_ID_FAIL              0x800015C4
+#define ERRCODE_BOOT_VERIFY_ROOT_KEY_HASH_EFUSE_IS_NOT_LOCKED       0x800015C5
+#define ERRCODE_BOOT_VERIFY_ROOT_KEY_HASH_IS_ZERO                   0x800015C6
+/* common check errcode. */
+#define ERRCODE_BOOT_VERIFY_CHECK_ENABLE_FAIL               0x800015C9
+#define ERRCODE_BOOT_VERIFY_INVALID_ROOT_KEY                0x800015Ca
+#define ERRCODE_BOOT_VERIFY_INVALID_AREA_TYPE               0x800015Cb
+#define ERRCODE_BOOT_VERIFY_INVALID_IMAGE_ID                0x800015CC
+/* rom driver errcode will be directly return. */
+#define ERRCODE_BOOT_VERIFY_SECURE_AUTHENTICATE_HASH_FAIL   0x800015CD
+#define ERRCODE_BOOT_VERIFY_SECURE_AUTHENTICATE_VERIFY_FAIL 0x800015CE
+#define ERRCODE_BOOT_VERIFY_INVALID_IMAGE_TYPE              0x800015CF
+#define ERRCODE_BOOT_VERIFY_CHECK_VERSION_EFUSE_READ_FAIL   0x800015D0
+#define ERRCODE_BOOT_VERIFY_INVALID_VERSION                 0x800015D1
+#define ERRCODE_BOOT_VERIFY_CHECK_MSID_EFUSE_READ_FAIL      0x800015D2
+#define ERRCODE_BOOT_VERIFY_INVALID_MSID                    0x800015D3
+#define ERRCODE_BOOT_VERIFY_CHECK_DIE_ID_EFUSE_READ_FAIL    0x800015D4
+#define ERRCODE_BOOT_VERIFY_INVALID_DIE_ID                  0x800015D5
+/* rom driver errcode will be directly return. */
+#define ERRCODE_BOOT_VERIFY_HASH_CALCULATION_FAIL           0x800015D6
+#define ERRCODE_BOOT_VERIFY_INVALID_HASH_RESULT             0x800015D7
+#define ERRCODE_BOOT_VERIFY_INVALID_CFCT_TABLE_LENGTH       0x800015D8
+#define ERRCODE_BOOT_VERIFY_TABLE_UNREGISTERED              0x800015D9
+#define ERRCODE_BOOT_VERIFY_PKE_VERIFY                      0x800015DA
+#define ERRCODE_BOOT_VERIFY_HASH_DATA_IS_TOO_LONG           0x800015DB
+#define ERRCODE_BOOT_VERIFY_MEMCPY_ERR                      0x800015DC
+/* flash online decrypt errcode. */
+#define ERRCODE_BOOT_VERIFY_DECRYPT_KEY_CONFIG_FAIL         0x800015E0
+#define ERRCODE_BOOT_VERIFY_DECRYPT_FAPC_CONFIG_FAIL        0x800015E1
+#define ERRCODE_BOOT_VERIFY_DECRYPT_INVALID_KEY_TYPE        0x800015E2
+
+#endif

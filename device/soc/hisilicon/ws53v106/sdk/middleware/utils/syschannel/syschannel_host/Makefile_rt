@@ -1,0 +1,120 @@
+DIR := ./
+TOP_DIR := $(DIR)/../../../../
+RTT_DIR := $(TOP_DIR)/../FH_RTT_ES10_2025_BAT_COMP
+
+-include $(RTT_DIR)/config.mk
+
+CROSS_COMPILE=$(TOP_DIR)/../../toolchain/arm-fullhanv2-eabi-b3/bin/arm-fullhanv2-eabi-
+CC := $(CROSS_COMPILE)gcc
+AR := $(CROSS_COMPILE)ar
+
+TARGET := libsyschannel.a
+
+SRCS := \
+	$(DIR)/../../../../open_source/libboundscheck/src/memcpy_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/memmove_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/memset_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/strcat_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/strcpy_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/strncat_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/strncpy_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/strtok_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/snprintf_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/vsnprintf_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/secureprintoutput_a.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/sscanf_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/vsscanf_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/secureinput_a.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/sprintf_s.c \
+	$(DIR)/../../../../open_source/libboundscheck/src/vsprintf_s.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_timer.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_spinlock.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_debug.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_atomic.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_wait.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_addr.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_task.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_interrupt.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_mutex.c \
+	$(DIR)/../../../../kernel/osal/src/rtthread/osal_semaphore.c \
+	$(DIR)/../../../../kernel/osal_adapt/src/osal_adapt_timer.c \
+	$(DIR)/../../hcc/comm/hcc.c \
+	$(DIR)/../../hcc/comm/hcc_service.c \
+	$(DIR)/../../hcc/comm/hcc_adapt.c \
+	$(DIR)/../../hcc/comm/hcc_bus.c \
+	$(DIR)/../../hcc/comm/hcc_channel.c \
+	$(DIR)/../../hcc/comm/hcc_dfx.c \
+	$(DIR)/../../hcc/comm/hcc_flow_ctrl.c \
+	$(DIR)/../../hcc/comm/hcc_list.c \
+	$(DIR)/../../hcc/comm/hcc_rom_callback.c \
+	$(DIR)/../../hcc/comm/hcc_test.c \
+	$(DIR)/../../hcc/comm/hcc_test_service.c \
+	$(DIR)/../../hcc/host/hcc_sdio_host.c \
+	$(DIR)/../../hcc/host/hcc_test_host.c \
+	$(DIR)/../syschannel_common/syschannel_common.c \
+	$(DIR)/wal/rtthread/wal_net.c \
+	$(DIR)/channel_host/syschannel_host_adapt.c \
+	$(DIR)/main.c
+
+OBJS := $(addsuffix .o,$(basename $(SRCS)))
+ARFLAGS := rcs
+
+CFLAGS += -D__RTTHREAD__
+CFLAGS += -DSYSCHANNEL_LITTLE_ENDIAN=1
+CFLAGS += -DSYSCHANNEL_BIG_ENDIAN=2
+CFLAGS += -DSYSCHANNEL_ENDIAN=SYSCHANNEL_LITTLE_ENDIAN
+# CFLAGS += -DWSCFG_ONEIMAGE
+CFLAGS += -D_PRE_OS_VERSION_LINUX=1
+CFLAGS += -D_PRE_OS_VERSION_RTTHREAD=9
+CFLAGS += -D_PRE_OS_VERSION=_PRE_OS_VERSION_RTTHREAD
+CFLAGS += -I$(TOP_DIR)/middleware/utils/syschannel/syschannel_host/oneimage -include $(TOP_DIR)/middleware/utils/syschannel/syschannel_host/oneimage/oneimage.h
+CFLAGS += -std=gnu99 -Wno-declaration-after-statement -Wno-unused-local-typedefs -fsigned-char -freg-struct-return -Wtrampolines -Wfloat-equal -fvisibility=hidden
+# CFLAGS += -DETH_PAD_SIZE=2
+CFLAGS += -D_PRE_PLATFORM_JZ=1
+CFLAGS += -D_PRE_PLATFORM_HISILICON=2
+CFLAGS += -D_PRE_OS_PLATFORM=_PRE_PLATFORM_HISILICON
+CFLAGS += -D_PRE_SYSCHANNEL_DEBUG
+# CFLAGS += -DCONFIG_HCC_SUPPORT_REG_OPT=1
+CFLAGS += -DCONFIG_HCC_SUPPORT_DFX
+CFLAGS += -DCONFIG_HCC_SUPPORT_FLOW_CONTRL
+CFLAGS += -DCONFIG_HCC_SUPPORT_UNC_POOL
+CFLAGS += -DCONFIG_HCC_SUPPORT_SDIO
+CFLAGS += -DCONFIG_HCC_SUPPORT_TEST
+CFLAGS += -DCONFIG_HCC_SUPPORT_TEST_SYSCH
+CFLAGS += -DCONFIG_HCC_CONFIG_DATA_FC
+
+CFLAGS += -I$(TOP_DIR)/kernel/osal/include
+CFLAGS += -I$(TOP_DIR)/middleware/utils/common_headers/osal
+CFLAGS += -I$(TOP_DIR)/kernel/osal_adapt/inc
+# CFLAGS += -I$(TOP_DIR)/kernel/osal/src/linux/kernel
+# CFLAGS += -I$(TOP_DIR)/kernel/osal/src/linux/kernel/media
+CFLAGS += -I$(TOP_DIR)/open_source/libboundscheck/include
+CFLAGS += -I$(TOP_DIR)/include
+CFLAGS += -I$(TOP_DIR)/middleware/utils/hcc/inc
+CFLAGS += -I$(TOP_DIR)/middleware/utils/hcc/cfg
+CFLAGS += -I$(TOP_DIR)/middleware/utils/hcc/comm
+CFLAGS += -I$(TOP_DIR)/middleware/utils/hcc/host
+CFLAGS += -I$(TOP_DIR)/middleware/utils/common_headers
+CFLAGS += -I$(TOP_DIR)/middleware/utils/common_headers/native
+CFLAGS += -I$(DIR)/wal/rtthread
+CFLAGS += -I$(DIR)/channel_host
+CFLAGS += -I$(DIR)/../syschannel_common
+CFLAGS += -I$(DIR)/../syschannel_api
+
+CFLAGS += -I$(RTT_DIR)/include
+CFLAGS += -I$(RTT_DIR)/include/lwip-2.1.2
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(AR) $(ARFLAGS) $@ $^
+	@echo "Built static library with $(words $(SRCS)) source files"
+
+%.o: %.c
+	@mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -rf $(OBJS) $(TARGET)
+
+.PHONY: all clean

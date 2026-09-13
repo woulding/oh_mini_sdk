@@ -1,0 +1,117 @@
+/*
+ * Copyright (C) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include <gtest/gtest.h>
+#include "binder_debug.h"
+#include "sys_binder.h"
+using namespace testing::ext;
+using namespace OHOS;
+
+namespace OHOS {
+class BinderDebugUnitTest : public testing::Test {
+public:
+    static void SetUpTestCase(void);
+    static void TearDownTestCase(void);
+    void SetUp() override;
+    void TearDown() override;
+};
+
+void BinderDebugUnitTest::SetUpTestCase()
+{}
+
+void BinderDebugUnitTest::TearDownTestCase()
+{}
+
+void BinderDebugUnitTest::SetUp()
+{}
+
+void BinderDebugUnitTest::TearDown()
+{}
+
+/**
+ * @tc.name: ToStringTest001
+ * @tc.desc: Verify the ToString function
+ * @tc.type: FUNC
+ */
+HWTEST_F(BinderDebugUnitTest, ToStringTest001, TestSize.Level1)
+{
+    BinderDebug debug;
+    std::string ret = debug.ToString(BR_ERROR);
+    EXPECT_EQ(ret, "BR_ERROR");
+}
+
+/**
+ * @tc.name: ToStringTest002
+ * @tc.desc: Verify the ToString function
+ * @tc.type: FUNC
+ */
+HWTEST_F(BinderDebugUnitTest, ToStringTest002, TestSize.Level1)
+{
+    BinderDebug debug;
+    std::string ret = debug.ToString(BC_DEAD_BINDER_DONE + 1);
+    EXPECT_EQ(ret, "UNKNOWN COMMAND");
+}
+
+/**
+ * @tc.name: ToStringTest003
+ * @tc.desc: Verify known BC command mapping
+ * @tc.type: FUNC
+ */
+HWTEST_F(BinderDebugUnitTest, ToStringTest003, TestSize.Level1)
+{
+    BinderDebug debug;
+    std::string ret = debug.ToString(BC_ENTER_LOOPER);
+    EXPECT_EQ(ret, "BC_ENTER_LOOPER");
+}
+
+/**
+ * @tc.name: ToStringTest004
+ * @tc.desc: Verify known BR command mapping
+ * @tc.type: FUNC
+ */
+HWTEST_F(BinderDebugUnitTest, ToStringTest004, TestSize.Level1)
+{
+    BinderDebug debug;
+    std::string ret = debug.ToString(BR_DEAD_BINDER);
+    EXPECT_EQ(ret, "BR_DEAD_BINDER");
+}
+
+/**
+ * @tc.name: ToStringTest005
+ * @tc.desc: Verify values below the known range map to unknown command
+ * @tc.type: FUNC
+ */
+HWTEST_F(BinderDebugUnitTest, ToStringTest005, TestSize.Level1)
+{
+    BinderDebug debug;
+    std::string ret = debug.ToString(0);
+    EXPECT_EQ(ret, "UNKNOWN COMMAND");
+}
+
+/**
+ * @tc.name: GetErrorMapTest001
+ * @tc.desc: Verify GetErrorMap returns reusable map with expected keys
+ * @tc.type: FUNC
+ */
+HWTEST_F(BinderDebugUnitTest, GetErrorMapTest001, TestSize.Level1)
+{
+    BinderDebug debug;
+    ErrorMap &first = debug.GetErrorMap();
+    ErrorMap &second = debug.GetErrorMap();
+
+    EXPECT_EQ(&first, &second);
+    EXPECT_EQ(first.at(BR_TRANSACTION), "BR_TRANSACTION");
+    EXPECT_EQ(first.at(BC_REQUEST_DEATH_NOTIFICATION), "BC_REQUEST_DEATH_NOTIFICATION");
+}
+} // namespace OHOS

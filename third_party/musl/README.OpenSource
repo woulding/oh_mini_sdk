@@ -1,0 +1,21 @@
+[
+    {
+        "Name"                  : "musl",
+        "License"               : "MIT;BSD-2-Clause;BSD-3-Clause;CC0-1.0;MIT-0",
+        "License File"          : "COPYRIGHT;COPYRIGHT;COPYRIGHT;COPYRIGHT;COPYRIGHT",
+        "Version Number"        : "1.2.6",
+        "Owner"                 : "liyiming13@huawei.com",
+        "Upstream URL"          : "https://musl.libc.org",
+        "Description"           : "musl is an MIT-licensed implementation of the standard C library"
+    },
+    {
+        "Name"                  : "OpenBSD",
+        "License"               : "BSD-3-Clause;Spencer-94",
+        "License File"          : "third_party/openbsd/LICENSE;third_party/openbsd/LICENSE",
+        "Version Number"        : "7.8",
+        "Owner"                 : "liyiming13@huawei.com",
+        "Upstream URL"          : "https://cvsweb.openbsd.org/src/lib/libc/string/",
+        "Description"           : "The OpenBSD project produces a FREE, multi-platform 4.4BSD-based UNIX-like operating system. We introduce some basic interface files to improve the interface performance of Musl"
+    }
+]
+

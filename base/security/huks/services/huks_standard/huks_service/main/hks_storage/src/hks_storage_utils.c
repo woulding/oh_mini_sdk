@@ -1,0 +1,731 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "hks_type.h"
+#include "hks_type_inner.h"
+#ifndef _CUT_AUTHENTICATE_
+
+#ifdef HKS_CONFIG_FILE
+#include HKS_CONFIG_FILE
+#else
+#include "hks_config.h"
+#endif
+
+#include "hks_storage_utils.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+#ifdef L2_STANDARD
+#include <openssl/evp.h>
+#endif
+
+#include "hks_file_operator.h"
+#include "hks_log.h"
+#include "hks_mem.h"
+#include "hks_template.h"
+#include "hks_param.h"
+#include "hks_common_check.h"
+#include "securec.h"
+
+#define HKS_ENCODE_OFFSET_LEN         6
+#define HKS_ENCODE_KEY_SALT_VALUE     0x3f
+#define HKS_ROOT_USER_UPPERBOUND      100
+
+#ifdef HKS_SUPPORT_POSIX
+static void ConstructInvalidCharacter(const char input, char *output)
+{
+    switch (input) {
+        case ':':
+            *output = '#';
+            return;
+        case '<':
+            *output = '$';
+            return;
+        case '>':
+            *output = '%';
+            return;
+        case '?':
+            *output = '&';
+            return;
+        case '\\':
+            *output = '(';
+            return;
+        case '|':
+            *output = ')';
+            return;
+        default:
+            *output = input;
+            return;
+    }
+}
+#endif
+
+static void ResumeInvalidCharacter(const char input, char *output)
+{
+    switch (input) {
+        case '#':
+            *output = ':';
+            return;
+        case '$':
+            *output = '<';
+            return;
+        case '%':
+            *output = '>';
+            return;
+        case '&':
+            *output = '?';
+            return;
+        case '(':
+            *output = '\\';
+            return;
+        case ')':
+            *output = '|';
+            return;
+        default:
+            *output = input;
+            return;
+    }
+}
+
+int32_t ConstructPlainName(const struct HksBlob *blob, char *targetName, uint32_t nameLen)
+{
+    if (blob->size == sizeof(int)) {
+        int32_t offset = sprintf_s(targetName, nameLen, "%d", *(int *)blob->data);
+        if (offset <= 0) {
+            HKS_LOG_E("get plain name failed");
+            return HKS_ERROR_INSUFFICIENT_MEMORY;
+        }
+
+        return HKS_SUCCESS;
+    }
+
+    uint32_t count = 0;
+    HKS_IF_TRUE_RETURN(nameLen <= 1, HKS_ERROR_INVALID_ARGUMENT)
+    for (uint32_t i = 0; i < blob->size; ++i) {
+        /* nameLen can be guaranteed to be greater than 1 */
+        HKS_IF_TRUE_RETURN(count >= nameLen - 1, HKS_ERROR_INSUFFICIENT_DATA)
+        targetName[count++] = blob->data[i];
+
+#ifdef HKS_SUPPORT_POSIX
+        ConstructInvalidCharacter(targetName[count - 1], &targetName[count - 1]);
+#endif
+    }
+
+    return HKS_SUCCESS;
+}
+
+/* Encode invisible content to visible */
+int32_t ConstructName(const struct HksBlob *blob, char *targetName, uint32_t nameLen)
+{
+    uint32_t count = 0;
+    HKS_IF_TRUE_RETURN(nameLen <= 1, HKS_ERROR_INVALID_ARGUMENT)
+
+    for (uint32_t i = 0; i < blob->size; ++i) {
+        /* nameLen can be guaranteed to be greater than 1 */
+        HKS_IF_TRUE_RETURN(count >= (nameLen - 1), HKS_ERROR_INSUFFICIENT_DATA);
+
+        if ((blob->data[i] < '0') || (blob->data[i] > '~')) {
+            targetName[count++] = '+' + (blob->data[i] >> HKS_ENCODE_OFFSET_LEN);
+            targetName[count++] = '0' + (blob->data[i] & HKS_ENCODE_KEY_SALT_VALUE);
+        } else {
+            targetName[count++] = blob->data[i];
+        }
+
+#ifdef HKS_SUPPORT_POSIX
+        ConstructInvalidCharacter(targetName[count - 1], &targetName[count - 1]);
+#endif
+    }
+
+    return HKS_SUCCESS;
+}
+
+/* Decode encoded content to original content */
+int32_t ConstructBlob(const char *src, struct HksBlob *blob)
+{
+    uint32_t size = strlen(src);
+    uint8_t *outputBlob = (uint8_t *)HksMalloc(size);
+    HKS_IF_NULL_LOGE_RETURN(outputBlob, HKS_ERROR_MALLOC_FAIL, "malloc failed")
+
+    uint32_t count = 0;
+    int32_t ret = HKS_SUCCESS;
+    for (uint32_t i = 0; i < size; ++i) {
+        if ((src[i] >= '+') && (src[i] <= '.')) {
+            uint8_t c = (uint8_t)(src[i] - '+') << HKS_ENCODE_OFFSET_LEN;
+            i++;
+            if (i >= size) {
+                ret = HKS_ERROR_INVALID_KEY_FILE; /* keyfile name invalid */
+                break;
+            }
+            char tmp;
+            ResumeInvalidCharacter(src[i], &tmp);
+            c += tmp - '0';
+            outputBlob[count++] = c;
+        } else {
+            char tmp;
+            ResumeInvalidCharacter(src[i], &tmp);
+            outputBlob[count++] = tmp;
+        }
+    }
+
+    if (ret != HKS_SUCCESS) {
+        HKS_FREE(outputBlob);
+        return ret;
+    }
+
+    if (blob->size < count) {
+        HKS_FREE(outputBlob);
+        return HKS_ERROR_BUFFER_TOO_SMALL;
+    }
+
+    if (memcpy_s(blob->data, blob->size, outputBlob, count) != EOK) {
+        HKS_FREE(outputBlob);
+        HKS_LOG_E("copy blob data failed!");
+        return HKS_ERROR_INSUFFICIENT_MEMORY;
+    }
+
+    blob->size = count;
+    HKS_FREE(outputBlob);
+    return ret;
+}
+
+int32_t GetPath(const char *path, const char *name, char *targetPath, uint32_t pathLen, uint32_t bakFlag)
+{
+    HKS_IF_NOT_EOK_LOGE_RETURN(strncpy_s(targetPath, pathLen, path, strlen(path)), HKS_ERROR_BAD_STATE,
+        "strncpy path failed")
+
+    HKS_IF_TRUE_RETURN(strlen(targetPath) <= 0, HKS_ERROR_INTERNAL_ERROR)
+
+    if (targetPath[strlen(targetPath) - 1] != '/') {
+        HKS_IF_NOT_EOK_LOGE_RETURN(strncat_s(targetPath, pathLen, "/", strlen("/")),
+            HKS_ERROR_INTERNAL_ERROR, "strncat slash failed");
+    }
+
+    if (strncat_s(targetPath, pathLen, name, strlen(name)) != EOK) {
+        HKS_LOG_E("strncat Name failed");
+        return HKS_ERROR_BAD_STATE;
+    }
+
+    if (bakFlag == HKS_STORAGE_BAK_FLAG_TRUE) {
+        if (strncat_s(targetPath, pathLen, ".bak", strlen(".bak")) != EOK) {
+            HKS_LOG_E("strncat bak failed");
+            return HKS_ERROR_BAD_STATE;
+        }
+    }
+
+    return HKS_SUCCESS;
+}
+
+static int32_t DataInit(char **data, uint32_t size)
+{
+    *data = (char *)HksMalloc(size);
+    HKS_IF_NULL_RETURN(*data, HKS_ERROR_MALLOC_FAIL)
+
+    (void)memset_s(*data, size, 0, size);
+    return HKS_SUCCESS;
+}
+
+static int32_t FileInfoInit(struct HksStoreFileInfo *fileInfo)
+{
+    fileInfo->mainPath.size = HKS_MAX_FILE_NAME_LEN;
+    /* if one param init fail, others free by caller function */
+    int32_t ret = DataInit(&fileInfo->mainPath.path, fileInfo->mainPath.size);
+    ret += DataInit(&fileInfo->mainPath.fileName, fileInfo->mainPath.size);
+
+#ifdef SUPPORT_STORAGE_BACKUP
+    fileInfo->bakPath.size = HKS_MAX_FILE_NAME_LEN;
+    ret += DataInit(&fileInfo->bakPath.path, fileInfo->bakPath.size);
+    ret += DataInit(&fileInfo->bakPath.fileName, fileInfo->bakPath.size);
+#endif
+
+    return ret;
+}
+
+#ifdef L2_STANDARD
+static bool IsGroupKeyMaterial(const struct HksStoreMaterial *material)
+{
+    return material->developerId != NULL && material->assetAccessGroup != NULL;
+}
+#endif
+
+void FileInfoFree(struct HksStoreFileInfo *fileInfo)
+{
+    HKS_FREE(fileInfo->mainPath.path);
+    HKS_FREE(fileInfo->mainPath.fileName);
+    fileInfo->mainPath.size = 0;
+
+#ifdef SUPPORT_STORAGE_BACKUP
+    HKS_FREE(fileInfo->bakPath.path);
+    HKS_FREE(fileInfo->bakPath.fileName);
+    fileInfo->bakPath.size = 0;
+#endif
+}
+
+/*
+ * keyAlias: xxxxxxxxxxxxxxxxxx*xxxxxxxxxxxxxxxxxx
+ *                only show one anonymous char
+ *          |<----------- keyAliasLen ----------->|
+ */
+int32_t AnonymizeKeyAlias(const char *keyAlias, char **anonymousKeyAlias)
+{
+    uint32_t bufSize = strlen(keyAlias) + 1;
+    *anonymousKeyAlias = (char *)HksMalloc(bufSize);
+    HKS_IF_NULL_RETURN(*anonymousKeyAlias, HKS_ERROR_MALLOC_FAIL)
+
+    (void)memset_s(*anonymousKeyAlias, bufSize, 0, bufSize);
+
+    uint32_t length = 0;
+    uint32_t keyAliasLen = strlen(keyAlias);
+    uint32_t anonymousLen = (keyAliasLen + 1) >> 1;
+    uint32_t suffixLen = (keyAliasLen + 1) >> 2;
+    uint32_t prefixLen = keyAliasLen - anonymousLen - suffixLen;
+    (*anonymousKeyAlias)[length++] = keyAlias[0]; // keyAliasLen > 0;
+    for (uint32_t i = 1; i < prefixLen; ++i) {
+        (*anonymousKeyAlias)[length++] = keyAlias[i];
+    }
+    if (length < keyAliasLen) {
+        (*anonymousKeyAlias)[length++] = '*';
+    }
+    for (uint32_t i = 0; i < suffixLen; ++i) {
+        (*anonymousKeyAlias)[length++] = keyAlias[keyAliasLen - suffixLen + i];
+    }
+
+    (*anonymousKeyAlias)[length] = '\0';
+    return HKS_SUCCESS;
+}
+
+int32_t RecordKeyOperation(uint32_t operation, const struct HksStoreMaterial *material, const char *keyAlias)
+{
+    (void)material;
+    int32_t ret = HKS_SUCCESS;
+
+    char *anonymousKeyAlias = NULL;
+    ret = AnonymizeKeyAlias(keyAlias, &anonymousKeyAlias);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "get anonymous key alias failed");
+#ifdef L2_STANDARD
+    if (IsGroupKeyMaterial(material)) {
+        HKS_LOG_I("developer: %" LOG_PUBLIC "s, group: %" LOG_PUBLIC "s",
+            material->developerId, material->assetAccessGroup);
+    }
+#endif
+    switch (operation) {
+        case KEY_OPERATION_SAVE:
+            HKS_LOG_I("gen, userid: %" LOG_PUBLIC "s, uid: %" LOG_PUBLIC "s, "
+                "level: %" LOG_PUBLIC "u, key: %" LOG_PUBLIC "s",
+                material->userIdPath, material->uidPath, material->pathType, anonymousKeyAlias);
+            break;
+        case KEY_OPERATION_GET:
+            HKS_LOG_I("use, userid: %" LOG_PUBLIC "s, uid: %" LOG_PUBLIC "s, "
+                "level: %" LOG_PUBLIC "u, key: %" LOG_PUBLIC "s",
+                material->userIdPath, material->uidPath, material->pathType, anonymousKeyAlias);
+            break;
+        case KEY_OPERATION_DELETE:
+            HKS_LOG_I("del, userid: %" LOG_PUBLIC "s, uid: %" LOG_PUBLIC "s, "
+                "level: %" LOG_PUBLIC "u, key: %" LOG_PUBLIC "s",
+                material->userIdPath, material->uidPath, material->pathType, anonymousKeyAlias);
+            break;
+        case KEY_OPERATION_CHECK:
+            HKS_LOG_I("chk, userid: %" LOG_PUBLIC "s, uid: %" LOG_PUBLIC "s, "
+                "level: %" LOG_PUBLIC "u, key: %" LOG_PUBLIC "s",
+                material->userIdPath, material->uidPath, material->pathType, anonymousKeyAlias);
+            break;
+        default:
+            ret = HKS_ERROR_INVALID_ARGUMENT;
+    }
+
+    HKS_FREE(anonymousKeyAlias);
+    return ret;
+}
+
+void FileNameListFree(struct HksFileEntry **fileNameList, uint32_t keyCount)
+{
+    if (fileNameList != NULL && *fileNameList != NULL) {
+        for (uint32_t i = 0; i < keyCount; ++i) {
+            HKS_FREE((*fileNameList)[i].fileName);
+        }
+        HKS_FREE(*fileNameList);
+    }
+}
+
+int32_t FileNameListInit(struct HksFileEntry **fileNameList, uint32_t keyCount)
+{
+    HKS_IF_TRUE_LOGE_RETURN(keyCount > UINT32_MAX / sizeof(struct HksFileEntry) || keyCount == 0,
+        HKS_ERROR_BUFFER_TOO_SMALL, "keyCount too big or is zero.")
+
+    uint32_t totalSize = keyCount * sizeof(struct HksFileEntry);
+    *fileNameList = (struct HksFileEntry *)HksMalloc(totalSize);
+    HKS_IF_NULL_LOGE_RETURN(*fileNameList, HKS_ERROR_MALLOC_FAIL, "malloc file name list failed.")
+
+    for (uint32_t i = 0; i < keyCount; ++i) {
+        (*fileNameList)[i].fileNameLen = HKS_MAX_FILE_NAME_LEN;
+        (*fileNameList)[i].fileName = (char *)HksMalloc(HKS_MAX_FILE_NAME_LEN);
+        if ((*fileNameList)[i].fileName == NULL) {
+            HKS_LOG_E("malloc failed.");
+            FileNameListFree(fileNameList, keyCount);
+            return HKS_ERROR_MALLOC_FAIL;
+        }
+    }
+
+    return HKS_SUCCESS;
+}
+
+#ifdef L2_STANDARD
+static int32_t CheckIfBothTagExist(const struct HksParam *storageLevel,
+    const struct HksParam *specificUserId)
+{
+    if (storageLevel->uint32Param == HKS_AUTH_STORAGE_LEVEL_DE) {
+        HKS_IF_TRUE_LOGE_RETURN(specificUserId->int32Param < 0, HKS_ERROR_INVALID_ARGUMENT,
+            "invalid specificUserId, specificUserId is %" LOG_PUBLIC "d.", specificUserId->int32Param)
+    } else {
+        HKS_IF_TRUE_LOGE_RETURN(specificUserId->int32Param < HKS_ROOT_USER_UPPERBOUND, HKS_ERROR_INVALID_ARGUMENT,
+            "invalid specificUserId when tag storage level is CE or ECE, specificUserId is %" LOG_PUBLIC "d",
+            specificUserId->int32Param)
+    }
+    return HKS_SUCCESS;
+}
+
+static int32_t CheckIfOnlyStorageLevelTagExist(const struct HksProcessInfo *processInfo,
+    const struct HksParam *storageLevel)
+{
+    if (storageLevel->uint32Param != HKS_AUTH_STORAGE_LEVEL_DE &&
+#ifdef HUKS_ENABLE_SKIP_UPGRADE_KEY_STORAGE_SECURE_LEVEL
+        storageLevel->uint32Param != HKS_AUTH_STORAGE_LEVEL_OLD_DE_TMP &&
+#endif
+        processInfo->userIdInt < HKS_ROOT_USER_UPPERBOUND) {
+        HKS_LOG_E("invalid userId when tag storage level is CE or ECE, userId is %" LOG_PUBLIC "d",
+            processInfo->userIdInt);
+        return HKS_ERROR_INVALID_ARGUMENT;
+    }
+
+    return HKS_SUCCESS;
+}
+#endif
+
+int32_t CheckSpecificUserIdAndStorageLevel(const struct HksProcessInfo *processInfo,
+    const struct HksParamSet *paramSet)
+{
+#ifdef L2_STANDARD
+    HKS_IF_NULL_RETURN(paramSet, HKS_ERROR_INVALID_ARGUMENT)
+    int32_t ret = HKS_SUCCESS;
+    struct HksParam *storageLevel = NULL;
+    struct HksParam *specificUserId = NULL;
+
+    bool storageLevelExist = HksGetParam(paramSet, HKS_TAG_AUTH_STORAGE_LEVEL, &storageLevel) == HKS_SUCCESS;
+    bool specificUserIdExist = HksGetParam(paramSet, HKS_TAG_SPECIFIC_USER_ID, &specificUserId) == HKS_SUCCESS;
+    if (storageLevelExist && specificUserIdExist) {
+        ret = CheckIfBothTagExist(storageLevel, specificUserId);
+    } else if (storageLevelExist && !specificUserIdExist) {
+        ret = CheckIfOnlyStorageLevelTagExist(processInfo, storageLevel);
+    }
+    HKS_IF_NOT_SUCC_RETURN(ret, ret)
+#endif
+    (void)processInfo;
+    (void)paramSet;
+    return HKS_SUCCESS;
+}
+
+int32_t HksMakeFullDir(const char *path)
+{
+    uint32_t pathLen = strlen(path);
+    char *curPath = (char *)HksMalloc(pathLen + 1);
+    if (curPath == NULL) {
+        HKS_LOG_E("cur path malloc failed.");
+        return HKS_ERROR_MALLOC_FAIL;
+    }
+    int32_t ret = HKS_SUCCESS;
+    do {
+        for (uint32_t i = 1; i < pathLen; ++i) {
+            if (path[i] == '/') {
+                (void)memcpy_s(curPath, pathLen, path, i);
+                curPath[i] = '\0';
+                if (HksIsDirExist(curPath) == HKS_SUCCESS) {
+                    continue;
+                }
+                ret = HksMakeDir(curPath);
+                HKS_IF_TRUE_LOGE_BREAK(ret != HKS_SUCCESS && ret != HKS_ERROR_ALREADY_EXISTS,
+                    "mkdir %" LOG_PUBLIC "s failed. ret = %" LOG_PUBLIC "d", curPath, ret)
+                ret = HKS_SUCCESS;
+            }
+        }
+        HKS_IF_NOT_SUCC_BREAK(ret)
+        ret = HksMakeDir(path);
+        if (ret == HKS_ERROR_ALREADY_EXISTS) {
+            ret = HKS_SUCCESS;
+        }
+    } while (false);
+
+    HKS_FREE(curPath);
+    return ret;
+}
+
+// remove duplicated '/'
+static void StandardizePath(char *path)
+{
+    // the size must be more than 0
+    uint32_t size = strlen(path);
+    uint32_t index = 1;
+    for (uint32_t i = 1; i < size; ++i) {
+        if (path[i] != '/' || path[i - 1] != '/') {
+            path[index] = path[i];
+            ++index;
+        }
+    }
+    // the index will be less than or equal to the size
+    path[index] = '\0';
+}
+
+#ifdef L2_STANDARD
+// Only ce and ece will access this check function.
+static int32_t CheckUserPathExist(enum HksPathType pathType, const char *userIdPath)
+{
+    char userPath[HKS_MAX_DIRENT_FILE_LEN] = { 0 };
+    int32_t offset = sprintf_s(userPath, HKS_MAX_DIRENT_FILE_LEN, "%s/%s",
+        pathType == CE_PATH ? HKS_CE_ROOT_PATH : HKS_ECE_ROOT_PATH, userIdPath);
+    if (offset <= 0) {
+        HKS_LOG_E("get user path failed, path type is %" LOG_PUBLIC "d.", pathType);
+        return HKS_ERROR_INSUFFICIENT_MEMORY;
+    }
+
+    return HksIsDirExist(userPath) == HKS_SUCCESS ? HKS_SUCCESS : HKS_ERROR_NO_PERMISSION;
+}
+#endif
+
+#ifdef L2_STANDARD
+const uint8_t HEX_MAX_NUM = 9;
+const uint32_t HEX_INDEX_LEN = 2;
+const uint32_t HEX_BITS_LEN = 4;
+const uint32_t OPENSSL_SUCCESS = 1;
+
+static int32_t HexToChar(uint8_t hex)
+{
+    return (hex > HEX_MAX_NUM) ? (hex - 0xA + 'a') : (hex + '0');
+}
+
+static int32_t GetDigest(const struct HksBlob *msg, struct HksBlob *hash)
+{
+    const EVP_MD *opensslAlg = EVP_sha256();
+    HKS_IF_NULL_LOGE_RETURN(opensslAlg, HKS_ERROR_CRYPTO_ENGINE_ERROR, "get sha256 alg fail")
+
+    int32_t ret = EVP_Digest(msg->data, msg->size, hash->data, &hash->size, opensslAlg, NULL);
+    HKS_IF_TRUE_LOGE_RETURN(ret != OPENSSL_SUCCESS, HKS_ERROR_CRYPTO_ENGINE_ERROR, "digest sha256 fail")
+
+    return HKS_SUCCESS;
+}
+
+int32_t GetHashValueToChar(const char *input, char output[HKS_DIGEST_SHA256_HEX_STRING_LEN + 1])
+{
+    HKS_IF_NULL_LOGE_RETURN(input, HKS_ERROR_NULL_POINTER, "input is null")
+    HKS_IF_NULL_LOGE_RETURN(output, HKS_ERROR_NULL_POINTER, "output is null")
+
+    uint8_t hash[HKS_DIGEST_SHA256_LEN] = {0};
+    struct HksBlob inputBlob = { strlen(input), (uint8_t *)input };
+    struct HksBlob outputBlob = { HKS_DIGEST_SHA256_LEN, hash };
+
+    int32_t ret = GetDigest(&inputBlob, &outputBlob);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "get digest fail")
+
+    for (uint32_t index = 0; index < outputBlob.size; ++index) {
+        output[index * HEX_INDEX_LEN] = HexToChar((outputBlob.data[index] & 0xF0) >> HEX_BITS_LEN);
+        output[index * HEX_INDEX_LEN + 1] = HexToChar(outputBlob.data[index] & 0x0F);
+    }
+    output[HKS_DIGEST_SHA256_HEX_STRING_LEN] = '\0';
+    
+    return ret;
+}
+
+static int32_t ConstructGroupKeyPath(const struct HksStoreMaterial *material, const char *deDataPath,
+    const char *ceOrEceDataPath, struct HksStoreInfo *fileInfoPath)
+{
+    int32_t ret = HKS_SUCCESS;
+    int32_t offset = 0;
+    char accessGroup[HKS_DIGEST_SHA256_HEX_STRING_LEN + 1] = { 0 };
+    char developerId[HKS_DIGEST_SHA256_HEX_STRING_LEN + 1] = { 0 };
+    ret = GetHashValueToChar(material->assetAccessGroup, accessGroup);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "access group hash failed")
+    ret = GetHashValueToChar(material->developerId, developerId);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "developerId hash failed")
+
+    switch (material->pathType) {
+        case DE_PATH:
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s/%s",
+                deDataPath, material->userIdPath, developerId, accessGroup, material->storageTypePath);
+            break;
+        case CE_PATH:
+            ret = CheckUserPathExist(CE_PATH, material->userIdPath);
+            HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "check user path exist failed.")
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s/%s/%s", HKS_CE_ROOT_PATH,
+                material->userIdPath, ceOrEceDataPath, developerId, accessGroup, material->storageTypePath);
+            break;
+        case ECE_PATH:
+            ret = CheckUserPathExist(ECE_PATH, material->userIdPath);
+            HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "check user path exist failed.")
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s/%s/%s", HKS_ECE_ROOT_PATH,
+                material->userIdPath, ceOrEceDataPath, developerId, accessGroup, material->storageTypePath);
+            break;
+#ifdef HUKS_ENABLE_SKIP_UPGRADE_KEY_STORAGE_SECURE_LEVEL
+        case TMP_PATH:
+            HKS_LOG_E("not support TMP_PATH");
+            return HKS_ERROR_NOT_SUPPORTED;
+#endif
+#ifdef HKS_USE_RKC_IN_STANDARD
+        case RKC_IN_STANDARD_PATH:
+            HKS_LOG_E("not support RKC_IN_STANDARD_PATH");
+            return HKS_ERROR_NOT_SUPPORTED;
+#endif
+#ifdef HKS_ENABLE_LITE_HAP
+        case LITE_HAP_PATH:
+            HKS_LOG_E("not support LITE_HAP_PATH");
+            return HKS_ERROR_NOT_SUPPORTED;
+#endif
+    }
+    if (offset <= 0) {
+        HKS_LOG_E("get path failed, path type is %" LOG_PUBLIC "d.", material->pathType);
+        return HKS_ERROR_INSUFFICIENT_MEMORY;
+    }
+    return ret;
+}
+
+static int32_t ConstructAncoPath(const struct HksStoreMaterial *material, const char *dataPath,
+    struct HksStoreInfo *fileInfoPath)
+{
+    HKS_IF_TRUE_LOGE_RETURN(material->pathType != CE_PATH, HKS_ERROR_NOT_SUPPORTED,
+        "not support type %" LOG_PUBLIC "u", material->pathType)
+
+    int32_t ret = CheckUserPathExist(CE_PATH, material->userIdPath);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "check user path exist failed.")
+    int32_t offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s/%s/%s", HKS_CE_ROOT_PATH,
+        material->userIdPath, dataPath, HKS_ANCO_PATH, material->uidPath, material->storageTypePath);
+
+    HKS_IF_TRUE_LOGE_RETURN(offset < 0, HKS_ERROR_INSUFFICIENT_MEMORY, "get path failed")
+    return HKS_SUCCESS;
+}
+#endif
+
+static int32_t ConstructPath(const struct HksStoreMaterial *material, const char *deDataPath,
+    const char *ceOrEceDataPath, struct HksStoreInfo *fileInfoPath)
+{
+    (void)ceOrEceDataPath;
+    int32_t ret = HKS_SUCCESS;
+    int32_t offset = 0;
+    
+    switch (material->pathType) {
+        case DE_PATH:
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s",
+                deDataPath, material->userIdPath, material->uidPath, material->storageTypePath);
+            break;
+#ifdef L2_STANDARD
+        case CE_PATH:
+            ret = CheckUserPathExist(CE_PATH, material->userIdPath);
+            HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "check user path exist failed.")
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s/%s", HKS_CE_ROOT_PATH,
+                material->userIdPath, ceOrEceDataPath, material->uidPath, material->storageTypePath);
+            break;
+        case ECE_PATH:
+            ret = CheckUserPathExist(ECE_PATH, material->userIdPath);
+            HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "check user path exist failed.")
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s/%s", HKS_ECE_ROOT_PATH,
+                material->userIdPath, ceOrEceDataPath, material->uidPath, material->storageTypePath);
+            break;
+#ifdef HUKS_ENABLE_SKIP_UPGRADE_KEY_STORAGE_SECURE_LEVEL
+        case TMP_PATH:
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s",
+                HKS_KEY_STORE_TMP_PATH, material->userIdPath, material->uidPath, material->storageTypePath);
+            break;
+#endif
+#ifdef HKS_USE_RKC_IN_STANDARD
+        case RKC_IN_STANDARD_PATH:
+            // there is no user id path in rkc of standard
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s",
+                HKS_KEY_RKC_PATH, material->uidPath, material->storageTypePath);
+            break;
+#endif
+#endif
+#ifdef HKS_ENABLE_LITE_HAP
+        case LITE_HAP_PATH:
+            offset = sprintf_s(fileInfoPath->path, HKS_MAX_DIRENT_FILE_LEN, "%s/%s/%s/%s",
+                HKS_KEY_STORE_LITE_HAP, material->userIdPath,  material->uidPath, material->storageTypePath);
+            break;
+#endif
+    }
+    if (offset <= 0) {
+        HKS_LOG_E("get path failed, path type is %" LOG_PUBLIC "d.", material->pathType);
+        return HKS_ERROR_INSUFFICIENT_MEMORY;
+    }
+    return ret;
+}
+
+static int32_t GetPathInfo(const struct HksStoreMaterial *material, const char *deDataPath,
+    const char *ceOrEceDataPath, struct HksStoreInfo *fileInfoPath)
+{
+    int32_t ret = HKS_SUCCESS;
+#ifdef L2_STANDARD
+    bool isUserPath = material->pathType == CE_PATH || material->pathType == ECE_PATH;
+#else
+    bool isUserPath = false;
+#endif
+
+#ifdef L2_STANDARD
+    if (IsGroupKeyMaterial(material)) {
+        ret = ConstructGroupKeyPath(material, deDataPath, ceOrEceDataPath, fileInfoPath);
+    } else if (material->ancoOperation) {
+        ret = ConstructAncoPath(material, ceOrEceDataPath, fileInfoPath);
+    } else {
+        ret = ConstructPath(material, deDataPath, ceOrEceDataPath, fileInfoPath);
+    }
+#else
+    ret = ConstructPath(material, deDataPath, ceOrEceDataPath, fileInfoPath);
+#endif
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "construct main path failed")
+
+    StandardizePath(fileInfoPath->path);
+    ret = HksMakeFullDir(fileInfoPath->path);
+    if (isUserPath) {
+        HKS_IF_NOT_SUCC_LOGE_RETURN(ret, HKS_ERROR_NO_PERMISSION, "make full dir failed. ret = %"
+            LOG_PUBLIC"d.", ret)
+    } else {
+        HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "make full dir failed. ret = %" LOG_PUBLIC"d.", ret)
+    }
+    if (material->keyAliasPath != NULL) {
+        HKS_IF_TRUE_LOGE_RETURN(strstr(material->keyAliasPath, "../") != NULL, HKS_ERROR_INVALID_ARGUMENT,
+            "invalid filePath, ../ is included in file path")
+        if (memcpy_s(fileInfoPath->fileName, HKS_MAX_FILE_NAME_LEN,
+            material->keyAliasPath, strlen(material->keyAliasPath)) != EOK) {
+            ret = HKS_ERROR_INSUFFICIENT_MEMORY;
+        }
+    }
+    return ret;
+}
+
+int32_t HksGetFileInfo(const struct HksStoreMaterial *material, struct HksStoreFileInfo *fileInfo)
+{
+    int32_t ret = FileInfoInit(fileInfo);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "hks file info init failed, ret = %" LOG_PUBLIC "d.", ret)
+
+#ifdef L2_STANDARD
+    ret = GetPathInfo(material, HKS_KEY_STORE_PATH, HKS_STORE_SERVICE_PATH, &fileInfo->mainPath);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "hks get main path info failed, ret = %" LOG_PUBLIC "d.", ret)
+#else
+    ret = GetPathInfo(material, HKS_KEY_STORE_PATH, NULL, &fileInfo->mainPath);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "hks get main path info failed, ret = %" LOG_PUBLIC "d.", ret)
+#endif
+
+#ifdef SUPPORT_STORAGE_BACKUP
+    ret = GetPathInfo(material, HKS_KEY_STORE_BAK_PATH, HKS_STORE_SERVICE_BAK_PATH, &fileInfo->bakPath);
+    HKS_IF_NOT_SUCC_LOGE_RETURN(ret, ret, "hks get bak path info failed, ret = %" LOG_PUBLIC "d.", ret)
+#endif
+    return HKS_SUCCESS;
+}
+#endif /* _CUT_AUTHENTICATE_ */

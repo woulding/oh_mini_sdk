@@ -1,0 +1,76 @@
+{
+    "name": "@ohos/distributed_bundle_framework",
+    "description": "分布式包管理服务",
+    "version": "4.0",
+    "license": "Apache-2.0",
+    "segment": {
+        "destPath": "foundation/bundlemanager/distributed_bundle_framework"
+    },
+    "component": {
+        "name": "distributed_bundle_framework",
+        "subsystem": "bundlemanager",
+        "syscap": [
+            "SystemCapability.BundleManager.DistributedBundleFramework"
+        ],
+        "features": [
+            "distributed_bundle_framework_graphics"
+        ],
+        "adapted_system_type": [
+            "standard"
+        ],
+        "rom": "~400KB",
+        "ram": "~6577KB",
+        "deps": {
+            "components": [
+                "ability_base",
+                "access_token",
+                "bundle_framework",
+                "cJSON",
+                "c_utils",
+                "dsoftbus",
+                "hisysevent",
+                "hilog",
+                "i18n",
+                "ipc",
+                "image_framework",
+                "napi",
+                "os_account",
+                "resource_management",
+                "runtime_core",
+                "safwk",
+                "samgr",
+                "selinux_adapter",
+                "common_event_service",
+                "device_manager",
+                "hicollie",
+                "init",
+                "kv_store"
+            ],
+            "third_party": [
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//foundation/bundlemanager/distributed_bundle_framework:ani_dbms_packages",
+                "//foundation/bundlemanager/distributed_bundle_framework:inner_api_target",
+                "//foundation/bundlemanager/distributed_bundle_framework:jsapi_target",
+                "//foundation/bundlemanager/distributed_bundle_framework:dbms_target"
+            ],
+            "inner_kits": [
+                {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/distributed_bundle_framework/interfaces/inner_api/include",
+                      "header_files": [
+                        "distributed_bms_interface.h",
+                        "distributed_bms_proxy.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/distributed_bundle_framework/interfaces/inner_api:dbms_fwk"
+                  }
+            ],
+            "test": [
+                "//foundation/bundlemanager/distributed_bundle_framework:test_target"
+            ]
+        }
+    }
+}

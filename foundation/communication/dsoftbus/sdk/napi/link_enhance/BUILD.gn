@@ -1,0 +1,73 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../../../dsoftbus.gni")
+
+ohos_shared_library("linkenhance") {
+
+  sources = []
+  deps = []
+  external_deps = []
+  if (dsoftbus_feature_conn_general) {
+    include_dirs = [
+      "$dsoftbus_root_path/interfaces/kits/connection",
+      "$dsoftbus_sdk_path/napi/link_enhance/include",
+    ]
+
+    sources += [
+      "$dsoftbus_sdk_path/napi/link_enhance/src/napi_link_enhance_connection.cpp",
+      "$dsoftbus_sdk_path/napi/link_enhance/src/napi_link_enhance_module.cpp",
+      "$dsoftbus_sdk_path/napi/link_enhance/src/napi_link_enhance_server.cpp",
+      "$dsoftbus_sdk_path/napi/link_enhance/src/napi_link_enhance_utils.cpp",
+      "$dsoftbus_sdk_path/napi/link_enhance/src/napi_link_enhance_object.cpp",
+    ]
+
+    deps += [
+      "$dsoftbus_dfx_path:softbus_dfx",
+      "$dsoftbus_root_path/adapter:softbus_adapter",
+      "$dsoftbus_root_path/core/common:softbus_utils",
+      "$dsoftbus_root_path/sdk:softbus_client",
+      "$dsoftbus_dfx_path/dumper/legacy:softbus_dfx_dump",
+    ]
+    
+    external_deps = [
+      "c_utils:utils",
+      "bounds_checking_function:libsec_shared",
+      "hilog:libhilog",
+      "napi:ace_napi",
+    ]
+  } else {
+    include_dirs = [
+      "$dsoftbus_root_path/interfaces/kits/connection"
+    ]
+    external_deps += [
+      "napi:ace_napi"
+    ]
+    sources += [
+      "$dsoftbus_sdk_path/napi/link_enhance/virtual/napi_link_enhance_connection_virtual.cpp",
+      "$dsoftbus_sdk_path/napi/link_enhance/virtual/napi_link_enhance_module_virtual.cpp",
+      "$dsoftbus_sdk_path/napi/link_enhance/virtual/napi_link_enhance_server_virtual.cpp",
+      "$dsoftbus_sdk_path/napi/link_enhance/virtual/napi_link_enhance_utils_virtual.cpp",
+    ]
+  }
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  branch_protector_ret = "pac_ret"
+  relative_install_dir = "module/distributedsched"
+
+  subsystem_name = "communication"
+  part_name = "dsoftbus"
+}

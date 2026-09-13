@@ -1,0 +1,1063 @@
+/*
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "app_control_manager_host_impl.h"
+
+#include "app_log_tag_wrapper.h"
+#include "app_log_wrapper.h"
+#include "appexecfwk_errors.h"
+#include "app_control_constants.h"
+#include "bundle_common_event_mgr.h"
+#include "bundle_constants.h"
+#include "bundle_file_util.h"
+#include "bundle_mgr_service.h"
+#include "bundle_permission_mgr.h"
+#include "bundle_service_constants.h"
+#include "ipc_skeleton.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+    constexpr const char* PERMISSION_DISPOSED_STATUS = "ohos.permission.MANAGE_DISPOSED_APP_STATUS";
+    constexpr const char* PERMISSION_GET_DISPOSED_STATUS = "ohos.permission.GET_DISPOSED_APP_STATUS";
+    constexpr const char* APP_MARKET_CALLING = "app market";
+}
+AppControlManagerHostImpl::AppControlManagerHostImpl()
+{
+    appControlManager_ = DelayedSingleton<AppControlManager>::GetInstance();
+    dataMgr_ = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
+    callingNameMap_ = {
+        {AppControlConstants::EDM_UID, AppControlConstants::EDM_CALLING}
+    };
+    ruleTypeMap_ = {
+        {AppInstallControlRuleType::DISALLOWED_UNINSTALL, AppControlConstants::APP_DISALLOWED_UNINSTALL},
+        {AppInstallControlRuleType::ALLOWED_INSTALL, AppControlConstants::APP_ALLOWED_INSTALL},
+        {AppInstallControlRuleType::DISALLOWED_INSTALL, AppControlConstants::APP_DISALLOWED_INSTALL}
+    };
+}
+
+AppControlManagerHostImpl::~AppControlManagerHostImpl()
+{
+}
+
+ErrCode AppControlManagerHostImpl::AddAppInstallControlRule(const std::vector<std::string> &appIds,
+    const AppInstallControlRuleType controlRuleType, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "AddAppInstallControlRule start");
+    std::string callingName = GetCallingName();
+    std::string ruleType = GetControlRuleType(controlRuleType);
+    if (callingName.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (ruleType.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "controlRuleType is invalid");
+        return ERR_BUNDLE_MANAGER_APP_CONTROL_RULE_TYPE_INVALID;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    std::vector<std::string> modifyAppIds = appIds;
+    modifyAppIds.erase(std::remove_if(modifyAppIds.begin(), modifyAppIds.end(),
+                                      [](const auto& appId) { return appId.empty(); }),
+                       modifyAppIds.end());
+    auto ret = appControlManager_->AddAppInstallControlRule(callingName, modifyAppIds, ruleType, userId);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_DEFAULT, "AddAppInstallControlRule failed due to error %{public}d", ret);
+        return ret;
+    }
+    if (ruleType == AppControlConstants::APP_DISALLOWED_UNINSTALL) {
+        std::vector<std::string> transformAppIds = modifyAppIds;
+        if (dataMgr_ == nullptr) {
+            LOG_E(BMS_TAG_DEFAULT, "dataMgr_ is nullptr");
+            return ERR_APPEXECFWK_NULL_PTR;
+        }
+        for (auto &appId : modifyAppIds) {
+            std::string transformAppId = dataMgr_->AppIdAndAppIdentifierTransform(appId);
+            if (!transformAppId.empty()) {
+                transformAppIds.emplace_back(transformAppId);
+            }
+        }
+        UpdateAppControlledInfo(userId, transformAppIds);
+    }
+    SendAppControlEvent(ControlActionType::INSTALL, ControlOperationType::ADD_RULE,
+        callingName, userId, Constants::MAIN_APP_INDEX, appIds, ruleType);
+    return ERR_OK;
+}
+
+ErrCode AppControlManagerHostImpl::DeleteAppInstallControlRule(const AppInstallControlRuleType controlRuleType,
+    const std::vector<std::string> &appIds, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "DeleteAppInstallControlRule start");
+    std::string ruleType = GetControlRuleType(controlRuleType);
+    if (ruleType.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "controlRuleType is invalid");
+        return ERR_BUNDLE_MANAGER_APP_CONTROL_RULE_TYPE_INVALID;
+    }
+    std::string callingName = GetCallingName();
+    if (callingName.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    std::vector<std::string> modifyAppIds = appIds;
+    modifyAppIds.erase(std::remove_if(modifyAppIds.begin(), modifyAppIds.end(),
+                                      [](const auto& appId) { return appId.empty(); }),
+                       modifyAppIds.end());
+    auto ret = appControlManager_->DeleteAppInstallControlRule(callingName, ruleType, modifyAppIds, userId);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_DEFAULT, "DeleteAppInstallControlRule failed due to error %{public}d", ret);
+        return ret;
+    }
+    if (ruleType == AppControlConstants::APP_DISALLOWED_UNINSTALL) {
+        std::vector<std::string> transformAppIds = modifyAppIds;
+        if (dataMgr_ == nullptr) {
+            LOG_E(BMS_TAG_DEFAULT, "dataMgr_ is nullptr");
+            return ERR_APPEXECFWK_NULL_PTR;
+        }
+        for (auto &appId : modifyAppIds) {
+            std::string transformAppId = dataMgr_->AppIdAndAppIdentifierTransform(appId);
+            if (!transformAppId.empty()) {
+                transformAppIds.emplace_back(transformAppId);
+            }
+        }
+        UpdateAppControlledInfo(userId, transformAppIds);
+    }
+    SendAppControlEvent(ControlActionType::INSTALL, ControlOperationType::REMOVE_RULE,
+        callingName, userId, Constants::MAIN_APP_INDEX, appIds, ruleType);
+    return ERR_OK;
+}
+
+ErrCode AppControlManagerHostImpl::DeleteAppInstallControlRule(const AppInstallControlRuleType controlRuleType,
+    int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "CleanAppInstallControlRule start");
+    std::string callingName = GetCallingName();
+    std::string ruleType = GetControlRuleType(controlRuleType);
+    if (callingName.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (ruleType.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "controlRuleType is invalid");
+        return ERR_BUNDLE_MANAGER_APP_CONTROL_RULE_TYPE_INVALID;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    std::vector<std::string> modifyAppIds;
+    if (ruleType == AppControlConstants::APP_DISALLOWED_UNINSTALL) {
+        auto ret = appControlManager_->GetAppInstallControlRule(AppControlConstants::EDM_CALLING,
+            ruleType, userId, modifyAppIds);
+        if (ret != ERR_OK) {
+            LOG_W(BMS_TAG_DEFAULT, "GetAppInstallControlRule failed code:%{public}d", ret);
+        }
+    }
+    auto ret = appControlManager_->DeleteAppInstallControlRule(callingName, ruleType, userId);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_DEFAULT, "CleanAppInstallControlRule failed due to error %{public}d", ret);
+        return ret;
+    }
+    if (ruleType == AppControlConstants::APP_DISALLOWED_UNINSTALL) {
+        UpdateAppControlledInfo(userId, modifyAppIds);
+    }
+    SendAppControlEvent(ControlActionType::INSTALL, ControlOperationType::REMOVE_RULE,
+        callingName, userId, Constants::MAIN_APP_INDEX, {}, ruleType);
+    return ERR_OK;
+}
+
+ErrCode AppControlManagerHostImpl::GetAppInstallControlRule(
+    const AppInstallControlRuleType controlRuleType, int32_t userId, std::vector<std::string> &appIds)
+{
+    LOG_D(BMS_TAG_DEFAULT, "GetAppInstallControlRule start");
+    std::string callingName = GetCallingName();
+    std::string ruleType = GetControlRuleType(controlRuleType);
+    if (callingName.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (ruleType.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "controlRuleType is invalid");
+        return ERR_BUNDLE_MANAGER_APP_CONTROL_RULE_TYPE_INVALID;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    ErrCode ret = appControlManager_->GetAppInstallControlRule(callingName, ruleType, userId, appIds);
+    std::vector<std::string> transformAppIds = appIds;
+    if (dataMgr_ == nullptr) {
+        LOG_E(BMS_TAG_DEFAULT, "dataMgr_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    for (auto &appId : appIds) {
+        std::string transformAppId = dataMgr_->AppIdAndAppIdentifierTransform(appId);
+        transformAppIds.emplace_back(transformAppId);
+    }
+    appIds = transformAppIds;
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::AddAppRunningControlRule(
+    const std::vector<AppRunningControlRule> &controlRules, int32_t userId)
+{
+    std::string callingName = GetCallingName();
+    if (callingName.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    std::vector<AppRunningControlRule> modifyControlRules = controlRules;
+    modifyControlRules.erase(std::remove_if(modifyControlRules.begin(), modifyControlRules.end(),
+                                            [](const auto& controlRule) { return controlRule.appId.empty(); }),
+                             modifyControlRules.end());
+    ErrCode result = appControlManager_->AddAppRunningControlRule(callingName, modifyControlRules, userId);
+    std::vector<std::string> appIds;
+    std::string rules;
+    for (const auto &rule : modifyControlRules) {
+        appIds.emplace_back(rule.appId);
+        rules += (rule.controlMessage + " ");
+    }
+    SendAppControlEvent(ControlActionType::RUNUING, ControlOperationType::ADD_RULE,
+        callingName, userId, Constants::MAIN_APP_INDEX, appIds, rules);
+    return result;
+}
+
+ErrCode AppControlManagerHostImpl::DeleteAppRunningControlRule(
+    const std::vector<AppRunningControlRule> &controlRules, int32_t userId)
+{
+    std::string callingName = GetCallingName();
+    if (callingName.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    std::vector<AppRunningControlRule> modifyControlRules = controlRules;
+    modifyControlRules.erase(std::remove_if(modifyControlRules.begin(), modifyControlRules.end(),
+                                            [](const auto& controlRule) { return controlRule.appId.empty(); }),
+                             modifyControlRules.end());
+    ErrCode result = appControlManager_->DeleteAppRunningControlRule(callingName, modifyControlRules, userId);
+    std::vector<std::string> appIds;
+    for (const auto &rule : modifyControlRules) {
+        appIds.emplace_back(rule.appId);
+    }
+    SendAppControlEvent(ControlActionType::RUNUING, ControlOperationType::REMOVE_RULE,
+        callingName, userId, Constants::MAIN_APP_INDEX, appIds, Constants::EMPTY_STRING);
+    return result;
+}
+
+ErrCode AppControlManagerHostImpl::DeleteAppRunningControlRule(int32_t userId)
+{
+    std::string callingName = GetCallingName();
+    if (callingName.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    ErrCode result = appControlManager_->DeleteAppRunningControlRule(callingName, userId);
+    SendAppControlEvent(ControlActionType::RUNUING, ControlOperationType::REMOVE_RULE,
+        callingName, userId, Constants::MAIN_APP_INDEX, {}, Constants::EMPTY_STRING);
+    return result;
+}
+
+ErrCode AppControlManagerHostImpl::GetAppRunningControlRule(
+    int32_t userId, std::vector<std::string> &appIds, bool &allowRunning)
+{
+    std::string callingName = GetCallingName();
+    if (callingName.empty()) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    return appControlManager_->GetAppRunningControlRule(callingName, userId, appIds, allowRunning);
+}
+
+ErrCode AppControlManagerHostImpl::GetAppRunningControlRule(
+    const std::string &bundleName, int32_t userId, AppRunningControlRuleResult &controlRuleResult)
+{
+    if (bundleName.empty()) {
+        LOG_NOFUNC_W(BMS_TAG_DEFAULT, "get running rule -n empty");
+        return ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST;
+    }
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    if (uid != AppControlConstants::FOUNDATION_UID) {
+        LOG_W(BMS_TAG_DEFAULT, "calling permission denied, uid : %{public}d, pid : %{public}d",
+            uid, OHOS::IPCSkeleton::GetCallingPid());
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return appControlManager_->GetAppRunningControlRule(bundleName, userId, controlRuleResult);
+}
+
+ErrCode AppControlManagerHostImpl::ConfirmAppJumpControlRule(const std::string &callerBundleName,
+    const std::string &targetBundleName, int32_t userId)
+{
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    if (uid != AppControlConstants::FOUNDATION_UID) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid, uid : %{public}d", uid);
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    return appControlManager_->ConfirmAppJumpControlRule(callerBundleName, targetBundleName, userId);
+}
+
+ErrCode AppControlManagerHostImpl::AddAppJumpControlRule(const std::vector<AppJumpControlRule> &controlRules,
+    int32_t userId)
+{
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    if (uid != AppControlConstants::FOUNDATION_UID) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid, uid : %{public}d", uid);
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return appControlManager_->AddAppJumpControlRule(controlRules, userId);
+}
+
+ErrCode AppControlManagerHostImpl::DeleteAppJumpControlRule(const std::vector<AppJumpControlRule> &controlRules,
+    int32_t userId)
+{
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    if (uid != AppControlConstants::FOUNDATION_UID) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid, uid : %{public}d", uid);
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return appControlManager_->DeleteAppJumpControlRule(controlRules, userId);
+}
+
+ErrCode AppControlManagerHostImpl::DeleteRuleByCallerBundleName(const std::string &callerBundleName, int32_t userId)
+{
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    if (uid != AppControlConstants::FOUNDATION_UID) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid, uid : %{public}d", uid);
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return appControlManager_->DeleteRuleByCallerBundleName(callerBundleName, userId);
+}
+
+ErrCode AppControlManagerHostImpl::DeleteRuleByTargetBundleName(const std::string &targetBundleName, int32_t userId)
+{
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    if (uid != AppControlConstants::FOUNDATION_UID) {
+        LOG_E(BMS_TAG_DEFAULT, "callingName is invalid, uid : %{public}d", uid);
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    return appControlManager_->DeleteRuleByTargetBundleName(targetBundleName, userId);
+}
+
+ErrCode AppControlManagerHostImpl::GetAppJumpControlRule(const std::string &callerBundleName,
+    const std::string &targetBundleName, int32_t userId, AppJumpControlRule &controlRule)
+{
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    if (uid != AppControlConstants::FOUNDATION_UID) {
+        LOG_W(BMS_TAG_DEFAULT, "calling permission denied, uid : %{public}d", uid);
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return appControlManager_->GetAppJumpControlRule(callerBundleName, targetBundleName, userId, controlRule);
+}
+
+std::string AppControlManagerHostImpl::GetCallingName()
+{
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    auto item = callingNameMap_.find(uid);
+    if (item == callingNameMap_.end()) {
+        LOG_W(BMS_TAG_DEFAULT, "calling uid is invalid, uid : %{public}d", uid);
+        return "";
+    }
+    return item->second;
+}
+
+std::string AppControlManagerHostImpl::GetControlRuleType(const AppInstallControlRuleType controlRuleType)
+{
+    auto item = ruleTypeMap_.find(controlRuleType);
+    if (item == ruleTypeMap_.end()) {
+        LOG_W(BMS_TAG_DEFAULT, "controlRuleType:%{public}d is invalid", static_cast<int32_t>(controlRuleType));
+        return "";
+    }
+    return item->second;
+}
+
+int32_t AppControlManagerHostImpl::GetCallingUserId()
+{
+    return OHOS::IPCSkeleton::GetCallingUid() / Constants::BASE_USER_RANGE;
+}
+
+ErrCode AppControlManagerHostImpl::SetDisposedStatus(const std::string &appId, const Want &want, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to SetDisposedStatus");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    ErrCode ret = appControlManager_->SetDisposedStatus(appId, want, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "host SetDisposedStatus error:%{public}d", ret);
+    }
+    SendAppControlEvent(ControlActionType::DISPOSE_STATUS, ControlOperationType::ADD_RULE,
+        APP_MARKET_CALLING, userId, Constants::MAIN_APP_INDEX, { appId }, Constants::EMPTY_STRING);
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::DeleteDisposedStatus(const std::string &appId, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to DeleteDisposedStatus");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    ErrCode ret = appControlManager_->DeleteDisposedStatus(appId, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "host DeletetDisposedStatus error:%{public}d", ret);
+    }
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    ret = appControlManager_->DeleteDisposedRule(callerName, appId, Constants::MAIN_APP_INDEX, userId);
+    if (ret == ERR_OK) {
+        std::shared_ptr<BundleCommonEventMgr> commonEventMgr = std::make_shared<BundleCommonEventMgr>();
+        commonEventMgr->NotifyDeleteDisposedRule(appId, userId, Constants::MAIN_APP_INDEX);
+    }
+    SendAppControlEvent(ControlActionType::DISPOSE_STATUS, ControlOperationType::REMOVE_RULE,
+        callerName, userId, Constants::MAIN_APP_INDEX, { appId }, Constants::EMPTY_STRING);
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::GetDisposedStatus(const std::string &appId, Want &want, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to GetDisposedStatus");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionsForAll({PERMISSION_DISPOSED_STATUS,
+        PERMISSION_GET_DISPOSED_STATUS})) {
+        LOG_W(BMS_TAG_DEFAULT, "verify get disposed status permission failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    ErrCode ret = appControlManager_->GetDisposedStatus(appId, want, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "host GetDisposedStatus error:%{public}d", ret);
+    }
+    return ret;
+}
+
+void AppControlManagerHostImpl::UpdateAppControlledInfo(int32_t userId,
+    const std::vector<std::string> &modifyAppIds) const
+{
+    LOG_D(BMS_TAG_DEFAULT, "start to UpdateAppControlledInfo under userId %{public}d", userId);
+    std::vector<std::string> appIds;
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return;
+    }
+    ErrCode ret = appControlManager_->GetAppInstallControlRule(AppControlConstants::EDM_CALLING,
+        AppControlConstants::APP_DISALLOWED_UNINSTALL, userId, appIds);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "not update GetAppInstallControlRule failed code:%{public}d", ret);
+        return;
+    }
+    auto bundleInfos = dataMgr_->GetAllInnerBundleInfos();
+    for (const auto &info : bundleInfos) {
+        bool isRemovable = false;
+        if ((std::find(appIds.begin(), appIds.end(), info.second.GetAppIdentifier()) == appIds.end())
+            && (std::find(appIds.begin(), appIds.end(), info.second.GetAppId()) == appIds.end())) {
+            isRemovable = true;
+        }
+        if (!dataMgr_->SetBundleUserInfoRemovable(info.first, userId, isRemovable)) {
+            LOG_W(BMS_TAG_DEFAULT, "UpdateAppControlledInfo fail -n %{public}s -u %{public}d removable:%{public}d",
+                info.first.c_str(), userId, isRemovable);
+            continue;
+        }
+        bool needUpdate = true;
+        if ((std::find(modifyAppIds.begin(), modifyAppIds.end(), info.second.GetAppIdentifier()) == modifyAppIds.end())
+            && (std::find(modifyAppIds.begin(), modifyAppIds.end(), info.second.GetAppId()) == modifyAppIds.end())) {
+            needUpdate = false;
+        }
+        if (needUpdate) {
+            AbilityInfo mainAbilityInfo;
+            info.second.GetMainAbilityInfo(mainAbilityInfo);
+            NotifyBundleEvents installRes = {
+                .isModuleUpdate = false,
+                .type = NotifyType::UNINSTALL_STATE,
+                .resultCode = ERR_OK,
+                .accessTokenId = info.second.GetAccessTokenId(userId),
+                .uid = info.second.GetUid(userId),
+                .bundleType = static_cast<int32_t>(info.second.GetApplicationBundleType()),
+                .bundleName = info.second.GetBundleName(),
+                .modulePackage = info.second.GetModuleNameVec()[0],
+                .abilityName = mainAbilityInfo.name,
+                .appDistributionType = info.second.GetAppDistributionType(),
+            };
+            std::shared_ptr<BundleCommonEventMgr> commonEventMgr = std::make_shared<BundleCommonEventMgr>();
+            commonEventMgr->NotifyBundleStatus(installRes, dataMgr_);
+        }
+    }
+}
+
+void AppControlManagerHostImpl::GetCallerByUid(const int32_t uid, std::string &callerName)
+{
+    auto item = callingNameMap_.find(uid);
+    if (item != callingNameMap_.end()) {
+        callerName = item->second;
+        return;
+    }
+    int32_t appIndex = 0;
+    auto ret = dataMgr_->GetBundleNameAndIndexForUid(uid, callerName, appIndex);
+    if (ret != ERR_OK) {
+        callerName = std::to_string(uid);
+        LOG_D(BMS_TAG_DEFAULT, "caller not recognized");
+        return;
+    }
+    if (appIndex > 0) {
+        callerName.append("_").append(std::to_string(appIndex));
+    }
+}
+
+ErrCode AppControlManagerHostImpl::GetDisposedRule(const std::string &appId, DisposedRule &rule, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to GetDisposedRule");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionsForAll({PERMISSION_DISPOSED_STATUS,
+        PERMISSION_GET_DISPOSED_STATUS})) {
+        LOG_W(BMS_TAG_DEFAULT, "verify get disposed rule permission failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    auto ret = appControlManager_->GetDisposedRule(callerName, appId, rule, Constants::MAIN_APP_INDEX, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "host GetDisposedStatus error:%{public}d", ret);
+    }
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::GetDisposedRules(
+    int32_t userId, std::vector<DisposedRuleConfiguration> &disposedRuleConfigurations)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to GetDisposedRules");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionsForAll({PERMISSION_DISPOSED_STATUS,
+        PERMISSION_GET_DISPOSED_STATUS})) {
+        LOG_W(BMS_TAG_DEFAULT, "verify get disposed rule permission failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    auto ret = appControlManager_->GetDisposedRules(callerName, userId, disposedRuleConfigurations);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "host GetDisposedRules error:%{public}d", ret);
+    }
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::GetDisposedRulesBySetter(
+    const std::string &bundleName, int32_t appIndex, int32_t userId,
+    std::vector<DisposedRuleConfiguration>& disposedRuleConfigurations)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to GetDisposedRulesBySetter");
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionsForAll({PERMISSION_DISPOSED_STATUS,
+        PERMISSION_GET_DISPOSED_STATUS})) {
+        LOG_W(BMS_TAG_DEFAULT, "verify get disposed rule permission failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    // Get callerName by bundleName and appIndex
+    std::string callerName = bundleName;
+    if (appIndex > 0) {
+        callerName.append("_").append(std::to_string(appIndex));
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    auto ret = appControlManager_->GetDisposedRules(callerName, userId, disposedRuleConfigurations);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "host GetDisposedRulesBySetter error:%{public}d", ret);
+    }
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::SetDisposedRules(
+    std::vector<DisposedRuleConfiguration> &disposedRuleConfigurations, int32_t userId)
+{
+    LOG_NOFUNC_I(BMS_TAG_DEFAULT, "host impl SetDisposedRules size:%{public}zu", disposedRuleConfigurations.size());
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    bool isEdm = uid == AppControlConstants::EDM_UID ? true : false;
+
+    std::shared_ptr<BundleCommonEventMgr> commonEventMgr = std::make_shared<BundleCommonEventMgr>();
+    for (auto &disposedRuleConfiguration : disposedRuleConfigurations) {
+        disposedRuleConfiguration.disposedRule.isEdm = isEdm;
+        auto ret = appControlManager_->SetDisposedRule(callerName, disposedRuleConfiguration.appId,
+            disposedRuleConfiguration.disposedRule, disposedRuleConfiguration.appIndex, userId);
+        if (ret != ERR_OK) {
+            LOG_E(BMS_TAG_DEFAULT, "host SetDisposedRules error:%{public}d", ret);
+            return ret;
+        }
+        commonEventMgr->NotifySetDisposedRuleAsync(disposedRuleConfiguration.appId, userId,
+            disposedRuleConfiguration.disposedRule.ToString(), disposedRuleConfiguration.appIndex);
+        SendAppControlEvent(ControlActionType::DISPOSE_RULE, ControlOperationType::ADD_RULE,
+            callerName, userId, disposedRuleConfiguration.appIndex, { disposedRuleConfiguration.appId },
+            disposedRuleConfiguration.disposedRule.ToString());
+    }
+
+    LOG_NOFUNC_I(BMS_TAG_DEFAULT, "host SetDisposedRules completed");
+    return ERR_OK;
+}
+
+ErrCode AppControlManagerHostImpl::DeleteDisposedRules(
+    std::vector<DisposedRuleConfiguration> &disposedRuleConfigurations, int32_t userId)
+{
+    LOG_NOFUNC_I(BMS_TAG_DEFAULT, "begin DeleteDisposedRules -u %{public}d", userId);
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    std::shared_ptr<BundleCommonEventMgr> commonEventMgr = std::make_shared<BundleCommonEventMgr>();
+    for (auto &disposedRuleConfiguration : disposedRuleConfigurations) {
+        ErrCode ret = appControlManager_->DeleteDisposedRule(
+            callerName, disposedRuleConfiguration.appId, disposedRuleConfiguration.appIndex, userId);
+        if (ret != ERR_OK) {
+            LOG_NOFUNC_W(BMS_TAG_DEFAULT, "DeleteDisposedRules err:%{public}d appId:%{private}s -i %{public}d",
+                ret, disposedRuleConfiguration.appId.c_str(), disposedRuleConfiguration.appIndex);
+            continue;
+        }
+        commonEventMgr->NotifyDeleteDisposedRuleAsync(
+            disposedRuleConfiguration.appId, userId, disposedRuleConfiguration.appIndex);
+        SendAppControlEvent(ControlActionType::DISPOSE_RULE, ControlOperationType::REMOVE_RULE,
+            callerName, userId, disposedRuleConfiguration.appIndex, { disposedRuleConfiguration.appId },
+            Constants::EMPTY_STRING);
+    }
+    return ERR_OK;
+}
+
+ErrCode AppControlManagerHostImpl::SetDisposedRule(const std::string &appId, DisposedRule &rule, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to SetDisposedRule");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (uid == AppControlConstants::EDM_UID) {
+        rule.isEdm = true;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    auto ret = appControlManager_->SetDisposedRule(callerName, appId, rule, Constants::MAIN_APP_INDEX, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "host GetDisposedStatus error:%{public}d", ret);
+    } else {
+        std::shared_ptr<BundleCommonEventMgr> commonEventMgr = std::make_shared<BundleCommonEventMgr>();
+        commonEventMgr->NotifySetDisposedRule(appId, userId, rule.ToString(), Constants::MAIN_APP_INDEX);
+    }
+    SendAppControlEvent(ControlActionType::DISPOSE_RULE, ControlOperationType::ADD_RULE,
+        callerName, userId, Constants::MAIN_APP_INDEX, { appId }, rule.ToString());
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::GetAbilityRunningControlRule(const std::string &bundleName, int32_t userId,
+    std::vector<DisposedRule>& disposedRules, int32_t appIndex)
+{
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    if (uid != AppControlConstants::FOUNDATION_UID) {
+        LOG_E(BMS_TAG_DEFAULT, "uid:%{public}d is forbidden", uid);
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return appControlManager_->GetAbilityRunningControlRule(bundleName, appIndex, userId,
+        disposedRules);
+}
+
+ErrCode AppControlManagerHostImpl::GetDisposedRuleForCloneApp(const std::string &appId, DisposedRule &rule,
+    int32_t appIndex, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to GetDisposedRuleForCloneApp");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionsForAll({PERMISSION_DISPOSED_STATUS,
+        PERMISSION_GET_DISPOSED_STATUS})) {
+        LOG_W(BMS_TAG_DEFAULT, "verify get disposed rule permission failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (appIndex < Constants::MAIN_APP_INDEX || appIndex > BundleFileUtil::GetCloneMaxCount()) {
+        LOG_E(BMS_TAG_DEFAULT, "appIndex %{public}d is invalid", appIndex);
+        return ERR_APPEXECFWK_APP_INDEX_OUT_OF_RANGE;
+    }
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    auto ret = appControlManager_->GetDisposedRule(callerName, appId, rule, appIndex, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "GetDisposedRuleForCloneApp error:%{public}d, appIndex:%{public}d", ret, appIndex);
+    }
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::SetDisposedRuleForCloneApp(const std::string &appId, DisposedRule &rule,
+    int32_t appIndex, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to SetDisposedRuleForCloneApp");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (appIndex < Constants::MAIN_APP_INDEX || appIndex > BundleFileUtil::GetCloneMaxCount()) {
+        LOG_E(BMS_TAG_DEFAULT, "appIndex %{public}d is invalid", appIndex);
+        return ERR_APPEXECFWK_APP_INDEX_OUT_OF_RANGE;
+    }
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (uid == AppControlConstants::EDM_UID) {
+        rule.isEdm = true;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    auto ret = appControlManager_->SetDisposedRule(callerName, appId, rule, appIndex, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "SetDisposedRuleForCloneApp error:%{public}d, appIndex:%{public}d", ret, appIndex);
+    } else {
+        std::shared_ptr<BundleCommonEventMgr> commonEventMgr = std::make_shared<BundleCommonEventMgr>();
+        commonEventMgr->NotifySetDisposedRule(appId, userId, rule.ToString(), appIndex);
+    }
+    SendAppControlEvent(ControlActionType::DISPOSE_RULE, ControlOperationType::ADD_RULE,
+        callerName, userId, appIndex, { appId }, rule.ToString());
+    return ret;
+}
+ErrCode AppControlManagerHostImpl::DeleteDisposedRuleForCloneApp(const std::string &appId, int32_t appIndex,
+    int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "host begin to DeleteDisposedRuleForCloneApp");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (appIndex < Constants::MAIN_APP_INDEX || appIndex > BundleFileUtil::GetCloneMaxCount()) {
+        LOG_E(BMS_TAG_DEFAULT, "appIndex %{public}d is invalid", appIndex);
+        return ERR_APPEXECFWK_APP_INDEX_OUT_OF_RANGE;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "appControlManager_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    ErrCode ret = ERR_OK;
+    if (appIndex == Constants::MAIN_APP_INDEX) {
+        ret = appControlManager_->DeleteDisposedStatus(appId, userId);
+        if (ret != ERR_OK) {
+            LOG_W(BMS_TAG_DEFAULT, "DeleteDisposedStatus error:%{public}d", ret);
+        }
+    }
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    ret = appControlManager_->DeleteDisposedRule(callerName, appId, appIndex, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "DeleteDisposedRule error:%{public}d, appIndex:%{public}d", ret, appIndex);
+    } else {
+        std::shared_ptr<BundleCommonEventMgr> commonEventMgr = std::make_shared<BundleCommonEventMgr>();
+        commonEventMgr->NotifyDeleteDisposedRule(appId, userId, appIndex);
+    }
+    SendAppControlEvent(ControlActionType::DISPOSE_RULE, ControlOperationType::REMOVE_RULE,
+        callerName, userId, appIndex, { appId }, Constants::EMPTY_STRING);
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::GetUninstallDisposedRule(const std::string &appIdentifier,
+    int32_t appIndex, int32_t userId, UninstallDisposedRule &rule)
+{
+    LOG_D(BMS_TAG_DEFAULT, "begin");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionsForAll({PERMISSION_DISPOSED_STATUS,
+        PERMISSION_GET_DISPOSED_STATUS})) {
+        LOG_W(BMS_TAG_DEFAULT, "verify get uninstall disposed rule permission failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (appIndex < Constants::MAIN_APP_INDEX || appIndex > BundleFileUtil::GetCloneMaxCount()) {
+        LOG_E(BMS_TAG_DEFAULT, "appIndex %{public}d is invalid", appIndex);
+        return ERR_APPEXECFWK_APP_INDEX_OUT_OF_RANGE;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "null appControlManager_");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    auto ret = appControlManager_->GetUninstallDisposedRule(appIdentifier, appIndex, userId, rule);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "error:%{public}d, appIndex:%{public}d",
+            ret, appIndex);
+    }
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::SetUninstallDisposedRule(const std::string &appIdentifier,
+    const UninstallDisposedRule &rule, int32_t appIndex, int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "begin");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (appIndex < Constants::MAIN_APP_INDEX || appIndex > BundleFileUtil::GetCloneMaxCount()) {
+        LOG_E(BMS_TAG_DEFAULT, "appIndex %{public}d is invalid", appIndex);
+        return ERR_APPEXECFWK_APP_INDEX_OUT_OF_RANGE;
+    }
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (rule.want == nullptr) {
+        LOG_E(BMS_TAG_DEFAULT, "null want");
+        return ERR_BUNDLE_MANAGER_INVALID_UNINSTALL_RULE;
+    }
+    if (!BundlePermissionMgr::IsNativeTokenType() && callerName != rule.want->GetBundle()) {
+        LOG_E(BMS_TAG_DEFAULT, "callerName is not equal to bundleName in want");
+        return ERR_BUNDLE_MANAGER_INVALID_UNINSTALL_RULE;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "null appControlManager_");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    auto ret = appControlManager_->SetUninstallDisposedRule(callerName, appIdentifier, rule, appIndex, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "error:%{public}d, appIndex:%{public}d",
+            ret, appIndex);
+    }
+    SendAppControlEvent(ControlActionType::UNINSTALL_DISPOSE_RULE, ControlOperationType::ADD_RULE,
+        callerName, userId, appIndex, { appIdentifier }, rule.ToString());
+    return ret;
+}
+
+ErrCode AppControlManagerHostImpl::DeleteUninstallDisposedRule(const std::string &appIdentifier, int32_t appIndex,
+    int32_t userId)
+{
+    LOG_D(BMS_TAG_DEFAULT, "begin");
+    if (!BundlePermissionMgr::IsSystemApp()) {
+        LOG_E(BMS_TAG_DEFAULT, "non-system app calling system api");
+        return ERR_BUNDLE_MANAGER_SYSTEM_API_DENIED;
+    }
+    if (!BundlePermissionMgr::VerifyCallingPermissionForAll(PERMISSION_DISPOSED_STATUS)) {
+        LOG_W(BMS_TAG_DEFAULT, "verify permission ohos.permission.MANAGE_DISPOSED_STATUS failed");
+        return ERR_BUNDLE_MANAGER_PERMISSION_DENIED;
+    }
+    if (appIndex < Constants::MAIN_APP_INDEX || appIndex > BundleFileUtil::GetCloneMaxCount()) {
+        LOG_E(BMS_TAG_DEFAULT, "appIndex %{public}d is invalid", appIndex);
+        return ERR_APPEXECFWK_APP_INDEX_OUT_OF_RANGE;
+    }
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    if (!appControlManager_) {
+        LOG_E(BMS_TAG_DEFAULT, "null appControlManager_");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    int32_t uid = OHOS::IPCSkeleton::GetCallingUid();
+    std::string callerName;
+    GetCallerByUid(uid, callerName);
+    if (userId == Constants::UNSPECIFIED_USERID) {
+        userId = GetCallingUserId();
+    }
+    auto ret = appControlManager_->DeleteUninstallDisposedRule(callerName, appIdentifier, appIndex, userId);
+    if (ret != ERR_OK) {
+        LOG_W(BMS_TAG_DEFAULT, "error:%{public}d, appIndex:%{public}d", ret, appIndex);
+    }
+    SendAppControlEvent(ControlActionType::UNINSTALL_DISPOSE_RULE, ControlOperationType::REMOVE_RULE,
+        callerName, userId, appIndex, { appIdentifier }, Constants::EMPTY_STRING);
+    return ret;
+}
+
+void AppControlManagerHostImpl::SendAppControlEvent(ControlActionType actionType, ControlOperationType operationType,
+    const std::string &callingName, int32_t userId, int32_t appIndex, const std::vector<std::string> &appIds,
+    const std::string &rule)
+{
+    EventInfo info;
+    info.actionType = static_cast<int32_t>(actionType);
+    info.operationType = static_cast<int32_t>(operationType);
+    info.callingName = callingName;
+    info.userId = userId;
+    info.appIndex = appIndex;
+    info.appIds = appIds;
+    info.rule = rule;
+    EventReport::SendAppControlRuleEvent(info);
+}
+} // AppExecFwk
+} // OHOS

@@ -1,0 +1,208 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+import("//build/ohos.gni")
+
+config("exported_header_files") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "//base/startup/init/interfaces/innerkits/include",
+    "//base/startup/init/interfaces/interfaces/innerkits/include/param",
+    "//base/startup/init/interfaces/service/param/include",
+  ]
+}
+
+config("exported_header_files_for_lite") {
+  visibility = [ ":*" ]
+}
+
+param_include_dirs = [
+  "//base/startup/init/services/param/include",
+  "//base/startup/init/services/param/adapter",
+  "//base/startup/init/services/param/linux",
+  "//base/startup/init/services/param/base",
+  "//base/startup/init/interfaces/innerkits/include/param",
+  "//base/startup/init/interfaces/innerkits/include",
+  "//base/startup/init/services/init/include",
+  "//base/startup/init/services/log",
+  "//base/startup/init/services/modules/init_hook",
+  "//base/startup/init/interfaces/innerkits/include/syspara",
+  "//base/startup/init/interfaces/innerkits/init_module_engine/include",
+  "//base/startup/init/services/loopevent/include",
+]
+
+param_service_sources = [
+  "//base/startup/init/services/param/linux/param_message.c",
+  "//base/startup/init/services/param/linux/param_msgadp.c",
+  "//base/startup/init/services/param/linux/param_service.c",
+  "//base/startup/init/services/param/manager/param_manager.c",
+  "//base/startup/init/services/param/manager/param_persist.c",
+  "//base/startup/init/services/param/manager/param_server.c",
+]
+
+param_trigger_sources = [
+  "//base/startup/init/services/param/trigger/trigger_checker.c",
+  "//base/startup/init/services/param/trigger/trigger_manager.c",
+  "//base/startup/init/services/param/trigger/trigger_processor.c",
+]
+
+param_client_sources = [
+  "//base/startup/init/services/param/linux/param_message.c",
+  "//base/startup/init/services/param/linux/param_request.c",
+  "//base/startup/init/services/param/manager/param_manager.c",
+]
+
+# only for linux
+if (defined(ohos_lite)) {
+  static_library("param_init") {
+    defines = []
+    sources = param_service_sources
+    sources += param_trigger_sources
+    sources +=
+        [ "//base/startup/init/services/param/liteos/param_persistadp.c" ]
+    include_dirs = param_include_dirs
+    include_dirs += [
+      "//base/security/selinux_adapter/interfaces/policycoreutils/include",
+      "//commonlibrary/utils_lite/include",
+      "//third_party/cJSON",
+    ]
+    public_configs = [ ":exported_header_files" ]
+    public_configs += [ ":exported_header_files_for_lite" ]
+    external_deps = [ "bounds_checking_function:libsec_static" ]
+    defines += [
+      "_GNU_SOURCE",
+      "__LINUX__",
+      "OHOS_LITE",
+      "PARAM_SUPPORT_REAL_CHECK",
+      "INCREMENTAL_VERSION=\"${ohos_version}\"",
+      "BUILD_TYPE=\"${ohos_build_type}\"",
+      "BUILD_USER=\"${ohos_build_user}\"",
+      "BUILD_TIME=\"${ohos_build_time}\"",
+      "BUILD_HOST=\"${ohos_build_host}\"",
+      "BUILD_ROOTHASH=\"${ohos_build_roothash}\"",
+    ]
+    if (!is_asan && init_feature_support_saspawn) {
+      defines += ["INIT_FEATURE_SUPPORT_SASPAWN"]
+    }
+  }
+
+  static_library("param_client") {
+    include_dirs = param_include_dirs
+    include_dirs += [
+      "//base/security/selinux_adapter/interfaces/policycoreutils/include",
+      "//commonlibrary/utils_lite/include",
+      "//third_party/cJSON",
+    ]
+    sources = param_client_sources
+    public_configs = [ ":exported_header_files" ]
+    public_configs += [ ":exported_header_files_for_lite" ]
+    external_deps = [ "bounds_checking_function:libsec_static" ]
+    cflags = [ "-fPIC" ]
+    defines = [
+      "_GNU_SOURCE",
+      "__LINUX__",
+    ]
+  }
+} else {
+  ohos_static_library("param_init") {
+    branch_protector_ret = "pac_ret"
+    sources = param_service_sources
+    sources += param_trigger_sources
+    sources +=
+        [ "//base/startup/init/services/param/adapter/param_persistadp.c" ]
+    include_dirs = param_include_dirs
+    public_configs = [ ":exported_header_files" ]
+    defines = [
+      "_GNU_SOURCE",
+      "PARAM_SUPPORT_REAL_CHECK",
+      "SUPPORT_PARAM_LOAD_HOOK",
+    ]
+    if (is_asan) {
+      defines += [ "INIT_ASAN" ]
+    }
+    external_deps = [
+      "bounds_checking_function:libsec_static",
+      "cJSON:cjson",
+    ]
+    public_external_deps = [ "selinux:libselinux" ]
+
+    if (param_base_log) {
+      defines += [ "PARAM_BASE_LOG" ]
+    }
+    if (defined(ohos_build_type)) {
+      defines += [ "BUILD_TYPE=\"${ohos_build_type}\"" ]
+    }
+    if (defined(ohos_version)) {
+      defines += [ "INCREMENTAL_VERSION=\"${ohos_version}\"" ]
+    }
+    if (defined(ohos_build_user)) {
+      defines += [ "BUILD_USER=\"${ohos_build_user}\"" ]
+    }
+    if (defined(ohos_build_time)) {
+      defines += [ "BUILD_TIME=\"${ohos_build_time}\"" ]
+    }
+    if (defined(ohos_build_host)) {
+      defines += [ "BUILD_HOST=\"${ohos_build_host}\"" ]
+    }
+
+    if (build_selinux) {
+      defines += [
+        "PARAM_SUPPORT_SELINUX",
+        "PARAMWORKSPACE_NEED_MUTEX",
+      ]
+      external_deps += [ "selinux_adapter:libselinux_parameter_static" ]
+    }
+    if (!is_asan && init_feature_support_saspawn) {
+      defines += ["INIT_FEATURE_SUPPORT_SASPAWN"]
+    }
+
+    deps = [ "//base/startup/init/services/param/base:param_base" ]
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_static_library("param_client") {
+    branch_protector_ret = "pac_ret"
+    sources = param_client_sources
+    include_dirs = param_include_dirs
+    public_configs = [ ":exported_header_files" ]
+    deps = [
+      "//base/startup/init/services/log:agent_log",
+      "//base/startup/init/services/param/base:param_base",
+    ]
+    external_deps = [
+      "bounds_checking_function:libsec_static",
+      "cJSON:cjson_static",
+    ]
+    if (build_selinux) {
+      external_deps += [ "selinux_adapter:libselinux_parameter_static" ]
+    }
+
+    cflags = [ "-Wno-deprecated-pragma" ]
+    defines = [
+      "_GNU_SOURCE",
+      "INIT_AGENT",
+    ]
+    if (build_selinux) {
+      defines += [
+        "PARAM_SUPPORT_SELINUX",
+        "PARAMWORKSPACE_NEED_MUTEX",
+      ]
+    }
+    if (param_base_log) {
+      defines += [ "PARAM_BASE_LOG" ]
+    }
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+}

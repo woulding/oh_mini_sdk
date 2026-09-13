@@ -1,0 +1,254 @@
+{
+    "name": "@ohos/bundle_framework",
+    "description": "提供OpenHarmony应用和服务安装包的安装、更新、卸载以及信息查询等能力，包含包管理接口和包管理服务",
+    "version": "4.0",
+    "license": "Apache License 2.0",
+    "segment": {
+        "destPath": "foundation/bundlemanager/bundle_framework"
+    },
+    "component": {
+        "name": "bundle_framework",
+        "subsystem": "bundlemanager",
+        "syscap": [
+            "SystemCapability.BundleManager.BundleFramework",
+            "SystemCapability.BundleManager.Zlib",
+            "SystemCapability.BundleManager.BundleFramework.AppControl",
+            "SystemCapability.BundleManager.BundleFramework.Core",
+            "SystemCapability.BundleManager.BundleFramework.FreeInstall",
+            "SystemCapability.BundleManager.BundleFramework.Launcher",
+            "SystemCapability.BundleManager.BundleFramework.DefaultApp",
+            "SystemCapability.BundleManager.BundleFramework.Resource",
+            "SystemCapability.BundleManager.BundleFramework.Overlay"
+        ],
+        "features": [
+            "bundle_framework_graphics",
+            "bundle_framework_free_install",
+            "bundle_framework_default_app",
+            "bundle_framework_launcher",
+            "bundle_framework_sandbox_app",
+            "bundle_framework_quick_fix",
+            "bundle_framework_form_dimension_2_3",
+            "bundle_framework_form_dimension_3_3",
+            "bundle_framework_bss_enable",
+            "bundle_framework_npapi_enable",
+            "bundle_framework_app_fwk_update_enable"
+        ],
+        "hisysevent_config": [
+            "//foundation/bundlemanager/bundle_framework/hisysevent.yaml",
+            "//foundation/bundlemanager/bundle_framework/bundle_hisysevent.yaml"
+        ],
+        "adapted_system_type": [
+            "standard"
+        ],
+        "rom": "~8000KB",
+        "ram": "~14106KB",
+        "deps": {
+            "components": [
+                "ability_base",
+                "ability_runtime",
+                "access_token",
+                "api_metrics",
+                "app_domain_verify",
+                "app_file_service",
+                "appverify",
+                "battery_manager",
+                "common_event_service",
+                "config_policy",
+                "c_utils",
+                "device_info_manager",
+                "device_manager",
+                "device_usage_statistics",
+                "dfs_service",
+                "display_manager",
+                "ecological_rule_manager",
+                "eventhandler",
+                "faultloggerd",
+                "ffrt",
+                "hicollie",
+                "hisysevent",
+                "hitrace",
+                "hilog",
+                "i18n",
+                "init",
+                "ipc",
+                "image_framework",
+                "memmgr",
+                "kv_store",
+                "libpng",
+                "libxml2",
+                "libuv",
+                "napi",
+                "node",
+                "openssl",
+                "os_account",
+                "power_manager",
+                "safwk",
+                "resource_management",
+                "samgr",
+                "sandbox_manager",
+                "selinux",
+                "selinux_adapter",
+                "syscap_codec",
+                "storage_service",
+                "window_manager",
+                "distributed_bundle_framework",
+                "relational_store",
+                "runtime_core",
+                "dlp_permission_service",
+                "code_signature",
+                "udmf",
+                "ace_engine",
+                "ets_runtime",
+                "json",
+                "zlib",
+                "appspawn",
+                "bounds_checking_function",
+                "webview",
+                "user_auth_framework",
+                "thermal_manager",
+                "icu"
+            ],
+            "third_party": [
+                "jsoncpp"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//foundation/bundlemanager/bundle_framework:bms_target",
+                "//foundation/bundlemanager/bundle_framework/etc:bms_para",
+                "//foundation/bundlemanager/bundle_framework/interfaces/kits/ani:ani_bms_packages"
+            ],
+            "inner_kits": [
+                {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_base/include",
+                      "header_files": [
+                        "ability_info.h",
+                        "appexecfwk_errors.h",
+                        "application_info.h",
+                        "bundle_info.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_base:appexecfwk_base"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_core/include",
+                      "header_files": [
+                        "bundlemgr/bundle_installer_interface.h",
+                        "bundlemgr/bundle_mgr_interface.h",
+                        "bundlemgr/bundle_status_callback_interface.h",
+                        "bundlemgr/clean_cache_callback_interface.h",
+                        "bundlemgr/process_cache_callback_interface.h",
+                        "bundlemgr/status_receiver_interface.h",
+                        "bundlemgr/bundle_installer_proxy.h",
+                        "bundlemgr/bundle_mgr_proxy.h",
+                        "bundlemgr/bundle_status_callback_proxy.h",
+                        "bundlemgr/bundle_stream_installer_proxy.h",
+                        "bundlemgr/bundle_user_mgr_proxy.h",
+                        "bundlemgr/clean_cache_callback_proxy.h",
+                        "bundlemgr/process_cache_callback_proxy.h",
+                        "bundlemgr/bundle_mgr_client_impl.h",
+                        "bundlemgr/local_plugin_installer_interface.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_core:appexecfwk_core"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_core/include",
+                      "header_files": [
+                        "bundlemgr/bundle_mgr_mini_proxy.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_core:bundlemgr_mini"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_core/include",
+                      "header_files": []
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/appexecfwk_core:appexecfwk_core_headers"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/bundlemgr_extension/include",
+                      "header_files": [
+                        "bms_extension_data_mgr.h",
+                        "bms_extension_profile.h",
+                        "bms_extension.h",
+                        "bundle_mgr_ext_register.h",
+                        "bundle_mgr_ext.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/inner_api/bundlemgr_extension:bundlemgr_extension"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/common/log/include",
+                      "header_files": [
+                        "app_log_wrapper.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/common:libappexecfwk_common"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/interfaces/kits/cj/src",
+                      "header_files": [
+                        "bundle_manager_convert.h",
+                        "bundle_manager_utils.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/kits/cj:cj_bundle_manager_ffi"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/interfaces/kits/js/common",
+                      "header_files": [
+                        "base_cb_info.h",
+                        "bundle_errors.h",
+                        "business_error.h",
+                        "common_func.h",
+                        "error_data.h",
+                        "napi_arg.h",
+                        "napi_constants.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/kits/js/common:bundle_napi_common"
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/interfaces/kits/ani/common/",
+                      "header_files": [
+                        "common_fun_ani.h",
+                        "enum_util.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/kits/ani/common:bms_ani_common"
+                  },
+                  {
+                    "name": "//foundation/bundlemanager/bundle_framework/interfaces/kits/ani/bundle_manager:copy_bundleManager_ets"
+                  },
+                  {
+                    "name": "//foundation/bundlemanager/bundle_framework/services/bundlemgr:bundle_tool_libs",
+                    "visibility": [
+                      "bundle_tool"
+                    ]
+                  },
+                  {
+                    "header": {
+                      "header_base": "//foundation/bundlemanager/bundle_framework/services/bundlemgr/spm_module_parser/include",
+                      "header_files": [
+                        "spm_module_parser.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework/services/bundlemgr/spm_module_parser:spm_module_parser"
+                  }
+            ],
+            "test": [
+                "//foundation/bundlemanager/bundle_framework:test_target"
+            ]
+        }
+    }
+}

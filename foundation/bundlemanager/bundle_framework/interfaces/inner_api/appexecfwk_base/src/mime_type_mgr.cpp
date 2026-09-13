@@ -1,0 +1,138 @@
+/*
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "mime_type_mgr.h"
+
+#include <memory>
+
+#include "app_log_wrapper.h"
+#include "bundle_constants.h"
+#ifdef BUNDLE_FRAMEWORK_UDMF_ENABLED
+#include "type_descriptor.h"
+#include "utd_client.h"
+#endif
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+constexpr const char* ZIP_FORMAT = ".zip.";
+constexpr const char* ZIP_SUFFIX = ".zip";
+constexpr const char* FILE_7Z_FORMAT = ".7z.";
+constexpr const char* FILE_7Z_SUFFIX = ".7z";
+}
+
+bool MimeTypeMgr::GetMimeTypeByUri(const std::string &uri, std::vector<std::string> &mimeTypes)
+{
+#ifdef BUNDLE_FRAMEWORK_UDMF_ENABLED
+    std::vector<std::string> utdVector;
+    if (!GetUtdVectorByUri(uri, utdVector)) {
+        APP_LOGD("Get utd vector by uri %{private}s failed", uri.c_str());
+        return false;
+    }
+    for (const std::string &utd : utdVector) {
+        std::shared_ptr<UDMF::TypeDescriptor> typeDescriptor;
+        auto ret = UDMF::UtdClient::GetInstance().GetTypeDescriptor(utd, typeDescriptor);
+        if (ret != UDMF::E_OK || typeDescriptor == nullptr) {
+            APP_LOGE("GetTypeDescriptor failed");
+            continue;
+        }
+        std::vector<std::string> tmpMimeTypes = typeDescriptor->GetMimeTypes();
+        if (tmpMimeTypes.empty()) {
+            APP_LOGD("tmpMimeTypes empty");
+            continue;
+        }
+        mimeTypes.insert(mimeTypes.end(), tmpMimeTypes.begin(), tmpMimeTypes.end());
+    }
+    return !mimeTypes.empty();
+#else
+    return false;
+#endif
+}
+
+bool MimeTypeMgr::GetMimeTypeByUri(const std::string &uri, std::string &mimeType)
+{
+    std::vector<std::string> mimeTypes;
+    bool ret = GetMimeTypeByUri(uri, mimeTypes);
+    if (!ret) {
+        return false;
+    }
+    mimeType = mimeTypes[0];
+    return true;
+}
+
+bool MimeTypeMgr::GetUriSuffix(const std::string &uri, std::string &suffix)
+{
+    if (IsSpecifiedSuffixNumberExtension(uri, ZIP_FORMAT)) {
+        suffix = ZIP_SUFFIX;
+        return true;
+    }
+    if (IsSpecifiedSuffixNumberExtension(uri, FILE_7Z_FORMAT)) {
+        suffix = FILE_7Z_SUFFIX;
+        return true;
+    }
+    auto suffixIndex = uri.rfind('.');
+    if (suffixIndex == std::string::npos) {
+        APP_LOGD("Get suffix failed %{private}s", uri.c_str());
+        return false;
+    }
+    suffix = uri.substr(suffixIndex);
+    std::transform(suffix.begin(), suffix.end(), suffix.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+    return true;
+}
+
+bool MimeTypeMgr::GetUtdVectorByUri(const std::string &uri, std::vector<std::string> &utdVector)
+{
+#ifdef BUNDLE_FRAMEWORK_UDMF_ENABLED
+    std::string suffix;
+    if (!GetUriSuffix(uri, suffix)) {
+        APP_LOGD("Get suffix failed %{private}s", uri.c_str());
+        return false;
+    }
+
+    if (suffix.empty()) {
+        return false;
+    }
+    if (suffix[0] != '.' || suffix.find("?") != std::string::npos ||
+        suffix.find(":") != std::string::npos || suffix.find("=") != std::string::npos ||
+        suffix.find("\\") != std::string::npos) {
+            return false;
+    }
+    auto ret = UDMF::UtdClient::GetInstance().GetUniformDataTypesByFilenameExtension(suffix, utdVector);
+    if (ret != UDMF::E_OK  || utdVector.empty()) {
+        APP_LOGD("Get utd vector by suffix %{public}s failed. err %{public}d", suffix.c_str(), ret);
+        return false;
+    }
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool MimeTypeMgr::IsSpecifiedSuffixNumberExtension(const std::string &uri, const std::string &suffix)
+{
+    size_t pos = uri.rfind(suffix);
+    if (pos == std::string::npos || pos + suffix.length() >= uri.length()) {
+        return false;
+    }
+    for (size_t i = pos + suffix.length(); i < uri.length(); ++i) {
+        if (!std::isdigit(static_cast<unsigned char>(uri[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+}
+}

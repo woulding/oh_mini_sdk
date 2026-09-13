@@ -1,0 +1,1710 @@
+/*
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ipc/installd_proxy.h"
+
+#include "app_log_tag_wrapper.h"
+#include "ashmem.h"
+#include "bundle_service_constants.h"
+#include "parcel_macro.h"
+#include "securec.h"
+#include "string_ex.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+constexpr int16_t WAIT_TIME = 3000;
+constexpr int16_t MAX_BATCH_QUERY_BUNDLE_SIZE = 1000;
+constexpr int16_t MAX_VEC_SIZE = 1000;
+constexpr int16_t MAX_STRING_SIZE = 1024;
+constexpr size_t MAX_PARCEL_CAPACITY_OF_ASHMEM = 1024 * 1024 * 1024; // allow max 1GB data size
+constexpr size_t MAX_IPC_REWDATA_SIZE = 120 * 1024 * 1024; // max ipc raw data size 120MB
+
+bool GetData(void *&buffer, size_t size, const void *data)
+{
+    if (data == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "GetData failed due to null data");
+        return false;
+    }
+    if (size == 0 || size > Constants::MAX_PARCEL_CAPACITY) {
+        LOG_E(BMS_TAG_INSTALLD, "GetData failed due to invalid size");
+        return false;
+    }
+    buffer = malloc(size);
+    if (buffer == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "GetData failed due to malloc buffer failed");
+        return false;
+    }
+    if (memcpy_s(buffer, size, data, size) != EOK) {
+        free(buffer);
+        LOG_E(BMS_TAG_INSTALLD, "GetData failed due to memcpy_s failed");
+        return false;
+    }
+    return true;
+}
+
+ErrCode GetParcelInfoFromAshMem(MessageParcel &reply, size_t dataSize, void *&data)
+{
+    sptr<Ashmem> ashMem = reply.ReadAshmem();
+    if (ashMem == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "Ashmem is nullptr");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    if (!ashMem->MapReadOnlyAshmem()) {
+        LOG_E(BMS_TAG_INSTALLD, "MapReadOnlyAshmem failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    int32_t ashMemSize = ashMem->GetAshmemSize();
+    if (ashMemSize <= 0 || ashMemSize > static_cast<int32_t>(MAX_PARCEL_CAPACITY_OF_ASHMEM) ||
+        static_cast<size_t>(ashMemSize) != dataSize) {
+        LOG_E(BMS_TAG_INSTALLD, "invalid ashmem size");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    int32_t offset = 0;
+    const void *ashDataPtr = ashMem->ReadFromAshmem(ashMemSize, offset);
+    if (ashDataPtr == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "ashDataPtr is nullptr");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    if (dataSize == 0 || dataSize > MAX_PARCEL_CAPACITY_OF_ASHMEM) {
+        LOG_E(BMS_TAG_INSTALLD, "invalid data size %{public}zu", dataSize);
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    data = malloc(dataSize);
+    if (data == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "malloc data failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    if (memcpy_s(data, dataSize, ashDataPtr, dataSize) != EOK) {
+        free(data);
+        LOG_E(BMS_TAG_INSTALLD, "memcpy_s failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return ERR_OK;
+}
+
+template <typename T>
+ErrCode InnerGetVectorFromParcelIntelligent(MessageParcel &reply, std::vector<T> &parcelableInfos)
+{
+    int32_t rawDataSize = reply.ReadInt32();
+    if (rawDataSize < 0) {
+        LOG_E(BMS_TAG_INSTALLD, "invalid data size %{public}d", rawDataSize);
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    size_t dataSize = static_cast<size_t>(rawDataSize);
+    if (dataSize == 0) {
+        LOG_D(BMS_TAG_INSTALLD, "parcel no data");
+        parcelableInfos.clear();
+        return ERR_OK;
+    }
+    if (dataSize > MAX_PARCEL_CAPACITY_OF_ASHMEM) {
+        LOG_E(BMS_TAG_INSTALLD, "data size too large %{public}zu", dataSize);
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    void *buffer = nullptr;
+    if (dataSize > MAX_IPC_REWDATA_SIZE) {
+        if (GetParcelInfoFromAshMem(reply, dataSize, buffer) != ERR_OK) {
+            LOG_E(BMS_TAG_INSTALLD, "read ashmem failed, size %{public}zu", dataSize);
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    } else if (!GetData(buffer, dataSize, reply.ReadRawData(dataSize))) {
+        LOG_E(BMS_TAG_INSTALLD, "read raw data failed, size %{public}zu", dataSize);
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel tempParcel;
+    if (!tempParcel.ParseFrom(reinterpret_cast<uintptr_t>(buffer), dataSize)) {
+        LOG_E(BMS_TAG_INSTALLD, "ParseFrom failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    int32_t size = tempParcel.ReadInt32();
+    if (size < 0 || size > MAX_VEC_SIZE) {
+        LOG_E(BMS_TAG_INSTALLD, "invalid vector size %{public}d", size);
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    parcelableInfos.clear();
+    CONTAINER_SECURITY_VERIFY(tempParcel, size, &parcelableInfos);
+    for (int32_t i = 0; i < size; ++i) {
+        std::unique_ptr<T> info(tempParcel.ReadParcelable<T>());
+        if (info == nullptr) {
+            LOG_E(BMS_TAG_INSTALLD, "Read Parcelable infos failed, index %{public}d", i);
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+        parcelableInfos.emplace_back(*info);
+    }
+    return ERR_OK;
+}
+}
+
+InstalldProxy::InstalldProxy(const sptr<IRemoteObject> &object) : IRemoteProxy<IInstalld>(object)
+{
+    LOG_NOFUNC_I(BMS_TAG_INSTALLD, "installd proxy instance created");
+}
+
+InstalldProxy::~InstalldProxy()
+{
+    LOG_NOFUNC_I(BMS_TAG_INSTALLD, "installd proxy instance destroyed");
+}
+
+ErrCode InstalldProxy::CreateBundleDir(
+    const std::string &bundleName, BundleDirScene scene, const std::string &bundleDir)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleDir));
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CREATE_BUNDLE_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::ExtractModuleFiles(const std::string &srcModulePath, const std::string &targetPath,
+    const std::string &targetSoPath, const std::string &cpuAbi, const bool needFakeDecompression,
+    const bool isSystemApp)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(srcModulePath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(targetPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(targetSoPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(cpuAbi));
+    INSTALLD_PARCEL_WRITE(data, Bool, needFakeDecompression);
+    INSTALLD_PARCEL_WRITE(data, Bool, isSystemApp);
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::EXTRACT_MODULE_FILES, data, reply, option);
+}
+
+ErrCode InstalldProxy::ExtractFiles(const ExtractParam &extractParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&extractParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable extractParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::EXTRACT_FILES, data, reply, option);
+}
+
+ErrCode InstalldProxy::ExtractHnpFiles(const std::map<std::string, std::string> &hnpPackageMap,
+    const ExtractParam &extractParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    int32_t mapSize = static_cast<int32_t>(hnpPackageMap.size());
+    INSTALLD_PARCEL_WRITE(data, Int32, mapSize);
+    for (const auto &[package, type] : hnpPackageMap) {
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(package));
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(type));
+    }
+    if (!data.WriteParcelable(&extractParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable extractParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::EXTRACT_HNP_FILES, data, reply, option);
+}
+
+ErrCode InstalldProxy::ProcessBundleInstallNative(const InstallHnpParam &installHnpParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&installHnpParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable extractParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::INSTALL_NATIVE, data, reply, option);
+}
+
+ErrCode InstalldProxy::ProcessBundleUnInstallNative(const std::string &userId, const std::string &packageName)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(userId));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(packageName));
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::UNINSTALL_NATIVE, data, reply, option);
+}
+
+ErrCode InstalldProxy::ExecuteAOT(const AOTArgs &aotArgs, std::vector<uint8_t> &pendSignData)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&aotArgs)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable aotArgs failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    ErrCode ret = TransactInstalldCmd(InstalldInterfaceCode::EXECUTE_AOT, data, reply, option);
+    if (ret == ERR_APPEXECFWK_INSTALLD_SIGN_AOT_DISABLE) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd ExecuteAOT failed when AOTSign disable");
+        if (!reply.ReadUInt8Vector(&pendSignData)) {
+            LOG_E(BMS_TAG_INSTALLD, "ReadUInt8Vector ExecuteAOT failed");
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::PendSignAOT(const std::string &anFileName, const std::vector<uint8_t> &signData)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(anFileName));
+    if (!data.WriteUInt8Vector(signData)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable PendSignAOT failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::PEND_SIGN_AOT, data, reply, option);
+}
+
+ErrCode InstalldProxy::StopAOT()
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::STOP_AOT, data, reply, option);
+}
+
+ErrCode InstalldProxy::DeleteUninstallTmpDirs(const std::vector<std::string> &dirs)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Uint32, dirs.size());
+    for (const std::string &dir : dirs) {
+        INSTALLD_PARCEL_WRITE(data, String, dir);
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::DELETE_UNINSTALL_TMP_DIRS, data, reply, option);
+}
+
+ErrCode InstalldProxy::RenameModuleDir(
+    const std::string &oldPath, const std::string &newPath, const std::string &bundleName, BundleDirScene scene)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(oldPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(newPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::RENAME_MODULE_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::CreateBundleDataDir(const CreateDirParam &createDirParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&createDirParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable createDirParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CREATE_BUNDLE_DATA_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::CreateBundleDataDirWithVector(const std::vector<CreateDirParam> &createDirParams)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (createDirParams.empty()) {
+        LOG_E(BMS_TAG_INSTALLD, "createDirParams size is empty");
+        return ERR_BUNDLE_MANAGER_INVALID_PARAMETER;
+    }
+    INSTALLD_PARCEL_WRITE(data, Uint32, createDirParams.size());
+    for (const auto &createDirParam : createDirParams) {
+        if (!data.WriteParcelable(&createDirParam)) {
+            LOG_E(BMS_TAG_INSTALLD, "WriteParcelable createDirParam failed");
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CREATE_BUNDLE_DATA_DIR_WITH_VECTOR, data, reply, option);
+}
+
+ErrCode InstalldProxy::RemoveBundleDataDir(
+    const std::string &bundleName, const int userId, bool isAtomicService, const bool async)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, userId);
+    INSTALLD_PARCEL_WRITE(data, Bool, isAtomicService);
+    INSTALLD_PARCEL_WRITE(data, Bool, async);
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::REMOVE_BUNDLE_DATA_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::RemoveModuleDataDir(const std::string &ModuleName, const int userid)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(ModuleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, userid);
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::REMOVE_MODULE_DATA_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::RemoveDir(const std::string &dir, BundleDirScene scene, const std::string &bundleName,
+    bool async)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Bool, async);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::REMOVE_DIR, data, reply, option);
+}
+
+int64_t InstalldProxy::GetDiskUsage(const std::string &dir, bool isRealPath)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+    INSTALLD_PARCEL_WRITE(data, Bool, isRealPath);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC, WAIT_TIME);
+    return TransactInstalldCmd(InstalldInterfaceCode::GET_DISK_USAGE, data, reply, option);
+}
+
+ErrCode InstalldProxy::GetDiskUsageFromPath(const std::vector<std::string> &path, const std::string &bundleName,
+    BundleDirScene scene, int64_t &statSize, int64_t timeoutMs)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (path.size() > Constants::MAX_CACHE_DIR_SIZE) {
+        LOG_E(BMS_TAG_INSTALLD, "cache path size invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    if (!data.WriteUint32(path.size())) {
+        LOG_E(BMS_TAG_INSTALLD, "failed: write path count fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    for (size_t i = 0; i < path.size(); i++) {
+        if (!data.WriteString(path[i])) {
+            LOG_E(BMS_TAG_INSTALLD, "WriteParcelable path:[%{public}s] failed",
+                path[i].c_str());
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+    INSTALLD_PARCEL_WRITE(data, Int64, timeoutMs);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC, WAIT_TIME);
+    ErrCode ret = TransactInstalldCmd(InstalldInterfaceCode::GET_DISK_USAGE_FROM_PATH, data, reply, option);
+    if (ret == ERR_OK) {
+        statSize = reply.ReadInt64();
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::GetBundleInodeCount(int32_t uid, uint64_t &inodeCount)
+{
+    MessageParcel data;
+    if (!data.WriteInterfaceToken(GetDescriptor())) {
+        APP_LOGE_NOFUNC("GetBundleInodeCount write interface token failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    if (!data.WriteInt32(uid)) {
+        APP_LOGE_NOFUNC("GetBundleInodeCount write uid failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC, WAIT_TIME);
+    ErrCode ret = TransactInstalldCmd(InstalldInterfaceCode::GET_BUNDLE_FILE_COUNT, data, reply, option);
+    if (ret != ERR_OK) {
+        APP_LOGE_NOFUNC("GetBundleInodeCount send request failed");
+        return ret;
+    }
+    inodeCount = reply.ReadUint64();
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::CleanBundleDataDir(const std::string &bundleDir,
+    const std::string &bundleName, int32_t userId)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleDir));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, userId);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC, WAIT_TIME);
+    return TransactInstalldCmd(InstalldInterfaceCode::CLEAN_BUNDLE_DATA_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::CleanBundleDataDirByName(const std::string &bundleName, const int userid, const int appIndex,
+    const bool isAtomicService)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, userid);
+    INSTALLD_PARCEL_WRITE(data, Int32, appIndex);
+    INSTALLD_PARCEL_WRITE(data, Bool, isAtomicService);
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CLEAN_BUNDLE_DATA_DIR_BY_NAME, data, reply, option);
+}
+
+ErrCode InstalldProxy::CleanBundleDirs(const std::vector<std::string> &dirs, bool keepParent,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    int32_t dirSize = static_cast<int32_t>(dirs.size());
+    INSTALLD_PARCEL_WRITE(data, Uint32, dirSize);
+
+    for (const std::string &dir : dirs) {
+        INSTALLD_PARCEL_WRITE(data, String, dir);
+    }
+    INSTALLD_PARCEL_WRITE(data, Bool, keepParent);
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CLEAN_BUNDLE_DIRS, data, reply, option);
+}
+
+ErrCode InstalldProxy::GetBundleStats(const std::string &bundleName, const int32_t userId,
+    std::vector<int64_t> &bundleStats, const std::unordered_set<int32_t> &uids, const int32_t appIndex,
+    const uint32_t statFlag, const std::vector<std::string> &moduleNameList)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, userId);
+    int32_t uidSize = static_cast<int32_t>(uids.size());
+    INSTALLD_PARCEL_WRITE(data, Int32, uidSize);
+    for (const auto &uid : uids) {
+        INSTALLD_PARCEL_WRITE(data, Int32, uid);
+    }
+    INSTALLD_PARCEL_WRITE(data, Int32, appIndex);
+    INSTALLD_PARCEL_WRITE(data, Uint32, statFlag);
+    if (!data.WriteInt32(moduleNameList.size())) {
+        LOG_E(BMS_TAG_INSTALLD, "GetBundleStats failed: write module name count fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    for (size_t i = 0; i < moduleNameList.size(); i++) {
+        if (!data.WriteString(moduleNameList[i])) {
+            LOG_E(BMS_TAG_INSTALLD, "WriteParcelable moduleNames:[%{public}s] failed",
+                moduleNameList[i].c_str());
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_BUNDLE_STATS, data, reply, option);
+    if (ret == ERR_OK) {
+        if (reply.ReadInt64Vector(&bundleStats)) {
+            return ERR_OK;
+        } else {
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::BatchGetBundleStats(const std::vector<std::string> &bundleNames,
+    const std::unordered_map<std::string, std::unordered_set<int32_t>> &uidMap,
+    std::vector<BundleStorageStats> &bundleStats)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    int32_t namesSize = static_cast<int32_t>(bundleNames.size());
+    INSTALLD_PARCEL_WRITE(data, Int32, namesSize);
+    for (const std::string &bundleName : bundleNames) {
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    }
+    int32_t uidMapSize = static_cast<int32_t>(uidMap.size());
+    INSTALLD_PARCEL_WRITE(data, Int32, uidMapSize);
+    for (const auto &[bundleName, uids] : uidMap) {
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+        int32_t uidSize = static_cast<int32_t>(uids.size());
+        INSTALLD_PARCEL_WRITE(data, Int32, uidSize);
+        for (const auto &uid : uids) {
+            INSTALLD_PARCEL_WRITE(data, Int32, uid);
+        }
+    }
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::BATCH_GET_BUNDLE_STATS, data, reply, option);
+    if (ret == ERR_OK) {
+        int32_t statsSize = reply.ReadInt32();
+        if (statsSize <= 0 || statsSize > MAX_BATCH_QUERY_BUNDLE_SIZE) {
+            APP_LOGW("statsSize failed");
+            return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+        }
+        bundleStats.clear();
+        for (int32_t i = 0; i < statsSize; i++) {
+            std::unique_ptr<BundleStorageStats> stat(reply.ReadParcelable<BundleStorageStats>());
+            if (stat == nullptr) {
+                LOG_E(BMS_TAG_INSTALLD, "BatchGetBundleStats failed: read BundleStorageStats fail");
+                return ERR_APPEXECFWK_NULL_PTR;
+            }
+            bundleStats.emplace_back(*stat);
+        }
+        return ERR_OK;
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::GetAllBundleStats(std::vector<int64_t> &bundleStats, const std::vector<int32_t> &uids)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    uint32_t uidSize = uids.size();
+    INSTALLD_PARCEL_WRITE(data, Uint32, uidSize);
+    for (const auto &uid : uids) {
+        INSTALLD_PARCEL_WRITE(data, Int32, uid);
+    }
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_ALL_BUNDLE_STATS, data, reply, option);
+    if (ret == ERR_OK) {
+        if (!reply.ReadInt64Vector(&bundleStats)) {
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+        return ERR_OK;
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::SetDirApl(const std::string &dir, const std::string &bundleName, const std::string &apl,
+    bool isPreInstallApp, bool debug, int32_t uid)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(apl));
+    INSTALLD_PARCEL_WRITE(data, Bool, isPreInstallApp);
+    INSTALLD_PARCEL_WRITE(data, Bool, debug);
+    INSTALLD_PARCEL_WRITE(data, Int32, uid);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::SET_DIR_APL, data, reply, option);
+}
+
+ErrCode InstalldProxy::SetDirsApl(const CreateDirParam &createDirParam, bool isExtensionDir)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&createDirParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable createDirParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    INSTALLD_PARCEL_WRITE(data, Bool, isExtensionDir);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::SET_DIRS_APL, data, reply, option);
+}
+
+ErrCode InstalldProxy::SetFileConForce(const std::vector<std::string> &paths, const CreateDirParam &createDirParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Uint32, paths.size());
+    for (const std::string &path : paths) {
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(path));
+    }
+    if (!data.WriteParcelable(&createDirParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable createDirParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::SET_FILE_CON_FORCE, data, reply, option);
+}
+
+ErrCode InstalldProxy::StopSetFileCon(const CreateDirParam &createDirParam, int32_t reason)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&createDirParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable createDirParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    INSTALLD_PARCEL_WRITE(data, Int32, reason);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::STOP_SET_FILE_CON, data, reply, option);
+}
+
+ErrCode InstalldProxy::SetArkStartupCacheApl(const std::string &bundleName, const std::string &dir)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::SET_ARK_STARTUP_CACHE_DIR_APL, data, reply, option);
+}
+
+ErrCode InstalldProxy::GetBundleCachePath(const std::string &dir, std::vector<std::string> &cachePath)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_BUNDLE_CACHE_PATH, data, reply, option);
+    if (ret == ERR_OK) {
+        if (reply.ReadStringVector(&cachePath)) {
+            return ERR_OK;
+        } else {
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::ScanDir(
+    const std::string &dir, ScanMode scanMode, ResultMode resultMode, std::vector<std::string> &paths)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scanMode));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(resultMode));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::SCAN_DIR, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+
+    if (!reply.ReadStringVector(&paths)) {
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::GetTopNLargestItemsInAppDataDir(const std::string &bundleName, const int32_t appIndex,
+    const int32_t userId, const int32_t timeout, std::string &largestItems)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, appIndex);
+    INSTALLD_PARCEL_WRITE(data, Int32, userId);
+    INSTALLD_PARCEL_WRITE(data, Int32, timeout);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_TOP_N_LARGEST_ITEMS_IN_APP_DATA_DIR, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+
+    // Read data size
+    size_t dataSize = reply.ReadUint64();
+    if (dataSize == 0) {
+        LOG_D(BMS_TAG_INSTALLD, "GetTopNLargestItemsInAppDataDir: no data returned");
+        largestItems.clear();
+        return ERR_OK;
+    }
+
+    // Read raw data into buffer
+    const void *buffer = reply.ReadRawData(dataSize);
+    if (buffer == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "failed to read raw data, size: %{public}zu", dataSize);
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    // Convert to string
+    largestItems.assign(reinterpret_cast<const char*>(buffer), dataSize);
+
+    LOG_D(BMS_TAG_INSTALLD, "GetTopNLargestItemsInAppDataDir: read JSON string, size: %{public}zu",
+        largestItems.size());
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::MoveFile(
+    const std::string &oldPath, const std::string &newPath, BundleDirScene scene, const std::string &bundleName)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(oldPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(newPath));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::MOVE_FILE, data, reply, option);
+}
+
+ErrCode InstalldProxy::RenameFile(const std::string &oldPath, const std::string &newPath)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(oldPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(newPath));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::RENAME_FILE, data, reply, option);
+}
+
+ErrCode InstalldProxy::CopyFile(const std::string &oldPath, const std::string &newPath, BundleDirScene scene,
+    const std::string &signatureFilePath)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(oldPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(newPath));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(signatureFilePath));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::COPY_FILE, data, reply, option);
+}
+
+ErrCode InstalldProxy::Mkdir(const std::string &dir, const int32_t mode, const int32_t uid, const int32_t gid,
+    const CreateDirParam &createDirParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+    INSTALLD_PARCEL_WRITE(data, Int32, mode);
+    INSTALLD_PARCEL_WRITE(data, Int32, uid);
+    INSTALLD_PARCEL_WRITE(data, Int32, gid);
+    if (!data.WriteParcelable(&createDirParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable createDirParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::MKDIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::GetFileStat(const std::string &file, BundleDirScene scene, FileStat &fileStat)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(file));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_FILE_STAT, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+
+    std::unique_ptr<FileStat> info(reply.ReadParcelable<FileStat>());
+    if (info == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "readParcelableInfo failed");
+        return ERR_APPEXECFWK_INSTALL_INSTALLD_SERVICE_ERROR;
+    }
+
+    fileStat = *info;
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::ChangeFileStat(const std::string &file, FileStat &fileStat, BundleDirScene scene)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(file));
+    if (!data.WriteParcelable(&fileStat)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable fileStat failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::CHANGE_FILE_STAT, data, reply, option);
+}
+
+ErrCode InstalldProxy::ExtractDiffFiles(const std::string &filePath, const std::string &targetPath,
+    const std::string &cpuAbi)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(filePath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(targetPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(cpuAbi));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::EXTRACT_DIFF_FILES, data, reply, option);
+}
+
+ErrCode InstalldProxy::ApplyDiffPatch(const std::string &oldSoPath, const std::string &diffFilePath,
+    const std::string &newSoPath, int32_t uid)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(oldSoPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(diffFilePath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(newSoPath));
+    INSTALLD_PARCEL_WRITE(data, Int32, uid);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::APPLY_DIFF_PATCH, data, reply, option);
+}
+
+ErrCode InstalldProxy::IsExistDir(const std::string &dir, bool &isExist)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::IS_EXIST_DIR, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    isExist = reply.ReadBool();
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::IsExistFile(const std::string &path, bool &isExist)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(path));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::IS_EXIST_FILE, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    isExist = reply.ReadBool();
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::IsExistApFile(const std::string &path, bool &isExist)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(path));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::IS_EXIST_AP_FILE, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    isExist = reply.ReadBool();
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::IsDirEmpty(const std::string &dir, bool &isDirEmpty)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::IS_DIR_EMPTY, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    isDirEmpty = reply.ReadBool();
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::ObtainQuickFixFileDir(const std::string &dir, std::vector<std::string> &dirVec)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(dir));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::OBTAIN_QUICK_FIX_DIR, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    if (!reply.ReadStringVector(&dirVec)) {
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::CopyFiles(const std::string &sourceDir, const std::string &destinationDir,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(sourceDir));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(destinationDir));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::COPY_FILES, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::GetNativeLibraryFileNames(const std::string &filePath, const std::string &cpuAbi,
+    std::vector<std::string> &fileNames)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(filePath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(cpuAbi));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_NATIVE_LIBRARY_FILE_NAMES, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    if (!reply.ReadStringVector(&fileNames)) {
+        LOG_E(BMS_TAG_INSTALLD, "ReadStringVector failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::VerifyCodeSignature(const CodeSignatureParam &codeSignatureParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&codeSignatureParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable codeSignatureParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::VERIFY_CODE_SIGNATURE, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::CheckEncryption(const CheckEncryptionParam &checkEncryptionParam, bool &isEncryption)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&checkEncryptionParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable checkEncryptionParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::CHECK_ENCRYPTION, data, reply, option);
+    isEncryption = reply.ReadBool();
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "CheckEncryption failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::MoveFiles(const std::string &srcDir, const std::string &desDir, const std::string &bundleName,
+    BundleDirScene scene)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(srcDir));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(desDir));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::MOVE_FILES, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::ExtractDriverSoFiles(const std::string &srcPath,
+    const std::unordered_multimap<std::string, std::string> &dirMap)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(srcPath));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(dirMap.size()));
+    for (auto &[orignialDir, destinedDir] : dirMap) {
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(orignialDir));
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(destinedDir));
+    }
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::EXTRACT_DRIVER_SO_FILE, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::ExtractEncryptedSoFiles(const std::string &hapPath, const std::string &realSoFilesPath,
+    const std::string &cpuAbi, const std::string &tmpSoPath, int32_t uid)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(hapPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(realSoFilesPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(cpuAbi));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(tmpSoPath));
+    INSTALLD_PARCEL_WRITE(data, Int32, uid);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::EXTRACT_CODED_SO_FILE, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::VerifyCodeSignatureForHap(const CodeSignatureParam &codeSignatureParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&codeSignatureParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable codeSignatureParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::VERIFY_CODE_SIGNATURE_FOR_HAP, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::DeliverySignProfile(const std::string &bundleName, int32_t profileBlockLength,
+    const unsigned char *profileBlock)
+{
+    if (profileBlockLength <= 0 || profileBlockLength > ServiceConstants::MAX_PROFILE_BLOCK_LENGTH
+        || profileBlock == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "invalid params");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    MessageParcel data;
+    (void)data.SetMaxCapacity(Constants::MAX_PARCEL_CAPACITY);
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, profileBlockLength);
+    if (!data.WriteRawData(profileBlock, profileBlockLength)) {
+        LOG_E(BMS_TAG_INSTALLD, "Failed to write raw data");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::DELIVERY_SIGN_PROFILE, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::RemoveSignProfile(const std::string &bundleName)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::REMOVE_SIGN_PROFILE, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::AddCertAndEnableKey(const std::string &certPath, const std::string &certContent)
+{
+    if (certPath.empty() || certContent.empty() || certPath.size() > Constants::BMS_MAX_PATH_LENGTH ||
+        certContent.size() > Constants::CAPACITY_SIZE) {
+        LOG_E(BMS_TAG_INSTALLD, "invalid params");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(certPath));
+    INSTALLD_PARCEL_WRITE(data, Uint32, certContent.size() + 1);
+    if (!data.WriteRawData(certContent.c_str(), certContent.size() + 1)) {
+        LOG_E(BMS_TAG_INSTALLD, "Failed to write raw data");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::ADD_CERT_AND_ENABLE_KEY, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::SetEncryptionPolicy(const EncryptionParam &encryptionParam, std::string &keyId)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&encryptionParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable encryptionParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::SET_ENCRYPTION_DIR, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    keyId = reply.ReadString();
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::DeleteEncryptionKeyId(const EncryptionParam &encryptionParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&encryptionParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable encryptionParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::DELETE_ENCRYPTION_KEY_ID, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::RemoveExtensionDir(int32_t userId, const std::vector<std::string> &extensionBundleDirs)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Int32, userId);
+    const auto size = extensionBundleDirs.size();
+    if (size > MAX_VEC_SIZE) {
+        APP_LOGE("fail to RemoveExtensionDir due to extensionBundleDirs size %{public}zu is too big", size);
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    INSTALLD_PARCEL_WRITE(data, Int32, size);
+    for (size_t i = 0; i < size; i++) {
+        if (extensionBundleDirs[i].size() > MAX_STRING_SIZE) {
+            APP_LOGE("extensionBundleDirs %{public}zu is too long", i);
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+        if (!data.WriteString(extensionBundleDirs[i])) {
+            APP_LOGE("fail to RemoveExtensionDir due to write extensionBundleDirs %{public}zu fail", i);
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::REMOVE_EXTENSION_DIR, data, reply, option);
+    if (ret != ERR_OK) {
+        APP_LOGE("TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::IsExistExtensionDir(int32_t userId, const std::string &extensionBundleDir, bool &isExist)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Int32, userId);
+    if (extensionBundleDir.size() > MAX_STRING_SIZE) {
+        APP_LOGE("extensionBundleDir is too long");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(extensionBundleDir));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::IS_EXIST_EXTENSION_DIR, data, reply, option);
+    if (ret != ERR_OK) {
+        APP_LOGE("TransactInstalldCmd failed");
+        return ret;
+    }
+    isExist = reply.ReadBool();
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::GetExtensionSandboxTypeList(std::vector<std::string> &typeList)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_EXTENSION_SANDBOX_TYPE_LIST, data, reply, option);
+    if (ret != ERR_OK) {
+        APP_LOGE("TransactInstalldCmd failed");
+        return ret;
+    }
+    if (!reply.ReadStringVector(&typeList)) {
+        APP_LOGE("fail to GetExtensionSandboxTypeList from reply");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::AddUserDirDeleteDfx(int32_t userId)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Int32, userId);
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::ADD_USER_DIR_DELETE_DFX, data, reply, option);
+    if (ret != ERR_OK) {
+        APP_LOGE("TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::CreateExtensionDataDir(const CreateDirParam &createDirParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (!data.WriteParcelable(&createDirParam)) {
+        LOG_E(BMS_TAG_INSTALLD, "WriteParcelable createDirParam failed");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CREATE_EXTENSION_DATA_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::MoveHapToCodeDir(const std::string &originPath, const std::string &targetPath)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(originPath));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(targetPath));
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    return TransactInstalldCmd(InstalldInterfaceCode::MOVE_HAP_TO_CODE_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::MigrateData(const std::vector<std::string> &sourcePaths, const std::string &destinationPath)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(sourcePaths.size()));
+    for (auto &path : sourcePaths) {
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(path));
+    }
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(destinationPath));
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::MIGRATE_DATA, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::CreateDataGroupDirs(const std::vector<CreateDirParam> &params)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (params.empty()) {
+        LOG_E(BMS_TAG_INSTALLD, "params is empty");
+        return ERR_BUNDLE_MANAGER_INVALID_PARAMETER;
+    }
+    INSTALLD_PARCEL_WRITE(data, Uint32, params.size());
+    for (const auto &param : params) {
+        if (!data.WriteParcelable(&param)) {
+            LOG_E(BMS_TAG_INSTALLD, "WriteParcelable param failed");
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CREATE_DATA_GROUP_DIRS, data, reply, option);
+}
+
+ErrCode InstalldProxy::DeleteDataGroupDirs(const std::vector<std::string> &uuidList, int32_t userId)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Uint32, uuidList.size());
+    for (const std::string &dir : uuidList) {
+        INSTALLD_PARCEL_WRITE(data, String, dir);
+    }
+    INSTALLD_PARCEL_WRITE(data, Int32, userId);
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::DELETE_DATA_GROUP_DIRS, data, reply, option);
+}
+
+ErrCode InstalldProxy::LoadInstalls()
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::LOAD_INSTALLS, data, reply, option);
+}
+
+ErrCode InstalldProxy::TransactInstalldCmd(InstalldInterfaceCode code, MessageParcel &data, MessageParcel &reply,
+    MessageOption &option)
+{
+    sptr<IRemoteObject> remote = Remote();
+    if (remote == nullptr) {
+        LOG_E(BMS_TAG_INSTALLD, "fail to send %{public}u cmd to service due to remote object is null",
+            (unsigned int)(code));
+        return ERR_APPEXECFWK_INSTALL_INSTALLD_SERVICE_ERROR;
+    }
+
+    if (remote->SendRequest(static_cast<uint32_t>(code), data, reply, option) != OHOS::NO_ERROR) {
+        LOG_E(BMS_TAG_INSTALLD, "fail to send %{public}u request to service due to transact error",
+            (unsigned int)(code));
+        return ERR_APPEXECFWK_INSTALLD_SERVICE_DIED;
+    }
+    return reply.ReadInt32();
+}
+
+ErrCode InstalldProxy::ClearDir(const std::string &dir, BundleDirScene scene)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String, dir);
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CLEAR_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::HashSoFile(const std::string &soPath, uint32_t catchSoNum, uint64_t catchSoMaxSize,
+    std::vector<std::string> &soName, std::vector<std::string> &soHash)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String, soPath);
+    INSTALLD_PARCEL_WRITE(data, Uint32, catchSoNum);
+    INSTALLD_PARCEL_WRITE(data, Uint64, catchSoMaxSize);
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_SO_HASH, data, reply, option);
+    if (ret == ERR_OK) {
+        if (reply.ReadStringVector(&soName) && reply.ReadStringVector(&soHash)) {
+            return ERR_OK;
+        } else {
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::HashFiles(const std::vector<std::string> &files, std::vector<std::string> &filesHash)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(files.size()));
+    for (auto &path : files) {
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(path));
+    }
+    
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_FILES_HASH, data, reply, option);
+    if (ret == ERR_OK) {
+        if (reply.ReadStringVector(&filesHash)) {
+            return ERR_OK;
+        } else {
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::RestoreconPath(const std::string &path, const std::string &bundleName, BundleDirScene scene)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String, path);
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::RESTORE_CON_LIBS, data, reply, option);
+}
+
+ErrCode InstalldProxy::ProcessBinFiles(const VerifyBinParam &verifyBinParam)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Parcelable, &verifyBinParam);
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::PROCESS_BIN_FILES, data, reply, option);
+}
+
+ErrCode InstalldProxy::CheckExternalSourcePluginSwitch(int32_t &outSwitchStatus)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+
+    MessageParcel reply;
+    MessageOption option;
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::CHECK_EXTERNAL_SOURCE_PLUGIN_SWITCH, data, reply, option);
+    if (ret == ERR_OK) {
+        outSwitchStatus = reply.ReadInt32();
+    }
+    return ret;
+}
+
+ErrCode InstalldProxy::CheckHspPluginCertValidity(const std::string &bundleName, int32_t sessionId)
+{
+    if (sessionId == 0) {
+        LOG_E(BMS_TAG_INSTALLD, "sessionId is 0, refused");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, sessionId);
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::CHECK_HSP_PLUGIN_CERT_VALIDITY, data, reply, option);
+}
+
+ErrCode InstalldProxy::ResetBmsDBSecurity()
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::RESTORE_CON_BMSDB, data, reply, option);
+}
+
+ErrCode InstalldProxy::CopyDir(const std::string &sourceDir, const std::string &destinationDir,
+    const std::string &bundleName, BundleDirScene scene)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, String, sourceDir);
+    INSTALLD_PARCEL_WRITE(data, String, destinationDir);
+    INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(bundleName));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(scene));
+
+    MessageParcel reply;
+    MessageOption option;
+    return TransactInstalldCmd(InstalldInterfaceCode::COPY_DIR, data, reply, option);
+}
+
+ErrCode InstalldProxy::ExtractSkillsPackage(const SkillsPackageParam &param,
+    std::vector<SkillsPackageInfo> &skillInfoList)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Parcelable, &param);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::EXTRACT_SKILLS_PACKAGE, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "ExtractSkillsPackage TransactInstalldCmd failed");
+        return ret;
+    }
+    return InnerGetVectorFromParcelIntelligent<SkillsPackageInfo>(reply, skillInfoList);
+}
+
+ErrCode InstalldProxy::DeleteCertAndRemoveKey(const std::vector<std::string> &certPaths)
+{
+    if (certPaths.empty() || certPaths.size() > ServiceConstants::MAX_ENTERPRISE_RESIGN_CERT_NUM) {
+        LOG_E(BMS_TAG_INSTALLD, "certPaths is empty or exceed max cert num:%{public}zu", certPaths.size());
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(certPaths.size()));
+    for (const std::string &path : certPaths) {
+        if (path.empty() || path.size() > Constants::BMS_MAX_PATH_LENGTH) {
+            LOG_E(BMS_TAG_INSTALLD, "path is empty or size is too large");
+            return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+        }
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(path));
+    }
+    
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::DELETE_CERT_AND_REMOVE_KEY, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::DeleteOldCacheFiles(
+    const std::vector<std::string> &paths, const uint64_t cacheSize, uint64_t &cleanedSize)
+{
+    if (paths.empty() || paths.size() > MAX_VEC_SIZE) {
+        LOG_E(BMS_TAG_INSTALLD, "paths is empty or exceed max path num:%{public}zu", paths.size());
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    INSTALLD_PARCEL_WRITE(data, Int32, static_cast<int32_t>(paths.size()));
+    for (const std::string &path : paths) {
+        INSTALLD_PARCEL_WRITE(data, String16, Str8ToStr16(path));
+    }
+    INSTALLD_PARCEL_WRITE(data, Uint64, cacheSize);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::DELETE_OLD_CACHE_FILES, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    cleanedSize = reply.ReadUint64();
+    return ERR_OK;
+}
+
+ErrCode InstalldProxy::GetCacheDiskUsageFromPath(const std::vector<std::string> &paths,
+    int64_t &statSize, int64_t timeoutMs)
+{
+    MessageParcel data;
+    INSTALLD_PARCEL_WRITE_INTERFACE_TOKEN(data, (GetDescriptor()));
+    if (paths.size() > Constants::MAX_CACHE_DIR_SIZE) {
+        LOG_E(BMS_TAG_INSTALLD, "paths size invalid");
+        return ERR_APPEXECFWK_INSTALLD_PARAM_ERROR;
+    }
+    if (!data.WriteUint32(paths.size())) {
+        LOG_E(BMS_TAG_INSTALLD, "failed: write paths count fail");
+        return ERR_APPEXECFWK_PARCEL_ERROR;
+    }
+    for (size_t i = 0; i < paths.size(); i++) {
+        if (!data.WriteString(paths[i])) {
+            LOG_E(BMS_TAG_INSTALLD, "WriteParcelable paths:[%{public}s] failed",
+                paths[i].c_str());
+            return ERR_APPEXECFWK_PARCEL_ERROR;
+        }
+    }
+    INSTALLD_PARCEL_WRITE(data, Int64, timeoutMs);
+
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC, WAIT_TIME);
+    auto ret = TransactInstalldCmd(InstalldInterfaceCode::GET_CACHE_DISK_USAGE_FROM_PATH, data, reply, option);
+    if (ret != ERR_OK) {
+        LOG_E(BMS_TAG_INSTALLD, "TransactInstalldCmd failed");
+        return ret;
+    }
+    statSize = reply.ReadInt64();
+    return ERR_OK;
+}
+}  // namespace AppExecFwk
+}  // namespace OHOS

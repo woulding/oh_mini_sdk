@@ -1,0 +1,65 @@
+# Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+
+module_output_path = "hiview/event_publish"
+
+group("unittest") {
+  testonly = true
+  deps = [ ":EventPublishTest" ]
+}
+
+config("hiview_event_publish_config_test") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [ "unittest/common" ]
+
+  if (hiview_appevent_publish_enable) {
+    defines = [ "APPEVENT_PUBLISH_ENABLE" ]
+  }
+}
+
+ohos_unittest("EventPublishTest") {
+  module_out_path = module_output_path
+
+  configs = [ ":hiview_event_publish_config_test" ]
+
+  sources = [
+    "unittest/common/app_event_handler_test.cpp",
+    "unittest/common/event_publish_test.cpp",
+    "unittest/common/event_publish_test_util.cpp",
+    "unittest/common/log_file_name_converter_test.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:logger",
+    "$hiview_base/event_publish:hiview_event_publish",
+    "$hiview_base/event_publish/test/resource:EventPublishJsTest",
+    "$hiview_base/utility:hiview_utility",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "hisysevent:libhisysevent",
+    "jsoncpp:jsoncpp",
+    "power_manager:powermgr_client",
+  ]
+
+  resource_config_file = "resource/ohos_test.xml"
+}

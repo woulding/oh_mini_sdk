@@ -1,0 +1,86 @@
+# Copyright (C) 2023-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+import("//foundation/CastEngine/castengine_cast_framework/cast_engine.gni")
+
+config("cast_session_config") {
+  include_dirs = [
+    "include",
+  ]
+}
+
+ohos_static_library("cast_session") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  sources = [
+    "src/cast_session_impl.cpp",
+    "src/cast_session_impl_stub.cpp",
+    "src/cast_session_listener_impl_proxy.cpp",
+    "src/cast_session_listeners.cpp",
+    "src/cast_session_state.cpp",
+  ]
+
+  configs = [
+    ":cast_session_config",
+    "${cast_engine_root}:cast_engine_default_config",
+  ]
+
+  public_configs = [
+    ":cast_session_config",
+    "src/channel:cast_session_channel_config",
+    "src/utils:cast_session_utils_config",
+    "src/rtsp:cast_session_rtsp_config",
+    "src/mirror:cast_session_mirror_config",
+    "src/stream:cast_session_stream_config",
+  ]
+
+  deps = [
+    "${cast_engine_common}:cast_engine_common_sources",
+    "${cast_engine_service}/src/device_manager:cast_discovery",
+    "${cast_engine_service}/src/session/src/utils:cast_session_utils",
+    "src/channel:cast_session_channel",
+    "src/mirror:cast_session_mirror",
+    "src/rtsp:cast_session_rtsp",
+    "src/stream:cast_session_stream",
+    "src/utils:cast_session_utils",
+  ]
+
+  external_deps = [
+    "ability_runtime:app_manager",
+    "audio_framework:audio_client",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "core_service:tel_core_service_api",
+    "device_manager:devicemanagersdk",
+    "dsoftbus:softbus_client",
+    "graphic_surface:surface",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "image_framework:image_native",
+    "init:libbegetutil",
+    "input:libmmi-client",
+    "ipc:ipc_core",
+    "jsoncpp:jsoncpp",
+    "jsoncpp:jsoncpp_static",
+    "openssl:libcrypto_shared",
+    "player_framework:media_client",
+    "power_manager:powermgr_client",
+    "wifi:wifi_sdk",
+  ]
+
+  subsystem_name = "castplus"
+  part_name = "cast_engine"
+}

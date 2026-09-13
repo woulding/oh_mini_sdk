@@ -1,0 +1,82 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("hiview_utils_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    ".",
+    "include",
+  ]
+}
+
+ohos_source_set("hiview_utility") {
+  cflags_cc = [ "-Os" ]
+  branch_protector_ret = "pac_ret"
+
+  public_configs = [ ":hiview_utils_config" ]
+
+  sources = [
+    "ash_memory_utils.cpp",
+    "bundle_util.cpp",
+    "cjson_util.cpp",
+    "common_utils.cpp",
+    "dynamic_module.cpp",
+    "ffrt_util.cpp",
+    "file_util.cpp",
+    "focused_event_util.cpp",
+    "freeze_json_util.cpp",
+    "hiview_config_util.cpp",
+    "hiview_db_util.cpp",
+    "hiview_zip_util.cpp",
+    "memory_util.cpp",
+    "parameter_ex.cpp",
+    "restorable_db_store.cpp",
+    "setting_observer_manager.cpp",
+    "sql_util.cpp",
+    "string_util.cpp",
+    "thread_util.cpp",
+    "time_util.cpp",
+  ]
+
+  defines = []
+  if (use_musl && musl_use_jemalloc && musl_use_jemalloc_dfx_intf) {
+    defines += [ "USE_JEMALLOC_DFX_INTF" ]
+  }
+
+  deps = [ "$hiview_base:logger" ]
+
+  external_deps = [
+    "ability_base:zuri",
+    "ability_runtime:dataobs_manager",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "data_share:datashare_consumer",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "relational_store:native_rdb",
+    "samgr:samgr_proxy",
+    "zlib:shared_libz",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+  ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}

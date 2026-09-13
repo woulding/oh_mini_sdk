@@ -1,0 +1,144 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+
+module_output_path = "developer_test/calculator"
+
+ohos_unittest("DfileTest") {
+  module_out_path = module_output_path
+
+  cflags = [
+      "-Wall",
+      "-fstack-protector-all",
+      "-D_FORTIFY_SOURCE=2",
+      "-DMBEDTLS_INCLUDED",
+      "-DNSTACKX_DEVICE_L2",
+      "-DNSTACKX_WITH_LINUX",
+      "-DENABLE_USER_LOG",
+      "-DOPENSSL_ARM_PLATFORM",
+      "-DBUILD_FOR_OHOS",
+  ]
+  cflags_cc = cflags
+  include_dirs = [
+    "$NSTACKX_ROOT/nstackx_core/dfile/include",
+    "$NSTACKX_ROOT/nstackx_core/dfile/interface",
+    "$NSTACKX_ROOT/nstackx_core/platform/unix",
+    "$NSTACKX_ROOT/nstackx_util/interface",
+    "$NSTACKX_ROOT/nstackx_util/platform/unix",
+  ]
+  sources = [ "test_dfile_test.cpp" ]
+  deps = [
+   "$NSTACKX_ROOT/nstackx_congestion:nstackx_congestion.open",
+   "$NSTACKX_ROOT/nstackx_core/dfile:nstackx_dfile.open",
+   "$NSTACKX_ROOT/nstackx_util:nstackx_util.open",
+  ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "hilog:libhilog",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_shared",
+  ]
+
+  deps += [ "//third_party/googletest:gtest_main" ]
+}
+
+ohos_unittest("DstreamTest") {
+  module_out_path = module_output_path
+
+  cflags = [
+      "-Wall",
+      "-fstack-protector-all",
+      "-D_FORTIFY_SOURCE=2",
+      "-DMBEDTLS_INCLUDED",
+      "-DNSTACKX_DEVICE_L2",
+      "-DNSTACKX_WITH_LINUX",
+      "-DENABLE_USER_LOG",
+      "-DOPENSSL_ARM_PLATFORM",
+      "-DBUILD_FOR_OHOS",
+  ]
+  cflags_cc = cflags
+  include_dirs = [
+    "$NSTACKX_ROOT/fillp/include",
+    "$NSTACKX_ROOT/fillp/src/public/include",
+    "$NSTACKX_ROOT/fillp/src/app_lib/include",
+    "$NSTACKX_ROOT/fillp/src/fillp_lib/include",
+    "$NSTACKX_ROOT/fillp/src/fillp_lib/include/fillp",
+    "$NSTACKX_ROOT/fillp/src/fillp_lib/include/wifi_info",
+  ]
+  sources = [ "test_dstream_test.cpp" ]
+  deps = [
+   "$NSTACKX_ROOT/nstackx_congestion:nstackx_congestion.open",
+   "$NSTACKX_ROOT/fillp:FillpSo.open",
+   "$NSTACKX_ROOT/nstackx_util:nstackx_util.open",
+  ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "hilog:libhilog",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_shared",
+  ]
+
+  deps += [ "//third_party/googletest:gtest_main" ]
+}
+
+ohos_unittest("DfinderTest") {
+  module_out_path = module_output_path
+
+  cflags = [
+      "-Wall",
+      "-fstack-protector-all",
+      "-D_FORTIFY_SOURCE=2",
+      "-DMBEDTLS_INCLUDED",
+      "-DNSTACKX_DEVICE_L2",
+      "-DNSTACKX_WITH_LINUX",
+      "-DENABLE_USER_LOG",
+      "-DOPENSSL_ARM_PLATFORM",
+      "-DBUILD_FOR_OHOS",
+  ]
+  cflags_cc = cflags
+  include_dirs = [
+    "$NSTACKX_ROOT/nstackx_ctrl/include",
+    "$NSTACKX_ROOT/nstackx_ctrl/interface",
+  ]
+  sources = [
+    "dfinder_gtest/json_payload_ut.cpp",
+    "dfinder_gtest/nstackx_common_ut.cpp",
+    "dfinder_gtest/nstackx_device_local_ut.cpp",
+    "dfinder_gtest/nstackx_device_remote_ut.cpp",
+    "dfinder_gtest/nstackx_dfinder_hidump_ut.cpp",
+    "dfinder_gtest/nstackx_dfinder_hievent_ut.cpp",
+  ]
+  deps = [
+   "$NSTACKX_ROOT/nstackx_congestion:nstackx_congestion.open",
+   "$NSTACKX_ROOT/nstackx_ctrl:nstackx_ctrl",
+   "$NSTACKX_ROOT/nstackx_util:nstackx_util.open",
+  ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "hilog:libhilog",
+    "mbedtls:mbedtls_shared",
+    "openssl:libcrypto_shared",
+  ]
+
+  deps += [ "//third_party/googletest:gtest_main" ]
+}
+
+group("unittest") {
+  testonly = true
+  deps = [
+    ":DfileTest",
+    ":DstreamTest",
+    ":DfinderTest",
+  ]
+}

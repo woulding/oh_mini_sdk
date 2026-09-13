@@ -1,0 +1,41 @@
+# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+group("testOverlay") {
+  testonly = true
+  deps = []
+
+  deps += [
+    # deps file
+    "internal_overlay_install_test1:internalOverlayTest1",
+    "internal_overlay_install_test12:internalOverlayTest12",
+    "internal_overlay_install_test14:internalOverlayTest14",
+    "internal_overlay_install_test15:internalOverlayTest15",
+    "internal_overlay_install_test18:internalOverlayTest18",
+    "internal_overlay_install_test19:priority_101",
+    "internal_overlay_install_test2:priority_0",
+    "internal_overlay_install_test3:internalOverlayTest3",
+    "internal_overlay_install_test4:internalOverlayTest4",
+    "internal_overlay_install_test5:internalOverlayTest5",
+    "internal_overlay_install_test6:internalOverlayTest6",
+    "target_module_entry:entry_hap",
+    "target_module_entry/feature:entry_hapB",
+    "target_module_entry_fa_model:entry_fa",
+    "target_module_entry_higher_version:higher_version_entry_hap",
+    "target_module_entry_higher_version/feature:higher_version_entry_hapB",
+    "target_module_entry_lower_version_fa:entry_fa_lower_version",
+    "target_module_feature:feature_hap",
+    "target_module_feature1:feature1_hap",
+    "target_module_feature_higher_version:higher_version_feature_hap",
+  ]
+}

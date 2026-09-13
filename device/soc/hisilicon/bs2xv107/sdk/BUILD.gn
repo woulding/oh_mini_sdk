@@ -1,0 +1,67 @@
+# Copyright (c) 2026 Hihope Open Source Organization.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/lite/config/component/lite_component.gni")
+import("//test/xts/tools/lite/hctest/hctest_opt_args.gni")
+
+declare_args() {
+  build_bs21e_sdk_open = false
+  enable_hos_vendor_wifiiot_xts = false
+  enable_oh_device_lite_auth = false
+  build_bs21e_mode = "normal"
+  enable_product_config_patch = false
+}
+
+build_env = "BUILD_BS21E_MODE=${build_bs21e_mode} ENABLE_PRODUCT_CONFIG_PATCH=${enable_product_config_patch}"
+if (build_xts) {
+  build_env += " BUILD_XTS=1"
+}
+build_env += " XTS_OVERLAY_ARG=${xts_overlay} HCTEST_RODATA_OPT_ARG=${hctest_rodata_opt}"
+group("nearllink_sdk") {
+  deps = [ ":sdk" ]
+}
+
+build_ext_component("run_sdk_build") {
+  exec_path = rebase_path(".", root_build_dir)
+  outdir = rebase_path(root_out_dir)
+  command = "env $build_env bash hm_build.sh $outdir $build_bs21e_sdk_open"
+  deps = [
+    ":sdk",
+    "//build/lite:ohos"
+  ]
+  if (enable_oh_device_lite_auth) {
+    deps += [ "//base/security/device_auth/frameworks/deviceauth_lite:hichainsdk" ]
+  }
+  if (enable_hos_vendor_wifiiot_xts) {
+    deps += [ "//build/lite/config/subsystem/xts:xts" ]
+  }
+
+  # Explicit deps avoid an intermittent GN/Ninja race where the OHOS libs are
+  # copied before archiving finishes ("No rule to make target libdevattest_sdk.a").
+  if (ohos_kernel_type == "liteos_m") {
+    deps += [
+      "//test/xts/device_attest_lite/framework:devattest_sdk",
+      "//test/xts/device_attest_lite/services/core:devattest_core",
+    ]
+  }
+}
+
+lite_component("sdk") {
+  features = []
+
+  deps = [
+    "//build/lite/config/component/cJSON:cjson_static",
+    "//device/soc/hisilicon/bs2xv107/adapter/hals/communication/ble_lite",
+    "//device/soc/hisilicon/bs2xv107/adapter/hals/communication/sle_lite",
+  ]
+}

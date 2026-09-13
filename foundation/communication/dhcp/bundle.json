@@ -1,0 +1,120 @@
+{
+    "name": "@ohos/dhcp",
+    "version": "3.1.0",
+    "description": "The DHCP module provides DHCP client and DHCP service, used to obtain, assign and manage IP address.",
+    "homePage": "https://gitee.com/openharmony",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/communication_dhcp",
+    "domain": "os",
+    "language": "",
+    "publishAs": "code-segment",
+    "private": false,
+    "scripts": {},
+    "tags": [
+        "foundation"
+    ],
+    "keywords": [
+        "communication",
+        "dhcp"
+    ],
+    "envs": [],
+    "dirs": [],
+    "author": {
+        "name": "",
+        "email": "",
+        "url": ""
+    },
+    "contributors": [
+        {
+            "name": "",
+            "email": "",
+            "url": ""
+        }
+    ],
+    "segment": {
+        "destPath": "foundation/communication/dhcp"
+    },
+    "component": {
+        "name": "dhcp",
+        "subsystem": "communication",
+        "syscap": [
+        ],
+        "features": [
+        ],
+        "adapted_system_type": [
+            "small",
+            "standard"
+        ],
+        "rom": "",
+        "ram": "",
+        "deps": {
+            "components": [
+                "ability_runtime",
+                "bounds_checking_function",
+                "bundle_framework",
+                "c_utils",
+                "hilog",
+                "init",
+                "ipc",
+                "netmanager_base",
+                "safwk",
+                "access_token",
+                "samgr",
+                "ffrt",
+                "time_service",
+                "wifi"
+            ],
+            "third_party": [ "openssl" ]
+        },
+        "build": {
+            "group_type": {
+                "base_group": [
+                    "//foundation/communication/dhcp/frameworks/native:dhcp_sdk",
+                    "//foundation/communication/dhcp/services/dhcp_client:dhcp_client",
+                    "//foundation/communication/dhcp/services/dhcp_client:dhcp_updater_client",
+                    "//foundation/communication/dhcp/services/dhcp_server:dhcp_server",
+                    "//foundation/communication/dhcp/services/sa_profile:wifi_standard_sa_profile",
+                    "//foundation/communication/dhcp/services/utils:dhcp_utils"
+                ],
+                "fwk_group": [],
+                "service_group": []
+            },
+            "inner_api": [
+	    	{
+                    "header" : {
+                        "header_base": "//foundation/communication/dhcp/interfaces/",
+                        "header_files": [ ]
+                    },
+                    "name" : "//foundation/communication/dhcp/frameworks/native:dhcp_sdk"
+                },
+                {
+                    "header" : {
+                        "header_base": "//foundation/communication/dhcp/services/dhcp_client/include",
+                        "header_files": []
+                    },
+                    "name" : "//foundation/communication/dhcp/services/dhcp_client:dhcp_updater_client"
+                },
+                {
+                    "header" : {
+                        "header_base": "//foundation/communication/dhcp/interfaces/kits/c",
+                        "header_files": [ ]
+                    },
+                    "name" : "//foundation/communication/dhcp/services/dhcp_client:dhcp_client"
+                },
+                {
+                    "header" : {
+                        "header_base": "//foundation/communication/dhcp/services/utils/include",
+                        "header_files": []
+                    },
+                    "name" : "//foundation/communication/dhcp/services/utils:dhcp_utils"
+                }
+            ],
+            "test": [
+                "//foundation/communication/dhcp/test/unittest:dhcp_unittest",
+                "//foundation/communication/dhcp/test/fuzztest:fuzztest"
+            ]
+        },
+        "hisysevent_config": [
+        ]
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "parts": {
+    "device_fbb_ws53": {
+      "module_list": [
+        "//device/soc/hisilicon/ws53v106:ws53v106"
+      ]
+    }
+  },
+  "subsystem": "device_fbb_ws53"
+}

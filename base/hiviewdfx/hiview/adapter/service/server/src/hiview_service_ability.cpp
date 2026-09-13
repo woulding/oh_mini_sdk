@@ -1,0 +1,637 @@
+/*
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "hiview_service_ability.h"
+
+#include <cstdio>
+#include <dirent.h>
+#include <fcntl.h>
+#include <functional>
+#include <mutex>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "accesstoken_kit.h"
+#include "client/trace_collector_client.h"
+#include "client/memory_collector_client.h"
+#include "file_util.h"
+#include "ffrt.h"
+#include "hiview_log_config_manager.h"
+#include "hiview_xcollie_timer.h"
+#include "ipc_skeleton.h"
+#include "iservice_registry.h"
+#include "parameter_ex.h"
+#include "string_util.h"
+#include "system_ability_definition.h"
+#include "utility/trace_collector.h"
+#include "xcollie/ipc_full.h"
+#include "common_utils.h"
+#include "bundle_util.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+namespace {
+DEFINE_LOG_TAG("HiViewSA");
+constexpr int MAXRETRYTIMEOUT = 10;
+constexpr int32_t MAX_SPLIT_MEMORY_SIZE = 256;
+constexpr int32_t MEDIA_UID = 1013;
+constexpr int32_t MEMMGR_UID = 1111;
+constexpr int32_t RENDER_SERVICE_UID = 1003;
+const int64_t MS_TO_US = 1000;
+constexpr char READ_HIVIEW_SYSTEM_PERMISSION[] = "ohos.permission.READ_HIVIEW_SYSTEM";
+constexpr char WRITE_HIVIEW_SYSTEM_PERMISSION[] = "ohos.permission.WRITE_HIVIEW_SYSTEM";
+constexpr char HIVIEW_TRACE_MANAGE_PERMISSION[] = "ohos.permission.HIVIEW_TRACE_MANAGE";
+constexpr uint64_t IPC_FULL_CHECK_INTERVAL = 10; // 10s
+constexpr size_t MAX_LEN_OF_TRACE_PREFIX = 20;
+constexpr uint32_t MIN_TRACE_BUFFER_SIZE = 1024; // 1M
+constexpr uint32_t MAX_TRACE_BUFFER_SIZE = 15 * 1024; // 15M
+constexpr uint32_t MIN_TRACE_DURATION = 1000; // 1s
+constexpr uint32_t MAX_TRACE_DURATION = 15 * 1000; // 15s
+
+std::string ComposeFilePath(const std::string& rootDir, const std::string& destDir, const std::string& fileName)
+{
+    std::string filePath(rootDir);
+    if (destDir.empty()) {
+        filePath.append("/").append(fileName);
+    } else {
+        filePath.append("/").append(destDir).append("/").append(fileName);
+    }
+    return filePath;
+}
+
+bool HasAccessPermission(const std::string& permission)
+{
+    using namespace Security::AccessToken;
+    AccessTokenID callerToken = IPCSkeleton::GetCallingTokenID();
+    int verifyResult = AccessTokenKit::VerifyAccessToken(callerToken, permission);
+    if (verifyResult == PERMISSION_GRANTED) {
+        return true;
+    }
+    HIVIEW_LOGW("%{public}s not granted.", permission.c_str());
+    return false;
+}
+
+bool IsSafePath(const std::string& basePath, const std::string& fullPath)
+{
+    std::string realBasePath;
+    if (!FileUtil::PathToRealPath(basePath, realBasePath)) {
+        HIVIEW_LOGE("real basePath failed.");
+        return false;
+    }
+    std::string realFullPath;
+    if (!FileUtil::PathToRealPath(fullPath, realFullPath)) {
+        HIVIEW_LOGE("real fullPath failed.");
+        return false;
+    }
+    return realFullPath.find(realBasePath) == 0;
+}
+
+void CheckAndReplaceTraceParam(std::string& prefix, uint32_t& bufferSize, uint32_t& duration)
+{
+    if (bufferSize < MIN_TRACE_BUFFER_SIZE) {
+        bufferSize = MIN_TRACE_BUFFER_SIZE;
+    } else if (bufferSize > MAX_TRACE_BUFFER_SIZE) {
+        bufferSize = MAX_TRACE_BUFFER_SIZE;
+    }
+    if (duration < MIN_TRACE_DURATION) {
+        duration = MIN_TRACE_DURATION;
+    } else if (duration > MAX_TRACE_DURATION) {
+        duration = MAX_TRACE_DURATION;
+    }
+    if (prefix.length() > MAX_LEN_OF_TRACE_PREFIX) {
+        prefix = prefix.substr(0, MAX_LEN_OF_TRACE_PREFIX);
+    }
+    // char is [a-zA-Z0-9_]
+    bool isValid = std::all_of(prefix.begin(), prefix.end(), [](char c) {
+        return isalnum(static_cast<unsigned char>(c)) || c == '_';
+    });
+    if (!isValid) {
+        prefix = "";
+    }
+}
+}
+
+int HiviewServiceAbility::Dump(int32_t fd, const std::vector<std::u16string> &args)
+{
+    auto service = GetOrSetHiviewService(nullptr);
+    if (service != nullptr) {
+        std::vector<std::string> cmds;
+        for (const auto &arg : args) {
+            cmds.push_back(StringUtil::ConvertToUTF8(arg));
+        }
+        service->DumpRequestDispatcher(fd, cmds);
+    }
+    return 0;
+}
+
+HiviewServiceAbility::HiviewServiceAbility() : SystemAbility(DFX_SYS_HIVIEW_ABILITY_ID, true)
+{
+    HIVIEW_LOGI("begin, cmd : %d", DFX_SYS_HIVIEW_ABILITY_ID);
+}
+
+HiviewServiceAbility::~HiviewServiceAbility()
+{
+    HIVIEW_LOGI("begin, cmd : %d", DFX_SYS_HIVIEW_ABILITY_ID);
+}
+
+void HiviewServiceAbility::StartServiceAbility(int sleepS)
+{
+    sptr<ISystemAbilityManager> serviceManager;
+
+    int retryTimeout = MAXRETRYTIMEOUT;
+    while (retryTimeout > 0) {
+        --retryTimeout;
+        if (sleepS > 0) {
+            sleep(sleepS);
+        }
+
+        SystemAbilityManagerClient::GetInstance().DestroySystemAbilityManagerObject();
+        serviceManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+        if (serviceManager == nullptr) {
+            continue;
+        }
+
+        int result = serviceManager->AddSystemAbility(DFX_SYS_HIVIEW_ABILITY_ID, new HiviewServiceAbility());
+        if (result != 0) {
+            HIVIEW_LOGE("AddSystemAbility error %d", result);
+            continue;
+        }
+        break;
+    }
+
+    if (serviceManager == nullptr) {
+        HIVIEW_LOGE("serviceManager == nullptr");
+        return;
+    }
+
+    auto abilityObjext = serviceManager->AsObject();
+    if (abilityObjext == nullptr) {
+        HIVIEW_LOGE("AsObject() == nullptr");
+        return;
+    }
+
+    bool ret = abilityObjext->AddDeathRecipient(new HiviewServiceAbilityDeathRecipient());
+    if (ret == false) {
+        HIVIEW_LOGE("AddDeathRecipient == false");
+    }
+
+    if (!HiviewDFX::IpcFull::GetInstance().AddIpcFull(IPC_FULL_CHECK_INTERVAL, XCOLLIE_FLAG_DEFAULT)) {
+        HIVIEW_LOGE("AddIpcFull failed");
+    }
+}
+
+void HiviewServiceAbility::StartService(HiviewService *service)
+{
+    GetOrSetHiviewService(service);
+    StartServiceAbility(0);
+}
+
+HiviewService *HiviewServiceAbility::GetOrSetHiviewService(HiviewService *service)
+{
+    static HiviewService *ref = nullptr;
+    if (service != nullptr) {
+        ref = service;
+    }
+    return ref;
+}
+
+ErrCode HiviewServiceAbility::ListFiles(const std::string& logType, std::vector<HiviewFileInfo>& fileInfos)
+{
+    HiviewXCollieTimer timer("ListFiles", SYS_CALLING_TIMEOUT);
+    if (!HasAccessPermission(READ_HIVIEW_SYSTEM_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    auto configInfoPtr = HiviewLogConfigManager::GetInstance().GetConfigInfoByType(logType);
+    if (configInfoPtr == nullptr) {
+        HIVIEW_LOGI("invalid logtype: %{public}s", logType.c_str());
+        return HiviewNapiErrCode::ERR_INNER_INVALID_LOGTYPE;
+    }
+    GetFileInfoUnderDir(configInfoPtr->path, fileInfos);
+    return 0;
+}
+
+void HiviewServiceAbility::GetFileInfoUnderDir(const std::string& dirPath, std::vector<HiviewFileInfo>& fileInfos)
+{
+    DIR* dir = opendir(dirPath.c_str());
+    if (dir == nullptr) {
+        HIVIEW_LOGW("open dir failed.");
+        return;
+    }
+    struct stat statBuf {};
+    for (auto* ent = readdir(dir); ent != nullptr; ent = readdir(dir)) {
+        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0 || ent->d_type == DT_DIR) {
+            continue;
+        }
+        std::string filePath(dirPath + ent->d_name);
+        if (stat(filePath.c_str(), &statBuf) != 0) {
+            HIVIEW_LOGW("stat file failed.");
+            continue;
+        }
+        fileInfos.emplace_back(ent->d_name, statBuf.st_mtime, statBuf.st_size);
+    }
+    closedir(dir);
+}
+
+ErrCode HiviewServiceAbility::Copy(const std::string& logType, const std::string& logName, const std::string& dest)
+{
+    HiviewXCollieTimer timer("Copy", SYS_CALLING_TIMEOUT);
+    if (!HasAccessPermission(READ_HIVIEW_SYSTEM_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    return CopyOrMoveFile(logType, logName, dest, false);
+}
+
+ErrCode HiviewServiceAbility::Move(const std::string& logType, const std::string& logName, const std::string& dest)
+{
+    HiviewXCollieTimer timer("Move", TWO_MINUTES_TIMEOUT);
+    if (!HasAccessPermission(WRITE_HIVIEW_SYSTEM_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    return CopyOrMoveFile(logType, logName, dest, true);
+}
+
+ErrCode HiviewServiceAbility::CopyOrMoveFile(
+    const std::string& logType, const std::string& logName, const std::string& dest, bool isMove)
+{
+    auto service = GetOrSetHiviewService();
+    if (service == nullptr) {
+        return HiviewNapiErrCode::ERR_DEFAULT;
+    }
+    auto configInfoPtr = HiviewLogConfigManager::GetInstance().GetConfigInfoByType(logType);
+    if (configInfoPtr == nullptr) {
+        HIVIEW_LOGI("invalid logtype: %{public}s", logType.c_str());
+        return HiviewNapiErrCode::ERR_INNER_INVALID_LOGTYPE;
+    }
+    if (isMove && configInfoPtr->isReadOnly) {
+        HIVIEW_LOGW("log: %{public}s is read only.", logType.c_str());
+        return HiviewNapiErrCode::ERR_INNER_READ_ONLY;
+    }
+    int32_t uid = IPCSkeleton::GetCallingUid();
+    HIVIEW_LOGD("uid %{public}d, isMove: %{public}d, type:%{public}s",
+        uid, isMove, logType.c_str());
+    std::string sandboxPath = BundleUtil::GetSandBoxPath(uid, "base", "cache/hiview");
+    if (sandboxPath.empty()) {
+        return HiviewNapiErrCode::ERR_DEFAULT;
+    }
+    std::string sourceFile = configInfoPtr->path + logName;
+    if (!IsSafePath(configInfoPtr->path, sourceFile)) {
+        HIVIEW_LOGW("invalid logName.");
+        return HiviewNapiErrCode::ERR_SOURCE_FILE_NOT_EXIST;
+    }
+    if (!FileUtil::FileExists(sourceFile)) {
+        HIVIEW_LOGW("file not exist.");
+        return HiviewNapiErrCode::ERR_SOURCE_FILE_NOT_EXIST;
+    }
+    if (!dest.empty() && !IsSafePath(sandboxPath, sandboxPath + "/" + dest)) {
+        HIVIEW_LOGW("invalid dest dir.");
+        return HiviewNapiErrCode::ERR_DEFAULT;
+    }
+    std::string fullPath = ComposeFilePath(sandboxPath, dest, logName);
+    return isMove ? service->Move(sourceFile, fullPath) : service->Copy(sourceFile, fullPath);
+}
+
+ErrCode HiviewServiceAbility::Remove(const std::string& logType, const std::string& logName)
+{
+    HiviewXCollieTimer timer("Remove", SYS_CALLING_TIMEOUT);
+    if (!HasAccessPermission(WRITE_HIVIEW_SYSTEM_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    auto service = GetOrSetHiviewService();
+    if (service == nullptr) {
+        return HiviewNapiErrCode::ERR_DEFAULT;
+    }
+    auto configInfoPtr = HiviewLogConfigManager::GetInstance().GetConfigInfoByType(logType);
+    if (configInfoPtr == nullptr) {
+        HIVIEW_LOGI("invalid logtype: %{public}s", logType.c_str());
+        return HiviewNapiErrCode::ERR_INNER_INVALID_LOGTYPE;
+    }
+    if (configInfoPtr->isReadOnly) {
+        HIVIEW_LOGW("log: %{public}s is read only.", logType.c_str());
+        return HiviewNapiErrCode::ERR_INNER_READ_ONLY;
+    }
+    std::string sourceFile = configInfoPtr->path + logName;
+    if (!IsSafePath(configInfoPtr->path, sourceFile)) {
+        HIVIEW_LOGW("invalid logName.");
+        return HiviewNapiErrCode::ERR_SOURCE_FILE_NOT_EXIST;
+    }
+    if (!FileUtil::FileExists(sourceFile)) {
+        HIVIEW_LOGW("file not exist.");
+        return HiviewNapiErrCode::ERR_SOURCE_FILE_NOT_EXIST;
+    }
+    return service->Remove(sourceFile);
+}
+
+void HiviewServiceAbility::OnDump()
+{
+    HIVIEW_LOGI("called");
+}
+
+void HiviewServiceAbility::OnStart()
+{
+    HIVIEW_LOGI("called");
+}
+
+void HiviewServiceAbility::OnStop()
+{
+    HIVIEW_LOGI("called");
+}
+
+ErrCode HiviewServiceAbility::OpenTrace(const std::vector<std::string> &tags, const TraceParamParcelable &traceParam,
+    const std::vector<int32_t> &filterPids, int32_t& errNo, int32_t &retData)
+{
+    HiviewXCollieTimer timer("OpenTrace", TWO_MINUTES_TIMEOUT);
+    if (!HasAccessPermission(HIVIEW_TRACE_MANAGE_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    auto param = traceParam.GetTraceParam();
+    auto traceRetHandler = [&tags, &param, &filterPids] (HiviewService* service) {
+        return service->OpenTrace(tags, param, filterPids);
+    };
+    TraceCalling<int32_t>(traceRetHandler, errNo, retData);
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::DumpSnapshotTrace(int32_t client, const std::string& outputPath,
+    int32_t& errNo, std::vector<std::string>& files)
+{
+    HiviewXCollieTimer timer("DumpSnapshotTrace", TWO_MINUTES_TIMEOUT);
+    if (!HasAccessPermission(HIVIEW_TRACE_MANAGE_PERMISSION) &&
+        !HasAccessPermission(READ_HIVIEW_SYSTEM_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    auto token_type = Security::AccessToken::AccessTokenKit::GetTokenType(IPCSkeleton::GetCallingTokenID());
+    std::string caller;
+    auto traceClient = static_cast<UCollect::TraceClient>(client);
+    bool isNeedFlowControl = false;
+    if (traceClient == UCollect::TraceClient::COMMAND) {
+        caller = "traceCommand";
+    } else if (token_type == Security::AccessToken::TOKEN_HAP) {
+        int32_t uid = IPCSkeleton::GetCallingUid();
+        caller = BundleUtil::GetApplicationNameById(uid);
+    } else {
+        int32_t pid = IPCSkeleton::GetCallingPid();
+        caller = CommonUtils::GetProcNameByPid(pid);
+        isNeedFlowControl = true;
+    }
+    if (caller.empty()) {
+        HIVIEW_LOGE("Get callName failed.");
+        return UCollect::UcError::SYSTEM_ERROR;
+    }
+    auto traceRetHandler = [caller, isNeedFlowControl, &outputPath](HiviewService* service) {
+        return service->DumpSnapshotTrace(caller, isNeedFlowControl, outputPath);
+    };
+    TraceCalling<std::vector<std::string>>(traceRetHandler, errNo, files);
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::RecordingTraceOn(const std::string& outputPath, int32_t& errNo, int32_t& ret)
+{
+    HiviewXCollieTimer timer("RecordingTraceOn", SYS_CALLING_TIMEOUT);
+    if (!HasAccessPermission(HIVIEW_TRACE_MANAGE_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    auto traceRetHandler = [&outputPath](HiviewService* service) {
+        return service->RecordingTraceOn(outputPath);
+    };
+    TraceCalling<int32_t>(traceRetHandler, errNo, ret);
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::RecordingTraceOff(int32_t& errNo, std::vector<std::string>& files)
+{
+    HiviewXCollieTimer timer("RecordingTraceOff", SYS_CALLING_TIMEOUT);
+    if (!HasAccessPermission(HIVIEW_TRACE_MANAGE_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    auto traceRetHandler = [] (HiviewService* service) {
+        return service->RecordingTraceOff();
+    };
+    TraceCalling<std::vector<std::string>>(traceRetHandler, errNo, files);
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::CloseTrace(int32_t& errNo, int32_t& ret)
+{
+    HiviewXCollieTimer timer("CloseTrace", SYS_CALLING_TIMEOUT);
+    if (!HasAccessPermission(HIVIEW_TRACE_MANAGE_PERMISSION)) {
+        return HiviewNapiErrCode::ERR_PERMISSION_CHECK;
+    }
+    auto traceRetHandler = [] (HiviewService* service) {
+        return service->CloseTrace();
+    };
+    TraceCalling<int32_t>(traceRetHandler, errNo, ret);
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::CaptureDurationTrace(
+    const AppCallerParcelable& appCallerParcelable, int32_t& errNo, int32_t& ret)
+{
+    HiviewXCollieTimer timer("CaptureDurationTrace", TWO_MINUTES_TIMEOUT);
+    auto caller = appCallerParcelable.GetAppCaller();
+    caller.uid = IPCSkeleton::GetCallingUid();
+    caller.pid = IPCSkeleton::GetCallingPid();
+    auto traceRetHandler = [=, &caller] (HiviewService* service) {
+        return service->CaptureDurationTrace(caller);
+    };
+    TraceCalling<int32_t>(traceRetHandler, errNo, ret);
+    return 0;
+}
+
+bool HiviewServiceAbility::CheckIdentity(int32_t uid, std::string& packageName, std::string& sandboxTracePath,
+    const sptr<IRequestTraceCallback> &callback)
+{
+    auto token_type = Security::AccessToken::AccessTokenKit::GetTokenType(IPCSkeleton::GetCallingTokenID());
+    if (token_type != Security::AccessToken::TOKEN_HAP) {
+        HIVIEW_LOGE("token type is not hap");
+        if (!IsCallbackNull<IRequestTraceCallback>(callback)) {
+            callback->OnTraceResponse(UCollect::UcError::PERMISSION_CHECK_FAILED, "");
+        }
+        return false;
+    }
+    packageName = BundleUtil::GetApplicationNameById(uid);
+    if (packageName.empty()) {
+        HIVIEW_LOGE("app packageName is empty");
+        if (!IsCallbackNull<IRequestTraceCallback>(callback)) {
+            callback->OnTraceResponse(UCollect::UcError::SYSTEM_ERROR, "");
+        }
+        return false;
+    }
+    sandboxTracePath = BundleUtil::GetSandBoxPath(uid, "log", "trace");
+    if (sandboxTracePath.empty()) {
+        HIVIEW_LOGE("app sandboxTracePath is empty");
+        if (!IsCallbackNull<IRequestTraceCallback>(callback)) {
+            callback->OnTraceResponse(UCollect::UcError::SYSTEM_ERROR, "");
+        }
+        return false;
+    }
+    return true;
+}
+
+ErrCode HiviewServiceAbility::RequestAppTrace(const TraceConfigParcelable &traceConfig,
+    const sptr<IRequestTraceCallback> &callback)
+{
+    int32_t uid = IPCSkeleton::GetCallingUid();
+    int32_t pid = IPCSkeleton::GetCallingPid();
+    std::string packageName;
+    std::string sandboxTracePath;
+    if (!CheckIdentity(uid, packageName, sandboxTracePath, callback)) {
+        return 0;
+    }
+    auto paramConfig = traceConfig.GetTraceConfig();
+    CheckAndReplaceTraceParam(paramConfig.prefix, paramConfig.bufferSize, paramConfig.duration);
+    UCollect::AppBundleInfo appInfo {uid, pid, packageName, sandboxTracePath, BundleUtil::IsDebugHap(uid)};
+    auto traceCollector = UCollectUtil::TraceCollector::Create();
+    auto openResult = traceCollector->OpenAppSystemTrace(paramConfig.bufferSize, appInfo);
+    if (openResult.retCode != UCollect::UcError::SUCCESS) {
+        HIVIEW_LOGW("%{public}s open trace failed, code:%{public}d", appInfo.packageName.c_str(), openResult.retCode);
+        if (!IsCallbackNull<IRequestTraceCallback>(callback)) {
+            callback->OnTraceResponse(openResult.retCode, "");
+        }
+        return 0;
+    }
+    auto dumpTask = [this, traceCollector, appInfo, paramConfig, callback] {
+        auto result = traceCollector->DumpAppSystemTrace(paramConfig.prefix, paramConfig.duration, appInfo);
+        HIVIEW_LOGI("%{public}s get trace done, code:%{public}d, name:%{public}s", appInfo.packageName.c_str(),
+            result.retCode, result.data.c_str());
+        if (!IsCallbackNull<IRequestTraceCallback>(callback)) {
+            callback->OnTraceResponse(result.retCode, result.data);
+        }
+    };
+    ffrt::submit(dumpTask, {}, {},
+        ffrt::task_attr().name("app_system_trace_task").delay(paramConfig.duration * MS_TO_US));
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::RequestUiTree(int32_t pid, const sptr<IRequestUiTreeCallback> &callback)
+{
+    auto service = GetOrSetHiviewService();
+    if (service == nullptr) {
+        return UiTreeErrCode::ERR_GET_HIVIEW_SERVICE;
+    }
+    if (IsCallbackNull<IRequestUiTreeCallback>(callback)) {
+        HIVIEW_LOGE("callback is null");
+        return UiTreeErrCode::ERR_GET_HIVIEW_SERVICE;
+    }
+    int32_t uid = IPCSkeleton::GetCallingUid();
+    if (uid != RENDER_SERVICE_UID) {
+        HIVIEW_LOGE("calling uid is not render_service, uid: %{public}d", uid);
+        return UiTreeErrCode::ERR_RENDER_SERIVICE_CHECK;
+    }
+    auto result = service->RequestUiTree(pid, callback);
+    return result.retCode;
+}
+
+ErrCode HiviewServiceAbility::GetSysCpuUsage(int32_t& errNo, double& ret)
+{
+    HiviewXCollieTimer timer("GetSysCpuUsage", TWO_MINUTES_TIMEOUT);
+    TraceCalling<double>([] (HiviewService* service) {
+        return service->GetSysCpuUsage();
+        }, errNo, ret);
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::SetAppResourceLimit(
+    const MemoryCallerParcelable& memoryCallerParcelable, int32_t& errNo, int32_t& ret)
+{
+    if (!Parameter::IsBetaVersion() && !Parameter::IsLeakStateMode()) {
+        HIVIEW_LOGE("Called SetAppResourceLimitRequest service failed.");
+        return TraceErrCode::ERR_READ_MSG_PARCEL;
+    }
+    auto caller = memoryCallerParcelable.GetMemoryCaller();
+    caller.pid = IPCObjectStub::GetCallingPid();
+    if (caller.pid < 0) {
+        return TraceErrCode::ERR_SEND_REQUEST;
+    }
+    auto handler = [&caller] (HiviewService* service) {
+        return service->SetAppResourceLimit(caller);
+    };
+    TraceCalling<int32_t>(handler, errNo, ret);
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::SetSplitMemoryValue(
+    const std::vector<MemoryCallerParcelable>& memCallerParcelableList, int32_t& errNo, int32_t& ret)
+{
+    int uid = IPCObjectStub::GetCallingUid();
+    if (uid != MEDIA_UID && uid != MEMMGR_UID) {
+        HIVIEW_LOGE("calling uid is not media, uid: %{public}d", uid);
+        return TraceErrCode::ERR_SEND_REQUEST;
+    }
+    if (memCallerParcelableList.empty() || memCallerParcelableList.size() > MAX_SPLIT_MEMORY_SIZE) {
+        HIVIEW_LOGW("mem list size is invalid.");
+        return TraceErrCode::ERR_READ_MSG_PARCEL;
+    }
+    std::vector<UCollectClient::MemoryCaller> memList;
+    for (const auto& item : memCallerParcelableList) {
+        memList.emplace_back(item.GetMemoryCaller());
+    }
+    auto handler = [&memList] (HiviewService* service) {
+        return service->SetSplitMemoryValue(memList);
+    };
+    TraceCalling<int32_t>(handler, errNo, ret);
+    return 0;
+}
+
+ErrCode HiviewServiceAbility::GetGraphicUsage(int32_t& errNo, GraphicUsageParcelable& graphicUsageParcelable)
+{
+    HiviewXCollieTimer timer("GetGraphicUsage", TWO_MINUTES_TIMEOUT);
+    int32_t pid = IPCObjectStub::GetCallingPid();
+    if (pid < 0) {
+        return TraceErrCode::ERR_SEND_REQUEST;
+    }
+    auto handler = [pid] (HiviewService* service) {
+        return service->GetGraphicUsage(pid);
+    };
+    UCollectClient::GraphicUsage graphicUsage;
+    TraceCalling<UCollectClient::GraphicUsage>(handler, errNo, graphicUsage);
+    graphicUsageParcelable.UpdateGraphicUsage(graphicUsage);
+    return 0;
+}
+
+HiviewServiceAbilityDeathRecipient::HiviewServiceAbilityDeathRecipient()
+{
+    HIVIEW_LOGI("called");
+}
+
+HiviewServiceAbilityDeathRecipient::~HiviewServiceAbilityDeathRecipient()
+{
+    HIVIEW_LOGI("called");
+}
+
+void HiviewServiceAbilityDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &object)
+{
+    HIVIEW_LOGI("called");
+    if (object == nullptr) {
+        return;
+    }
+    HiviewServiceAbility::StartServiceAbility(1);
+}
+
+ErrCode HiviewServiceAbility::IsolateSubProcess(const std::string& packageName, int32_t mainProcPid,
+                                                int32_t subProcPid, int32_t& errNo, int32_t& ret)
+{
+    HiviewXCollieTimer timer("IsolateSubProcess", SYS_CALLING_TIMEOUT);
+    int32_t pid = IPCObjectStub::GetCallingPid();
+    if (pid < 0 || pid != mainProcPid) {
+        HIVIEW_LOGW("invalid mainProcPid.");
+        return TraceErrCode::ERR_SEND_REQUEST;
+    }
+    auto handler = [&packageName, mainProcPid, subProcPid] (HiviewService* service) {
+        return service->SetForkDumpService(packageName, mainProcPid, subProcPid);
+    };
+    TraceCalling<int32_t>(handler, errNo, ret);
+    return 0;
+}
+} // namespace HiviewDFX
+} // namespace OHOS

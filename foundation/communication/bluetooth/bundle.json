@@ -1,0 +1,305 @@
+{
+  "name": "@ohos/bluetooth",
+  "version": "1.0.0",
+  "description": "Provides basic Bluetooth and BLE functions for applications",
+  "homePage": "https://gitee.com/openharmony",
+  "license": "Apache License 2.0",
+  "repository": "https://gitee.com/openharmony/communication_bluetooth",
+  "domain": "os",
+  "language": "",
+  "publishAs": "code-segment",
+  "private": false,
+  "scripts": {},
+  "tags": [
+    "foundation"
+  ],
+  "keywords": [
+    "communication",
+    "bluetooth"
+  ],
+  "envs": [],
+  "dirs": [],
+  "author": {
+    "name": "",
+    "email": "",
+    "url": ""
+  },
+  "contributors": [
+    {
+      "name": "",
+      "email": "",
+      "url": ""
+    }
+  ],
+  "segment": {
+    "destPath": "foundation/communication/bluetooth"
+  },
+  "component": {
+    "name": "bluetooth",
+    "subsystem": "communication",
+    "syscap": [
+      "SystemCapability.Communication.Bluetooth.Core",
+      "SystemCapability.Communication.Bluetooth.Lite"
+    ],
+    "features": [
+      "bluetooth_kia_enable",
+      "bluetooth_pluggable_supported",
+      "bluetooth_bas_feature",
+      "bluetooth_pan_feature",
+      "bluetooth_hap_opp_switch_feature",
+      "bluetooth_hfp_hf_feature_switch"
+    ],
+    "adapted_system_type": [
+      "standard"
+    ],
+    "rom": "",
+    "ram": "",
+    "hisysevent_config": [
+      "//foundation/communication/bluetooth/hisysevent.yaml"
+    ],
+    "deps": {
+      "components": [
+        "ability_base",
+        "ability_runtime",
+        "bundle_framework",
+        "c_utils",
+        "cJSON",
+        "common_event_service",
+        "eventhandler",
+        "ets_frontend",
+        "ffrt",
+        "hicollie",
+        "hilog",
+        "hisysevent",
+        "hiappevent",
+        "hitrace",
+        "init",
+        "ipc",
+        "libuv",
+        "napi",
+        "samgr",
+        "security_guard",
+        "runtime_core",
+        "bounds_checking_function",
+        "taihe_ffi_gen"
+      ],
+      "third_party": []
+    },
+    "build": {
+      "group_type": {
+        "base_group": [],
+        "fwk_group": [
+          "//foundation/communication/bluetooth/frameworks/inner:btframework",
+          "//foundation/communication/bluetooth/frameworks/inner:btcommon",
+          "//foundation/communication/bluetooth/frameworks/js/napi:bluetooth_napi",
+          "//foundation/communication/bluetooth/frameworks/c_api:bluetooth_ndk",
+          "//foundation/communication/bluetooth/frameworks/cj:bluetooth_ffi",
+          "//foundation/communication/bluetooth/frameworks/ets/taihe/bluetooth_a2dp:bluetoothA2dp_taihe",
+          "//foundation/communication/bluetooth/frameworks/ets/taihe/bluetooth_access:bluetoothAccess_taihe",
+          "//foundation/communication/bluetooth/frameworks/ets/taihe/bluetooth_baseProfile:bluetoothBaseProfile_taihe",
+          "//foundation/communication/bluetooth/frameworks/ets/taihe/bluetooth_ble:bluetoothBle_taihe",
+          "//foundation/communication/bluetooth/frameworks/ets/taihe/bluetooth_connection:bluetoothConnection_taihe",
+          "//foundation/communication/bluetooth/frameworks/ets/taihe/bluetooth_constant:bluetoothConstant_taihe",
+          "//foundation/communication/bluetooth/frameworks/ets/taihe/bluetooth_hfp:bluetoothHfp_taihe",
+          "//foundation/communication/bluetooth/frameworks/ets/taihe/bluetooth_hid:bluetoothHid_taihe"
+        ],
+        "service_group": [
+          "//foundation/communication/bluetooth/tools/ohos-bluetoothTool:ohos-bluetoothTool",
+          "//foundation/communication/bluetooth/bluetooth_ui:bluetooth_hap"
+        ]
+      },
+      "inner_kits": [
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/interfaces/inner_api/include",
+            "header_files": [
+              "bluetooth_a2dp_src.h",
+              "bluetooth_ble_central_manager.h",
+              "bluetooth_def.h",
+              "bluetooth_device_class.h",
+              "bluetooth_gatt_characteristic.h",
+              "bluetooth_gatt_client.h",
+              "bluetooth_gatt_descriptor.h",
+              "bluetooth_gatt_manager.h",
+              "bluetooth_gatt_server.h",
+              "bluetooth_gatt_service.h",
+              "bluetooth_host.h",
+              "bluetooth_proxy_manager.h",
+              "bluetooth_remote_device.h",
+              "bluetooth_socket_inputstream.h",
+              "bluetooth_socket_outputstream.h",
+              "bluetooth_socket.h",
+              "bluetooth_profile_manager.h",
+              "bluetooth_no_destructor.h",
+              "c_header/ohos_bt_def.h",
+              "c_header/ohos_bt_gap.h",
+              "c_header/ohos_bt_gatt.h",
+              "c_header/ohos_bt_gatt_client.h",
+              "c_header/ohos_bt_gatt_server.h",
+              "c_header/ohos_bt_spp.h",
+              "uuid.h"
+            ]
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/inner:btframework"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/inner/ipc",
+            "header_files": [
+              "common/avrcp_media.h",
+              "common/ble_service_data.h",
+              "common/bluetooth_errorcode.h",
+              "common/bt_def.h",
+              "common/bt_uuid.h",
+              "common/gatt_data.h",
+              "common/hands_free_unit_calls.h",
+              "common/raw_address.h",
+              "interface/bluetooth_service_ipc_interface_code.h",
+              "interface/bluetooth_service_profile_interface_code.h",
+              "interface/i_bluetooth_a2dp_sink.h",
+              "interface/i_bluetooth_a2dp_sink_observer.h",
+              "interface/i_bluetooth_a2dp_src.h",
+              "interface/i_bluetooth_a2dp_src_observer.h",
+              "interface/i_bluetooth_audio_manager.h",
+              "interface/i_bluetooth_avrcp_ct.h",
+              "interface/i_bluetooth_avrcp_ct_observer.h",
+              "interface/i_bluetooth_avrcp_tg.h",
+              "interface/i_bluetooth_avrcp_tg_observer.h",
+              "interface/i_bluetooth_ble_advertiser.h",
+              "interface/i_bluetooth_ble_advertise_callback.h",
+              "interface/i_bluetooth_ble_central_manager.h",
+              "interface/i_bluetooth_ble_central_manager_callback.h",
+              "interface/i_bluetooth_ble_peripheral_observer.h",
+              "interface/i_bluetooth_device_battery_observer.h",
+              "interface/i_bluetooth_gatt_client.h",
+              "interface/i_bluetooth_gatt_client_callback.h",
+              "interface/i_bluetooth_gatt_observer.h",
+              "interface/i_bluetooth_gatt_server.h",
+              "interface/i_bluetooth_gatt_server_callback.h",
+              "interface/i_bluetooth_hfp_ag.h",
+              "interface/i_bluetooth_hfp_ag_observer.h",
+              "interface/i_bluetooth_hfp_hf.h",
+              "interface/i_bluetooth_hfp_hf_observer.h",
+              "interface/i_bluetooth_hid_host.h",
+              "interface/i_bluetooth_hid_host_observer.h",
+              "interface/i_bluetooth_hid_device.h",
+              "interface/i_bluetooth_hid_device_observer.h",
+              "interface/i_bluetooth_host.h",
+              "interface/i_bluetooth_host_observer.h",
+              "interface/i_bluetooth_oob_observer.h",
+              "interface/i_bluetooth_map_mse.h",
+              "interface/i_bluetooth_map_mse_observer.h",
+              "interface/i_bluetooth_opp.h",
+              "interface/i_bluetooth_opp_observer.h",
+              "interface/i_bluetooth_pan.h",
+              "interface/i_bluetooth_pan_observer.h",
+              "interface/i_bluetooth_pbap_pse.h",
+              "interface/i_bluetooth_pbap_pse_observer.h",
+              "interface/i_bluetooth_remote_device_observer.h",
+              "interface/i_bluetooth_socket.h",
+              "interface/i_bluetooth_socket_observer.h",
+              "interface/i_bluetooth_bas.h",
+              "parcel/bluetooth_a2dp_a2dpCodecInfo.h",
+              "parcel/bluetooth_a2dp_a2dpCodecStatus.h",
+              "parcel/bluetooth_avrcp_meItem.h",
+              "parcel/bluetooth_avrcp_mpItem.h",
+              "parcel/bluetooth_ble_advertiser_data.h",
+              "parcel/bluetooth_ble_advertiser_settings.h",
+              "parcel/bluetooth_ble_scan_filter.h",
+              "parcel/bluetooth_ble_scan_result.h",
+              "parcel/bluetooth_ble_scan_settings.h",
+              "parcel/bluetooth_bt_uuid.h",
+              "parcel/bluetooth_gatt_characteristic_parcel.h",
+              "parcel/bluetooth_gatt_descriptor_parcel.h",
+              "parcel/bluetooth_gatt_rsp_context_parcel.h",
+              "parcel/bluetooth_gatt_device.h",
+              "parcel/bluetooth_gatt_service_parcel.h",
+              "parcel/bluetooth_hfp_hf_call.h",
+              "parcel/bluetooth_opp_transfer_information.h",
+              "parcel/bluetooth_phone_state.h",
+              "parcel/bluetooth_raw_address.h",
+              "parcel/bluetooth_socket_coc.h",
+              "parcel/parcel_bt_uuid.h",
+              "parcel/bluetooth_hid_device_sdp_parcel.h",
+              "parcel/bluetooth_hid_device_qos_parcel.h"
+            ]
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/inner:btcommon"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/cj/a2dp/include",
+            "header_files": []
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/cj/a2dp:cj_bluetooth_a2dp_ffi"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/cj/access/include",
+            "header_files": []
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/cj/access:cj_bluetooth_access_ffi"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/cj/ble/include",
+            "header_files": []
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/cj/ble:cj_bluetooth_ble_ffi"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/cj/connection/include",
+            "header_files": []
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/cj/connection:cj_bluetooth_connection_ffi"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/cj/hfp/include",
+            "header_files": []
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/cj/hfp:cj_bluetooth_hfp_ffi"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/cj/hid/include",
+            "header_files": []
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/cj/hid:cj_bluetooth_hid_ffi"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/cj/socket/include",
+            "header_files": []
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/cj/socket:cj_bluetooth_socket_ffi"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/js/napi",
+            "header_files": [
+              "include/napi_event_subscribe_module.h",
+              "include/napi_bluetooth_utils.h",
+              "include/napi_bluetooth_event.h",
+              "include/napi_bluetooth_error.h",
+              "include/napi_native_object.h",
+              "src/parser/napi_parser_utils.h"
+            ]
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/js/napi/src/common:bt_napi_common"
+        },
+        {
+          "header": {
+            "header_base": "//foundation/communication/bluetooth/frameworks/js/napi",
+            "header_files": []
+          },
+          "name": "//foundation/communication/bluetooth/frameworks/js/napi/src/common:common"
+        }
+      ],
+      "test": [
+        "//foundation/communication/bluetooth/test:unit_test"
+      ]
+    }
+  }
+}

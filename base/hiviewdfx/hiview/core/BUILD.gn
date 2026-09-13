@@ -1,0 +1,124 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+ohos_prebuilt_etc("plugin_bundle.json") {
+  source = "bundle_config/config/plugin_bundle.json"
+  relative_install_dir = "hiview/bundle"
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+config("hiview_core_config") {
+  visibility = [ "*:*" ]
+  include_dirs = [
+    "bundle_config/include",
+    "include",
+    "$hiview_root/include",
+  ]
+  cflags_cc = [ "-D__HIVIEW_OHOS__" ]
+
+  if (hiview_param_update_enable) {
+    defines = [ "PARAM_UPDATE_ENABLE" ]
+  }
+}
+
+ohos_source_set("hiview_core") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  public_configs = [ ":hiview_core_config" ]
+
+  sources = [
+    "bundle_config/plugin_bundle_config.cpp",
+    "hiview_platform.cpp",
+    "plugin_bundle.cpp",
+    "plugin_config.cpp",
+  ]
+
+  deps = [
+    ":plugin_bundle.json",
+    "$hiview_base:hiviewbase",
+    "platform_config:hiviewplatform_config",
+  ]
+
+  if (hiview_param_update_enable) {
+    deps += [ "param_update:hiview_param_update" ]
+  }
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "cJSON:cjson",
+    "common_event_service:cesfwk_innerkits",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+  ]
+}
+
+ohos_source_set("hiview_core_for_test") {
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  public_configs = [ ":hiview_core_config" ]
+
+  sources = [
+    "bundle_config/plugin_bundle_config.cpp",
+    "hiview_platform.cpp",
+    "plugin_bundle.cpp",
+    "plugin_config.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "param_update:hiview_param_update_for_tdd",
+    "platform_config:hiviewplatform_config_for_tdd",
+  ]
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "cJSON:cjson",
+    "common_event_service:cesfwk_innerkits",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+  ]
+}
+
+group("unittest") {
+  testonly = true
+  deps = []
+}
+
+group("moduletest") {
+  testonly = true
+  deps = []
+}

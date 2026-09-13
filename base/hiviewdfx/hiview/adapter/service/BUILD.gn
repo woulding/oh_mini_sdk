@@ -1,0 +1,67 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("hiview_service_adapter_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    ".",
+    "$hiview_interfaces/inner_api/unified_collection",
+  ]
+}
+
+config("hiview_service_adapter_internal_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [ "$hiview_service" ]
+}
+
+ohos_source_set("hiview_service_adapter") {
+  branch_protector_ret = "pac_ret"
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+
+  public_configs = [ ":hiview_service_adapter_config" ]
+
+  configs = [ ":hiview_service_adapter_internal_config" ]
+
+  sources = [ "hiview_service_adapter.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "server:hiview_service_stub",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ "test:unittest" ]
+}
+
+group("fuzztest") {
+  testonly = true
+  deps = [
+    "test/fuzztest/hiviewlogconfigmanager_fuzzer:HiviewLogConfigManagerFuzzTest",
+    "test/fuzztest/hiviewserviceabilitystub_fuzzer:HiviewServiceAbilityStubFuzzTest",
+  ]
+}

@@ -1,0 +1,184 @@
+# Copyright (c) 2022 Shenzhen Kaihong Digital Industry Development Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# external glslang src glslang build
+
+import("//build/ohos.gni")
+
+config("src_glslang_config") {
+  cflags_cc = [
+    "-fPIC",
+    "-std=c++17",
+    "-Wno-reorder",
+    "-fno-rtti",
+    "-fno-exceptions",
+    "-Wno-sign-compare",
+    "-Wno-missing-field-initializers",
+    "-Wno-unused-parameter",
+    "-Wno-unused-variable",
+  ]
+
+  if (is_mingw) {
+    cflags_cc -= [ "-fPIC" ]
+  }
+
+  defines = [
+    "ENABLE_HLSL",
+    "ENABLE_OPT=0",
+    "GLSLANG_OSINCLUDE_UNIX",
+  ]
+}
+
+#lib OSDependent
+ohos_source_set("OSDependent_source") {
+  sources = []
+  if (is_mingw) {
+    sources +=
+        [ "//third_party/glslang/glslang/OSDependent/Windows/ossource.cpp" ]
+  } else {
+    sources += [ "//third_party/glslang/glslang/OSDependent/Unix/ossource.cpp" ]
+  }
+  include_dirs = [
+    "//third_party/glslang/glslang/OSDependent",
+    "//third_party/glslang/glslang/Include",
+    "//third_party/glslang/glslang/Public",
+  ]
+
+  deps = []
+  configs = [ ":src_glslang_config" ]
+  part_name = "glslang"
+  subsystem_name = "thirdparty"
+}
+
+ohos_static_library("libdeqp_OSDependent") {
+  deps = [ ":OSDependent_source" ]
+  part_name = "glslang"
+  subsystem_name = "thirdparty"
+}
+
+#lib GenericCodeGen
+ohos_source_set("GenericCodeGen_source") {
+  sources = [
+    "//third_party/glslang/glslang/GenericCodeGen/CodeGen.cpp",
+    "//third_party/glslang/glslang/GenericCodeGen/Link.cpp",
+  ]
+  include_dirs = [
+    "//third_party/glslang/glslang/Include",
+    "//third_party/glslang/glslang/Public",
+  ]
+
+  deps = []
+
+  configs = [ ":src_glslang_config" ]
+  part_name = "glslang"
+  subsystem_name = "thirdparty"
+}
+
+ohos_static_library("libdeqp_GenericCodeGen") {
+  deps = [ ":GenericCodeGen_source" ]
+  part_name = "glslang"
+  subsystem_name = "thirdparty"
+}
+
+#lib MachineIndependent
+ohos_source_set("MachineIndependent_source") {
+  sources = [
+    "//third_party/glslang/glslang/HLSL/hlslAttributes.cpp",
+    "//third_party/glslang/glslang/HLSL/hlslGrammar.cpp",
+    "//third_party/glslang/glslang/HLSL/hlslOpMap.cpp",
+    "//third_party/glslang/glslang/HLSL/hlslParseHelper.cpp",
+    "//third_party/glslang/glslang/HLSL/hlslParseables.cpp",
+    "//third_party/glslang/glslang/HLSL/hlslScanContext.cpp",
+    "//third_party/glslang/glslang/HLSL/hlslTokenStream.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/Constant.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/InfoSink.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/Initialize.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/IntermTraverse.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/Intermediate.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/ParseContextBase.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/ParseHelper.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/PoolAlloc.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/RemoveTree.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/Scan.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/ShaderLang.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/SpirvIntrinsics.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/SymbolTable.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/Versions.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/attribute.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/glslang_tab.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/intermOut.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/iomapper.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/limits.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/linkValidate.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/parseConst.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/preprocessor/Pp.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/preprocessor/PpAtom.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/preprocessor/PpContext.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/preprocessor/PpScanner.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/preprocessor/PpTokens.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/propagateNoContraction.cpp",
+    "//third_party/glslang/glslang/MachineIndependent/reflection.cpp",
+  ]
+  include_dirs = [
+    "//third_party/glslang/glslang/Include",
+    "//third_party/glslang/glslang/Public",
+    "//third_party/glslang",
+  ]
+
+  deps = [
+    ":libdeqp_GenericCodeGen",
+    ":libdeqp_OSDependent",
+  ]
+
+  configs = [ ":src_glslang_config" ]
+  part_name = "glslang"
+  subsystem_name = "thirdparty"
+}
+
+ohos_static_library("libdeqp_MachineIndependent") {
+  deps = [ ":MachineIndependent_source" ]
+  part_name = "glslang"
+  subsystem_name = "thirdparty"
+}
+
+#lib glslang
+ohos_source_set("glslang_source") {
+  sources =
+      [ "//third_party/glslang/glslang/CInterface/glslang_c_interface.cpp" ]
+  include_dirs = [
+    "//third_party/glslang",
+    "//third_party/glslang/glslang/Include",
+    "//third_party/glslang/glslang/Public",
+  ]
+
+  deps = [
+    ":libdeqp_GenericCodeGen",
+    ":libdeqp_OSDependent",
+  ]
+
+  if (is_mingw) {
+    deps += [ "//third_party/glslang/SPIRV:libdeqp_spirv" ]
+  } else {
+    deps += [ ":libdeqp_MachineIndependent" ]
+  }
+
+  configs = [ ":src_glslang_config" ]
+  part_name = "glslang"
+  subsystem_name = "thirdparty"
+}
+
+ohos_static_library("libdeqp_glslang") {
+  deps = [ ":glslang_source" ]
+  part_name = "glslang"
+  subsystem_name = "thirdparty"
+}

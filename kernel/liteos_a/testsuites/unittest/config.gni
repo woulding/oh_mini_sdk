@@ -1,0 +1,181 @@
+# Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2020-2023 Huawei Device Co., Ltd. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+#    conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list
+#    of conditions and the following disclaimer in the documentation and/or other materials
+#    provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used
+#    to endorse or promote products derived from this software without specific prior written
+#    permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+import("$root_out_dir/config.gni")
+TEST_UNITTEST_DIR = rebase_path(".")
+declare_args() {
+  liteos_container_test_enable = false
+  liteos_fuzz_test_enable = false
+}
+
+TEST_LEVEL_LOW = 1
+TEST_LEVEL_MIDDLE = 3
+TEST_LEVEL_HIGH = 5
+
+# 0: don`t generate
+# TEST_LEVEL_LOW: only generate xxx_unittest_door.bin (smoke)
+# TEST_LEVEL_MIDDLE: generate xxx_unittest_door.bin (smoke) & xxx_unittest.bin (smoke + full)
+# TEST_LEVEL_HIGH: generate xxx_unittest_door.bin (smoke) & xxx_unittest.bin (smoke + full) & xxx_unittest_pressure.bin (pressure)
+LOSCFG_USER_TEST_LEVEL = TEST_LEVEL_HIGH
+
+# "default": depend on board_name
+# "enable": those testsuites testing for SMP is enable
+# "disable": those testsuites is disable
+LOSCFG_USER_TEST_SMP = "default"
+
+########## basic test ##########
+# Control switch for basic function test
+LOSCFG_USER_TEST_BASIC = true
+
+# Module list
+LOSCFG_USER_TEST_DYNLOAD = true
+LOSCFG_USER_TEST_EXC = true
+LOSCFG_USER_TEST_MEM_SHM = true
+LOSCFG_USER_TEST_MEM_VM = true
+
+########## process test ##########
+# Control switch for process&pthread function test
+LOSCFG_USER_TEST_PROCESS_THREAD = true
+
+# Module list
+LOSCFG_USER_TEST_PROCESS_BASIC_PROCESS = true
+LOSCFG_USER_TEST_PROCESS_BASIC_PTHREAD = true
+LOSCFG_USER_TEST_PROCESS_LOCK_MUTEX = true
+LOSCFG_USER_TEST_PROCESS_LOCK_RWLOCK = true
+LOSCFG_USER_TEST_PROCESS_LOCK_SPINLOCK = true
+
+########## extended test ##########
+# Control switch for extended function test
+LOSCFG_USER_TEST_EXTENDED = true
+
+# Module list
+LOSCFG_USER_TEST_IPC = false
+LOSCFG_USER_TEST_LITEIPC = false
+LOSCFG_USER_TEST_SIGNAL = true
+LOSCFG_USER_TEST_TRACE = false
+
+########## drivers test ##########
+# Control switch for drivers function test
+LOSCFG_USER_TEST_DRIVERS = true
+
+# Module list
+LOSCFG_USER_TEST_DRIVERS_HID = true
+LOSCFG_USER_TEST_DRIVERS_STORAGE = true
+
+########## fs test ##########
+# Control switch for fs function test
+LOSCFG_USER_TEST_FS = true
+
+# Module list
+LOSCFG_USER_TEST_FS_JFFS = false
+LOSCFG_USER_TEST_FS_PROC = false
+LOSCFG_USER_TEST_FS_VFAT = false
+
+########## libc test ##########
+# Control switch for libc & posix function test
+LOSCFG_USER_TEST_LIBC = true
+
+# Module list
+LOSCFG_USER_TEST_LIBC_IO = true
+LOSCFG_USER_TEST_LIBC_MISC = true
+LOSCFG_USER_TEST_LIBC_POSIX_MEM = true
+LOSCFG_USER_TEST_LIBC_POSIX_MQUEUE = true
+LOSCFG_USER_TEST_LIBC_POSIX_PTHREAD = false
+LOSCFG_USER_TEST_LIBC_SYS = true
+LOSCFG_USER_TEST_LIBC_TIME_CLOCK = true
+LOSCFG_USER_TEST_LIBC_TIME_TIMER = true
+LOSCFG_USER_TEST_LIBC_UTIL = true
+
+########## net test ##########
+# Control switch for network function test
+LOSCFG_USER_TEST_NET = true
+
+# Module list
+LOSCFG_USER_TEST_NET_NETDB = true
+LOSCFG_USER_TEST_NET_RESOLV = true
+LOSCFG_USER_TEST_NET_SOCKET = true
+
+########## security test ##########
+# Control switch for security function test
+LOSCFG_USER_TEST_SECURITY = true
+
+# Module list
+LOSCFG_USER_TEST_SECURITY_CAPABILITY = true
+LOSCFG_USER_TEST_SECURITY_REUGID = true
+LOSCFG_USER_TEST_SECURITY_VID = true
+
+LOSCFG_USER_TEST_PROCESS_FS = false
+if (defined(LOSCFG_PROC_PROCESS_DIR) || liteos_container_test_enable == true) {
+  LOSCFG_USER_TEST_PROCESS_FS = true
+}
+
+########## container test ##########
+LOSCFG_USER_TEST_CONTAINER = false
+LOSCFG_USER_TEST_PID_CONTAINER = false
+LOSCFG_USER_TEST_UTS_CONTAINER = false
+LOSCFG_USER_TEST_MNT_CONTAINER = false
+LOSCFG_USER_TEST_IPC_CONTAINER = false
+LOSCFG_USER_TEST_TIME_CONTAINER = false
+LOSCFG_USER_TEST_USER_CONTAINER = false
+LOSCFG_USER_TEST_NET_CONTAINER = false
+if (defined(LOSCFG_KERNEL_CONTAINER) || liteos_container_test_enable == true) {
+  LOSCFG_USER_TEST_CONTAINER = true
+  if (defined(LOSCFG_PID_CONTAINER) || liteos_container_test_enable == true) {
+    LOSCFG_USER_TEST_PID_CONTAINER = true
+  }
+  if (defined(LOSCFG_UTS_CONTAINER) || liteos_container_test_enable == true) {
+    LOSCFG_USER_TEST_UTS_CONTAINER = true
+  }
+  if (defined(LOSCFG_MNT_CONTAINER) || liteos_container_test_enable == true) {
+    LOSCFG_USER_TEST_MNT_CONTAINER = true
+  }
+  if (defined(LOSCFG_IPC_CONTAINER) || liteos_container_test_enable == true) {
+    LOSCFG_USER_TEST_IPC_CONTAINER = true
+  }
+  if (defined(LOSCFG_TIME_CONTAINER) || liteos_container_test_enable == true) {
+    LOSCFG_USER_TEST_TIME_CONTAINER = true
+  }
+  if (defined(LOSCFG_USER_CONTAINER) || liteos_container_test_enable == true) {
+    LOSCFG_USER_TEST_USER_CONTAINER = true
+  }
+  if (defined(LOSCFG_NET_CONTAINER) || liteos_container_test_enable == true) {
+    LOSCFG_USER_TEST_NET_CONTAINER = true
+  }
+}
+
+LOSCFG_USER_TEST_PROCESS_PLIMITS = false
+if (defined(LOSCFG_KERNEL_PLIMITS) || liteos_container_test_enable == true) {
+  LOSCFG_USER_TEST_PROCESS_PLIMITS = true
+}
+
+########## fuzz test ##########
+LOSCFG_USER_FUZZ_TEST = false
+if (liteos_fuzz_test_enable == true) {
+  LOSCFG_USER_FUZZ_TEST = true
+}

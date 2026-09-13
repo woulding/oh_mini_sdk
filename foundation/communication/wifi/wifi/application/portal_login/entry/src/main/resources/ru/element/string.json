@@ -1,0 +1,130 @@
+{
+    "string":[
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"Версия сайта для компьютера",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"actions_menu_user_agent",
+            "value":"UA браузера",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"Отмена",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"Открыть в браузере",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"Версия сайта для мобильных устройств",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"Срок действия сертификата SSL этого сайта истек или сертификат ненадежный. Если продолжить, могут возникнуть угрозы безопасности.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"Продолжить",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"HarmonyOS",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"continue_visit",
+            "value":"Продолжить на этом сайте?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"Настройки %s",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"Запретить",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"Этот сайт может содержать неприемлемый или запрещенный контент. Выполняйте это действие с осторожностью.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"Возможен вредоносный контент",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"Разрешить веб-сайту %s использовать камеру?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"Это необходимо для съемки фото и видео.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"Разрешить",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ok",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"Сообщение от %s:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

@@ -1,0 +1,68 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+
+config("seccomp_public_config") {
+  include_dirs = [ "include" ]
+}
+
+if (defined(build_seccomp) && build_seccomp) {
+  if (build_variant == "root") {
+    seccomp_enable_debug = true
+  } else {
+    seccomp_enable_debug = false
+  }
+
+  if (!defined(ohos_lite)) {
+    ohos_shared_library("seccomp") {
+      branch_protector_ret = "pac_ret"
+      sources = [ "../../../services/modules/seccomp/seccomp_policy.c" ]
+
+      public_configs = [ ":seccomp_public_config" ]
+
+      include_dirs = [
+        "../include",
+        "../../../services/modules",
+        "../../../services/log",
+      ]
+
+      if (seccomp_enable_debug) {
+        include_dirs += [
+          "../../../interfaces/innerkits/include",
+          "../../../interfaces/innerkits/include/param",
+        ]
+
+        defines = [ "WITH_SECCOMP_DEBUG" ]
+      }
+
+      deps = [ "../../innerkits:libbegetutil" ]
+
+      external_deps = [
+        "bounds_checking_function:libsec_shared",
+        "config_policy:configpolicy_util",
+      ]
+
+      license_file = "//base/startup/init/LICENSE"
+
+      part_name = "init"
+      subsystem_name = "startup"
+
+      install_enable = true
+      install_images = [ "system" ]
+    }
+  }
+} else {
+  group("seccomp") {
+  }
+}

@@ -1,0 +1,1929 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_ARCH_LITE
+#include "wifi_event_subscriber_manager.h"
+#include "wifi_manager.h"
+#include "wifi_service_manager.h"
+#include "wifi_config_center.h"
+#include "wifi_logger.h"
+#include "wifi_global_func.h"
+#include "wifi_system_timer.h"
+#include "common_event_support.h"
+#include "wifi_datashare_utils.h"
+#include "wifi_location_mode_observer.h"
+#include "wifi_common_util.h"
+#include "wifi_notification_util.h"
+#include "wifi_app_state_aware.h"
+#include "wifi_net_agent.h"
+#include "block_connect_service.h"
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+#include "wifi_asset_manager.h"
+#endif
+#ifdef WIFI_SECURITY_DETECT_ENABLE
+#include "wifi_security_detect.h"
+#endif
+#include "wifi_country_code_manager.h"
+#include "wifi_country_code_define.h"
+#include "wifi_global_func.h"
+#include "display_info.h"
+#ifdef EXTENSIBLE_AUTHENTICATION
+#include "net_eap_observer.h"
+#endif
+#include "wifi_internal_event_dispatcher.h"
+#include "wifi_sensor_scene.h"
+#include "app_network_speed_limit_service.h"
+#include "wifi_pro_chr.h"
+#include "wifi_cmd_client.h"
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+#include "telephony_observer_client.h"
+#include "telephony_types.h"
+#include "core_service_client.h"
+#include "cellular_data_client.h"
+#include "telephony_observer_client.h"
+#endif
+#include <regex>
+
+DEFINE_WIFILOG_LABEL("WifiEventSubscriberManager");
+
+namespace OHOS {
+namespace Wifi {
+constexpr uint32_t TIMEOUT_EVENT_SUBSCRIBER = 3000;
+constexpr uint32_t PROP_TRUE_LEN = 4;
+constexpr uint32_t PROP_FALSE_LEN = 5;
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+constexpr uint32_t TEL_STATE_REGISTRY_DELAY_TIME = 5 * 1000;
+#endif
+const std::string PROP_TRUE = "true";
+const std::string PROP_FALSE = "false";
+const std::string MDM_WIFI_PROP = "persist.edm.wifi_enable";
+const std::string MDM_WIFI_HOTSPOT_PROP = "persist.edm.tethering_disallowed";
+const std::string MDM_WIFI_P2P_PROP = "persist.edm.p2p_disallowed";
+const std::string WIFI_STANDBY_NAP = "napped";
+const std::string WIFI_STANDBY_SLEEPING = "sleeping";
+const std::string ENTER_SETTINGS = "usual.event.wlan.ENTER_SETTINGS_WLAN_PAGE";
+const std::string WLAN_PAGE_ENTER = "enterWlanPage";
+const std::string GAME_INFO_NOTIFY = "usual.event.gameservice.GAME_INFO_NOTIFY";
+constexpr int FOLD_ACTION_NOTIFY_DRV = 1;
+
+std::atomic<bool> WifiEventSubscriberManager::isMdmForbidden_{false};
+std::atomic<bool> WifiEventSubscriberManager::isMdmHotspotForbidden_{false};
+std::atomic<bool> WifiEventSubscriberManager::isMdmP2pForbidden_{false};
+static sptr<WifiLocationModeObserver> locationModeObserver_ = nullptr;
+
+using CesFuncType = void (CesEventSubscriber::*)(const OHOS::EventFwk::CommonEventData &eventData);
+
+const std::map<std::string, CesFuncType> CES_REQUEST_MAP = {
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_ON, &CesEventSubscriber::OnReceiveScreenEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_OFF, &CesEventSubscriber::OnReceiveScreenEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_AIRPLANE_MODE_CHANGED, &
+    CesEventSubscriber::OnReceiveAirplaneEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_POWER_CONNECTED, &
+    CesEventSubscriber::OnReceiveBatteryEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED, &
+    CesEventSubscriber::OnReceiveBatteryEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED, &CesEventSubscriber::OnReceiveAppEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_THERMAL_LEVEL_CHANGED, &
+    CesEventSubscriber::OnReceiveThermalEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_DEVICE_IDLE_MODE_CHANGED, &
+    CesEventSubscriber::OnReceiveStandbyEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_USER_UNLOCKED, &
+    CesEventSubscriber::OnReceiveUserUnlockedEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_CONNECTIVITY_CHANGE, &
+    CesEventSubscriber::OnReceiveConnectivityChangedEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_ENTER_FORCE_SLEEP, &
+    CesEventSubscriber::OnReceiveForceSleepEvent},
+    {OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_EXIT_FORCE_SLEEP, &
+    CesEventSubscriber::OnReceiveForceSleepEvent},
+    {GAME_INFO_NOTIFY, &CesEventSubscriber::OnReceiveGameInfoNotifyEvent}
+};
+
+WifiEventSubscriberManager::WifiEventSubscriberManager()
+{
+    WIFI_LOGI("create WifiEventSubscriberManager");
+    foldAction_ = GetFoldAction();
+    RegisterCesEvent();
+    RegisterNotificationEvent();
+#ifdef HAS_POWERMGR_PART
+    RegisterPowermgrEvent();
+#endif
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+    RegisterAssetEvent();
+#endif
+    InitSubscribeListener();
+    GetMdmProp();
+    RegisterMdmPropListener();
+    RegisterNetworkStateChangeEvent();
+    RegisterWifiScanChangeEvent();
+    RegisterSettingsEnterEvent();
+    if (IsSignalSmoothingEnable() || foldAction_ == FOLD_ACTION_NOTIFY_DRV) {
+        SyncFoldStatus();
+        RegisterFoldStatusListener();
+    }
+    RegisterDisplayListener();
+    RegisterNetworkConnSubscriber();
+#ifdef HAS_NETMANAGER_EVENT_PART
+    RegisterNetmgrEvent();
+#endif
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+    mWifiEventSubsThread_ = std::make_unique<WifiEventHandler>("WifiRegisterThread");
+    if (mWifiEventSubsThread_) {
+        mWifiEventSubsThread_->PostAsyncTask([this]() { this->RegisterCellularStateObserver(); },
+            "TelStateRegistry", TEL_STATE_REGISTRY_DELAY_TIME);
+    }
+#endif
+}
+
+WifiEventSubscriberManager::~WifiEventSubscriberManager()
+{
+    WIFI_LOGI("~WifiEventSubscriberManager");
+    UnRegisterCesEvent();
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+    UnRegisterAssetEvent();
+#endif
+    UnRegisterNotificationEvent();
+    UnRegisterLocationEvent();
+    UnRegisterNetworkStateChangeEvent();
+    UnRegisterWifiScanChangeEvent();
+    UnRegisterSettingsEnterEvent();
+    UnRegisterDataShareReadyEvent();
+    if (IsSignalSmoothingEnable() || foldAction_ == FOLD_ACTION_NOTIFY_DRV) {
+        UnRegisterFoldStatusListener();
+    }
+    UnregisterDisplayListener();
+    UnRegisterNetworkConnSubscriber();
+#ifdef HAS_NETMANAGER_EVENT_PART
+    UnRegisterNetmgrEvent();
+#endif
+#ifdef EXTENSIBLE_AUTHENTICATION
+    NetEapObserver::GetInstance().StopNetEapObserver();
+#endif
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+    UnRegisterCellularStateObserver();
+    if (mWifiEventSubsThread_) {
+        mWifiEventSubsThread_.reset();
+    }
+#endif
+    UnRegisterMovementEnhanceCallback();
+}
+
+void WifiEventSubscriberManager::Init()
+{
+    WIFI_LOGI("WifiEventSubscriberManager Init");
+    // Subscribe and register operation after wifiManager init completed.
+    SubscribeSystemAbility(DISTRIBUTED_KV_DATA_SERVICE_ABILITY_ID);  // subscribe data management service done
+    RegisterDataShareReadyEvent();
+}
+
+void WifiEventSubscriberManager::RegisterCesEvent()
+{
+    std::unique_lock<std::mutex> lock(cesEventMutex);
+    if (cesTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(cesTimerId);
+    }
+    if (isCesEventSubscribered) {
+        return;
+    }
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    for (auto itFunc : CES_REQUEST_MAP) {
+        matchingSkills.AddEvent(itFunc.first);
+    }
+    WIFI_LOGI("RegisterCesEvent start");
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    cesEventSubscriber_ = std::make_shared<CesEventSubscriber>(subscriberInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(cesEventSubscriber_)) {
+        WIFI_LOGE("CesEvent SubscribeCommonEvent() failed");
+        cesEventSubscriber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = [this]() { this->RegisterCesEvent(); };
+        WifiTimer::GetInstance()->Register(timeoutCallBack, cesTimerId, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterCesEvent retry, cesTimerId = %{public}u", cesTimerId);
+    } else {
+        WIFI_LOGI("RegisterCesEvent success");
+        isCesEventSubscribered = true;
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterCesEvent()
+{
+    std::unique_lock<std::mutex> lock(cesEventMutex);
+    if (cesTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(cesTimerId);
+    }
+    if (!isCesEventSubscribered) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(cesEventSubscriber_)) {
+        WIFI_LOGE("UnRegisterCesEvent failed");
+    }
+    cesEventSubscriber_ = nullptr;
+    isCesEventSubscribered = false;
+    WIFI_LOGI("UnRegisterCesEvent finished");
+}
+
+void WifiEventSubscriberManager::HandleAppMgrServiceChange(bool add)
+{
+    WIFI_LOGI("%{public}s enter, add flag: %{public}d", __FUNCTION__, add);
+    if (add) {
+        WifiAppStateAware::GetInstance().RegisterAppStateObserver();
+    } else {
+        WifiAppStateAware::GetInstance().UnSubscribeAppState();
+    }
+}
+
+void WifiEventSubscriberManager::HandleCommNetConnManagerSysChange(int systemAbilityId, bool add)
+{
+    for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+        IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(i);
+        if (pService != nullptr) {
+            pService->OnSystemAbilityChanged(systemAbilityId, add);
+        }
+    }
+}
+
+void WifiEventSubscriberManager::HandleEthernetServiceChange(int systemAbilityId, bool add)
+{
+#ifdef EXTENSIBLE_AUTHENTICATION
+    WIFI_LOGI("StartNetEapObserver");
+    NetEapObserver::GetInstance().StartNetEapObserver();
+#endif
+}
+
+void WifiEventSubscriberManager::HandleDistributedKvDataServiceChange(bool add)
+{
+    WIFI_LOGI("HandleDistributedKvDataServiceChange, mode=[%{public}d]!", add);
+    if (!add) {
+        UnRegisterLocationEvent();
+        return;
+    }
+    if (WifiDataShareHelperUtils::GetInstance().CheckIfSettingsDataReady()) {
+        AccessDataShare();
+        RegisterLocationEvent();
+    }
+}
+
+void WifiEventSubscriberManager::HandleCastServiceChange(bool add)
+{
+    if (!add) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(CAST_ENGINE_SERVICE_UID);
+    }
+}
+
+void WifiEventSubscriberManager::HandleShareServiceChange(bool add)
+{
+    if (!add) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(SHARE_SERVICE_UID);
+    }
+}
+
+void WifiEventSubscriberManager::HandleMouseCrossServiceChange(bool add)
+{
+    if (!add) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(MOUSE_CROSS_SERVICE_UID);
+    }
+}
+
+void WifiEventSubscriberManager::HandleGameServiceChange(bool add)
+{
+    if (!add) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(GAMESERVICE_SA_UID);
+    }
+}
+
+void WifiEventSubscriberManager::HandleWatchServiceChange(bool add)
+{
+    if (!add) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(WATCH_SERVICE_UID);
+    }
+}
+
+#ifdef FEATURE_P2P_SUPPORT
+void WifiEventSubscriberManager::HandleP2pBusinessChange(int systemAbilityId, bool add)
+{
+    WIFI_LOGI("HandleP2pBusinessChange, id[%{public}d], mode=[%{public}d]!", systemAbilityId, add);
+    if (add) {
+        return;
+    }
+    if (systemAbilityId == SOFTBUS_SERVER_SA_ID) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(SOFT_BUS_SERVICE_UID);
+    }
+    if (systemAbilityId == MIRACAST_SERVICE_SA_ID) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(MIRACAST_SERVICE_UID);
+    }
+    if (systemAbilityId == HICAR_SERVICE_SA_ID) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(HICAR_SERVICE_UID);
+    }
+    if (systemAbilityId == SUBSYS_WEARABLE_SYS_ABILITY_ID_BEGIN) {
+        WifiConfigCenter::GetInstance().ClearLocalHid2dInfo(WATCH_SERVICE_UID);
+    }
+    IP2pService *pService = WifiServiceManager::GetInstance().GetP2pServiceInst();
+    if (pService == nullptr) {
+        WIFI_LOGE("Get P2P service failed!");
+        return;
+    }
+    pService->HandleBusinessSAException(systemAbilityId);
+    return;
+}
+#endif
+
+void WifiEventSubscriberManager::OnSystemAbilityChanged(int systemAbilityId, bool add)
+{
+    WIFI_LOGI("%{public}s enter, systemAbilityId: %{public}d", __FUNCTION__, systemAbilityId);
+    switch (systemAbilityId) {
+        case APP_MGR_SERVICE_ID:
+            HandleAppMgrServiceChange(add);
+            break;
+        case COMM_NET_CONN_MANAGER_SYS_ABILITY_ID:
+            HandleCommNetConnManagerSysChange(systemAbilityId, add);
+            break;
+        case DISTRIBUTED_KV_DATA_SERVICE_ABILITY_ID:
+            HandleDistributedKvDataServiceChange(add);
+            break;
+#ifdef FEATURE_P2P_SUPPORT
+        case SOFTBUS_SERVER_SA_ID:
+        case MIRACAST_SERVICE_SA_ID:
+            HandleP2pBusinessChange(systemAbilityId, add);
+            break;
+#endif
+        case CAST_ENGINE_SA_ID:
+            HandleCastServiceChange(add);
+            break;
+        case SHARE_SERVICE_ID:
+            HandleShareServiceChange(add);
+            break;
+        case MOUSE_CROSS_SERVICE_ID:
+            HandleMouseCrossServiceChange(add);
+            break;
+        case GAMESERVICE_SA_ID:
+            HandleGameServiceChange(add);
+            break;
+        case SUBSYS_WEARABLE_SYS_ABILITY_ID_BEGIN:
+            HandleWatchServiceChange(add);
+            break;
+        case COMM_ETHERNET_MANAGER_SYS_ABILITY_ID:
+            HandleEthernetServiceChange(systemAbilityId, add);
+            break;
+        default:
+            break;
+    }
+}
+
+void WifiEventSubscriberManager::GetAirplaneModeByDatashare()
+{
+    std::string airplaneMode;
+    Uri uri(SETTINGS_DATASHARE_URL_AIRPLANE_MODE);
+    int ret = WifiDataShareHelperUtils::GetInstance().Query(uri, SETTINGS_DATASHARE_KEY_AIRPLANE_MODE, airplaneMode);
+    if (ret != WIFI_OPT_SUCCESS) {
+        WIFI_LOGE("GetAirplaneModeByDatashare, Query airplaneMode again!");
+        ret = WifiDataShareHelperUtils::GetInstance().Query(uri,
+            SETTINGS_DATASHARE_KEY_AIRPLANE_MODE, airplaneMode, true);
+        if (ret != WIFI_OPT_SUCCESS) {
+            WIFI_LOGE("GetAirplaneModeByDatashare, Query airplaneMode fail!");
+            return;
+        }
+    }
+    if (airplaneMode.empty()) {
+        WIFI_LOGI("GetAirplaneModeByDatashare, airplaneMode is empty!");
+        return;
+    }
+
+    WIFI_LOGI("GetAirplaneModeByDatashare, airplaneMode:%{public}s", airplaneMode.c_str());
+    if (airplaneMode.compare("1") == 0) {
+        WifiConfigCenter::GetInstance().SetWifiStateOnAirplaneChanged(MODE_STATE_OPEN);
+    } else {
+        WifiConfigCenter::GetInstance().SetWifiStateOnAirplaneChanged(MODE_STATE_CLOSE);
+    }
+    return;
+}
+
+void WifiEventSubscriberManager::GetWifiAllowSemiActiveByDatashare()
+{
+    std::string isAllowed;
+    Uri uri(SETTINGS_DATASHARE_URI_WIFI_ALLOW_SEMI_ACTIVE);
+    int ret = WifiDataShareHelperUtils::GetInstance().Query(uri,
+        SETTINGS_DATASHARE_KEY_WIFI_ALLOW_SEMI_ACTIVE, isAllowed);
+    if (ret != WIFI_OPT_SUCCESS) {
+        WIFI_LOGE("GetWifiAllowSemiActiveByDatashare, Query wifiAllowSemiActive fail!");
+        return;
+    }
+    if (isAllowed.empty()) {
+        WIFI_LOGI("GetWifiAllowSemiActiveByDatashare, isAllowed is empty!");
+        return;
+    }
+
+    WIFI_LOGI("GetWifiAllowSemiActiveByDatashare, isAllowed:%{public}s", isAllowed.c_str());
+    WifiConfigCenter::GetInstance().SetWifiAllowSemiActive(isAllowed.compare("1") == 0);
+    return;
+}
+
+bool WifiEventSubscriberManager::GetLocationModeByDatashare()
+{
+    if (IsKidWatchDevice()) {
+        WIFI_LOGI("GetLocationModeByDatashare, locationMode is enabled by default.");
+        return true;
+    }
+
+    std::string locationMode;
+    Uri uri(WifiDataShareHelperUtils::GetInstance().GetLoactionDataShareUri());
+    int ret = WifiDataShareHelperUtils::GetInstance().Query(uri, SETTINGS_DATASHARE_KEY_LOCATION_MODE, locationMode);
+    if (ret != WIFI_OPT_SUCCESS) {
+        WIFI_LOGE("GetLocationModeByDatashare, Query locationMode fail!");
+        return false;
+    }
+
+    WIFI_LOGD("GetLocationModeByDatashare, locationMode:%{public}s", locationMode.c_str());
+    return (locationMode.compare("1") == 0);
+}
+
+std::string WifiEventSubscriberManager::GetScanMacInfoWhiteListByDatashare()
+{
+    if (!WifiDataShareHelperUtils::GetInstance().CheckIfSettingsDataReady()) {
+        WIFI_LOGE("GetScanMacInfoWhiteListDataShareUri, SettingsDataIsNotReady!");
+        return "";
+    }
+    std::string whiteList;
+    Uri uri(WifiDataShareHelperUtils::GetInstance().GetScanMacInfoWhiteListDataShareUri());
+    int ret = WifiDataShareHelperUtils::GetInstance().Query(uri,
+        SETTINGS_DATASHARE_KEY_SCANMACINFO_WHITELIST, whiteList);
+    if (ret != WIFI_OPT_SUCCESS) {
+        WIFI_LOGE("GetScanMacInfoWhiteListDataShareUri, Query ScanWhiteList fail!");
+        return "";
+    }
+    return whiteList;
+}
+
+void WifiEventSubscriberManager::DealLocationModeChangeEvent()
+{
+    if (GetLocationModeByDatashare()) {
+        WIFI_LOGI("DealLocationModeChangeEvent open");
+        WifiManager::GetInstance().GetWifiTogglerManager()->ScanOnlyToggled(1);
+    } else {
+        WIFI_LOGI("DealLocationModeChangeEvent close");
+        WifiManager::GetInstance().GetWifiTogglerManager()->ScanOnlyToggled(0);
+    }
+}
+
+void WifiEventSubscriberManager::CheckAndStartStaByDatashare()
+{
+    constexpr int openWifi = 1;
+    constexpr int openWifiInAirplanemode = 2;
+    constexpr int closeWifiByAirplanemodeOpen = 3;
+
+    int lastStaState = GetLastStaStateByDatashare();
+    if (lastStaState == openWifi) {
+        WifiConfigCenter::GetInstance().SetWifiToggledState(WIFI_STATE_ENABLED, INSTID_WLAN0);
+        WifiManager::GetInstance().GetWifiTogglerManager()->WifiToggled(1, 0);
+    } else if (lastStaState == openWifiInAirplanemode) {
+        WifiSettings::GetInstance().SetWifiFlagOnAirplaneMode(true);
+        WifiConfigCenter::GetInstance().SetWifiToggledState(WIFI_STATE_ENABLED, INSTID_WLAN0);
+        WifiManager::GetInstance().GetWifiTogglerManager()->WifiToggled(1, 0);
+    } else if (lastStaState == closeWifiByAirplanemodeOpen) {
+        WifiConfigCenter::GetInstance().SetWifiToggledState(WIFI_STATE_ENABLED, INSTID_WLAN0);
+    }
+}
+
+bool WifiEventSubscriberManager::IsMdmForbidden(MdmForbiddenType type)
+{
+    switch (type) {
+        case MdmForbiddenType::HOTSPOT:
+            return isMdmHotspotForbidden_;
+        case MdmForbiddenType::P2P:
+            return isMdmP2pForbidden_;
+        default:
+            return isMdmForbidden_;
+    }
+}
+
+void WifiEventSubscriberManager::AccessDataShare()
+{
+    WIFI_LOGI("AccessDataShare enter!");
+    {
+        std::unique_lock<std::mutex> lock(accessDataShareMutex_);
+        if (accessDataShare_) {
+            return;
+        }
+        accessDataShare_ = true;
+    }
+
+    std::filesystem::path pathName = WIFI_CONFIG_FILE_PATH;
+    std::error_code code;
+    if (!std::filesystem::exists(pathName, code)) {
+        CheckAndStartStaByDatashare();
+    }
+    GetAirplaneModeByDatashare();
+    DealLocationModeChangeEvent();
+}
+
+void WifiEventSubscriberManager::InitSubscribeListener()
+{
+    SubscribeSystemAbility(APP_MGR_SERVICE_ID);
+    SubscribeSystemAbility(COMM_NET_CONN_MANAGER_SYS_ABILITY_ID);
+    SubscribeSystemAbility(COMM_ETHERNET_MANAGER_SYS_ABILITY_ID);
+    SubscribeSystemAbility(SOFTBUS_SERVER_SA_ID);
+    SubscribeSystemAbility(CAST_ENGINE_SA_ID);
+    SubscribeSystemAbility(MIRACAST_SERVICE_SA_ID);
+    SubscribeSystemAbility(SHARE_SERVICE_ID);
+    SubscribeSystemAbility(MOUSE_CROSS_SERVICE_ID);
+    SubscribeSystemAbility(HICAR_SERVICE_SA_ID);
+    SubscribeSystemAbility(GAMESERVICE_SA_ID);
+    SubscribeSystemAbility(SUBSYS_WEARABLE_SYS_ABILITY_ID_BEGIN);
+}
+
+int WifiEventSubscriberManager::GetLastStaStateByDatashare()
+{
+    std::string lastStaState;
+    Uri uri(SETTINGS_DATASHARE_URI_WIFI_ON);
+    int ret = WifiDataShareHelperUtils::GetInstance().Query(uri, SETTINGS_DATASHARE_KEY_WIFI_ON, lastStaState);
+    if (ret != WIFI_OPT_SUCCESS) {
+        WIFI_LOGW("Query lastStaState fail, query settingsdata again!");
+        ret = WifiDataShareHelperUtils::GetInstance().Query(uri, SETTINGS_DATASHARE_KEY_WIFI_ON, lastStaState, true);
+        if (ret != WIFI_OPT_SUCCESS) {
+            WIFI_LOGE("GetLastStaStateByDatashare Query lastStaState fail!");
+            return 0;
+        }
+    }
+
+    WIFI_LOGI("GetLastStaStateByDatashare, lastStaState:%{public}s", lastStaState.c_str());
+    int lastStaStateType = CheckDataLegal(lastStaState);
+    return lastStaStateType;
+}
+
+void WifiEventSubscriberManager::RegisterLocationEvent()
+{
+    std::unique_lock<std::mutex> lock(locationEventMutex);
+    if (islocationModeObservered) {
+        return;
+    }
+    locationModeObserver_ = sptr<WifiLocationModeObserver>(new (std::nothrow)WifiLocationModeObserver());
+    Uri uri(WifiDataShareHelperUtils::GetInstance().GetLoactionDataShareUri());
+    WifiDataShareHelperUtils::GetInstance().RegisterObserver(uri, locationModeObserver_);
+    islocationModeObservered = true;
+    WIFI_LOGI("registerLocationEvent success");
+}
+
+void WifiEventSubscriberManager::UnRegisterLocationEvent()
+{
+    std::unique_lock<std::mutex> lock(locationEventMutex);
+    if (!islocationModeObservered) {
+        WIFI_LOGE("UnRegisterLocationEvent islocationModeObservered is false");
+        return;
+    }
+    Uri uri(WifiDataShareHelperUtils::GetInstance().GetLoactionDataShareUri());
+    WifiDataShareHelperUtils::GetInstance().UnRegisterObserver(uri, locationModeObserver_);
+    islocationModeObservered = false;
+}
+
+void WifiEventSubscriberManager::GetMdmProp()
+{
+    auto readProp = [](const std::string &key) -> bool {
+        char preValue[PROP_FALSE_LEN + 1] = {0};
+        int errorCode = GetParamValue(key.c_str(), 0, preValue, PROP_FALSE_LEN + 1);
+        return errorCode > 0 && strncmp(preValue, PROP_TRUE.c_str(), PROP_TRUE_LEN) == 0;
+    };
+    isMdmForbidden_ = readProp(MDM_WIFI_PROP);
+    isMdmHotspotForbidden_ = readProp(MDM_WIFI_HOTSPOT_PROP);
+    isMdmP2pForbidden_ = readProp(MDM_WIFI_P2P_PROP);
+}
+
+void WifiEventSubscriberManager::RegisterMdmPropListener()
+{
+    for (const std::string &prop : {MDM_WIFI_PROP, MDM_WIFI_HOTSPOT_PROP, MDM_WIFI_P2P_PROP}) {
+        int ret = WatchParamValue(prop.c_str(), MdmPropChangeEvt, nullptr);
+        if (ret != 0) {
+            WIFI_LOGI("RegisterMdmPropListener failed, prop:%{public}s", prop.c_str());
+        }
+    }
+}
+
+void WifiEventSubscriberManager::MdmPropChangeEvt(const char *key, const char *value, void *context)
+{
+    if (key == nullptr || value == nullptr) {
+        return;
+    }
+    std::string keyStr(key);
+    bool isForbidden = strncmp(value, PROP_TRUE.c_str(), PROP_TRUE_LEN) == 0;
+    if (keyStr == MDM_WIFI_PROP) {
+        isMdmForbidden_ = isForbidden;
+    } else if (keyStr == MDM_WIFI_HOTSPOT_PROP) {
+        isMdmHotspotForbidden_ = isForbidden;
+    } else if (keyStr == MDM_WIFI_P2P_PROP) {
+        isMdmP2pForbidden_ = isForbidden;
+    } else {
+        WIFI_LOGI("not mdm prop change");
+        return;
+    }
+    WIFI_LOGI("mdm prop change, key:%{public}s", key);
+}
+
+void WifiEventSubscriberManager::OnEnhanceServiceReady()
+{
+    WIFI_LOGI("Enhance service is ready, registering movement callback");
+    enhanceServiceReady_ = true;
+    RegisterMovementEnhanceCallback();
+}
+
+void WifiEventSubscriberManager::RegisterMovementEnhanceCallback()
+{
+    WIFI_LOGI("%{public}s enter.", __FUNCTION__);
+    IEnhanceService *mEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+    if (mEnhanceService == nullptr) {
+        WIFI_LOGE("%{public}s, get mEnhanceService failed!", __FUNCTION__);
+        return;
+    }
+    MovementEnhanceCallback movementCallback = [this](int32_t movementType, int32_t movementValue) {
+        this->OnMovementChanged(movementType, movementValue);
+    };
+    ErrCode ret = mEnhanceService->RegisterMovementEnhanceCallback(movementCallback);
+    WIFI_LOGI("%{public}s, result %{public}d.", __FUNCTION__, ret);
+}
+
+void WifiEventSubscriberManager::UnRegisterMovementEnhanceCallback()
+{
+    WIFI_LOGI("%{public}s enter.", __FUNCTION__);
+    IEnhanceService *mEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+    if (mEnhanceService == nullptr) {
+        WIFI_LOGE("%{public}s, get mEnhanceService failed!", __FUNCTION__);
+        return;
+    }
+    ErrCode ret = mEnhanceService->UnRegisterMovementEnhanceCallback();
+    WIFI_LOGI("%{public}s, result %{public}d.", __FUNCTION__, ret);
+}
+
+void WifiEventSubscriberManager::OnMovementChanged(int32_t movementType, int32_t movementValue)
+{
+    WIFI_LOGI("OnMovementChanged, type: %{public}d, value: %{public}d", movementType, movementValue);
+    // 静止状态
+    if (movementType == MOVEMENT_TYPE_STILL) {
+        if (movementValue == MOVEMENT_VALUE_ENTER) {
+            WifiConfigCenter::GetInstance().SetFreezeModeState(MODE_STATE_OPEN);
+        } else {
+            WifiConfigCenter::GetInstance().SetFreezeModeState(MODE_STATE_CLOSE);
+        }
+    }
+    // 停留状态
+    if (movementType == MOVEMENT_TYPE_STAY) {
+        HandleMovementChange();
+    }
+}
+
+void WifiEventSubscriberManager::HandleMovementChange()
+{
+    WIFI_LOGI("HandleMovementChange enter");
+    if (!movementChangeEventHandler_) {
+        movementChangeEventHandler_ = std::make_unique<WifiEventHandler>("WIFI_MOVEMENT_STATE_AWARE_THREAD");
+    }
+    movementChangeEventHandler_->PostAsyncTask([this]() {
+        for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+            IScanService *pScanService = WifiServiceManager::GetInstance().GetScanServiceInst(i);
+            if (pScanService == nullptr) {
+                WIFI_LOGE("scan service is NOT start!");
+                continue;
+            }
+            if (pScanService->OnMovingFreezeStateChange() != WIFI_OPT_SUCCESS) {
+                WIFI_LOGE("OnMovingFreezeStateChange failed");
+            }
+        }
+    });
+}
+
+CesEventSubscriber::CesEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo)
+    : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("CesEventSubscriber enter");
+}
+
+CesEventSubscriber::~CesEventSubscriber()
+{
+    WIFI_LOGI("~CesEventSubscriber enter");
+}
+
+void CesEventSubscriber::OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+    WIFI_LOGD("CesEventSubscriber OnReceiveEvent: %{public}s", action.c_str());
+    auto itFunc = CES_REQUEST_MAP.find(action);
+    if (itFunc != CES_REQUEST_MAP.end()) {
+        auto requestFunc = itFunc->second;
+        if (requestFunc != nullptr) {
+            return (this->*requestFunc)(eventData);
+        }
+    }
+    WIFI_LOGE("CesEventSubscriber OnReceiveEvent unknown Event: %{public}s", action.c_str());
+}
+
+void CesEventSubscriber::OnReceiveScreenEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+    WIFI_LOGI("OnReceiveEvent: %{public}s.", action.c_str());
+
+    int screenState = WifiConfigCenter::GetInstance().GetScreenState();
+    int screenStateNew =
+        (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_ON) ? MODE_STATE_OPEN : MODE_STATE_CLOSE;
+    WifiConfigCenter::GetInstance().SetScreenState(screenStateNew);
+    if (screenStateNew == screenState) {
+        return;
+    }
+    for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+        IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(i);
+        if (pService != nullptr) {
+            pService->OnScreenStateChanged(screenStateNew);
+#ifdef FEATURE_HPF_SUPPORT
+            WifiManager::GetInstance().InstallPacketFilterProgram(screenStateNew, i);
+#endif
+        }
+        IScanService *pScanService = WifiServiceManager::GetInstance().GetScanServiceInst(i);
+        if (pScanService != nullptr) {
+            pScanService->OnScreenStateChanged(screenStateNew);
+        }
+#if defined(FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT) && defined(FEATURE_WIFI_PRO_SUPPORT)
+        IWifiProService *pWifiProService = WifiServiceManager::GetInstance().GetWifiProServiceInst(i);
+        if (pWifiProService != nullptr) {
+            pWifiProService->OnScreenStateChanged(screenStateNew);
+        }
+#endif
+    }
+#ifdef FEATURE_P2P_SUPPORT
+    IP2pService *pP2pService = WifiServiceManager::GetInstance().GetP2pServiceInst();
+    if (pP2pService != nullptr) {
+        pP2pService->OnScreenStateChanged(screenStateNew);
+    }
+#endif
+}
+
+void CesEventSubscriber::OnReceiveAirplaneEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    const auto &action = eventData.GetWant().GetAction();
+    const auto &data = eventData.GetData();
+    const auto &code = eventData.GetCode();
+    WIFI_LOGI("AirplaneModeEventSubscriber::OnReceiveEvent: %{public}s,  %{public}s,  %{public}d", action.c_str(),
+        data.c_str(), code);
+    if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_AIRPLANE_MODE_CHANGED) {
+        if (code == 1) {
+            /* open airplane mode */
+            WifiConfigCenter::GetInstance().SetWifiStateOnAirplaneChanged(MODE_STATE_OPEN);
+            WifiManager::GetInstance().GetWifiTogglerManager()->AirplaneToggled(1);
+        } else {
+            /* close airplane mode */
+            WifiConfigCenter::GetInstance().SetWifiStateOnAirplaneChanged(MODE_STATE_CLOSE);
+            WifiManager::GetInstance().GetWifiTogglerManager()->AirplaneToggled(0);
+        }
+    }
+}
+
+void CesEventSubscriber::OnReceiveBatteryEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+    WIFI_LOGI("BatteryEventSubscriber::OnReceiveEvent: %{public}s.", action.c_str());
+    if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_POWER_CONNECTED) {
+        WifiConfigCenter::GetInstance().SetNoChargerPlugModeState(MODE_STATE_CLOSE);
+    } else if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED) {
+        WifiConfigCenter::GetInstance().SetNoChargerPlugModeState(MODE_STATE_OPEN);
+    }
+
+#ifdef DYNAMIC_ADJUST_WIFI_POWER_SAVE
+    IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(0);
+    if (pService != nullptr) {
+        pService->OnBatteryStateChanged(WifiConfigCenter::GetInstance().GetNoChargerPlugModeState());
+    }
+#endif
+
+    for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+        IScanService *pScanService = WifiServiceManager::GetInstance().GetScanServiceInst(i);
+        if (pScanService == nullptr) {
+            WIFI_LOGE("scan service is NOT start!");
+            return;
+        }
+        if (pScanService->OnMovingFreezeStateChange() != WIFI_OPT_SUCCESS) {
+            WIFI_LOGE("OnMovingFreezeStateChange failed");
+        }
+    }
+}
+
+void CesEventSubscriber::OnReceiveAppEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+    WIFI_LOGI("AppEventSubscriber::OnReceiveEvent : %{public}s.", action.c_str());
+    auto wantTemp = eventData.GetWant();
+    auto uid = wantTemp.GetIntParam(AppExecFwk::Constants::UID, -1);
+    if (uid == -1) {
+        WIFI_LOGE("%{public}s getPackage uid is illegal.", __func__);
+        return;
+    }
+    WIFI_LOGI("Package removed of uid %{public}d.", uid);
+    bool removeFlag = false;
+    for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+        IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(i);
+        if (pService != nullptr) {
+            pService->RemoveAllCandidateConfig(uid);
+            removeFlag = true;
+        }
+    }
+    if (!removeFlag) {
+        std::vector<WifiDeviceConfig> tempConfigs;
+        WifiSettings::GetInstance().GetAllCandidateConfig(uid, tempConfigs);
+        for (const auto &config : tempConfigs) {
+            if (WifiSettings::GetInstance().RemoveDevice(config.networkId) != WIFI_OPT_SUCCESS) {
+                WIFI_LOGE("RemoveAllCandidateConfig-RemoveDevice() failed!");
+            }
+        }
+        WifiSettings::GetInstance().SyncDeviceConfig();
+    }
+    return;
+}
+
+void CesEventSubscriber::OnReceiveThermalEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+    WIFI_LOGI("ThermalLevelSubscriber::OnReceiveEvent: %{public}s.", action.c_str());
+    if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_THERMAL_LEVEL_CHANGED) {
+        static const std::string THERMAL_EVENT_ID = "0";
+        int level = eventData.GetWant().GetIntParam(THERMAL_EVENT_ID, 0);
+        WifiConfigCenter::GetInstance().SetThermalLevel(level);
+        WIFI_LOGI("ThermalLevelSubscriber SetThermalLevel: %{public}d.", level);
+    }
+}
+
+void CesEventSubscriber::OnReceiveStandbyEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    const auto &action = eventData.GetWant().GetAction();
+    const bool napped = eventData.GetWant().GetBoolParam(WIFI_STANDBY_NAP, 0);
+    const bool sleeping = eventData.GetWant().GetBoolParam(WIFI_STANDBY_SLEEPING, 0);
+    WIFI_LOGI("StandByListerner OnReceiveEvent action[%{public}s], napped[%{public}d], sleeping[%{public}d]",
+        action.c_str(), napped, sleeping);
+    int state = WifiConfigCenter::GetInstance().GetScreenState();
+    if (lastSleepState != sleeping && state != MODE_STATE_CLOSE) {
+        for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+            IScanService *pScanService = WifiServiceManager::GetInstance().GetScanServiceInst(i);
+            if (pScanService == nullptr) {
+                WIFI_LOGE("scan service is NOT start!");
+                continue;
+            }
+            pScanService->OnStandbyStateChanged(sleeping);
+        }
+        lastSleepState = sleeping;
+    }
+    if (napped || sleeping) {
+        WifiConfigCenter::GetInstance().SetPowerIdelState(MODE_STATE_OPEN);
+    } else {
+        WifiConfigCenter::GetInstance().SetPowerIdelState(MODE_STATE_CLOSE);
+    }
+}
+
+void CesEventSubscriber::OnReceiveForceSleepEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    if (GetDeviceType() != ProductDeviceType::TV) {
+        return;
+    }
+#ifdef FEATURE_HPF_SUPPORT
+    std::string action = eventData.GetWant().GetAction();
+    WIFI_LOGI("ForceSleepEventSubscriber OnReceiveEvent %{public}s, %{public}d", action.c_str(), eventData.GetCode());
+ 
+    int modeState = (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_ENTER_FORCE_SLEEP) ?
+        MODE_STATE_ENTER_FORCESLEEP : MODE_STATE_EXIT_FORCESLEEP;
+ 
+    for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+        WifiManager::GetInstance().InstallPacketFilterProgram(modeState, i);
+    }
+#endif
+}
+
+void CesEventSubscriber::OnReceiveGameInfoNotifyEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    auto value = eventData.GetWant().GetStringParam("value");
+    if (value.find("netLatency") != std::string::npos) {
+        std::regex pattern(R"(\"netLatency\":\"total:(\d+)\")");
+        std::smatch matches;
+
+        if (std::regex_search(value, matches, pattern)) {
+            std::string totalStr = matches[1].str();
+            int total = CheckDataLegal(totalStr);
+            AppNetworkSpeedLimitService::GetInstance().UpdateGameRttData(total);
+#ifdef FEATURE_WIFI_ENHANCE_SWITCH_SUPPORT
+            WifiProChr::GetInstance().NotifyGameRtt(total);
+#endif
+        }
+    }
+}
+
+void WifiEventSubscriberManager::RegisterNotificationEvent()
+{
+    std::unique_lock<std::mutex> lock(notificationEventMutex);
+    if (notificationTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(notificationTimerId);
+    }
+    if (wifiNotificationSubsciber_) {
+        return;
+    }
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(WIFI_EVENT_TAP_NOTIFICATION);
+    matchingSkills.AddEvent(WIFI_EVENT_TAP_DONT_SHOW_AGAIN);
+    matchingSkills.AddEvent(WIFI_EVENT_DIALOG_ACCEPT);
+    matchingSkills.AddEvent(WIFI_EVENT_DIALOG_REJECT);
+    matchingSkills.AddEvent(EVENT_SETTINGS_WLAN_KEEP_CONNECTED);
+    WIFI_LOGI("RegisterNotificationEvent start");
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    subscriberInfo.SetThreadMode(EventFwk::CommonEventSubscribeInfo::COMMON);
+    subscriberInfo.SetPermission("ohos.permission.SET_WIFI_CONFIG");
+    wifiNotificationSubsciber_ = std::make_shared<NotificationEventSubscriber>(subscriberInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(wifiNotificationSubsciber_)) {
+        WIFI_LOGE("WifiNotification SubscribeCommonEvent() failed");
+        wifiNotificationSubsciber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = [this]() { this->RegisterNotificationEvent(); };
+        WifiTimer::GetInstance()->Register(timeoutCallBack, notificationTimerId, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterNotificationEvent retry, notificationTimerId = %{public}u", notificationTimerId);
+    } else {
+        WIFI_LOGI("RegisterNotificationEvent success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterNotificationEvent()
+{
+    std::unique_lock<std::mutex> lock(notificationEventMutex);
+    if (notificationTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(notificationTimerId);
+    }
+    if (!wifiNotificationSubsciber_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(wifiNotificationSubsciber_)) {
+        WIFI_LOGE("UnRegisterNotificationEvent failed");
+    }
+    wifiNotificationSubsciber_ = nullptr;
+    WIFI_LOGI("UnRegisterNotificationEvent finished");
+}
+
+NotificationEventSubscriber::NotificationEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo)
+    : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("NotificationEventSubscriber enter");
+}
+
+NotificationEventSubscriber::~NotificationEventSubscriber()
+{
+    WIFI_LOGI("~NotificationEventSubscriber enter");
+}
+
+void NotificationEventSubscriber::OnReceiveWlanKeepConnected(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    const int code = eventData.GetCode();
+    WifiLinkedInfo linkedInfo;
+    WifiConfigCenter::GetInstance().GetLinkedInfo(linkedInfo);
+    int networkId = linkedInfo.networkId;
+    WIFI_LOGI("received the WlanKeepConnected, code == %{public}d", code);
+    if (code == 1) { // The user clicks the use button.
+        WifiNetAgent::GetInstance().RestoreWifiConnection();
+        WIFI_LOGI("change the value of AcceptUnvalidated to true");
+        WifiSettings::GetInstance().SetAcceptUnvalidated(networkId, true);
+        WifiSettings::GetInstance().SyncDeviceConfig();
+    }
+}
+
+void NotificationEventSubscriber::OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+    WIFI_LOGI("OnReceiveNotificationEvent action[%{public}s]", action.c_str());
+    if (action == WIFI_EVENT_TAP_NOTIFICATION) {
+        int notificationId = eventData.GetWant().GetIntParam("notificationId", 0);
+        WIFI_LOGI("notificationId[%{public}d]", notificationId);
+        OnReceiveNotificationEvent(notificationId);
+    } else if (action == WIFI_EVENT_TAP_DONT_SHOW_AGAIN) {
+        int notificationId = eventData.GetWant().GetIntParam("notificationId", 0);
+        WIFI_LOGI("notificationId[%{public}d]", notificationId);
+        OnReceiveDontShowEvent(notificationId);
+    } else if (action == WIFI_EVENT_DIALOG_ACCEPT) {
+        int dialogType = eventData.GetWant().GetIntParam("dialogType", 0);
+        WIFI_LOGI("dialogType[%{public}d]", dialogType);
+        OnReceiveDialogAcceptEvent(dialogType, eventData);
+    } else if (action == WIFI_EVENT_DIALOG_REJECT) {
+        int dialogType = eventData.GetWant().GetIntParam("dialogType", 0);
+        bool noAction = eventData.GetWant().GetBoolParam("noAction", false);
+        WIFI_LOGI("dialogType[%{public}d], noAction[%{public}d]", dialogType, static_cast<int>(noAction));
+        OnReceiveDialogRejectEvent(dialogType, noAction);
+    } else if (action == EVENT_SETTINGS_WLAN_KEEP_CONNECTED) {
+        OnReceiveWlanKeepConnected(eventData);
+    } else {
+        int dialogType = eventData.GetWant().GetIntParam("dialogType", 0);
+        WIFI_LOGI("dialogType[%{public}d]", dialogType);
+    }
+}
+
+void NotificationEventSubscriber::OnReceiveNotificationEvent(int notificationId)
+{
+    if (notificationId == static_cast<int>(WifiNotificationId::WIFI_PORTAL_NOTIFICATION_ID)) {
+        for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+            IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(i);
+            if (pService != nullptr) {
+                pService->StartPortalCertification();
+            }
+        }
+    } else if (notificationId == static_cast<int>(WifiNotificationId::WIFI_5G_CONN_NOTIFICATION_ID) ||
+                notificationId == static_cast<int>(WifiNotificationId::WIFI_TRIBAND_CONN_NOTIFICATION_ID)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnNotificationReceive(notificationId);
+        }
+    }
+}
+
+void NotificationEventSubscriber::OnReceiveDontShowEvent(int notificationId)
+{
+    if (notificationId == static_cast<int>(WifiNotificationId::WIFI_TRIBAND_CONN_NOTIFICATION_ID)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnDontShowReceive(notificationId);
+        }
+    }
+}
+
+void NotificationEventSubscriber::HandleCandidateConnect(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    NotifyCandidateApprovalStatus(CandidateApprovalStatus::USER_ACCEPT);
+    ConnectSettings connectSettings = WifiConfigCenter::GetInstance().GetCandidateConnectSettings();
+    if (connectSettings.networkId == INVALID_NETWORK_ID) {
+        WIFI_LOGI("OnReceiveNotificationEvent networkid is invalid");
+        return;
+    }
+    IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(0);
+    if (pService == nullptr) {
+        WIFI_LOGE("OnReceiveNotificationEvent pService is null");
+        return;
+    }
+    if (connectSettings.addNetworkToSystem) {
+        WifiDeviceConfig config;
+        if (WifiSettings::GetInstance().GetCandidateConfigWithoutUid(connectSettings.networkId, config) == -1) {
+            WIFI_LOGE("OnReceiveNotificationEvent get config fail");
+            return;
+        }
+        WifiSettings::GetInstance().RemoveDevice(connectSettings.networkId);
+        config.uid = -1;
+        config.isEphemeral = false;
+        pService->ConnectToDevice(config);
+    } else {
+        WifiSettings::GetInstance().SetDeviceEphemeral(connectSettings.networkId, false);
+        WifiSettings::GetInstance().SyncDeviceConfig();
+        pService->ConnectToNetwork(connectSettings.networkId);
+    }
+}
+
+void NotificationEventSubscriber::OnReceiveDialogAcceptEvent(int dialogType,
+    const OHOS::EventFwk::CommonEventData &eventData)
+{
+    if (dialogType == static_cast<int>(WifiDialogType::CANDIDATE_CONNECT)) {
+        HandleCandidateConnect(eventData);
+    } else if (dialogType == static_cast<int>(WifiDialogType::AUTO_IDENTIFY_CONN)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnDialogClick(true);
+        }
+    } else if (dialogType == static_cast<int>(WifiDialogType::SETTINGS_AUTO_IDENTIFY_CONN)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnSettingsDialogClick(true, SETTINGS_5G_CONN_FEATURE);
+        }
+    } else if (dialogType == static_cast<int>(WifiDialogType::SETTINGS_AUTO_IDENTIFY_SAVE)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnSettingsDialogClick(true, SETTINGS_5G_SAVE_FEATURE);
+        }
+    } else if (dialogType == static_cast<int>(WifiDialogType::SETTINGS_AUTO_IDENTIFY_SAVE_SINGLE)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnSettingsDialogClick(true, SETTINGS_5G_SAVE_FEATURE);
+        }
+    }
+#ifdef FEATURE_P2P_SUPPORT
+    IP2pService *p2pService = WifiServiceManager::GetInstance().GetP2pServiceInst();
+    if (p2pService == nullptr) {
+        WIFI_LOGE("p2pService is null");
+        return;
+    }
+    if (dialogType == static_cast<int>(WifiDialogType::P2P_WSC_PBC_DIALOG) ||
+        dialogType == static_cast<int>(WifiDialogType::P2P_WSC_KEYPAD_DIALOG)) {
+        std::string inputPinCode = eventData.GetWant().GetStringParam("inputPinCode");
+        WIFI_LOGI("OnReceiveDialogAcceptEvent inputPinCode:%{private}s", inputPinCode.c_str());
+        p2pService->NotifyWscDialogConfirmResult(true, inputPinCode);
+    } else if (dialogType == static_cast<int>(WifiDialogType::P2P_WSC_DISPLAY_DIALOG)) {
+        p2pService->NotifyWscDisplayConfirmResult();
+    }
+#ifdef SUPPORT_P2P_UNTRUST_INVITATION
+    if (dialogType == static_cast<int>(WifiDialogType::P2P_UNTRUST_INVITE_DIALOG)) {
+        WIFI_LOGI("OnReceiveNotification untrust dialog accept");
+        p2pService->NotifyUntrustInvitationResult(true);
+    }
+#endif
+#endif
+}
+
+void NotificationEventSubscriber::OnReceiveDialogRejectEvent(int dialogType, bool noAction)
+{
+    if (dialogType == static_cast<int>(WifiDialogType::AUTO_IDENTIFY_CONN)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnDialogClick(false);
+        }
+    } else if (dialogType == static_cast<int>(WifiDialogType::SETTINGS_AUTO_IDENTIFY_CONN)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnSettingsDialogClick(false, SETTINGS_5G_CONN_FEATURE);
+        }
+    } else if (dialogType == static_cast<int>(WifiDialogType::SETTINGS_AUTO_IDENTIFY_SAVE)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnSettingsDialogClick(false, SETTINGS_5G_SAVE_FEATURE);
+        }
+    } else if (dialogType == static_cast<int>(WifiDialogType::SETTINGS_AUTO_IDENTIFY_SAVE_SINGLE)) {
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnSettingsDialogClick(false, SETTINGS_5G_SAVE_FEATURE);
+        }
+    } else if (dialogType == static_cast<int>(WifiDialogType::CANDIDATE_CONNECT)) {
+        ConnectSettings connectSettings;
+        WifiConfigCenter::GetInstance().SetCandidateConnectSettings(connectSettings);
+        if (noAction) {
+            NotifyCandidateApprovalStatus(CandidateApprovalStatus::USER_NO_RESPOND);
+        } else {
+            NotifyCandidateApprovalStatus(CandidateApprovalStatus::USER_REJECT);
+        }
+    }
+
+#ifdef FEATURE_P2P_SUPPORT
+    if (dialogType == static_cast<int>(WifiDialogType::P2P_WSC_PBC_DIALOG)) {
+        WIFI_LOGI("OnReceiveNotification P2P_WSC_PBC_DIALOG Reject");
+        IP2pService *p2pService = WifiServiceManager::GetInstance().GetP2pServiceInst();
+        if (p2pService != nullptr) {
+            p2pService->NotifyWscDialogConfirmResult(false, "");
+        }
+    }
+#ifdef SUPPORT_P2P_UNTRUST_INVITATION
+    if (dialogType == static_cast<int>(WifiDialogType::P2P_UNTRUST_INVITE_DIALOG)) {
+        WIFI_LOGI("OnReceiveNotification untrust dialog reject");
+        IP2pService *p2pService = WifiServiceManager::GetInstance().GetP2pServiceInst();
+        if (p2pService != nullptr) {
+            p2pService->NotifyUntrustInvitationResult(false);
+        }
+    }
+#endif
+#endif
+}
+
+void NotificationEventSubscriber::NotifyCandidateApprovalStatus(CandidateApprovalStatus status)
+{
+    WifiEventCallbackMsg cbMsg;
+    cbMsg.msgCode = WIFI_CBK_MSG_CANDIDATE_CONNECT_CHANGE;
+    cbMsg.msgData = static_cast<int>(status);
+    WifiInternalEventDispatcher::GetInstance().AddBroadCastMsg(cbMsg);
+}
+
+#ifdef HAS_POWERMGR_PART
+void WifiEventSubscriberManager::RegisterPowermgrEvent()
+{
+    std::unique_lock<std::mutex> lock(powermgrEventMutex);
+    if (powerMgrId != 0) {
+        WifiTimer::GetInstance()->UnRegister(powerMgrId);
+    }
+    if (wifiPowermgrEventSubsciber_) {
+        return;
+    }
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(COMMON_EVENT_POWER_MANAGER_STATE_CHANGED);
+    WIFI_LOGI("RegisterPowermgrEvent start");
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    subscriberInfo.SetThreadMode(EventFwk::CommonEventSubscribeInfo::COMMON);
+    subscriberInfo.SetPermission("ohos.permission.SET_WIFI_CONFIG");
+    wifiPowermgrEventSubsciber_ = std::make_shared<PowermgrEventSubscriber>(subscriberInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(wifiPowermgrEventSubsciber_)) {
+        WIFI_LOGE("Powermgr SubscribeCommonEvent() failed");
+        wifiPowermgrEventSubsciber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = std::bind(&WifiEventSubscriberManager::RegisterPowermgrEvent, this);
+        WifiTimer::GetInstance()->Register(timeoutCallBack, powerMgrId, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterPowermgrEvent retry, powerMgrId = %{public}u", powerMgrId);
+    } else {
+        WIFI_LOGI("RegisterPowermgrEvent success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterPowermgrEvent()
+{
+    std::unique_lock<std::mutex> lock(powermgrEventMutex);
+    if (powerMgrId != 0) {
+        WifiTimer::GetInstance()->UnRegister(powerMgrId);
+    }
+    if (!wifiPowermgrEventSubsciber_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(wifiPowermgrEventSubsciber_)) {
+        WIFI_LOGE("UnRegisterPowermgrEvent failed");
+    }
+    wifiPowermgrEventSubsciber_ = nullptr;
+    WIFI_LOGI("UnRegisterPowermgrEvent finished");
+}
+
+PowermgrEventSubscriber::PowermgrEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo)
+    : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("PowermgrEventSubscriber enter");
+}
+
+PowermgrEventSubscriber::~PowermgrEventSubscriber()
+{
+    WIFI_LOGI("~PowermgrEventSubscriber enter");
+}
+
+void PowermgrEventSubscriber::OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+#ifdef FEATURE_HPF_SUPPORT
+    if (action == COMMON_EVENT_POWER_MANAGER_STATE_CHANGED) {
+        WIFI_LOGI("Receive power manager state Event: %{public}d", eventData.GetCode());
+        for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+            WifiManager::GetInstance().InstallPacketFilterProgram(eventData.GetCode(), i);
+        }
+    }
+#endif
+}
+#endif
+#ifdef HAS_NETMANAGER_EVENT_PART
+void WifiEventSubscriberManager::RegisterNetmgrEvent()
+{
+    std::unique_lock<std::mutex> lock(netmgrEventMutex);
+    if (netMgrId != 0) {
+        WifiTimer::GetInstance()->UnRegister(netMgrId);
+    }
+    if (wifiNetmgrEventSubsciber_) {
+        return;
+    }
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(WIFI_EVENT_BG_CONTINUOUS_TASK_STATE);
+    matchingSkills.AddEvent(WIFI_EVENT_ACC_TASK_STATE);
+    WIFI_LOGI("RegisterNetmgrEvent start");
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    subscriberInfo.SetThreadMode(EventFwk::CommonEventSubscribeInfo::COMMON);
+    subscriberInfo.SetPermission("ohos.permission.ACCESS_BOOSTER_SERVICE");
+    wifiNetmgrEventSubsciber_ = std::make_shared<NetmgrEventSubscriber>(subscriberInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(wifiNetmgrEventSubsciber_)) {
+        WIFI_LOGE("RegisterNetmgrEvent SubscribeCommonEvent failed");
+        wifiNetmgrEventSubsciber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = std::bind(&WifiEventSubscriberManager::RegisterNetmgrEvent, this);
+        WifiTimer::GetInstance()->Register(timeoutCallBack, netMgrId, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterNetmgrEvent retry, netMgrId = %{public}u", netMgrId);
+    } else {
+        WIFI_LOGI("RegisterNetmgrEvent success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterNetmgrEvent()
+{
+    std::unique_lock<std::mutex> lock(netmgrEventMutex);
+    if (netMgrId != 0) {
+        WifiTimer::GetInstance()->UnRegister(netMgrId);
+    }
+    if (!wifiNetmgrEventSubsciber_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(wifiNetmgrEventSubsciber_)) {
+        WIFI_LOGE("UnRegisterNetmgrEvent failed");
+    }
+    wifiNetmgrEventSubsciber_ = nullptr;
+    WIFI_LOGI("UnRegisterNetmgrEvent finished");
+}
+
+NetmgrEventSubscriber::NetmgrEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo)
+    : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("NetmgrEventSubscriber enter");
+}
+
+NetmgrEventSubscriber::~NetmgrEventSubscriber()
+{
+    WIFI_LOGI("~NetmgrEventSubscriber enter");
+}
+
+void NetmgrEventSubscriber::OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+    if (action == WIFI_EVENT_ACC_TASK_STATE) {
+        int32_t accTaskState = eventData.GetCode();
+        WIFI_LOGI("NetmgrEventSubscriber OnReceiveEvent by AccTask %{public}d", accTaskState);
+        WifiNetworkControlInfo networkControlInfo;
+        networkControlInfo.sceneId = BG_LIMIT_CONTROL_ID_LOW_LATENCY;
+        networkControlInfo.state = accTaskState;
+        AppNetworkSpeedLimitService::GetInstance().ReceiveNetworkControlInfo(networkControlInfo);
+        return;
+    }
+
+    uint32_t bgContinuousTaskState = eventData.GetCode();
+    WIFI_LOGI("NetmgrEventSubscriber OnReceiveEvent by BgTaskAware %{public}d", bgContinuousTaskState);
+    IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst();
+    if (pService == nullptr) {
+        WIFI_LOGE("pService is nullptr!");
+        return;
+    }
+    pService->DeliverAudioState(bgContinuousTaskState);
+}
+#endif
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+void WifiEventSubscriberManager::RegisterAssetEvent()
+{
+    std::unique_lock<std::mutex> lock(AssetEventMutex);
+    if (assetMgrId != 0) {
+        WifiTimer::GetInstance()->UnRegister(assetMgrId);
+    }
+    if (wifiAssetrEventSubsciber_) {
+        return;
+    }
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(COMMON_EVENT_ASSETCLOUD_MANAGER_STATE_CHANGED);
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    subscriberInfo.SetPublisherUid(ASSETID);
+    wifiAssetrEventSubsciber_ = std::make_shared<AssetEventSubscriber>(subscriberInfo);
+    WIFI_LOGI("RegisterAssetEvent start");
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(wifiAssetrEventSubsciber_)) {
+        WIFI_LOGE("AssetCloud SubscribeCommonEvent() failed");
+        wifiAssetrEventSubsciber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = [this]() { this->RegisterAssetEvent(); };
+        WifiTimer::GetInstance()->Register(timeoutCallBack, assetMgrId, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterAssetEvent retry, powerMgrId = %{public}u", assetMgrId);
+    } else {
+        WIFI_LOGI("RegisterAssetEvent success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterAssetEvent()
+{
+    std::unique_lock<std::mutex> lock(AssetEventMutex);
+    if (assetMgrId != 0) {
+        WifiTimer::GetInstance()->UnRegister(assetMgrId);
+    }
+    if (!wifiAssetrEventSubsciber_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(wifiAssetrEventSubsciber_)) {
+        WIFI_LOGE("UnRegisterAssetEvent failed");
+    }
+    wifiAssetrEventSubsciber_ = nullptr;
+    WIFI_LOGI("UnRegisterAssetEvent finished");
+}
+
+AssetEventSubscriber::AssetEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo)
+    : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("AssetEventSubscriber enter");
+}
+
+AssetEventSubscriber::~AssetEventSubscriber()
+{
+    WIFI_LOGI("~AssetEventSubscriber enter");
+}
+
+void AssetEventSubscriber::OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    std::string action = eventData.GetWant().GetAction();
+    WIFI_LOGI("AssetListerner OnReceiveEvent action: %{public}s", action.c_str());
+    if (action != COMMON_EVENT_ASSETCLOUD_MANAGER_STATE_CHANGED) {
+        return;
+    }
+    // Do not sync from cloud during connecting
+    for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+        IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(i);
+        if (pService != nullptr) {
+            WifiLinkedInfo linkedInfo;
+            WifiConfigCenter::GetInstance().GetLinkedInfo(linkedInfo, i);
+            if (linkedInfo.connState == ConnState::CONNECTING) {
+                return;
+            }
+        }
+    }
+    WifiAssetManager::GetInstance().CloudAssetSync();
+}
+#endif
+void CesEventSubscriber::OnReceiveUserUnlockedEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    WIFI_LOGI("OnReceiveUserUnlockedEvent");
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+    WifiAssetManager::GetInstance().InitUpLoadLocalDeviceSync();
+#endif
+}
+
+void CesEventSubscriber::OnReceiveConnectivityChangedEvent(const OHOS::EventFwk::CommonEventData &eventData)
+{
+    const std::string netBearTypeKey = "NetType";
+    const int32_t netBearTypeDefault = -1;
+    int32_t bearType = eventData.GetWant().GetIntParam(netBearTypeKey, netBearTypeDefault);
+    int32_t code = eventData.GetCode();
+
+    WIFI_LOGI("%{public}s net: %{public}d code: %{public}d", __FUNCTION__, bearType, code);
+    WifiSensorScene::GetInstance().OnConnectivityChanged(bearType, code);
+    AppNetworkSpeedLimitService::GetInstance().HandleNetworkConnectivityChange(bearType, code);
+    if (firstFoldState_.load() && IsSignalSmoothingEnable() &&
+        bearType == NetManagerStandard::NetBearType::BEARER_WIFI) {
+        auto foldStatus = Rosen::DisplayManagerLite::GetInstance().GetFoldStatus();
+        for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+            IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(i);
+            if (pService != nullptr) {
+                pService->OnFoldStateChanged(static_cast<int>(foldStatus));
+            }
+        }
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnFoldStateChanged(static_cast<int>(foldStatus));
+        }
+        firstFoldState_.store(false);
+    }
+}
+
+void WifiEventSubscriberManager::RegisterNetworkStateChangeEvent()
+{
+    std::unique_lock<std::mutex> lock(networkStateChangeEventMutex);
+    if (networkStateChangeTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(networkStateChangeTimerId);
+    }
+    if (networkStateChangeSubsciber_) {
+        return;
+    }
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_NETWORK_STATE_CHANGED);
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    networkStateChangeSubsciber_
+        = std::make_shared<NetworkStateChangeSubscriber>(subscriberInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(networkStateChangeSubsciber_)) {
+        WIFI_LOGE("network state change subscribe failed");
+        networkStateChangeSubsciber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = [this]() { this->RegisterNetworkStateChangeEvent(); };
+        WifiTimer::GetInstance()->Register(timeoutCallBack, networkStateChangeTimerId, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterNetworkStateChangeEvent retry, timerId = %{public}u", networkStateChangeTimerId);
+    } else {
+        WIFI_LOGI("RegisterNetworkStateChangeEvent success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterNetworkStateChangeEvent()
+{
+    std::unique_lock<std::mutex> lock(networkStateChangeEventMutex);
+    if (networkStateChangeTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(networkStateChangeTimerId);
+    }
+    if (!networkStateChangeSubsciber_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(networkStateChangeSubsciber_)) {
+        WIFI_LOGE("UnRegisterNetworkStateChangeEvent failed");
+    }
+    networkStateChangeSubsciber_ = nullptr;
+    WIFI_LOGI("UnRegisterNetworkStateChangeEvent finished");
+}
+
+NetworkStateChangeSubscriber::NetworkStateChangeSubscriber(
+    const EventFwk::CommonEventSubscribeInfo &subscriberInfo) : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("NetworkStateChangeSubscriber enter");
+}
+
+void NetworkStateChangeSubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eventData)
+{
+    const auto &action = eventData.GetWant().GetAction();
+    if (action == EventFwk::CommonEventSupport::COMMON_EVENT_NETWORK_STATE_CHANGED) {
+        WifiCountryCodeManager::GetInstance().TriggerUpdateWifiCountryCode(TRIGGER_UPDATE_REASON_TEL_NET_CHANGE);
+    }
+}
+
+void WifiEventSubscriberManager::RegisterWifiScanChangeEvent()
+{
+    std::unique_lock<std::mutex> lock(wifiScanChangeEventMutex);
+    if (wifiScanChangeTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(wifiScanChangeTimerId);
+    }
+    if (wifiScanEventChangeSubscriber_) {
+        return;
+    }
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_WIFI_SCAN_FINISHED);
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    wifiScanEventChangeSubscriber_
+        = std::make_shared<WifiScanEventChangeSubscriber>(subscriberInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(wifiScanEventChangeSubscriber_)) {
+        WIFI_LOGE("network state change subscribe failed");
+        wifiScanEventChangeSubscriber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = [this]() {this->RegisterWifiScanChangeEvent(); };
+        WifiTimer::GetInstance()->Register(timeoutCallBack, wifiScanChangeTimerId, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterWifiScanChangeEvent retry, wifiScanChangeTimerId = %{public}u", wifiScanChangeTimerId);
+    } else {
+        WIFI_LOGI("RegisterWifiScanChangeEvent success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterWifiScanChangeEvent()
+{
+    std::unique_lock<std::mutex> lock(wifiScanChangeEventMutex);
+    if (wifiScanChangeTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(wifiScanChangeTimerId);
+    }
+    if (!wifiScanEventChangeSubscriber_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(wifiScanEventChangeSubscriber_)) {
+        WIFI_LOGE("UnRegisterWifiScanChangeEvent failed");
+    }
+    wifiScanEventChangeSubscriber_ = nullptr;
+    WIFI_LOGI("UnRegisterWifiScanChangeEvent finished");
+}
+
+WifiScanEventChangeSubscriber::WifiScanEventChangeSubscriber(
+    const EventFwk::CommonEventSubscribeInfo &subscriberInfo) : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("WifiScanEventChangeSubscriber enter");
+}
+
+void WifiScanEventChangeSubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eventData)
+{
+    const auto &action = eventData.GetWant().GetAction();
+    if (action == EventFwk::CommonEventSupport::COMMON_EVENT_WIFI_SCAN_FINISHED &&
+        eventData.GetCode() == static_cast<int>(ScanHandleNotify::SCAN_OK)) {
+        WifiCountryCodeManager::GetInstance().TriggerUpdateWifiCountryCode(TRIGGER_UPDATE_REASON_SCAN_CHANGE);
+    }
+}
+
+void WifiEventSubscriberManager::RegisterSettingsEnterEvent()
+{
+    WIFI_LOGI("RegisterSettingsEnterEvent enter");
+    std::unique_lock<std::mutex> lock(settingsEnterEventMutex);
+    if (settingsTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(settingsTimerId);
+    }
+    if (settingsEnterSubscriber_) {
+        return;
+    }
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(ENTER_SETTINGS);
+    OHOS::EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    subscriberInfo.SetThreadMode(EventFwk::CommonEventSubscribeInfo::COMMON);
+    subscriberInfo.SetPermission("ohos.permission.SET_WIFI_CONFIG");
+    settingsEnterSubscriber_ = std::make_shared<SettingsEnterSubscriber>(subscriberInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(settingsEnterSubscriber_)) {
+        WIFI_LOGE("RegisterSettingsEnterEvent failed");
+        settingsEnterSubscriber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = [this]() { this->RegisterSettingsEnterEvent(); };
+        WifiTimer::GetInstance()->Register(timeoutCallBack, settingsTimerId, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterSettingsEnterEvent retry, settingsTimerId = %{public}u", settingsTimerId);
+    } else {
+        WIFI_LOGI("RegisterSettingsEnterEvent success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterSettingsEnterEvent()
+{
+    std::unique_lock<std::mutex> lock(settingsEnterEventMutex);
+    if (settingsTimerId != 0) {
+        WifiTimer::GetInstance()->UnRegister(settingsTimerId);
+    }
+    if (!settingsEnterSubscriber_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(settingsEnterSubscriber_)) {
+        WIFI_LOGE("UnRegisterSettingsEnterEvent failed");
+    }
+    settingsEnterSubscriber_ = nullptr;
+    WIFI_LOGI("UnRegisterSettingsEnterEvent finished");
+}
+
+SettingsEnterSubscriber::SettingsEnterSubscriber(
+    const EventFwk::CommonEventSubscribeInfo &subscriberInfo) : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("SettingsEnterSubscriber enter");
+}
+
+void SettingsEnterSubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eventData)
+{
+    const auto &action = eventData.GetWant().GetAction();
+    bool isSettingsEnter = eventData.GetWant().GetBoolParam(WLAN_PAGE_ENTER, false);
+    WIFI_LOGI("SettingsEnterSubscriber OnReceiveEvent: %{public}s, isSettingsEnter : %{public}d",
+        action.c_str(), isSettingsEnter);
+    if (action == ENTER_SETTINGS) {
+        WifiConfigCenter::GetInstance().SetWlanPage(isSettingsEnter);
+        if (isSettingsEnter) {
+            BlockConnectService::GetInstance().OnReceiveSettingsEnterEvent(isSettingsEnter);
+            IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+            if (pEnhanceService != nullptr) {
+                pEnhanceService->OnSettingsWlanEnterReceive();
+            }
+        }
+    }
+}
+
+void WifiEventSubscriberManager::RegisterDataShareReadyEvent()
+{
+    WIFI_LOGI("RegisterDataShareReadyEvent enter");
+    std::unique_lock<std::mutex> lock(dataShareReadyEventMutex_);
+    if (dataShareReadyTimerId_ != 0) {
+        WifiTimer::GetInstance()->UnRegister(dataShareReadyTimerId_);
+    }
+    if (dataShareReadySubscriber_) {
+        return;
+    }
+    OHOS::EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_DATA_SHARE_READY);
+    OHOS::EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    dataShareReadySubscriber_ = std::make_shared<DataShareReadySubscriber>(subscriberInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(dataShareReadySubscriber_)) {
+        WIFI_LOGE("RegisterDataShareReadyEvent failed");
+        dataShareReadySubscriber_ = nullptr;
+        WifiTimer::TimerCallback timeoutCallBack = [this]() { this->RegisterDataShareReadyEvent(); };
+        WifiTimer::GetInstance()->Register(timeoutCallBack, dataShareReadyTimerId_, TIMEOUT_EVENT_SUBSCRIBER, false);
+        WIFI_LOGI("RegisterDataShareReadyEvent retry, dataShareReadyTimerId_ = %{public}u", dataShareReadyTimerId_);
+    } else {
+        WIFI_LOGI("RegisterDataShareReadyEvent success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterDataShareReadyEvent()
+{
+    std::unique_lock<std::mutex> lock(dataShareReadyEventMutex_);
+    if (dataShareReadyTimerId_ != 0) {
+        WifiTimer::GetInstance()->UnRegister(dataShareReadyTimerId_);
+    }
+    if (!dataShareReadySubscriber_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(dataShareReadySubscriber_)) {
+        WIFI_LOGE("UnRegisterDataShareReadyEvent failed");
+    }
+    dataShareReadySubscriber_ = nullptr;
+    WIFI_LOGI("UnRegisterDataShareReadyEvent finished");
+}
+
+DataShareReadySubscriber::DataShareReadySubscriber(
+    const EventFwk::CommonEventSubscribeInfo &subscriberInfo) : CommonEventSubscriber(subscriberInfo)
+{
+    WIFI_LOGI("DataShareReadySubscriber enter");
+}
+
+void DataShareReadySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eventData)
+{
+    const auto &action = eventData.GetWant().GetAction();
+    WIFI_LOGI("DataShareReadySubscriber OnReceiveEvent: %{public}s", action.c_str());
+    if (action == OHOS::EventFwk::CommonEventSupport::COMMON_EVENT_DATA_SHARE_READY) {
+        WifiManager::GetInstance().GetWifiEventSubscriberManager()->AccessDataShare();
+        WifiManager::GetInstance().GetWifiEventSubscriberManager()->RegisterLocationEvent();
+        WifiSettings::GetInstance().SetDeviceNameApSsid(
+            WifiDataShareHelperUtils::GetInstance().GetDatashareNameApSsid());
+#ifdef WIFI_SECURITY_DETECT_ENABLE
+        WifiSecurityDetect::GetInstance().SetDatashareReady();
+        WifiSecurityDetect::GetInstance().RegisterSecurityDetectObserver();
+#endif
+    }
+}
+
+WifiDisplayStateListener::WifiDisplayStateListener()
+{
+    WIFI_LOGI("WifiDisplayStateListener Enter");
+}
+void WifiDisplayStateListener::OnCreate(uint64_t displayId)
+{}
+ 
+void WifiDisplayStateListener::OnDestroy(uint64_t displayId)
+{}
+ 
+void WifiDisplayStateListener::OnChange(uint64_t displayId)
+{
+    sptr<Rosen::DisplayLite> displayLite = Rosen::DisplayManagerLite::GetInstance().GetDisplayById(displayId);
+    if (displayLite == nullptr) {
+        WIFI_LOGE("OnChange displayLite fail");
+        return;
+    }
+    auto displayInfo =  displayLite->GetDisplayInfo();
+    if (displayInfo == nullptr) {
+        WIFI_LOGE("OnChange displayInfo fail");
+        return;
+    }
+    // screen state
+    auto orientation = displayInfo->GetDisplayOrientation();
+    WifiConfigCenter::GetInstance().SetScreenDispalyState(static_cast<int32_t>(orientation));
+}
+
+WifiFoldStateListener::WifiFoldStateListener(int foldAction)
+{
+    WIFI_LOGI("WifiFoldStateListener Enter");
+    foldAction_ = foldAction;
+}
+
+void WifiFoldStateListener::OnFoldStatusChanged(Rosen::FoldStatus foldStatus)
+{
+    for (int i = 0; i < STA_INSTANCE_MAX_NUM; ++i) {
+        IStaService *pService = WifiServiceManager::GetInstance().GetStaServiceInst(i);
+        if (pService != nullptr) {
+            pService->OnFoldStateChanged(static_cast<int>(foldStatus));
+        }
+        IEnhanceService *pEnhanceService = WifiServiceManager::GetInstance().GetEnhanceServiceInst();
+        if (pEnhanceService != nullptr) {
+            pEnhanceService->OnFoldStateChanged(static_cast<int>(foldStatus));
+        }
+    }
+
+    if (foldAction_ != FOLD_ACTION_NOTIFY_DRV) {
+        return;
+    }
+
+    auto currentStatus = (foldStatus == Rosen::FoldStatus::FOLDED ? foldStatus : Rosen::FoldStatus::EXPAND);
+    if (lastStatus_ != Rosen::FoldStatus::UNKNOWN && lastStatus_ == currentStatus) {
+        return;
+    }
+    std::string ifName = "wlan0";
+    std::string cmdParam = (foldStatus == Rosen::FoldStatus::FOLDED ? "0" : "1");
+    int ret = WifiCmdClient::GetInstance().SendCmdToDriver(ifName, CMD_SET_FOLD_STATUS, cmdParam);
+    lastStatus_ = (ret == 0 ? currentStatus : Rosen::FoldStatus::UNKNOWN);
+    WIFI_LOGI("OnFoldStatusChanged, send cmd %{public}s ret %{public}d", cmdParam.c_str(), ret);
+}
+
+void WifiEventSubscriberManager::RegisterDisplayListener()
+{
+    std::unique_lock<std::mutex> lock(displayStatusListenerMutex_);
+    if (displayStatusListener_ != nullptr) {
+        return;
+    }
+    displayStatusListener_ = new(std::nothrow) WifiDisplayStateListener();
+    if (displayStatusListener_ == nullptr) {
+        WIFI_LOGE("RegisterDisplayListener fail");
+        return;
+    }
+ 
+    auto ret = Rosen::DisplayManagerLite::GetInstance().RegisterDisplayListener(displayStatusListener_);
+    if (ret != Rosen::DMError::DM_OK) {
+        WIFI_LOGE("RegisterDisplayListener fail");
+        displayStatusListener_ = nullptr;
+    } else {
+        WIFI_LOGI("RegisterDisplayListener success");
+    }
+}
+ 
+void WifiEventSubscriberManager::UnregisterDisplayListener()
+{
+    std::unique_lock<std::mutex> lock(displayStatusListenerMutex_);
+    if (displayStatusListener_ == nullptr) {
+        WIFI_LOGE("UnregisterDisplayListener fail");
+        return;
+    }
+ 
+    auto ret = Rosen::DisplayManagerLite::GetInstance().UnregisterDisplayListener(displayStatusListener_);
+    if (ret != Rosen::DMError::DM_OK) {
+        WIFI_LOGE("UnregisterDisplayListener fail");
+    }
+    displayStatusListener_ = nullptr;
+    WIFI_LOGI("UnregisterDisplayListener finished");
+}
+
+void WifiEventSubscriberManager::SyncFoldStatus()
+{
+    if (foldAction_ != FOLD_ACTION_NOTIFY_DRV) {
+        return;
+    }
+ 
+    auto foldStatus = Rosen::DisplayManagerLite::GetInstance().GetFoldStatus();
+    WIFI_LOGI("SyncFoldStatus: current foldStatus %{public}d", static_cast<int>(foldStatus));
+ 
+    std::string ifName = "wlan0";
+    std::string cmdParam = (foldStatus == Rosen::FoldStatus::FOLDED ? "0" : "1");
+    int ret = WifiCmdClient::GetInstance().SendCmdToDriver(ifName, CMD_SET_FOLD_STATUS, cmdParam);
+    WIFI_LOGI("SyncFoldStatus, send cmd %{public}s ret %{public}d", cmdParam.c_str(), ret);
+}
+
+void WifiEventSubscriberManager::RegisterFoldStatusListener()
+{
+    std::unique_lock<std::mutex> lock(foldStatusListenerMutex_);
+    if (foldStatusListener_ != nullptr) {
+        return;
+    }
+    foldStatusListener_ = new(std::nothrow) WifiFoldStateListener(foldAction_);
+    if (foldStatusListener_ == nullptr) {
+        WIFI_LOGE("RegisterFoldStatusListener fail");
+        return;
+    }
+
+    auto ret = Rosen::DisplayManagerLite::GetInstance().RegisterFoldStatusListener(foldStatusListener_);
+    if (ret != Rosen::DMError::DM_OK) {
+        WIFI_LOGE("RegisterFoldStatusListener fail");
+        foldStatusListener_ = nullptr;
+    } else {
+        WIFI_LOGI("RegisterDisplayMode success");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterFoldStatusListener()
+{
+    std::unique_lock<std::mutex> lock(foldStatusListenerMutex_);
+    if (foldStatusListener_ == nullptr) {
+        WIFI_LOGE("RegisterFoldStatusListener fail");
+        return;
+    }
+
+    auto ret = Rosen::DisplayManagerLite::GetInstance().UnregisterFoldStatusListener(foldStatusListener_);
+    if (ret != Rosen::DMError::DM_OK) {
+        WIFI_LOGE("UnRegisterFoldStatusListener fail");
+    }
+    foldStatusListener_ = nullptr;
+    WIFI_LOGI("UnRegisterDisplayMode finished");
+}
+
+void WifiEventSubscriberManager::RegisterNetworkConnSubscriber()
+{
+    std::lock_guard<std::mutex> lock(networkConnSubscriberLock_);
+    if (networkConnSubscriber_ == nullptr) {
+        networkConnSubscriber_ = sptr<NetworkConnSubscriber>::MakeSptr();
+    } else {
+        return;
+    }
+    if (networkConnSubscriber_ != nullptr) {
+        int32_t  registerResult = NetManagerStandard::NetConnClient::GetInstance().RegisterNetConnCallback(
+            networkConnSubscriber_);
+        WIFI_LOGI("RegisterNetConnCallback end, registerResult=%{public}d.", registerResult);
+    } else {
+        WIFI_LOGE("Init, NetworkConnSubscriber make sptr error.");
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterNetworkConnSubscriber()
+{
+    std::lock_guard<std::mutex> lock(networkConnSubscriberLock_);
+    if (networkConnSubscriber_ != nullptr) {
+        int32_t unregisterResult = NetManagerStandard::NetConnClient::GetInstance().UnregisterNetConnCallback(
+            networkConnSubscriber_);
+        WIFI_LOGI("UnregisterNetConnCallback end, result=%{public}d.", unregisterResult);
+        networkConnSubscriber_ = nullptr;
+    }
+}
+
+int NetworkConnSubscriber::NetCapabilitiesChange(sptr<NetManagerStandard::NetHandle> &netHandle,
+    const sptr<NetManagerStandard::NetAllCapabilities> &netAllCap)
+{
+    const int noValidatedNet = 1;
+    if (netAllCap->netCaps_.find(NetManagerStandard::NET_CAPABILITY_VALIDATED) == netAllCap->netCaps_.end()) {
+        IApService *pService = WifiServiceManager::GetInstance().GetApServiceInst(0);
+        if (pService != nullptr) {
+            pService->OnNetCapabilitiesChanged(noValidatedNet);
+        }
+    }
+    return 0;
+}
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+void WifiEventSubscriberManager::RegisterCellularStateObserver()
+{
+    WIFI_LOGI("RegisterCellularStateObserver.");
+    std::lock_guard<std::mutex> lock(cellularObserverLock_);
+    if (cellularStateObserver_ == nullptr) {
+        cellularStateObserver_ = sptr<CellularStateObserver>::MakeSptr();
+    } else {
+        WIFI_LOGI("RegisterCellularStateObserver success.");
+        return;
+    }
+    uint32_t telephonyObserverMask = Telephony::TelephonyObserverBroker::OBSERVER_MASK_CELL_INFO;
+    simCount_ = Telephony::CoreServiceClient::GetInstance().GetMaxSimCount();
+    for (int32_t i = 0; i < simCount_; i++) {
+        auto result = Telephony::TelephonyObserverClient::GetInstance().AddStateObserver(
+            cellularStateObserver_, i, telephonyObserverMask, true);
+        if (result != 0) {
+            WIFI_LOGE("RegisterCellularStateObserver failed, slotId:%{public}d, res:%{public}d", i, result);
+        } else {
+            WIFI_LOGI("RegisterCellularStateObserver success, slotId:%{public}d, res:%{public}d", i, result);
+        }
+    }
+}
+
+void WifiEventSubscriberManager::UnRegisterCellularStateObserver()
+{
+    std::lock_guard<std::mutex> lock(cellularObserverLock_);
+    if (cellularStateObserver_ != nullptr) {
+        uint32_t telephonyObserverMask = Telephony::TelephonyObserverBroker::OBSERVER_MASK_CELL_INFO;
+        for (int32_t i = 0; i < simCount_; i++) {
+            auto result = Telephony::TelephonyObserverClient::GetInstance().RemoveStateObserver(
+                i, telephonyObserverMask);
+            if (result != 0) {
+                WIFI_LOGE("UnRegisterCellularStateObserver failed,slotId:%{public}d,res:%{public}d", i, result);
+            }
+        }
+    }
+    cellularStateObserver_ = nullptr;
+}
+
+void CellularStateObserver::OnCellInfoUpdated(int32_t slotId, const std::vector<sptr<Telephony::CellInformation>> &vec)
+{
+    WIFI_LOGD("CellularStateObserver::OnCellInfoUpdated");
+#if defined(FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT) && defined(FEATURE_WIFI_PRO_SUPPORT)
+    IWifiProService *pWifiProService = WifiServiceManager::GetInstance().GetWifiProServiceInst(INSTID_WLAN0);
+    if (pWifiProService != nullptr) {
+        pWifiProService->OnCellInfoUpdated();
+    }
+#endif
+}
+#endif
+}  // namespace Wifi
+}  // namespace OHOS
+#endif

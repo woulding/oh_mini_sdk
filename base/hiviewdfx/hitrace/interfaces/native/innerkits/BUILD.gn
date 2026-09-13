@@ -1,0 +1,284 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hitrace/hitrace.gni")
+import("//build/ohos.gni")
+
+config("libhitrace_pub_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "include",
+    "include/hitrace",
+  ]
+}
+
+ohos_shared_library("libhitracechain") {
+  branch_protector_ret = "pac_ret"
+  public_configs = [ ":libhitrace_pub_config" ]
+
+  deps = [ "$hitrace_frameworks_path/native:hitracechain_source" ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+
+  cflags = [ "-fstack-protector-strong" ]
+
+  if (defined(ohos_lite)) {
+    external_deps = [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps = [ "hilog:libhilog" ]
+  }
+
+  output_extension = "so"
+  install_enable = true
+
+  innerapi_tags = [
+    "chipsetsdk_sp",
+    "platformsdk",
+  ]
+
+  version_script = "libhitracechain.map"
+
+  install_images = [
+    "system",
+    "updater",
+  ]
+
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
+}
+
+config("hitrace_meter_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "include/hitrace_meter",
+    "$hitrace_utils_path",
+  ]
+}
+
+ohos_static_library("hitrace_inner") {
+  branch_protector_ret = "pac_ret"
+  include_dirs = [
+    "$hitrace_common_path",
+    "include/hitrace_meter",
+    "include",
+    "$hitrace_frameworks_path/include/",
+    "$hitrace_utils_path",
+  ]
+  sources = [
+    "src/hitrace_meter.cpp",
+    "src/hitrace_meter_c.c",
+    "src/hitrace_meter_wrapper.cpp",
+  ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+  ]
+
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  if (is_ohos && is_clang && enhanced_opt && hitrace_feature_enable_pgo &&
+      (target_cpu == "arm" || target_cpu == "arm64")) {
+    cflags = [
+      "-fprofile-use=" +
+          rebase_path("${hitrace_feature_pgo_path}/libhitrace_meter.profdata",
+                      root_build_dir),
+      "-Wno-error=backend-plugin",
+      "-Wno-profile-instr-out-of-date",
+      "-Wno-profile-instr-unprofiled",
+    ]
+  }
+
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
+}
+
+config("hitrace_dump_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "include",
+    "$hitrace_common_path",
+  ]
+}
+
+ohos_shared_library("hitrace_dump") {
+  branch_protector_ret = "pac_ret"
+  include_dirs = [
+    "include",
+    "$hitrace_common_path",
+    "$hitrace_cmd_path/include",
+    "$hitrace_frameworks_path/include",
+    "$hitrace_frameworks_path/tracedump_executor",
+    "$hitrace_frameworks_path/trace_factory",
+    "$hitrace_utils_path",
+  ]
+  public_configs = [ ":hitrace_dump_config" ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+  sources = [
+    "$hitrace_frameworks_path/native/dynamic_buffer.cpp",
+    "$hitrace_utils_path/file_ageing_utils.cpp",
+    "src/hitrace_dump.cpp",
+    "src/hitrace_util.cpp",
+  ]
+
+  deps = [
+    ":hitrace_meter",
+    ":libhitrace_option",
+    "$hitrace_config_path:hitrace_tags",
+    "$hitrace_frameworks_path/tracedump_executor:tracedump_executor",
+    "$hitrace_utils_path:hitrace_common_utils",
+    "$hitrace_utils_path:hitrace_file_utils",
+    "$hitrace_utils_path:hitrace_json_parser",
+  ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+    "faultloggerd:libdfx_dumpcatcher",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+  ]
+
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+
+  cflags_cc = [ "-Os" ]
+
+  ldflags = [ "-Wl,--gc-sections" ]
+
+  version_script = "hitrace.map"
+  innerapi_tags = [ "platformsdk" ]
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_shared_library("hitrace_meter") {
+  branch_protector_ret = "pac_ret"
+  public_configs = [ ":hitrace_meter_config" ]
+  deps = [
+    ":hitrace_etc",
+    ":hitrace_inner",
+    ":libhitracechain",
+    "$hitrace_utils_path:hitrace_common_utils",
+  ]
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+  version_script = "hitrace.map"
+  output_extension = "so"
+
+  innerapi_tags = [
+    "chipsetsdk_sp",
+    "platformsdk",
+    "sasdk",
+  ]
+  part_name = "hitrace"
+  install_images = [
+    "system",
+    "updater",
+  ]
+  subsystem_name = "hiviewdfx"
+
+  if (is_ohos && is_clang && enhanced_opt &&
+      (target_cpu == "arm64" || target_cpu == "arm")) {
+    ldflags = [ "-Wl,-Bsymbolic" ]
+    if (hitrace_feature_enable_pgo && target_cpu == "arm64" &&
+        enable_enhanced_opt) {
+      ldflags += [ "-Wl,--aarch64-inline-plt" ]
+    }
+  }
+}
+
+config("libhitrace_option_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "$hitrace_common_path",
+    "include",
+    "include/hitrace_option",
+  ]
+}
+
+ohos_shared_library("libhitrace_option") {
+  branch_protector_ret = "pac_ret"
+  public_configs = [ ":libhitrace_option_config" ]
+
+  sources = [
+    "src/hitrace_option/hitrace_option.cpp",
+    "src/hitrace_option/hitrace_option_util.cpp",
+    "src/hitrace_option/trace_context.cpp",
+  ]
+
+  external_deps = [ "init:libbegetutil" ]
+  if (defined(ohos_lite)) {
+    external_deps += [ "hilog_lite:hilog_lite" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+  configs = [ "$hitrace_common_path/build:coverage_flags" ]
+
+  output_extension = "so"
+  install_enable = true
+
+  innerapi_tags = [ "platformsdk" ]
+
+  version_script = "hitrace_option.map"
+
+  install_images = [ "system" ]
+
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_prebuilt_etc("hitrace.para") {
+  source = "hitrace.para"
+  install_images = [
+    "system",
+    "updater",
+  ]
+  module_install_dir = "etc/param"
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_prebuilt_etc("hitrace.para.dac") {
+  source = "hitrace.para.dac"
+  install_images = [
+    "system",
+    "updater",
+  ]
+  module_install_dir = "etc/param"
+  part_name = "hitrace"
+  subsystem_name = "hiviewdfx"
+}
+
+group("hitrace_etc") {
+  deps = [
+    ":hitrace.para",
+    ":hitrace.para.dac",
+  ]
+}

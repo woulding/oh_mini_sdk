@@ -1,0 +1,131 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/lite/config/component/lite_component.gni")
+import("//test/xts/device_attest_lite/build/devattestconfig.gni")
+import("attestsource.gni")
+
+if (enable_attest_debug_memory_leak) {
+  sources_common += [ "utils/attest_utils_memleak.c" ]
+}
+
+if (enable_attest_debug_dfx) {
+  sources_common += [ "dfx/attest_dfx.c" ]
+}
+
+config("devattest_core_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = include_core_dirs
+
+  defines = []
+  if (enable_attest_log_debug) {
+    defines += [ "__ATTEST_HILOG_LEVEL_DEBUG__" ]
+  }
+
+  if (enable_attest_test_mock_network) {
+    defines += [ "__ATTEST_MOCK_NETWORK_STUB__" ]
+  }
+
+  if (enable_attest_test_mock_device) {
+    defines += [ "__ATTEST_MOCK_DEVICE_STUB__" ]
+  }
+
+  if (enable_attest_debug_memory_leak) {
+    defines += [ "__ATTEST_DEBUG_MEMORY_LEAK__" ]
+  }
+
+  if (enable_attest_debug_dfx) {
+    defines += [ "__ATTEST_DEBUG_DFX__" ]
+  }
+
+  if (disable_attest_active_site) {
+    defines += [ "__ATTEST_DISABLE_SITE__" ]
+  }
+
+  defines += [ "MBEDTLS_ALLOW_PRIVATE_ACCESS" ]
+}
+
+config("devattest_core_mini_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [ "${devattest_path}/common/mini" ]
+}
+
+config("devattest_core_small_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [ "${devattest_path}/common/small" ]
+}
+
+if (ohos_kernel_type == "liteos_m") {
+  static_library("devattest_core") {
+    sources = sources_common
+    sources += sources_mock
+    sources += [
+      "mini/adapter/attest_adapter_network_config.c",
+      "mini/attest/attest_service_pcid.c",
+      "mini/utils/attest_utils_file_detail.c",
+    ]
+
+    public_configs = [
+      ":devattest_core_config",
+      ":devattest_core_mini_config",
+    ]
+
+    deps = [
+      "$ohos_product_adapter_dir/utils/token:hal_token_static",
+      "//base/startup/init/interfaces/innerkits:parameter",
+    ]
+    deps += [
+      "//build/lite/config/component/cJSON:cjson_static",
+      "//third_party/bounds_checking_function:libsec_static",
+      "//third_party/mbedtls:mbedtls_static",
+    ]
+  }
+} else if (ohos_kernel_type == "liteos_a" || ohos_kernel_type == "linux") {
+  shared_library("devattest_core") {
+    sources = sources_common
+    sources += sources_mock
+    sources += [
+      "small/adapter/attest_adapter_network_config.c",
+      "small/attest/attest_service_pcid.c",
+      "small/utils/attest_utils_file_detail.c",
+    ]
+
+    public_configs = [
+      ":devattest_core_config",
+      ":devattest_core_mini_config",
+    ]
+    cflags = [
+      "-ftrapv",
+      "-Wextra",
+      "-Wshadow",
+      "-Wformat=2",
+      "-Wfloat-equal",
+      "-Wdate-time",
+      "-fPIE",
+    ]
+
+    deps = [
+      "$ohos_product_adapter_dir/utils/token:haltoken_shared",
+      "//base/startup/init/interfaces/innerkits:parameter",
+    ]
+    deps += [
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//build/lite/config/component/cJSON:cjson_shared",
+      "//third_party/mbedtls:mbedtls",
+    ]
+    deps += [ "//developtools/syscap_codec:syscap_interface_shared" ]
+  }
+}

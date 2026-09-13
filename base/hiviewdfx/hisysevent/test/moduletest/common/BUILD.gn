@@ -1,0 +1,249 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+
+module_output_path = "hisysevent/hisysevent/hisysevent_native"
+
+config("hisysevent_native_test_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [ "include" ]
+}
+
+declare_args() {
+  hiviewdfx_hitrace_enabaled_for_test = false
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.hiviewdfx_hitrace)) {
+    hiviewdfx_hitrace_enabaled_for_test = true
+  }
+}
+
+ohos_moduletest("HiSysEventAdapterNativeTest") {
+  module_out_path = module_output_path
+
+  sources = [ "hisysevent_adapter_native_test.cpp" ]
+
+  configs = [ ":hisysevent_native_test_config" ]
+
+  deps = [
+    "../../../adapter/native/idl:sys_event_impl_client",
+    "../../../frameworks/native/util:hisysevent_util",
+    "../../../interfaces/native/innerkits/hisysevent:hisysevent_static_lib_for_tdd",
+    "../../../interfaces/native/innerkits/hisysevent_manager:hisyseventmanager_static_lib_for_tdd",
+  ]
+
+  if (is_standard_system) {
+    external_deps = [
+      "c_utils:utils",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+    ]
+  } else {
+    external_deps = [
+      "c_utils:utils",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "samgr:samgr_proxy",
+    ]
+    cflags_cc = [ "-D__HIVIEW_HAVE_HITRACE__" ]
+  }
+}
+
+ohos_moduletest("HiSysEventNativeTest") {
+  module_out_path = module_output_path
+
+  sources = [ "hisysevent_native_test.cpp" ]
+
+  configs = [ ":hisysevent_native_test_config" ]
+
+  deps = [
+    "../../../adapter/native/idl:sys_event_impl_client",
+    "../../../interfaces/native/innerkits/hisysevent:hisysevent_static_lib_for_tdd",
+    "../../../interfaces/native/innerkits/hisysevent_manager:hisyseventmanager_static_lib_for_tdd",
+  ]
+
+  if (is_standard_system) {
+    external_deps = [
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+  } else {
+    external_deps = [
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+    cflags_cc = [ "-D__HIVIEW_HAVE_HITRACE__" ]
+  }
+}
+
+ohos_moduletest("HiSysEventCTest") {
+  module_out_path = module_output_path
+
+  sources = [ "hisysevent_c_test.cpp" ]
+
+  configs = [ ":hisysevent_native_test_config" ]
+
+  deps = [ "../../../interfaces/native/innerkits/hisysevent:hisysevent_static_lib_for_tdd" ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  if (build_public_version) {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+  }
+}
+
+ohos_moduletest("HiSysEventManagerCTest") {
+  module_out_path = module_output_path
+
+  include_dirs =
+      [ "//base/hiviewdfx/hisysevent/adapter/native/idl/include/ret_code.h" ]
+
+  sources = [ "hisysevent_manager_c_test.cpp" ]
+
+  configs = [ ":hisysevent_native_test_config" ]
+
+  deps = [
+    "../../../frameworks/native/util:hisysevent_util",
+    "../../../interfaces/native/innerkits/hisysevent_manager:hisyseventmanager_static_lib_for_tdd",
+  ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  if (build_public_version) {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+  }
+}
+
+ohos_moduletest("HiSysEventDelayTest") {
+  module_out_path = module_output_path
+
+  include_dirs =
+      [ "//base/hiviewdfx/hisysevent/adapter/native/idl/include/ret_code.h" ]
+
+  sources = [ "hisysevent_delay_test.cpp" ]
+
+  configs = [ ":hisysevent_native_test_config" ]
+
+  deps = [
+    "../../../frameworks/native/util:hisysevent_util",
+    "../../../interfaces/native/innerkits/hisysevent:hisysevent_static_lib_for_tdd",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+
+  if (build_public_version) {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+  }
+}
+
+ohos_moduletest("HiSysEventWroteResultCheckTest") {
+  module_out_path = module_output_path
+
+  include_dirs =
+      [ "//base/hiviewdfx/hisysevent/adapter/native/idl/include/ret_code.h" ]
+
+  sources = [ "hisysevent_wrote_result_check_test.cpp" ]
+
+  configs = [ ":hisysevent_native_test_config" ]
+
+  deps = [
+    "../../../frameworks/native/util:hisysevent_util",
+    "../../../interfaces/native/innerkits/hisysevent:hisysevent_static_lib_for_tdd",
+    "../../../interfaces/native/innerkits/hisysevent_manager:hisyseventmanager_static_lib_for_tdd",
+  ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  defines = []
+  if (hiviewdfx_hitrace_enabaled_for_test) {
+    external_deps += [ "hitrace:libhitracechain" ]
+    defines += [ "HIVIEWDFX_HITRACE_ENABLED_FOR_TEST" ]
+  }
+
+  if (build_public_version) {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+  }
+}
+
+ohos_moduletest("HiSysEventEncodedTest") {
+  module_out_path = module_output_path
+
+  include_dirs =
+      [ "//base/hiviewdfx/hisysevent/adapter/native/idl/include/ret_code.h" ]
+
+  sources = [ "hisysevent_encoded_test.cpp" ]
+
+  configs = [ ":hisysevent_native_test_config" ]
+
+  deps = [
+    "../../../frameworks/native/util:hisysevent_util",
+    "../../../interfaces/native/innerkits/hisysevent:hisysevent_static_lib_for_tdd",
+  ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  if (build_public_version) {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+  }
+}
+
+ohos_moduletest("HiSysEventEasyTest") {
+  module_out_path = module_output_path
+
+  sources = [ "hisysevent_easy_test.cpp" ]
+
+  configs = [ ":hisysevent_native_test_config" ]
+
+  deps = [
+    "../../../interfaces/native/innerkits/hisysevent_easy:libhisysevent_easy",
+  ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  if (build_public_version) {
+    external_deps += [ "bounds_checking_function:libsec_shared" ]
+  } else {
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+  }
+}
+
+group("moduletest") {
+  testonly = true
+  deps = []
+
+  deps += [
+    ":HiSysEventAdapterNativeTest",
+    ":HiSysEventCTest",
+    ":HiSysEventDelayTest",
+    ":HiSysEventEasyTest",
+    ":HiSysEventEncodedTest",
+    ":HiSysEventManagerCTest",
+    ":HiSysEventNativeTest",
+    ":HiSysEventWroteResultCheckTest",
+  ]
+}

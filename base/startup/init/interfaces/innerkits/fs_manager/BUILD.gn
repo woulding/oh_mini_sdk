@@ -1,0 +1,184 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+import("//build/ohos.gni")
+
+# For init only
+config("libfsmanager_exported_configs") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "./libfs_dm/include",
+    "./libfs_hvb/include",
+    "//base/startup/init/interfaces/innerkits/include/fs_manager",
+    "//base/startup/init/interfaces/innerkits/fs_manager/libfs_dm/include",
+    "//base/startup/init/interfaces/innerkits/fs_manager/erofs_overlay/include",
+    "//base/startup/init/interfaces/innerkits/fs_manager/switch_root/include",
+    "//base/startup/init/interfaces/innerkits/init_module_engine/include",
+  ]
+}
+
+ohos_static_library("libfsmanager_static") {
+  branch_protector_ret = "pac_ret"
+  if (!defined(ohos_lite)) {
+    sources = [
+      "//base/startup/init/interfaces/innerkits/hookmgr/hookmgr.c",
+      "//base/startup/init/services/init/bootstagehooker.c",
+      "fstab.c",
+      "fstab_mount.c",
+      "switch_root/switch_root.c",
+    ]
+    include_dirs = [
+      "//base/startup/init/interfaces/innerkits/include",
+      "//base/startup/init/interfaces/innerkits/include/param",
+      "//base/startup/init/interfaces/innerkits/fs_manager/switch_root/include",
+      "//base/startup/init/services/log",
+      "//base/startup/init/services/param/include",
+    ]
+    defines = []
+    external_deps = [
+      "bounds_checking_function:libsec_static",
+      "cJSON:cjson",
+    ]
+    deps = [ "//base/startup/init/services/utils:libinit_utils" ]
+
+    if ((defined(global_parts_info) &&
+         defined(global_parts_info.startup_hvb)) ||
+        init_startup_feature_erofs_overlay) {
+      sources += [
+        "libfs_dm/fs_dm.c",
+        "libfs_dm/fs_dm_linear.c",
+        "libfs_dm/fs_dm_snapshot.c",
+      ]
+      include_dirs += [
+        "//base/startup/init/interfaces/innerkits/fs_manager/libfs_dm/include",
+        "//base/startup/init/ueventd/include",
+      ]
+      deps += [ "//base/startup/init/ueventd:libueventd_ramdisk_static" ]
+    }
+
+    if (defined(global_parts_info) && defined(global_parts_info.startup_hvb)) {
+      sources += [
+        "dm_verity/dm_verity.c",
+        "libfs_hvb/fs_hvb.c",
+        "libfs_hvb/fs_hvb_image_patch.c",
+        "libfs_hvb/hvb_ops.c",
+      ]
+
+      include_dirs += [
+        "//base/startup/init/interfaces/innerkits/fs_manager/libfs_hvb/include",
+        "//base/startup/init/interfaces/innerkits/fs_manager/dm_verity/include",
+      ]
+
+      defines += [ "SUPPORT_HVB" ]
+      external_deps += [ "hvb:libhvb_static" ]
+    }
+    if (init_startup_feature_erofs_overlay) {
+      sources += [
+        "erofs_overlay/erofs_mount_overlay.c",
+        "erofs_overlay/erofs_overlay_common.c",
+        "erofs_overlay/erofs_remount_overlay.c",
+        "erofs_overlay/dm_merge_overlay.c",
+      ]
+      include_dirs += [ "//base/startup/init/interfaces/innerkits/fs_manager/erofs_overlay/include" ]
+      defines += [ "EROFS_OVERLAY" ]
+      if (build_selinux) {
+        external_deps += [ "selinux:libselinux" ]
+        cflags = [ "-DWITH_SELINUX" ]
+      }
+    }
+  }
+
+  public_configs = [ ":libfsmanager_exported_configs" ]
+  part_name = "init"
+  subsystem_name = "startup"
+}
+
+ohos_static_library("libfsmanager_static_real") {
+  branch_protector_ret = "pac_ret"
+  visibility = [
+    ":*",
+    "//base/startup/init/*",
+    "//base/update/updater/*",
+    "//base/update/sys_installer/*",
+    "//out/*",
+  ]
+  if (!defined(ohos_lite)) {
+    sources = [
+      "//base/startup/init/interfaces/innerkits/hookmgr/hookmgr.c",
+      "//base/startup/init/services/init/bootstagehooker.c",
+      "fstab.c",
+      "fstab_mount.c",
+      "switch_root/switch_root.c",
+    ]
+    include_dirs = [
+      "//base/startup/init/interfaces/innerkits/include",
+      "//base/startup/init/interfaces/innerkits/include/param",
+      "//base/startup/init/interfaces/innerkits/fs_manager/switch_root/include",
+      "//base/startup/init/services/log",
+      "//base/startup/init/services/param/include",
+    ]
+    external_deps = [
+      "bounds_checking_function:libsec_static",
+      "cJSON:cjson_static",
+    ]
+    deps = [ "//base/startup/init/services/utils:libinit_utils" ]
+
+    if ((defined(global_parts_info) &&
+         defined(global_parts_info.startup_hvb)) ||
+        init_startup_feature_erofs_overlay) {
+      sources += [
+        "libfs_dm/fs_dm.c",
+        "libfs_dm/fs_dm_linear.c",
+        "libfs_dm/fs_dm_snapshot.c",
+      ]
+      include_dirs += [
+        "//base/startup/init/interfaces/innerkits/fs_manager/libfs_dm/include",
+        "//base/startup/init/ueventd/include",
+      ]
+      defines = []
+      deps += [ "//base/startup/init/ueventd:libueventd_ramdisk_static_real" ]
+    }
+
+    if (defined(global_parts_info) && defined(global_parts_info.startup_hvb)) {
+      sources += [
+        "dm_verity/dm_verity.c",
+        "libfs_hvb/fs_hvb.c",
+        "libfs_hvb/fs_hvb_image_patch.c",
+        "libfs_hvb/hvb_ops.c",
+      ]
+
+      include_dirs += [
+        "//base/startup/init/interfaces/innerkits/fs_manager/libfs_hvb/include",
+        "//base/startup/init/interfaces/innerkits/fs_manager/dm_verity/include",
+      ]
+
+      defines = [ "SUPPORT_HVB" ]
+      external_deps += [ "hvb:libhvb_static_real" ]
+    }
+
+    if (init_startup_feature_erofs_overlay) {
+      sources += [
+        "erofs_overlay/erofs_mount_overlay.c",
+        "erofs_overlay/erofs_overlay_common.c",
+        "erofs_overlay/erofs_remount_overlay.c",
+        "erofs_overlay/dm_merge_overlay.c",
+      ]
+      include_dirs += [ "//base/startup/init/interfaces/innerkits/fs_manager/erofs_overlay/include" ]
+      defines += [ "EROFS_OVERLAY" ]
+    }
+  }
+
+  public_configs = [ ":libfsmanager_exported_configs" ]
+  part_name = "init"
+  subsystem_name = "startup"
+}

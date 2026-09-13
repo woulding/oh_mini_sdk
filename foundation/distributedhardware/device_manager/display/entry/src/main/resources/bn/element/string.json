@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"সংযোগ কোড",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"%2$s-এর %1$s এই ডিভাইসে অ্যাক্সেস করতে চায়। অ্যাপটির উপর আস্থা রাখবেন?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"বাতিল করুন",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"সংযোগ কোড লিখুন",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"বিভিন্ন ডিভাইসের মধ্যে ডেটা সিঙ্কিং ও সমন্বয়ের জন্য এটি প্রয়োজন।",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"কেবল এবার আস্থা রাখুন",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"সবসময় আস্থা থাকবে",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"কেবল এবার আস্থা রাখুন",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s আপনার ডিভাইসের %2$s সেবায় অ্যাক্সেস করতে চাচ্ছে। এই ডিভাইসের উপর আস্থা রাখবেন?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"%1$s-এর %2$s অ্যাপটি আপনার ডিভাইসের %3$s সেবায় অ্যাক্সেস করতে চাচ্ছে। এই অ্যাপের উপর আস্থা রাখবেন?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s আপনার ডিভাইসের বিভিন্ন সেবার সাথে সংযোগ স্থাপন করতে চাচ্ছে। যেসব সেবার জন্য অনুমোদন দিতে চান সেগুলি নির্বাচন করুন:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

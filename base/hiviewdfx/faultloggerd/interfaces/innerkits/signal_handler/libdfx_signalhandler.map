@@ -1,0 +1,18 @@
+{
+  global:
+    extern "C" {
+        SetThreadInfoCallback;
+        DfxNotifyWatchdogThreadStart;
+        DFX_SetAsyncStackCallback;
+        DFX_GetAppRunningUniqueId;
+        DFX_SetAppRunningUniqueId;
+        DFX_SetCrashObj;
+        DFX_ResetCrashObj;
+        DFX_SetCrashLogConfig;
+        DFX_SetDumpableState;
+        DFX_RestoreDumpableState;
+        DFX_InheritCapabilities;
+    };
+  local:
+    *;
+};

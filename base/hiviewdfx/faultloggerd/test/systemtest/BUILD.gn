@@ -1,0 +1,118 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/faultloggerd/faultloggerd.gni")
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  import("//build/lite/config/test.gni")
+
+  if (ohos_build_type == "debug") {
+    unittest("test_faultloggerd") {
+      output_extension = "bin"
+      output_dir = "$root_out_dir/test/unittest/faultloggerd"
+      sources = [
+        "dumpcatcher_system_test.cpp",
+        "faultloggerd_system_test.cpp",
+      ]
+      sources += [ "$c_utils_src_path/directory_ex.cpp" ]
+
+      include_dirs = [
+        "$c_utils_include_path",
+        "$faultloggerd_common_path/dfxutil",
+        "$faultloggerd_interfaces_path/innerkits/backtrace/include",
+        "$faultloggerd_path/interfaces/common",
+        "$faultloggerd_path/interfaces/innerkits/dump_catcher/include",
+        "$faultloggerd_path/interfaces/innerkits/faultloggerd_client",
+        "$faultloggerd_path/interfaces/innerkits/faultloggerd_client/include",
+        "$faultloggerd_path/interfaces/innerkits/procinfo/include",
+        "$faultloggerd_path/test/utils",
+        "$hilog_lite_include_path",
+      ]
+
+      deps = [
+        "$faultloggerd_common_path/dfxutil:dfx_util",
+        "$faultloggerd_interfaces_path/innerkits/faultloggerd_client:libfaultloggerd",
+        "$faultloggerd_path/interfaces/innerkits/dump_catcher:libdfx_dumpcatcher",
+        "$faultloggerd_path/interfaces/innerkits/procinfo:libdfx_procinfo",
+        "$faultloggerd_path/test/utils:dfx_test_util",
+      ]
+
+      external_deps = [ "hilog_lite:hilog_shared" ]
+    }
+  }
+
+  group("systemtest") {
+    if (ohos_build_type == "debug") {
+      deps = [ ":test_faultloggerd" ]
+    }
+  }
+} else {
+  import("//build/config/features.gni")
+  import("//build/test.gni")
+
+  config("module_private_config") {
+    visibility = [ ":*" ]
+
+    include_dirs = [
+      "$faultloggerd_path/interfaces/innerkits/dump_catcher/include/",
+      "$faultloggerd_path/interfaces/innerkits/faultloggerd_client",
+      "$faultloggerd_path/interfaces/innerkits/faultloggerd_client/include",
+      "$faultloggerd_path/test/utils",
+    ]
+
+    cflags_cc = [ "-fno-exceptions" ]
+
+    if (processdump_minidebuginfo_enable) {
+      defines = [ "PROCESSDUMP_MINIDEBUGINFO" ]
+    }
+  }
+
+  ohos_systemtest("test_faultloggerd") {
+    module_out_path = "faultloggerd/faultloggerd/native"
+    sources = [
+      "dumpcatcher_system_test.cpp",
+      "faultloggerd_system_test.cpp",
+    ]
+
+    configs = [
+      ":module_private_config",
+      "$faultloggerd_path/common/build:coverage_flags",
+    ]
+
+    deps = [
+      "$faultloggerd_interfaces_path/innerkits/faultloggerd_client:libfaultloggerd",
+      "$faultloggerd_path/common/dfxutil:dfx_util",
+      "$faultloggerd_path/interfaces/innerkits/dump_catcher:libdfx_dumpcatcher",
+      "$faultloggerd_path/interfaces/innerkits/procinfo:libdfx_procinfo",
+      "$faultloggerd_path/test/utils:dfx_test_util",
+      "$faultloggerd_path/tools/crasher_c:crasher_c",
+      "$faultloggerd_path/tools/crasher_cpp:crasher_cpp",
+    ]
+    if (support_jsapi) {
+      deps += [ "$faultloggerd_path/test/resource:FaultloggerdJsTest" ]
+    }
+    resource_config_file = "$faultloggerd_path/test/resource/ohos_test.xml"
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "googletest:gtest_main",
+    ]
+  }
+
+  group("systemtest") {
+    testonly = true
+    deps = [ ":test_faultloggerd" ]
+  }
+}

@@ -1,0 +1,76 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("../../bundletool.gni")
+
+ohos_unittest("ohos_bm_unittest") {
+  module_out_path = "bundle_tool/bundle_tool"
+
+  sources = [
+    "../src/bundle_command.cpp",
+    "../src/bundle_command_common.cpp",
+    "../src/error_code_utils.cpp",
+    "../src/shell_command.cpp",
+    "../src/status_receiver_impl.cpp",
+    "unittest/ohos_bm_command_test.cpp",
+  ]
+
+  sources += [
+    "${bundletool_test_path}/mock/mock_bundle_installer_host.cpp",
+    "${bundletool_test_path}/mock/mock_bundle_mgr_host.cpp",
+  ]
+
+  include_dirs = [ "${bundletool_test_path}/mock" ]
+
+  configs = [ "../:tools_ohos_bm_config" ]
+
+  cflags = []
+  if (target_cpu == "arm") {
+    cflags += [ "-DBINDER_IPC_32BIT" ]
+  }
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:app_manager",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libprivacy_sdk",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:bundle_napi_common",
+    "bundle_framework:bundle_tool_libs",
+    "bundle_framework:libappexecfwk_common",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "cJSON:cjson",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = []
+  if (account_enable_bm) {
+    external_deps += [ "os_account:os_account_innerkits" ]
+    defines += [ "ACCOUNT_ENABLE" ]
+  }
+
+  subsystem_name = "bundlemanager"
+  part_name = "bundle_tool"
+}
+
+group("unittest") {
+  testonly = true
+  deps = [ ":ohos_bm_unittest" ]
+}

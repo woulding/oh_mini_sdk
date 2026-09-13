@@ -1,0 +1,49 @@
+1.0 {
+    global:
+ extern "C++" {
+"OHOS::DHCP::CheckDataLegal(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+"OHOS::DHCP::CheckDataToUint(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+"OHOS::DHCP::CheckDataTolonglong(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+"OHOS::DHCP::CheckDataToUint64(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+"OHOS::DHCP::Ip4IntConvertToStr(unsigned int, bool)";
+"OHOS::DHCP::AddArpEntry(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+"OHOS::DHCP::IntIpv4ToAnonymizeStr(unsigned int)";
+"OHOS::DHCP::DhcpPermissionUtils::VerifyIsNativeProcess()";
+"OHOS::DHCP::DhcpPermissionUtils::VerifyDhcpNetworkPermission(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+"OHOS::DHCP::DhcpArpChecker::DhcpArpChecker()";
+"OHOS::DHCP::GetElapsedSecondsSinceBoot()";
+"OHOS::DHCP::DhcpSysTimer::DhcpSysTimer(bool, unsigned long, bool, bool)";
+"OHOS::DHCP::DhcpSysTimer::DhcpSysTimer(bool, unsigned long long, bool, bool)";
+"OHOS::DHCP::DhcpSysTimer::SetCallbackInfo(std::__h::function<void ()> const&)";
+"OHOS::DHCP::Ipv4Anonymize(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>)";
+"OHOS::DHCP::DhcpArpChecker::Start(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&)";
+"OHOS::DHCP::DhcpArpChecker::DoArpCheck(int, bool, unsigned long&)";
+"OHOS::DHCP::DhcpArpChecker::DoArpCheck(int, bool, unsigned long long&)";
+"OHOS::DHCP::DhcpArpChecker::~DhcpArpChecker()";
+"OHOS::DHCP::DhcpArpChecker::Stop()";
+"OHOS::DHCP::DhcpArpChecker::GetGwMacAddrList(int, bool, std::__h::vector<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>, std::__h::allocator<std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>>>&)";
+"OHOS::DHCP::DhcpSaLoadManager::GetInstance()";
+"OHOS::DHCP::DhcpSaLoadManager::UnloadWifiSa(int)";
+"OHOS::DHCP::DhcpSaLoadManager::LoadWifiSa(int)";
+"OHOS::DHCP::Ipv6Anonymize(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+"OHOS::DHCP::IsValidPath(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+"OHOS::DHCP::DhcpTimer::GetInstance()";
+"OHOS::DHCP::DhcpTimer::Register(std::__h::function<void ()> const&, unsigned int&, unsigned int, bool)";
+"OHOS::DHCP::DhcpThread::~DhcpThread()";
+"OHOS::DHCP::DhcpThread::DhcpThread(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+"OHOS::DHCP::DhcpTimer::UnRegister(unsigned int)";
+"OHOS::DHCP::DhcpThread::PostAsyncTask(std::__h::function<void ()> const&, long long)";
+"OHOS::DHCP::DhcpThread::PostSyncTask(std::__h::function<void ()> const&)";
+"OHOS::DHCP::DhcpThread::PostAsyncTask(std::__h::function<void ()> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, long long)";
+"OHOS::DHCP::DhcpThread::RemoveAsyncTask(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&)";
+"OHOS::DHCP::DhcpThread::PostAsyncTask(std::__h::function<void ()> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, long long, bool)";
+"OHOS::DHCP::DhcpThread::PostSyncTimeOutTask(std::__h::function<int ()> const&, int)";
+"OHOS::DHCP::DhcpThread::PostAsyncTask(std::__h::function<void ()> const&, long)";
+"OHOS::DHCP::DhcpThread::PostAsyncTask(std::__h::function<void ()> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, long, bool)";
+"OHOS::DHCP::DhcpThread::PostAsyncTask(std::__h::function<void ()> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, long)";
+"OHOS::DHCP::ModifyKernelFile(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, char const*)";
+ "OHOS::DHCP::GetLocalMac(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>>&)";
+ };
+    local:
+        *;
+};

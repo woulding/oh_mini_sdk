@@ -1,0 +1,88 @@
+{
+    "string":[
+        {
+            "name":"actions_menu_user_agent",
+            "value":"[TS_1079368]_Browser UA"
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"[TS_1079373]_Open in Browser"
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"[TS_1079367]_%s settings"
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"[TS_1079375]_HarmonyOS"
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"[TS_1079374]_Mobile site"
+        },
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"[TS_1079369]_Desktop site"
+        },
+        {
+            "name":"continue_visit",
+            "value":"[TS_1080169]_Continue to this site?"
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"[TS_1080171]_This site's SSL certificate has expired or is untrusted. There may be a security risk if you continue."
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"[TS_1080170]_Continue"
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"[TS_1080168]_Cancel"
+        },
+        {
+            "name":"EntryAbility_label",
+            "value":"[TS_1079372]_portal login"
+        },
+        {
+            "name":"EntryAbility_desc",
+            "value":"[TS_1079371]_description"
+        },
+        {
+            "name":"module_desc",
+            "value":"[TS_1079370]_module description"
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"[TS_1200070]_Deny"
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"[TS_1200073]_The site ahead may contain inappropriate or prohibited content. Proceed with caution."
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"[TS_1200072]_Harmful content ahead"
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"[TS_1200071]_Allow %s to use the camera?"
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"[TS_1200074]_This is used for taking photos and videos."
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"[TS_1200075]_Allow"
+        },
+        {
+            "name":"ok",
+            "value":"[TS_1223744]_OK"
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"[TS_1223743]_Message from %s:"
+        }
+    ]
+}

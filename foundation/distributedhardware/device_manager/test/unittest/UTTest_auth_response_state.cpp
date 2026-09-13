@@ -1,0 +1,462 @@
+/*
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "UTTest_auth_response_state.h"
+
+#include "auth_message_processor.h"
+#include "auth_response_state.h"
+#include "dm_auth_manager.h"
+#include "dm_constants.h"
+#include "dm_log.h"
+#include "device_manager_service_listener.h"
+
+namespace OHOS {
+namespace DistributedHardware {
+void AuthResponseStateTest::SetUp()
+{
+    InitDeviceAuthService();
+}
+void AuthResponseStateTest::TearDown()
+{
+}
+void AuthResponseStateTest::SetUpTestCase()
+{
+    InitDeviceAuthService();
+}
+void AuthResponseStateTest::TearDownTestCase()
+{
+    DestroyDeviceAuthService();
+}
+
+namespace {
+std::shared_ptr<SoftbusConnector> softbusConnector = std::make_shared<SoftbusConnector>();
+std::shared_ptr<DeviceManagerServiceListener> listener = std::make_shared<DeviceManagerServiceListener>();
+std::shared_ptr<HiChainConnector> hiChainConnector = std::make_shared<HiChainConnector>();
+std::shared_ptr<HiChainAuthConnector> hiChainAuthConnector = std::make_shared<HiChainAuthConnector>();
+/**
+ * @tc.name: AuthResponseInitState::Leave_001
+ * @tc.desc: 1 set authManager not null
+ *           2 call AuthResponseInitState::Leave with authManager ！= null
+ *           3 check ret is authResponseState->authManager_.use_count()
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+/**
+ * @tc.name: AuthRequestInitState::GetAuthContext_001
+ * @tc.desc: 1 set authManager not null
+ *           2 call AuthRequestInitState::GetAuthContext with authManager ！= null
+ *           3 check ret is authResponseState->authManager_.use_count()
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+/**
+ * @tc.name: AuthResponseInitState::SetAuthManager_001
+ * @tc.desc: 1 set authManager not null
+ *           2 call AuthResponseInitState::SetAuthManager with authManager ！= null
+ *           3 check ret is authResponseState->authManager_.use_count()
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+/**
+ * @tc.name: AuthResponseInitState::SetAuthManager_002
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseInitState::SetAuthManager with authManager = null
+ *           3 check ret is authResponseState->authManager_.use_count()
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+/**
+ * @tc.name: AuthResponseInitState::TransitionTo_001
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseInitState::TransitionTo with authManager = null
+ *           4 check ret is ERR_DM_FAILED
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+/**
+ * @tc.name: AuthResponseInitState::TransitionTo_002
+ * @tc.desc: 1 set authManager not null
+ *           2 call AuthResponseInitState::TransitionTo with authManager != null
+ *           4 check ret is DM_OK
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, TransitionTo_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<DmAuthResponseContext> context = std::make_shared<DmAuthResponseContext>();
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseInitState>();
+    authManager->authResponseState_ = std::make_shared<AuthResponseInitState>();
+    authManager->authResponseContext_ = std::make_shared<DmAuthResponseContext>();
+    authManager->authMessageProcessor_ = std::make_shared<AuthMessageProcessor>(authManager);
+    context->sessionId = 123456;
+    authResponseState->SetAuthContext(context);
+    authResponseState->SetAuthManager(authManager);
+    int32_t ret = authResponseState->TransitionTo(std::make_shared<AuthResponseInitState>());
+    ASSERT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: AuthResponseInitState::GetStateType_001
+ * @tc.desc: 1 call AuthResponseInitState::GetStateType
+ *           2 check ret is AuthState::AUTH_RESPONSE_INIT
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, GetStateType_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseInitState>();
+    int32_t ret = authResponseState->GetStateType();
+    ASSERT_EQ(ret, AuthState::AUTH_RESPONSE_INIT);
+}
+
+/**
+ * @tc.name: AuthResponseInitState::Enter_001
+ * @tc.desc: 1 call AuthResponseInitState::GetStateType
+ *           2 check ret is AuthResponseInitState::Enter
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseInitState>();
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: AuthResponseNegotiateState::GetStateType_002
+ * @tc.desc: 1 call AuthResponseNegotiateState::GetStateType
+ *           2 check ret is AuthState::AUTH_RESPONSE_NEGOTIATE
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, GetStateType_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseNegotiateState>();
+    int32_t ret = authResponseState->GetStateType();
+    ASSERT_EQ(ret, AuthState::AUTH_RESPONSE_NEGOTIATE);
+}
+
+/**
+ * @tc.name: AuthResponseNegotiateState::Enter_002
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseNegotiateState::Enter with authManager = null
+ *           3 check ret is ERR_DM_FAILED
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_002, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseNegotiateState>();
+    authManager = nullptr;
+    authResponseState->SetAuthManager(authManager);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: AuthResponseNegotiateState::Enter_003
+ * @tc.desc: 1 set authManager not null
+ *           2 call AuthResponseNegotiateState::Enter with authManager != null
+ *           3 check ret is DM_OK
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_003, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseNegotiateState>();
+    authManager->authMessageProcessor_ = std::make_shared<AuthMessageProcessor>(authManager);
+    authManager->authResponseContext_ = std::make_shared<DmAuthResponseContext>();
+    authManager->authRequestContext_ = std::make_shared<DmAuthRequestContext>();
+    authManager->authResponseState_ = std::make_shared<AuthResponseNegotiateState>();
+    authManager->authRequestState_ = std::make_shared<AuthRequestNegotiateState>();
+    authManager->authResponseContext_->deviceId = "111";
+    authManager->authResponseContext_->localDeviceId = "222";
+    authManager->authMessageProcessor_->SetResponseContext(authManager->authResponseContext_);
+    authManager->authMessageProcessor_->SetRequestContext(authManager->authRequestContext_);
+    authManager->softbusConnector_->GetSoftbusSession()->RegisterSessionCallback(authManager);
+    authManager->timer_ = std::make_shared<DmTimer>();
+    authResponseState->SetAuthManager(authManager);
+    std::shared_ptr<DmAuthResponseContext> context = std::make_shared<DmAuthResponseContext>();
+    context->deviceId = "123456";
+    context->sessionId = 22222;
+    authResponseState->SetAuthContext(context);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: AuthResponseConfirmState::GetStateType_003
+ * @tc.desc: 1 call AuthResponseConfirmState::GetStateType
+ *           2 check ret is AuthState::AUTH_RESPONSE_CONFIRM
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, GetStateType_003, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseConfirmState>();
+    int32_t ret = authResponseState->GetStateType();
+    ASSERT_EQ(ret, AuthState::AUTH_RESPONSE_CONFIRM);
+}
+
+/**
+ * @tc.name: AuthResponseConfirmState::Enter_004
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseConfirmState::Enter with authManager = null
+ *           3 check ret is ERR_DM_FAILED
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_004, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseConfirmState>();
+    authResponseState->SetAuthManager(nullptr);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: AuthResponseConfirmState::Enter_005
+ * @tc.desc: 1 set authManager not null
+ *           2 call AuthResponseConfirmState::Enter with authManager != null
+ *           3 check ret is DM_OK
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_005, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    authManager->authResponseContext_ = std::make_shared<DmAuthResponseContext>();
+    authManager->authResponseContext_->isShowDialog = true;
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseConfirmState>();
+    authResponseState->SetAuthManager(authManager);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: AuthResponseGroupState::GetStateType_004
+ * @tc.desc: 1 call AuthResponseGroupState::GetStateType
+ *           2 check ret is AuthState::AUTH_RESPONSE_GROUP
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, GetStateType_004, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseGroupState>();
+    int32_t ret = authResponseState->GetStateType();
+    ASSERT_EQ(ret, AuthState::AUTH_RESPONSE_GROUP);
+}
+
+/**
+ * @tc.name: AuthResponseGroupState::Enter_006
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseGroupState::Enter with authManager = null
+ *           3 check ret is ERR_DM_FAILED
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_006, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseGroupState>();
+    authResponseState->SetAuthManager(nullptr);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: AuthResponseGroupState::Enter_007
+ * @tc.desc: 1 set authManager not null
+ *           2 call AuthResponseGroupState::Enter with authManager != null
+ *           3 check ret is DM_OK
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_007, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseGroupState>();
+    authManager->authResponseContext_ = std::make_shared<DmAuthResponseContext>();
+    authManager->authResponseState_ = std::make_shared<AuthResponseGroupState>();
+    authResponseState->SetAuthManager(authManager);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: AuthResponseShowState::GetStateType_005
+ * @tc.desc: 1 call AuthResponseShowState::GetStateType
+ *           2 check ret is AuthState::AUTH_RESPONSE_SHOW
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, GetStateType_005, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseShowState>();
+    int32_t ret = authResponseState->GetStateType();
+    ASSERT_EQ(ret, AuthState::AUTH_RESPONSE_SHOW);
+}
+
+/**
+ * @tc.name: AuthResponseShowState::Enter_008
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseShowState::Enter with authManager = null
+ *           3 check ret is ERR_DM_FAILED
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_008, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseShowState>();
+    authResponseState->SetAuthManager(nullptr);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: AuthResponseShowState::Enter_009
+ * @tc.desc: 1 set authManager not null
+ *           2 call AuthResponseShowState::Enter with authManager != null
+ *           3 check ret is DM_OK
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_009, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    authManager->authResponseContext_ = std::make_shared<DmAuthResponseContext>();
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseShowState>();
+    authManager->authResponseContext_->code = "123456";
+    authResponseState->SetAuthManager(authManager);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, DM_OK);
+}
+
+/**
+ * @tc.name: AuthResponseFinishState::GetStateType_006
+ * @tc.desc: 1 call AuthResponseShowState::GetStateType
+ *           2 check ret is AuthState::AUTH_RESPONSE_SHOW
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, GetStateType_006, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseFinishState>();
+    int32_t ret = authResponseState->GetStateType();
+    ASSERT_EQ(ret, AuthState::AUTH_RESPONSE_FINISH);
+}
+
+/**
+ * @tc.name: AuthResponseFinishState::Enter_010
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseFinishState::Enter with authManager = null
+ *           3 check ret is ERR_DM_FAILED
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_010, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseFinishState>();
+    authResponseState->SetAuthManager(nullptr);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, ERR_DM_FAILED);
+}
+
+/**
+ * @tc.name: AuthResponseCredential::GetStateType_010
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseCredential::GetStateType with authManager = null
+ *           3 check ret is AUTH_RESPONSE_CREDENTIAL
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, GetStateType_010, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseCredential>();
+    int32_t ret = authResponseState->GetStateType();
+    ASSERT_EQ(ret, AUTH_RESPONSE_CREDENTIAL);
+}
+
+/**
+ * @tc.name: AuthResponseCredential::Enter_012
+ * @tc.desc: 1 set authManager to null
+ *           2 call AuthResponseCredential::Enter with authManager = null
+ *           3 check ret is ERR_DM_FAILED
+ * @tc.type: FUNC
+ * @tc.require: AR000GHSJK
+ */
+HWTEST_F(AuthResponseStateTest, Enter_012, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseCredential>();
+    authResponseState->SetAuthManager(nullptr);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, ERR_DM_FAILED);
+
+    authManager->authResponseContext_ = std::make_shared<DmAuthResponseContext>();
+    authManager->authResponseContext_->publicKey = "";
+    authManager->authResponseState_ = std::make_shared<AuthResponseFinishState>();
+    authManager->authMessageProcessor_ = std::make_shared<AuthMessageProcessor>(authManager);
+    authResponseState->authManager_ = authManager;
+    ret = authResponseState->Enter();
+    ASSERT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(AuthResponseStateTest, GetStateType_011, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseReCheckMsg>();
+    int32_t ret = authResponseState->GetStateType();
+    ASSERT_EQ(ret, AUTH_RESPONSE_RECHECK_MSG);
+}
+
+HWTEST_F(AuthResponseStateTest, Enter_013, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<DmAuthManager> authManager =
+        std::make_shared<DmAuthManager>(softbusConnector, hiChainConnector, listener, hiChainAuthConnector);
+    std::shared_ptr<AuthResponseState> authResponseState = std::make_shared<AuthResponseReCheckMsg>();
+    authResponseState->SetAuthManager(nullptr);
+    int32_t ret = authResponseState->Enter();
+    ASSERT_EQ(ret, ERR_DM_FAILED);
+
+    authManager->authResponseContext_ = std::make_shared<DmAuthResponseContext>();
+    authManager->authResponseContext_->edition = "";
+    authManager->remoteVersion_ = "remoteVersion";
+    authManager->authResponseState_ = std::make_shared<AuthResponseFinishState>();
+    authManager->authMessageProcessor_ = std::make_shared<AuthMessageProcessor>(authManager);
+    authResponseState->authManager_ = authManager;
+    ret = authResponseState->Enter();
+    ASSERT_EQ(ret, DM_OK);
+}
+} // namespace
+} // namespace DistributedHardware
+} // namespace OHOS

@@ -1,0 +1,319 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_WIFI_EVENT_SUBSCRIBER_MANAGER_H
+#define OHOS_WIFI_EVENT_SUBSCRIBER_MANAGER_H
+
+#ifndef OHOS_ARCH_LITE
+#include <mutex>
+#include <functional>
+#include "wifi_errcode.h"
+#include "wifi_internal_msg.h"
+#include "wifi_system_ability_listerner.h"
+#include "common_event_manager.h"
+#include "wifi_event_handler.h"
+#include "display_manager_lite.h"
+#include "net_conn_client.h"
+#include "net_conn_callback_stub.h"
+#include "net_handle.h"
+#include "net_all_capabilities.h"
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+#include "telephony_observer.h"
+#endif
+#include "ienhance_service.h"
+namespace OHOS {
+namespace Wifi {
+#ifdef HAS_POWERMGR_PART
+inline const std::string COMMON_EVENT_POWER_MANAGER_STATE_CHANGED = "usual.event.POWER_MANAGER_STATE_CHANGED";
+#endif
+const int CAST_ENGINE_SA_ID = 65546;
+const int SHARE_SERVICE_ID = 2902;
+const int MOUSE_CROSS_SERVICE_ID = 65569;
+constexpr int32_t MOVEMENT_TYPE_STILL = 4;
+constexpr int32_t MOVEMENT_TYPE_STAY = 14;
+constexpr int32_t MOVEMENT_VALUE_ENTER = 1;
+enum class MdmForbiddenType {
+    WIFI = 0,
+    HOTSPOT,
+    P2P,
+};
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+inline const std::string COMMON_EVENT_ASSETCLOUD_MANAGER_STATE_CHANGED = "usual.event.ASSET_SYNC_DATA_CHANGED_SA";
+const int ASSETID = 6226;
+#endif
+#ifdef HAS_NETMANAGER_EVENT_PART
+inline const std::string WIFI_EVENT_BG_CONTINUOUS_TASK_STATE = "ohos.event.notification.wifi.BGCTTASK_STATE";
+inline const std::string WIFI_EVENT_ACC_TASK_STATE = "ohos.event.notification.wifi.ACCTASK_STATE";
+#endif
+class CesEventSubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit CesEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    virtual ~CesEventSubscriber();
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+    void OnReceiveStandbyEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveScreenEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveAirplaneEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveBatteryEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveAppEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveThermalEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveNotificationEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveUserUnlockedEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveConnectivityChangedEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveForceSleepEvent(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveGameInfoNotifyEvent(const OHOS::EventFwk::CommonEventData &eventData);
+private:
+    bool lastSleepState = false;
+    std::atomic<bool> firstFoldState_ = true;
+};
+
+class NotificationEventSubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit NotificationEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    virtual ~NotificationEventSubscriber();
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+    void OnReceiveWlanKeepConnected(const OHOS::EventFwk::CommonEventData &eventData);
+private:
+    void OnReceiveNotificationEvent(int notificationId);
+    void OnReceiveDontShowEvent(int notificationId);
+    void HandleCandidateConnect(const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveDialogAcceptEvent(int dialogType, const OHOS::EventFwk::CommonEventData &eventData);
+    void OnReceiveDialogRejectEvent(int dialogType, bool noAction);
+    void NotifyCandidateApprovalStatus(CandidateApprovalStatus status);
+};
+
+#ifdef HAS_POWERMGR_PART
+class PowermgrEventSubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit PowermgrEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    virtual ~PowermgrEventSubscriber();
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+};
+#endif
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+class AssetEventSubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit AssetEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    virtual ~AssetEventSubscriber();
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+};
+#endif
+#ifdef HAS_NETMANAGER_EVENT_PART
+class NetmgrEventSubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit NetmgrEventSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    virtual ~NetmgrEventSubscriber();
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+};
+#endif
+class NetworkStateChangeSubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit NetworkStateChangeSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    ~NetworkStateChangeSubscriber() = default;
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+};
+
+class WifiScanEventChangeSubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit WifiScanEventChangeSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    ~WifiScanEventChangeSubscriber() = default;
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+};
+
+class SettingsEnterSubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit SettingsEnterSubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    ~SettingsEnterSubscriber() = default;
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+};
+
+class DataShareReadySubscriber : public OHOS::EventFwk::CommonEventSubscriber {
+public:
+    explicit DataShareReadySubscriber(const OHOS::EventFwk::CommonEventSubscribeInfo &subscriberInfo);
+    ~DataShareReadySubscriber() = default;
+    void OnReceiveEvent(const OHOS::EventFwk::CommonEventData &eventData) override;
+};
+
+class WifiFoldStateListener : public Rosen::DisplayManagerLite::IFoldStatusListener {
+public:
+    explicit WifiFoldStateListener(int foldAction);
+    ~WifiFoldStateListener() = default;
+    void OnFoldStatusChanged(Rosen::FoldStatus foldStatus) override;
+private:
+    int foldAction_ { 0 };
+    Rosen::FoldStatus lastStatus_ { Rosen::FoldStatus::UNKNOWN };
+};
+
+class WifiDisplayStateListener : public Rosen::DisplayManagerLite::IDisplayListener {
+public:
+    WifiDisplayStateListener();
+    ~WifiDisplayStateListener() = default;
+    void OnCreate(uint64_t displayId) override;
+    void OnDestroy(uint64_t displayId) override;
+    void OnChange(uint64_t displayId) override;
+};
+
+class NetworkConnSubscriber : public NetManagerStandard::NetConnCallbackStub {
+public:
+    NetworkConnSubscriber() = default;
+    ~NetworkConnSubscriber() = default;
+    int32_t NetCapabilitiesChange(sptr<NetManagerStandard::NetHandle> &netHandle,
+        const sptr<NetManagerStandard::NetAllCapabilities> &netAllCap) override;
+};
+
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+class CellularStateObserver : public Telephony::TelephonyObserver {
+public:
+    CellularStateObserver() = default;
+    ~CellularStateObserver() = default;
+    void OnCellInfoUpdated(int32_t slotId, const std::vector<sptr<Telephony::CellInformation>> &vec) override;
+};
+#endif
+class WifiEventSubscriberManager : public WifiSystemAbilityListener {
+public:
+    WifiEventSubscriberManager();
+    virtual ~WifiEventSubscriberManager();
+
+    void Init();
+    void OnSystemAbilityChanged(int systemAbilityId, bool add) override;
+    void GetAirplaneModeByDatashare();
+    void GetWifiAllowSemiActiveByDatashare();
+    bool GetLocationModeByDatashare();
+    std::string GetScanMacInfoWhiteListByDatashare();
+    void DealLocationModeChangeEvent();
+    void CheckAndStartStaByDatashare();
+    bool IsMdmForbidden(MdmForbiddenType type = MdmForbiddenType::WIFI);
+    void AccessDataShare();
+    void RegisterLocationEvent();
+    void OnEnhanceServiceReady();
+
+private:
+    void InitSubscribeListener();
+    void HandleAppMgrServiceChange(bool add);
+    void HandleCommNetConnManagerSysChange(int systemAbilityId, bool add);
+    void HandleEthernetServiceChange(int systemAbilityId, bool add);
+    void HandleDistributedKvDataServiceChange(bool add);
+    void HandleCastServiceChange(bool add);
+    void HandleShareServiceChange(bool add);
+    void HandleMouseCrossServiceChange(bool add);
+    void HandleGameServiceChange(bool add);
+    void HandleWatchServiceChange(bool add);
+    int GetLastStaStateByDatashare();
+    void RegisterCesEvent();
+#ifdef HAS_POWERMGR_PART
+    void RegisterPowermgrEvent();
+    void UnRegisterPowermgrEvent();
+    std::shared_ptr<PowermgrEventSubscriber> wifiPowermgrEventSubsciber_ = nullptr;
+    std::mutex powermgrEventMutex;
+    uint32_t powerMgrId{0};
+#endif
+    void UnRegisterCesEvent();
+    void UnRegisterLocationEvent();
+    void RegisterNotificationEvent();
+    void UnRegisterNotificationEvent();
+#ifdef HAS_NETMANAGER_EVENT_PART
+    void RegisterNetmgrEvent();
+    void UnRegisterNetmgrEvent();
+    std::shared_ptr<NetmgrEventSubscriber> wifiNetmgrEventSubsciber_ = nullptr;
+    std::mutex netmgrEventMutex;
+    uint32_t netMgrId{0};
+#endif
+    void GetMdmProp();
+    void RegisterMdmPropListener();
+    static void MdmPropChangeEvt(const char *key, const char *value, void *context);
+    void RegisterMovementEnhanceCallback();
+    void UnRegisterMovementEnhanceCallback();
+    void OnMovementChanged(int32_t movementType, int32_t movementValue);
+    void HandleMovementChange();
+#ifdef FEATURE_P2P_SUPPORT
+    void HandleP2pBusinessChange(int systemAbilityId, bool add);
+#endif
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+    void RegisterAssetEvent();
+    void UnRegisterAssetEvent();
+#endif
+    void RegisterNetworkStateChangeEvent();
+    void UnRegisterNetworkStateChangeEvent();
+    void RegisterWifiScanChangeEvent();
+    void UnRegisterWifiScanChangeEvent();
+    void RegisterSettingsEnterEvent();
+    void UnRegisterSettingsEnterEvent();
+    void RegisterDataShareReadyEvent();
+    void UnRegisterDataShareReadyEvent();
+    void SyncFoldStatus();
+    void RegisterFoldStatusListener();
+    void UnRegisterFoldStatusListener();
+    void RegisterDisplayListener();
+    void UnregisterDisplayListener();
+    void RegisterNetworkConnSubscriber();
+    void UnRegisterNetworkConnSubscriber();
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+    void RegisterCellularStateObserver();
+    void UnRegisterCellularStateObserver();
+#endif
+
+private:
+    uint32_t cesTimerId{0};
+    uint32_t notificationTimerId{0};
+    uint32_t networkStateChangeTimerId{0};
+    uint32_t wifiScanChangeTimerId{0};
+    uint32_t settingsTimerId{0};
+    uint32_t dataShareReadyTimerId_{0};
+    std::mutex cesEventMutex;
+    std::mutex notificationEventMutex;
+    std::mutex networkStateChangeEventMutex;
+    std::mutex wifiScanChangeEventMutex;
+    std::mutex settingsEnterEventMutex;
+    std::mutex dataShareReadyEventMutex_;
+    bool isCesEventSubscribered = false;
+    std::shared_ptr<CesEventSubscriber> cesEventSubscriber_ = nullptr;
+    std::shared_ptr<NotificationEventSubscriber> wifiNotificationSubsciber_ = nullptr;
+    std::shared_ptr<NetworkStateChangeSubscriber> networkStateChangeSubsciber_ = nullptr;
+    std::shared_ptr<WifiScanEventChangeSubscriber> wifiScanEventChangeSubscriber_ = nullptr;
+    std::shared_ptr<SettingsEnterSubscriber> settingsEnterSubscriber_ = nullptr;
+    std::shared_ptr<DataShareReadySubscriber> dataShareReadySubscriber_ = nullptr;
+    std::unique_ptr<WifiEventHandler> movementChangeEventHandler_ = nullptr;
+    static std::atomic<bool> isMdmForbidden_;
+    static std::atomic<bool> isMdmHotspotForbidden_;
+    static std::atomic<bool> isMdmP2pForbidden_;
+    bool islocationModeObservered = false;
+    std::mutex locationEventMutex;
+    std::unique_ptr<WifiEventHandler> mWifiEventSubsThread_ = nullptr;
+#ifdef SUPPORT_ClOUD_WIFI_ASSET
+    std::shared_ptr<AssetEventSubscriber> wifiAssetrEventSubsciber_ = nullptr;
+    std::mutex AssetEventMutex;
+    uint32_t assetMgrId{0};
+#endif
+
+    bool accessDataShare_ = false;
+    std::mutex accessDataShareMutex_;
+    sptr<Rosen::DisplayManagerLite::IFoldStatusListener> foldStatusListener_ = nullptr;
+    std::mutex foldStatusListenerMutex_;
+    sptr<Rosen::DisplayManagerLite::IDisplayListener> displayStatusListener_ = nullptr;
+    std::mutex displayStatusListenerMutex_;
+    std::mutex networkConnSubscriberLock_;
+    sptr<NetworkConnSubscriber> networkConnSubscriber_ = nullptr;
+#ifdef FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT
+    sptr<CellularStateObserver> cellularStateObserver_ { nullptr };
+    int32_t simCount_ { 0 };
+    std::mutex cellularObserverLock_;
+#endif
+    std::atomic<bool> enhanceServiceReady_{false};
+    int foldAction_ { 0 };
+};
+
+}  // namespace Wifi
+}  // namespace OHOS
+#endif
+#endif // OHOS_WIFI_EVENT_SUBSCRIBER_MANAGER_H

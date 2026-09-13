@@ -1,0 +1,92 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/startup/init/begetd.gni")
+import("//build/ohos.gni")
+
+ohos_executable("client") {
+  sources = [ "client.c" ]
+  include_dirs = [
+    "//base/startup/init/services/log",
+    "//base/startup/init/interfaces/innerkits/include",
+  ]
+  deps = [ "//base/startup/init/interfaces/innerkits:libbegetutil" ]
+  external_deps = [ "bounds_checking_function:libsec_static" ]
+  install_images = [ "system" ]
+  install_enable = true
+  part_name = "init"
+  subsystem_name = "startup"
+}
+
+ohos_executable("fd_holder_test") {
+  sources = [ "fd_holder_test.c" ]
+
+  defines = [ "INIT_AGENT" ]
+
+  deps = [ "//base/startup/init/interfaces/innerkits:libbegetutil" ]
+
+  include_dirs = [ "//base/startup/init/interfaces/innerkits/include" ]
+
+  install_images = [ "system" ]
+  install_enable = true
+
+  part_name = "init"
+  subsystem_name = "startup"
+}
+
+ohos_prebuilt_etc("fd_holder_test.cfg") {
+  source = "//base/startup/init/test/exec_test/fd_holder_test.cfg"
+  part_name = "init"
+  subsystem_name = "startup"
+  module_install_dir = "etc/init"
+}
+
+ohos_executable("server") {
+  sources = [ "server.c" ]
+  include_dirs = [
+    "//base/startup/init/services/log",
+    "//base/startup/init/interfaces/innerkits/include",
+  ]
+  deps = [ "//base/startup/init/interfaces/innerkits:libbegetutil" ]
+  external_deps = [ "bounds_checking_function:libsec_static" ]
+  install_images = [ "system" ]
+  install_enable = true
+  part_name = "init"
+  subsystem_name = "startup"
+}
+
+ohos_executable("ondemandTest") {
+  sources = [ "sa_service_ondemand_test.cpp" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  install_images = [ "system" ]
+  install_enable = true
+  part_name = "init"
+  subsystem_name = "startup"
+}
+
+group("exectest") {
+  deps = [
+    ":client",
+    ":fd_holder_test",
+    ":fd_holder_test.cfg",
+    ":ondemandTest",
+    ":server",
+  ]
+}

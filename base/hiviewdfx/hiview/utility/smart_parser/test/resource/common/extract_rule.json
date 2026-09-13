@@ -1,0 +1,155 @@
+{
+    "version": "1.0.0",
+    "segmentStatus":[
+        {"namespace":"segStatus", "matchKey":"tid=\\d+ (.*)", "desc":""},
+        {"namespace":"segWaitOther", "matchKey":"waiting to lock.*held by thread (\\d+)", "desc":" waiting on lock held by "},
+        {"namespace":"segWaitSelf", "matchKey":"- waiting on <(.*)>", "desc":" waiting on itself"},
+        {"namespace":"segIpcTrans", "matchKey":"os\\.(IpcProxy)\\.transact", "desc":" ipc transact:"},
+        {"namespace":"segIpcFull", "matchKey":"os\\.Ipc\\.(blockUntilThreadAvailable)", "desc":" ipc full:"}
+    ],
+    "Rule1":{
+        "DirOrFile":"/data/log/faultlog/",
+        "Subcatalog":".*?\\-.*?\\-[0-9]{5}\\-[0-9]{14}",
+        "featureId":"63_AppFreeze_00",
+        "segmentType":"TwoLayers",
+        "startSeg":["BasicParam.v_process", "main"],
+        "segStack":["^\\s+at\\s+|^\\s+-\\s\\w", "^\\s+at\\s+|^\\s+-\\s\\w"],
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"PROCESS_NAME", "v_process":"PROCESS_NAME = (.*)"},
+            {"namespace":"BasicParam", "matchKey":"PID = ", "v_pid":"PID = (.*)"},
+            {"namespace":"BasicParam", "matchKey":"UID = ", "v_uid":"UID = (.*)"}
+        ],
+        "segmentRule":[
+            {"namespace":"LayerOneCmd", "matchKey":"----- pid ", "num":2, "v_id":"^----- pid (\\d+) at", "v_name":"^Cmd line: (.*)"},
+            {"namespace":"LayerTwoCmd", "matchKey":" prio=@&@ tid=", "num":3, "v_id":"tid=(\\d+) ", "v_name":"^\"(.*)\" ", "v_sysTid":"sysTid=(\\d+) "}
+        ]
+    },
+    "Rule2":{
+        "DirOrFile":"/data/log/faultlog/faultlogger/",
+        "Subcatalog":"cppcrash-.*-\\d+-\\d+\\.log",
+        "featureId":"07_CPP_CRASH_00",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"Module name:", "v_process":"Module name:(.*)"},
+            {"namespace":"MainCallTrace", "matchKey":"Tid:", "v_trace":"@T@#\\d+ pc [0-9a-zA-Z]+ (.*)"}
+        ]
+    },
+    "Rule3":{
+        "DirOrFile":"/data/log/faultlog/faultlogger/",
+        "Subcatalog":"jscrash-.*-\\d+-\\d+\\.log",
+        "featureId":"07_JS_ERROR_00",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"Module name:", "v_process":"Module name:(.*)"},
+            {"namespace":"MainCallTrace", "matchKey":"at ",  "v_trace":"@T@at (.*)"}
+        ]
+    },
+    "Rule4":{
+        "DirOrFile":"/data/log/faultlog/faultlogger/",
+        "Subcatalog":"appfreeze-.*-\\d+-\\d+\\.log",
+        "featureId":"63_APP_FREEZE_01",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"Module name:", "v_process":"Module name:(.*)"},
+            {"namespace":"BasicParam", "matchKey":"PID = ", "v_pid":"PID = (.*)"},
+            {"namespace":"MainCallTrace", "matchKey":"@R@(Tid:){1}@{BasicParam.v_pid}@", "v_trace":"@T@#\\d+ pc [0-9a-zA-Z]+ (.*)"}
+        ]
+    },
+    "Rule5":{
+        "DirOrFile":"/data/log/faultlog/faultlogger/",
+        "Subcatalog":"sysfreeze-.*-\\d+-\\d+\\.log",
+        "featureId":"63_SYS_FREEZE_01",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"Module name:", "v_process":"Module name:(.*)", "v_service_block":"Module name:SERVICE_BLOCK"},
+            {"namespace":"BasicParam", "depend":"BasicParam.v_service_block", "matchKey":"SERVICE_BLOCK at ", "v_first":"SERVICE_BLOCK at (.*)"},
+            {"namespace":"BasicParam", "matchKey":"PID = ", "v_pid":"PID = (.*)"},
+            {"namespace":"MainCallTrace", "matchKey":"@R@(Tid:){1}@{BasicParam.v_pid}@", "v_trace":"@T@#\\d+ pc [0-9a-zA-Z]+ (.*)"}
+        ]
+    },
+    "Rule6":{
+        "DirOrFile":"/data/log/bbox/",
+        "Subcatalog":"\\d{14}-\\d{8}/ap_log/last_kmsg",
+        "featureId":"04_PANIC_01",
+        "segmentType":"OneLayer",
+        "startSeg":["NocTrace.v_cpu"],
+        "segStack":["[0-9a-zA-Z_.]+\\+0x[0-9a-f]+/0x[0-9a-f]+(.*)", "el1_irq+0"],
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"Unhandled fault:@|@Unable to handle kernel@|@kernel BUG at@|@BUG: failure at@|@Bad mode in@|@DPM device timeout@|@invoked oom-killer@|@Synchronous External Abort:@|@,init]potentially unexpected fatal signal@|@Internal error:@|@NoC Error Probe:@|@mali gpu: Unhandled Page@|@CFI failure@|@Kernel panic - not syncing:", "v_cause":"pid:\\d+,cpu\\d+,.*\\]([A-Za-z].*)", "v_pname":",cpu[0-9],(.*?)[,:\\]]", "v_noc":"(NoC Error)"},
+            {"namespace":"BasicParam", "depend":"BasicParam.v_pname", "matchKey":"PC is at ", "v_f1":"PC is at ([^\\+ ]+.*)"},
+            {"namespace":"NocTrace", "depend":"BasicParam.v_noc", "matchKey":"err_code=", "v_errcode":"\\[(err_code=\\d+)\\]"},
+            {"namespace":"NocTrace", "depend":"BasicParam.v_noc", "matchKey":"init_flow=", "v_master":"\\[init_flow=\\d+\\]: (.*)"},
+            {"namespace":"NocTrace", "depend":"BasicParam.v_noc", "matchKey":"target_flow=", "v_slave":"\\[target_flow=\\d+\\]: (.*)"},
+            {"namespace":"NocTrace", "depend":"BasicParam.v_noc", "matchKey":"adjusted ADDR", "v_address":"adjusted.* = (.*)"},
+            {"namespace":"NocTrace", "depend":"BasicParam.v_noc", "matchKey":"USER_SIGNAL =", "v_user_signal":"USER_SIGNAL = 0x[0-9a-z]+ (.*)", "v_cpu":"\\(MID: AP_CPU(\\d+)"},
+            {"namespace":"NocTrace", "depend":"BasicParam.v_noc", "matchKey":"sec_val =", "v_security":"(sec_val = 0x[0-9a-f]+)"},
+            {"namespace":"MainCallTrace", "depend":"BasicParam", "matchKey":"Call trace:", "v_trace":"@T@[0-9a-zA-Z_.]+\\+0x[0-9a-f]+/0x[0-9a-f]+(.*)"}
+        ],
+        "segmentRule":[
+            {"namespace":"LayerOneCmd", "matchKey":"]:CPU@&@: stopping", "num":1, "v_id":"\\]:CPU(\\d+): stopping", "v_name":"\\]:(CPU\\d+): stopping"}
+        ]
+    },
+    "Rule7":{
+        "DirOrFile":"/data/log/bbox/",
+        "Subcatalog":"\\d{14}-\\d{8}/ap_log/last_kmsg",
+        "featureId":"04_HWWATCHDOG_00",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"sysrq: Trigger a crash", "v_fiq":"(.*)"},
+            {"namespace":"BasicParam", "depend":"BasicParam.v_fiq","matchKey":"PC is at ", "v_f1":"PC is at ([^\\+ ]+.*)", "v_pname":"cpu[0-9],(.*?)[,:\\]]"},
+            {"namespace":"MainCallTrace", "depend":"BasicParam.v_fiq", "matchKey":"Call trace:", "v_trace":"@T@[0-9a-zA-Z_]+\\+0x[0-9a-f]+/0x[0-9a-f]+(.*)"}
+        ]
+    },
+    "Rule8":{
+        "DirOrFile":"/data/log/faultlog/faultlogger/",
+        "Subcatalog":"rustpanic-.*-\\d+-\\d+\\.log",
+        "featureId":"04_RUST_PANIC_00",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"Module name:", "v_pname":"Module name:(.*)"},
+            {"namespace":"MainCallTrace", "matchKey":"Thread name:", "v_trace":"@T@#\\d+ pc [0-9a-zA-Z]+ (.*)"}
+        ]
+    },
+    "Rule9":{
+        "DirOrFile":"/data/log/bbox/",
+        "Subcatalog":"\\d{14}-\\d{8}/bootfail_info_\\d{1}",
+        "featureId":"04_BOOTFAIL_00",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"Fault Reason: ", "v_bootfailReason":"Fault Reason: (.*)"},
+            {"namespace":"BasicParam", "matchKey":"Error Description: ", "v_bootfailDetail":"Error Description: (.*)"},
+            {"namespace":"BasicParam", "matchKey":"Error No: 0x", "v_bootfailErrno":"Error No: (0x[0-9a-f]+)"}
+        ]
+    },
+    "Rule10":{
+        "DirOrFile":"/data/log/sensorhub-log/",
+        "Subcatalog":"history.log",
+        "featureId":"03_SENSORHUBCRASH_00",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"time", "v_last":"@L@time (.+)"}
+        ]
+    },
+    "Rule11":{
+        "DirOrFile":"/data/hisi_logs/",
+        "Subcatalog":"\\d{14}-\\d{8}/cp_log/reset.log",
+        "featureId":"03_MODEMCRASH_00,MODEM_REBOOTSYS",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"brief:", "v_first":"brief:(.*)"},
+            {"namespace":"BasicParam", "matchKey":"task_name:", "v_second":"task_name:(.*)"},
+            {"namespace":"BasicParam", "matchKey":"modid:", "v_last":"modid:(.*)"}
+        ]
+    },
+    "Rule12":{
+        "DirOrFile":"/data/hisi_logs/",
+        "Subcatalog":"\\d{14}-\\d{8}/ap_log/last_kmsg",
+        "featureId":"04_PANIC_00",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"qtp_rsp", "v_cause":"dfx_qic\\]:(.*)", "v_last":"(qtp_rsp.*)"},
+            {"namespace":"BasicParam", "depend":"BasicParam.v_cause","matchKey":"MID(Master id)", "v_first":"(MID\\(Master id\\).*)"},
+            {"namespace":"BasicParam", "depend":"BasicParam.v_cause","matchKey":"qic_addr", "v_second":"(qic_addr.*)"}
+        ]
+    },
+    "Rule13":{
+        "DirOrFile":"/data/hisi_logs/",
+        "Subcatalog":"\\d{14}-\\d{8}/dpa_log/reset.log",
+        "featureId":"03_DPACRASH_00",
+        "rules":[
+            {"namespace":"BasicParam", "matchKey":"brief:", "v_first":"^brief:(.*)"},
+            {"namespace":"BasicParam", "matchKey":"task_name:", "v_second":"^task_name:(.*)"},
+            {"namespace":"BasicParam", "matchKey":"modid:", "v_last":"^modid:(.*)"}
+        ]
+    }
+}

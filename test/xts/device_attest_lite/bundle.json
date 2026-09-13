@@ -1,0 +1,64 @@
+{
+  "name": "@ohos/device_attest_lite",
+  "version": "4.0.2",
+  "description": "",
+  "license": "Apache License 2.0",
+  "domain": "os",
+  "homePage": "https://gitee.com/openharmony",
+  "repository": "https://gitee.com/openharmony/xts_device_attest_lite",
+  "supplier": "Organization: OpenHarmony",
+  "publishAs": "code-segment",
+  "private": false,
+  "scripts": {},
+  "dirs": [],
+  "segment": {
+    "destPath": "test/xts/device_attest_lite"
+  },
+  "component": {
+    "name": "device_attest_lite",
+    "subsystem": "xts",
+    "syscap": [ "SystemCapability.XTS.DeviceAttest.Lite" ],
+    "features": [],
+    "adapted_system_type": [
+      "mini",
+      "small"
+    ],
+    "rom": "3072KB",
+    "ram": "~64KB",
+    "deps": {
+      "components": [
+        "samgr_lite",
+        "ipc",
+        "hilog_lite",
+        "ace_engine_lite",
+        "init",
+        "syscap_codec"
+      ],
+      "third_party": [
+        "bounds_checking_function",
+        "cJSON",
+        "mbedtls"
+      ]
+    },
+    "build": {
+      "sub_component": [
+        "//test/xts/device_attest_lite:device_atTest_lite"
+      ],
+      "inner_kits": [
+        {
+          "header": {
+            "header_base":"//test/xts/device_attest_lite/interfaces/innerkits",
+            "header_files": [
+              "devattest_interface.h",
+              "attest_result_info.h"
+            ]
+          },
+          "name": "//test/xts/device_attest_lite/framework:devattest_client"
+        }
+      ],
+      "test": [
+        "//test/xts/device_attest_lite/test/unittest:unittest"
+      ]
+    }
+  }
+}

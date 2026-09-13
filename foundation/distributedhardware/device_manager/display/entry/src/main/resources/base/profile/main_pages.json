@@ -1,0 +1,14 @@
+{
+  "src": [
+    "pages/ConfirmDialog",
+    "pages/ConfirmDialogServe",
+    "pages/PinDialog",
+    "pages/InputPinDialog",
+    "pages/BluetoothDialog",
+    "pages/ConfirmDialogTv",
+    "pages/ConfirmDialogWearable",
+    "pages/PinDialogWearable",
+    "pages/PinDialogTv",
+    "pages/InputPinDialogWearable"
+  ]
+}

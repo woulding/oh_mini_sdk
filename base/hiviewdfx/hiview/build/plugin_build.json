@@ -1,0 +1,26 @@
+{
+    "plugins": {
+    },
+    "rules": [
+        {
+            "rule": [
+                {
+                    "rom": "1G",
+                    "ram": "1G"
+                }
+            ],
+            "info": {
+                "loadorder": {
+                },
+                "pipelines": {
+                },
+                "pipelinegroups": {
+                },
+                "threads": {
+                    "singledthread": {
+                    }
+                }
+            }
+        }
+    ]
+}

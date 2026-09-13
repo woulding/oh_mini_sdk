@@ -1,0 +1,59 @@
+{
+  global:
+    extern "C++" {
+        "OHOS::HiviewDFX::HiTraceChain::GetId()";
+        "OHOS::HiviewDFX::HiTraceChain::GetIdAddress()";
+        "OHOS::HiviewDFX::HiTraceId::IsValid() const";
+        "OHOS::HiviewDFX::HiTraceId::GetChainId() const";
+        "OHOS::HiviewDFX::HiTraceId::GetSpanId() const";
+        "OHOS::HiviewDFX::HiTraceId::GetParentSpanId() const";
+        "OHOS::HiviewDFX::HiTraceId::GetFlags() const";
+        "OHOS::HiviewDFX::HiTraceId::IsFlagEnabled(HiTraceFlag) const";
+        "OHOS::HiviewDFX::HiTraceChain::Tracepoint(HiTraceTracepointType, OHOS::HiviewDFX::HiTraceId const&, char const*, ...)";
+        "OHOS::HiviewDFX::HiTraceChain::SetId(OHOS::HiviewDFX::HiTraceId const&)";
+        "OHOS::HiviewDFX::HiTraceChain::ClearId()";
+        "OHOS::HiviewDFX::HiTraceChain::CreateSpan()";
+        "OHOS::HiviewDFX::HiTraceId::ToBytes(unsigned char*, int) const";
+        "OHOS::HiviewDFX::HiTraceId::HiTraceId(unsigned char const*, int)";
+        "OHOS::HiviewDFX::HiTraceChain::Begin(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int)";
+        "OHOS::HiviewDFX::HiTraceChain::Begin(std::__h::basic_string<char, std::__h::char_traits<char>, std::__h::allocator<char>> const&, int, unsigned int)";
+        "OHOS::HiviewDFX::HiTraceId::HiTraceId()";
+        "OHOS::HiviewDFX::HiTraceChain::End(OHOS::HiviewDFX::HiTraceId const&)";
+        "OHOS::HiviewDFX::HiTraceChain::End(OHOS::HiviewDFX::HiTraceId const&, unsigned int)";
+        "OHOS::HiviewDFX::HiTraceChain::Tracepoint(HiTraceCommunicationMode, HiTraceTracepointType, OHOS::HiviewDFX::HiTraceId const&, char const*, ...)";
+        "OHOS::HiviewDFX::HiTraceChain::Tracepoint(HiTraceCommunicationMode, HiTraceTracepointType, OHOS::HiviewDFX::HiTraceId const&, unsigned int, char const*, ...)";
+        "OHOS::HiviewDFX::HiTraceId::EnableFlag(HiTraceFlag)";
+        "OHOS::HiviewDFX::HiTraceId::SetChainId(unsigned long long)";
+        "OHOS::HiviewDFX::HiTraceId::SetChainId(unsigned long)";
+        "OHOS::HiviewDFX::HiTraceId::SetSpanId(unsigned long long)";
+        "OHOS::HiviewDFX::HiTraceId::SetSpanId(unsigned long)";
+        "OHOS::HiviewDFX::HiTraceId::SetParentSpanId(unsigned long long)";
+        "OHOS::HiviewDFX::HiTraceId::SetParentSpanId(unsigned long)";
+        "OHOS::HiviewDFX::HiTraceId::SetFlags(int)";
+        "OHOS::HiviewDFX::HiTraceChain::SaveAndSet(OHOS::HiviewDFX::HiTraceId const&)";
+        "OHOS::HiviewDFX::HiTraceChain::Restore(OHOS::HiviewDFX::HiTraceId const&)";
+        "OHOS::HiviewDFX::HiTraceId::HiTraceId(HiTraceIdStruct const&)";
+    };
+  extern "C" {
+        "HiTraceChainTracepointInner";
+        "HiTraceChainBegin";
+        "HiTraceChainBeginWithDomain";
+        "HiTraceChainEnd";
+        "HiTraceChainEndWithDomain";
+        "HiTraceChainGetId";
+        "HiTraceChainGetIdAddress";
+        "HiTraceChainSetId";
+        "HiTraceChainClearId";
+        "HiTraceChainCreateSpan";
+        "HiTraceChainTracepoint";
+        "HiTraceChainTracepointEx";
+        "HiTraceChainTracepointExWithDomain";
+        "HiTraceChainSaveAndSetId";
+        "HiTraceChainRestoreId";
+        "HiTraceFinishTrace";
+        "HiTraceChainTracepointExWithArgs";
+        "HiTraceChainTracepointExWithArgsDomain";
+  };
+  local:
+    *;
+};

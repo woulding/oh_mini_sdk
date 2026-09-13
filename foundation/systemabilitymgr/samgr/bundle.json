@@ -1,0 +1,126 @@
+{
+    "name": "@ohos/samgr",
+    "description": "system ability manager",
+    "homePage": "https://gitee.com/openharmony",
+    "version": "3.1",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/systemabilitymgr_samgr",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/systemabilitymgr/samgr"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "samgr",
+        "subsystem": "systemabilitymgr",
+        "features": [
+            "samgr_feature_coverage",
+            "samgr_enable_extend_load_timeout",
+            "samgr_enable_delay_dbinder",
+            "samgr_support_multi_instance"
+        ],
+        "adapted_system_type": [
+            "standard"
+        ],
+        "hisysevent_config": [
+            "//foundation/systemabilitymgr/samgr/hisysevent.yaml"
+            ],
+        "rom": "300KB",
+        "ram": "7130KB",
+        "deps": {
+            "components": [
+                "ability_base",
+                "access_token",
+                "c_utils",
+                "common_event_service",
+                "device_manager",
+                "dsoftbus",
+                "ffrt",
+                "hicollie",
+                "hilog",
+                "hisysevent",
+                "hitrace",
+                "init",
+                "ipc",
+                "json",
+                "libxml2",
+                "mksh",
+                "preferences",
+                "safwk",
+                "selinux_adapter",
+                "qos_manager",
+                "toybox",
+                "config_policy",
+                "rust_cxx",
+                "ylong_runtime"
+            ]
+        },
+        "build": {
+            "group_type": {
+                "base_group": [],
+                "fwk_group": [
+                    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/common:samgr_common",
+                    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/dynamic_cache:dynamic_cache",
+                    "//foundation/systemabilitymgr/samgr/interfaces/innerkits/samgr_proxy:samgr_proxy"
+                ],
+                "service_group": [
+                    "//foundation/systemabilitymgr/samgr/etc:samgr_etc",
+                    "//foundation/systemabilitymgr/samgr/services/samgr/native:samgr"
+                ]
+            },
+            "inner_kits": [
+                {
+                    "header": {
+                        "header_base": "//foundation/systemabilitymgr/samgr/interfaces/innerkits/samgr_proxy/include/",
+                        "header_files": [
+                            "if_system_ability_manager.h",
+                            "iservice_registry.h",
+                            "isystem_ability_load_callback.h",
+                            "isystem_ability_status_change.h",
+                            "isystem_process_status_change.h",
+                            "system_ability_definition.h",
+                            "system_ability_manager_proxy.h",
+                            "system_ability_load_callback_stub.h",
+                            "system_ability_status_change_stub.h",
+                            "system_process_status_change_stub.h",
+                            "sam_log.h"
+                        ]
+                    },
+                    "name": "//foundation/systemabilitymgr/samgr/interfaces/innerkits/samgr_proxy:samgr_proxy"
+                },
+                {
+                    "header": {
+                        "header_base": "//foundation/systemabilitymgr/samgr/interfaces/innerkits/common/include/",
+                        "header_files": [
+                            "sa_profiles.h",
+                            "parse_util.h"
+                        ]
+                    },
+                    "name": "//foundation/systemabilitymgr/samgr/interfaces/innerkits/common:samgr_common"
+                },
+                {
+                    "header": {
+                        "header_base": [],
+                        "header_files": []
+                    },
+                    "name": "//foundation/systemabilitymgr/samgr/interfaces/innerkits/rust:samgr_rust"
+                },
+                {
+                    "header": {
+                        "header_base": "//foundation/systemabilitymgr/samgr/interfaces/innerkits/dynamic_cache/include",
+                        "header_files": [
+                            "dynamic_cache.h"
+                        ]
+                    },
+                    "name": "//foundation/systemabilitymgr/samgr/interfaces/innerkits/dynamic_cache:dynamic_cache"
+                }
+            ],
+            "test": [
+                "//foundation/systemabilitymgr/samgr/services/samgr/native/test:unittest",
+                "//foundation/systemabilitymgr/samgr/test/fuzztest:fuzztest",
+                "//foundation/systemabilitymgr/samgr/services/common/test:unittest"
+            ]
+        }
+    }
+}

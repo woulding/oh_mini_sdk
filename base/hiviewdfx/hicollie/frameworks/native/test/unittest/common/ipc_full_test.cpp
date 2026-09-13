@@ -1,0 +1,112 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ipc_full_test.h"
+
+#include "ipc_full.h"
+#include <thread>
+using namespace testing::ext;
+
+namespace OHOS {
+namespace HiviewDFX {
+void IpcFullTest::SetUpTestCase(void)
+{
+}
+
+void IpcFullTest::TearDownTestCase(void)
+{
+}
+
+void IpcFullTest::SetUp(void)
+{
+}
+
+void IpcFullTest::TearDown(void)
+{
+}
+
+/**
+ * @tc.name: AddIpcFullTest
+ * @tc.desc: Verify add ipc full interface
+ * @tc.type: FUNC
+ * @tc.require: AR20250307218293
+ * @tc.author: zhengchengkai
+ */
+HWTEST_F(IpcFullTest, AddIpcFullTest_001, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. input interval param below the min allowable threshold
+     * @tc.expected: step1. add ipc full failed;
+     */
+    bool result = IpcFull::GetInstance().AddIpcFull(4);
+    ASSERT_EQ(result, false);
+
+    /**
+     * @tc.steps: step2. input interval param above the max allowable threshold
+     * @tc.expected: step2. add ipc full failed;
+     */
+    result = IpcFull::GetInstance().AddIpcFull(32);
+    ASSERT_EQ(result, false);
+
+    /**
+     * @tc.steps: step3. input valid interval param
+     * @tc.expected: step3. add ipc full successfully;
+     */
+    result = IpcFull::GetInstance().AddIpcFull(12);
+    ASSERT_EQ(result, true);
+
+    /**
+     * @tc.steps: step4. ipc full task already exists
+     * @tc.expected: step4. add ipc full failed;
+     */
+    result = IpcFull::GetInstance().AddIpcFull(12);
+    ASSERT_EQ(result, false);
+}
+#ifdef ASYNC_BINDER_SPACE_FULL
+/**
+ * @tc.name: AsyncBinderSpaceFull
+ * @tc.desc: Verify add async binder space full interface
+ * @tc.type: FUNC
+ * @tc.require: AR20251016566499
+ * @tc.author: chenyufan
+ */
+HWTEST_F(IpcFullTest, AsyncBinderSpaceFull_001, TestSize.Level1)
+{
+    /**
+     * @tc.steps: step1. input interval param below the min allowable threshold
+     * @tc.expected: step1. add async binder space full interface failed;
+     */
+    bool result = IpcFull::GetInstance().AsyncBinderSpaceFull(1, 9);
+    ASSERT_EQ(result, false);
+
+    /**
+     * @tc.steps: step2. input count param exceeds the max allowable threshold
+     * @tc.expected: step2. add async binder space full interface failed;
+     */
+    result = IpcFull::GetInstance().AsyncBinderSpaceFull(3, 40);
+    ASSERT_EQ(result, false);
+
+    /**
+     * @tc.steps: step3. input valid interval param
+     * @tc.expected: step3. add async binder space full interface successfully;
+     */
+    result = IpcFull::GetInstance().AsyncBinderSpaceFull(6, 10);
+    ASSERT_EQ(result, true);
+    std::this_thread::sleep_for(std::chrono::seconds(8));
+}
+#endif
+} // namespace HiviewDFX
+} // namespace OHOS
+ 

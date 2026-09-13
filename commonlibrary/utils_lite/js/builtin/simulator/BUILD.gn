@@ -1,0 +1,128 @@
+#
+# Copyright (c) 2020 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import("//build/lite/config/subsystem/aafwk/path.gni")
+import("//build/ohos.gni")
+
+if (build_ohos_sdk) {
+  ohos_static_library("ace_kit_common_simulator") {
+    visibility = [
+      ":*",
+      "//ide/tools/previewer/mock/*",
+    ]
+    include_dirs = [
+      "//commonlibrary/utils_lite/js/builtin/common/include",
+      "//foundation/arkui/ace_engine_lite/interfaces/inner_api/builtin",
+      "//foundation/arkui/ace_engine_lite/interfaces/inner_api/builtin/base",
+    ]
+    sources = [
+      "//commonlibrary/utils_lite/js/builtin/common/src/nativeapi_common.cpp",
+    ]
+    subsystem_name = "commonlibrary"
+    part_name = "utils_lite"
+  }
+
+  ohos_static_library("ace_kit_deviceinfo_simulator") {
+    visibility = [
+      ":*",
+      "//ide/tools/previewer/mock/*",
+    ]
+    include_dirs = [
+      "//commonlibrary/utils_lite/js/builtin/deviceinfokit/include",
+      "//commonlibrary/utils_lite/js/builtin/common/include",
+      "//base/startup/init/interfaces/innerkits/include/syspara",
+      "//foundation/arkui/ace_engine_lite/interfaces/inner_api/builtin",
+      "//base/global/resource_management_lite/interfaces/inner_api/include",
+    ]
+    sources = [
+      "//commonlibrary/utils_lite/js/builtin/deviceinfokit/src/nativeapi_deviceinfo.cpp",
+      "//commonlibrary/utils_lite/js/builtin/deviceinfokit/src/nativeapi_ohos_deviceinfo.cpp",
+    ]
+    external_deps = [
+      "ace_engine_lite:ace_lite",
+      "ui_lite:ui_ide",
+    ]
+    subsystem_name = "commonlibrary"
+    part_name = "utils_lite"
+  }
+
+  config("storage_config") {
+    cflags = [
+      "-D_INC_STDIO_S",
+      "-D_INC_STDLIB_S",
+      "-D_INC_MEMORY_S",
+      "-D_INC_STRING_S",
+      "-D_INC_WCHAR_S",
+      "-D_SECTMP=//",
+      "-D_STDIO_S_DEFINED",
+      "-Wno-error",
+    ]
+    cflags_cc = cflags
+  }
+
+  config("aafwk_config") {
+    include_dirs = [ "${aafwk_lite_path}/interfaces/kits/ability_lite" ]
+  }
+
+  ohos_static_library("ace_kit_file_simulator") {
+    visibility = [
+      ":*",
+      "//ide/tools/previewer/mock/*",
+    ]
+    include_dirs = [
+      "//commonlibrary/utils_lite/js/builtin/filekit/include",
+      "//commonlibrary/utils_lite/js/builtin/common/include",
+      "//third_party/bounds_checking_function/include",
+      "//foundation/arkui/ace_engine_lite/interfaces/inner_api/builtin",
+      "${aafwk_lite_path}/interfaces/kits/ability_lite",
+    ]
+    sources = [
+      "//commonlibrary/utils_lite/js/builtin/filekit/src/nativeapi_fs.cpp",
+      "//commonlibrary/utils_lite/js/builtin/filekit/src/nativeapi_fs_impl.c",
+    ]
+    public_configs = [ ":aafwk_config" ]
+    configs = [ ":storage_config" ]
+    external_deps = [
+      "ace_engine_lite:ace_lite",
+    ]
+    subsystem_name = "commonlibrary"
+    part_name = "utils_lite"
+  }
+
+  ohos_static_library("ace_kit_kvstore_simulator") {
+    visibility = [
+      ":*",
+      "//ide/tools/previewer/mock/*",
+    ]
+    include_dirs = [
+      "//commonlibrary/utils_lite/js/builtin/kvstorekit/include",
+      "//commonlibrary/utils_lite/js/builtin/common/include",
+      "//third_party/bounds_checking_function/include",
+      "//foundation/arkui/ace_engine_lite/interfaces/inner_api/builtin",
+      "${aafwk_lite_path}/interfaces/kits/ability_lite",
+    ]
+    sources = [
+      "//commonlibrary/utils_lite/js/builtin/kvstorekit/src/nativeapi_kv.cpp",
+      "//commonlibrary/utils_lite/js/builtin/kvstorekit/src/nativeapi_kv_impl.c",
+    ]
+    public_configs = [ ":aafwk_config" ]
+    configs = [ ":storage_config" ]
+    external_deps = [
+      "ace_engine_lite:ace_lite",
+    ]
+    subsystem_name = "commonlibrary"
+    part_name = "utils_lite"
+  }
+}

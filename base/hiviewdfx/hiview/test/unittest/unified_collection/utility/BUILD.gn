@@ -1,0 +1,175 @@
+# Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+
+config("ucollection_utility_test_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    ".",
+    "$hiview_framework/native/unified_collection/collector/inner_include",
+  ]
+
+  cflags = [ "-D__UNITTEST__" ]
+}
+
+ohos_unittest("UCollectionUtilityUnitTest") {
+  module_out_path = hiview_module
+
+  configs = [ ":ucollection_utility_test_config" ]
+
+  sources = [
+    "cpu_collector_test.cpp",
+    "gpu_collector_test.cpp",
+    "graphic_memory_collector_test.cpp",
+    "hiebpf_collector_test.cpp",
+    "hilog_collector_test.cpp",
+    "io_collector_test.cpp",
+    "memory_collector_test.cpp",
+    "network_collector_test.cpp",
+    "perf_collector_test.cpp",
+    "thermal_collector_test.cpp",
+    "wm_collector_test.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "$hiview_base/event_report:hiview_event_report",
+    "$hiview_base/utility:hiview_utility",
+    "$hiview_interfaces/inner_api/unified_collection/utility:libucollection_utility",
+  ]
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "samgr:samgr_proxy",
+    "selinux_adapter:librestorecon",
+    "zlib:libz",
+  ]
+
+  defines = []
+  if (hiview_unified_collector_ebpf_enable) {
+    defines += [ "UNIFIED_COLLECTOR_EBPF_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_network_enable) {
+    defines += [ "UNIFIED_COLLECTOR_NETWORK_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_graphic_enable) {
+    defines += [ "UNIFIED_COLLECTOR_GRAPHIC_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_gpu_enable) {
+    defines += [ "UNIFIED_COLLECTOR_GPU_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_cpu_enable) {
+    defines += [ "UNIFIED_COLLECTOR_CPU_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_io_enable) {
+    defines += [ "UNIFIED_COLLECTOR_IO_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_memory_enable) {
+    defines += [ "UNIFIED_COLLECTOR_MEMORY_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_hilog_enable) {
+    defines += [ "UNIFIED_COLLECTOR_HILOG_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_wm_enable) {
+    defines += [ "UNIFIED_COLLECTOR_WM_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_process_enable) {
+    defines += [ "UNIFIED_COLLECTOR_PROCESS_ENABLE" ]
+  }
+
+  cflags = []
+  if (has_hiperf && hiview_unified_collector_perf_enable) {
+    cflags += [ "-DHAS_HIPERF" ]
+  }
+
+  if (hiview_unified_collector_thermal_enable) {
+    defines += [ "UNIFIED_COLLECTOR_THERMAL_ENABLE" ]
+  }
+
+  if (thermal_manager_enable) {
+    cflags += [ "-DTHERMAL_MANAGER_ENABLE" ]
+  }
+
+  if (is_wifi_enable) {
+    external_deps += [ "wifi:wifi_sdk" ]
+    defines += [ "COMMUNICATION_WIFI_ENABLE" ]
+  }
+}
+
+config("ucollection_trace_test_config") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    ".",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/utils/include",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/include",
+    "$hiview_framework/native/unified_collection/trace_manager/include",
+    "$hiview_interfaces/inner_api/unified_collection/utility:libucollection_utility",
+  ]
+
+  cflags = [ "-D__UNITTEST__" ]
+}
+
+ohos_unittest("UCollectionTraceUnitTest") {
+  module_out_path = hiview_module
+
+  configs = [ ":ucollection_trace_test_config" ]
+
+  sources = [ "trace_collector_test.cpp" ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "$hiview_base/event_report:hiview_event_report",
+    "$hiview_base/utility:hiview_utility",
+    "$hiview_framework/native/unified_collection/trace_manager:libtrace_manager",
+    "$hiview_interfaces/inner_api/unified_collection/utility:libucollection_utility",
+  ]
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "zlib:libz",
+    "hitrace:hitrace_dump",
+    "relational_store:native_rdb",
+  ]
+
+  defines = [ "UNIFIED_COLLECTOR_TRACE_ENABLE" ]
+}

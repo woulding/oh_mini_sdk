@@ -1,0 +1,539 @@
+# Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#####################hydra-fuzz###################
+import("//build/test.gni")
+import("../../../../../dsoftbus.gni")
+
+##############################fuzztest##########################################
+dsoftbus_fuzz_common = {
+  module_out_path = dsoftbus_fuzz_out_path
+
+  fuzz_config_file = "$dsoftbus_test_path/sdk/frame/fuzztest/softbusclientstub_fuzzer"
+
+  include_dirs = [
+    "$dsoftbus_core_path/transmission/common/include",
+    "$dsoftbus_sdk_path/frame/standard/include",
+    "$dsoftbus_sdk_path/transmission/trans_channel/manager/include/",
+    "$dsoftbus_root_path/tests/common/include",
+    "$dsoftbus_root_path/core/transmission/common/include",
+  ]
+
+  cflags = [
+    "-g",
+    "-O0",
+    "-Wno-unused-variable",
+    "-fno-omit-frame-pointer",
+    "-fstack-protector-strong",
+  ]
+
+  deps = [
+    "$dsoftbus_root_path/adapter:softbus_adapter",
+    "$dsoftbus_test_path/sdk:softbus_client_static",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+}
+
+ohos_fuzztest("SoftbusClientOnAcceptConnectFuzzTest") {
+
+  sources = [ "softbusclientonacceptconnect_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnBrProxyDataRecvFuzzTest") {
+
+  sources = [ "softbusclientonbrproxydatarecv_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnBrProxyOpenedFuzzTest") {
+
+  sources = [ "softbusclientonbrproxyopened_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnBrProxyQueryPermissionFuzzTest") {
+
+  sources = [ "softbusclientonbrproxyquerypermission_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnBrProxyStateChangedFuzzTest") {
+
+  sources = [ "softbusclientonbrproxystatechanged_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnChannelBindFuzzTest") {
+
+  sources = [ "softbusclientonchannelbind_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnChannelClosedFuzzTest") {
+
+  sources = [ "softbusclientonchannelclosed_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnChannelLinkDownFuzzTest") {
+
+  sources = [ "softbusclientonchannellinkdown_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnChannelMsgReceivedFuzzTest") {
+
+  sources = [ "softbusclientonchannelmsgreceived_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnChannelOnQosFuzzTest") {
+
+  sources = [ "softbusclientonchannelonqos_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnChannelOpenedFuzzTest") {
+
+  sources = [ "softbusclientonchannelopened_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnChannelOpenFailedFuzzTest") {
+
+  sources = [ "softbusclientonchannelopenfailed_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnChannelQosEventFuzzTest") {
+
+  sources = [ "softbusclientonchannelqosevent_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnCheckCollabRelationFuzzTest") {
+
+  sources = [ "softbusclientoncheckcollabrelation_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnClientPermissionChangeFuzzTest") {
+
+  sources = [ "softbusclientonclientpermissionchange_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnClientTransLimitChangeFuzzTest") {
+
+  sources = [ "softbusclientonclienttranslimitchange_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnConnectionStateChangeFuzzTest") {
+
+  sources = [ "softbusclientonconnectionstatechange_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnDataReceivedFuzzTest") {
+
+  sources = [ "softbusclientondatareceived_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnHichainProofExceptionFuzzTest") {
+
+  sources = [ "softbusclientonhichainproofexception_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnJoinLNNResultFuzzTest") {
+
+  sources = [ "softbusclientonjoinlnnresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnJoinMetaNodeResultFuzzTest") {
+
+  sources = [ "softbusclientonjoinmetanoderesult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnLeaveLNNResultFuzzTest") {
+
+  sources = [ "softbusclientonleavelnnresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnLeaveMetaNodeResultFuzzTest") {
+
+  sources = [ "softbusclientonleavemetanoderesult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnNodeBasicInfoChangedFuzzTest") {
+
+  sources = [ "softbusclientonnodebasicInfochanged_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnNodeOnlineStateChangedFuzzTest") {
+
+  sources = [ "softbusclientonnodeonlinestatechanged_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnNodeStatusChangedFuzzTest") {
+
+  sources = [ "softbusclientonnodestatuschanged_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnPublishLNNResultFuzzTest") {
+
+  sources = [ "softbusclientonpublishlnnresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnRefreshDeviceFoundFuzzTest") {
+
+  sources = [ "softbusclientonrefreshdevicefound_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnRefreshLNNResultFuzzTest") {
+
+  sources = [ "softbusclientonrefreshlnnresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnTimeSyncResultFuzzTest") {
+
+  sources = [ "softbusclientontimesyncresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientSetChannelInfoFuzzTest") {
+
+  sources = [ "softbusclientsetchannelinfo_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnNodeDeviceTrustedChangeFuzzTest") {
+
+  sources = [ "softbusonnodedevicetrustedchange_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnTransmitAuthResultFuzzTest") {
+
+  sources = [ "softbusclientontransmitauthresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnSessionKeyAuthResultFuzzTest") {
+
+  sources = [ "softbusclientonsessionkeyauthresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnFinishAuthResultFuzzTest") {
+
+  sources = [ "softbusclientonfinishauthresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnErrorAuthResultFuzzTest") {
+
+  sources = [ "softbusclientonerrorauthresult_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+ohos_fuzztest("SoftbusClientOnServerStoppedInnerFuzzTest") {
+
+  sources = [ "softbusclientonserverstopped_fuzzer.cpp" ]
+
+  include_dirs = dsoftbus_fuzz_common.include_dirs
+  cflags = dsoftbus_fuzz_common.cflags
+  deps = dsoftbus_fuzz_common.deps
+  external_deps = dsoftbus_fuzz_common.external_deps
+  module_out_path = dsoftbus_fuzz_common.module_out_path
+  fuzz_config_file = dsoftbus_fuzz_common.fuzz_config_file
+}
+
+###############################################################################
+group("fuzztest") {
+  testonly = true
+  deps = [
+    ":SoftbusClientOnAcceptConnectFuzzTest",
+    ":SoftbusClientOnBrProxyDataRecvFuzzTest",
+    ":SoftbusClientOnBrProxyOpenedFuzzTest",
+    ":SoftbusClientOnBrProxyQueryPermissionFuzzTest",
+    ":SoftbusClientOnBrProxyStateChangedFuzzTest",
+    ":SoftbusClientOnChannelBindFuzzTest",
+    ":SoftbusClientOnChannelClosedFuzzTest",
+    ":SoftbusClientOnChannelLinkDownFuzzTest",
+    ":SoftbusClientOnChannelMsgReceivedFuzzTest",
+    ":SoftbusClientOnChannelOnQosFuzzTest",
+    ":SoftbusClientOnChannelOpenedFuzzTest",
+    ":SoftbusClientOnChannelOpenFailedFuzzTest",
+    ":SoftbusClientOnChannelQosEventFuzzTest",
+    ":SoftbusClientOnCheckCollabRelationFuzzTest",
+    ":SoftbusClientOnClientPermissionChangeFuzzTest",
+    ":SoftbusClientOnClientTransLimitChangeFuzzTest",
+    ":SoftbusClientOnConnectionStateChangeFuzzTest",
+    ":SoftbusClientOnDataReceivedFuzzTest",
+    ":SoftbusClientOnHichainProofExceptionFuzzTest",
+    ":SoftbusClientOnJoinLNNResultFuzzTest",
+    ":SoftbusClientOnJoinMetaNodeResultFuzzTest",
+    ":SoftbusClientOnLeaveLNNResultFuzzTest",
+    ":SoftbusClientOnLeaveMetaNodeResultFuzzTest",
+    ":SoftbusClientOnNodeBasicInfoChangedFuzzTest",
+    ":SoftbusClientOnNodeOnlineStateChangedFuzzTest",
+    ":SoftbusClientOnNodeStatusChangedFuzzTest",
+    ":SoftbusClientOnPublishLNNResultFuzzTest",
+    ":SoftbusClientOnRefreshDeviceFoundFuzzTest",
+    ":SoftbusClientOnRefreshLNNResultFuzzTest",
+    ":SoftbusClientOnTimeSyncResultFuzzTest",
+    ":SoftbusClientSetChannelInfoFuzzTest",
+    ":SoftbusClientOnNodeDeviceTrustedChangeFuzzTest",
+    ":SoftbusClientOnTransmitAuthResultFuzzTest",
+    ":SoftbusClientOnSessionKeyAuthResultFuzzTest",
+    ":SoftbusClientOnFinishAuthResultFuzzTest",
+    ":SoftbusClientOnErrorAuthResultFuzzTest",
+    ":SoftbusClientOnServerStoppedInnerFuzzTest"
+  ]
+}
+###############################################################################

@@ -1,0 +1,812 @@
+/*
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "bundle_common_event_mgr.h"
+
+#include <chrono>
+#include <condition_variable>
+#include <thread>
+
+#include "account_helper.h"
+#include "app_log_tag_wrapper.h"
+#include "bundle_common_event.h"
+#include "bundle_mgr_service.h"
+#include "bundle_util.h"
+#include "common_event_manager.h"
+#include "common_event_support.h"
+#include "ipc_skeleton.h"
+#include "ffrt.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+constexpr const char* ACCESS_TOKEN_ID = "accessTokenId";
+constexpr const char* IS_AGING_UNINSTALL = "isAgingUninstall";
+constexpr const char* APP_ID = "appId";
+constexpr const char* IS_MODULE_UPDATE = "isModuleUpdate";
+constexpr const char* IS_ENABLE_DYNAMIC_ICON = "isEnableDynamicIcon";
+constexpr const char* DYNAMIC_ICON_TYPE = "dynamicIconType";
+constexpr const char* BUNDLE_RESOURCES_CHANGED = "usual.event.BUNDLE_RESOURCES_CHANGED";
+constexpr const char* APP_IDENTIFIER = "appIdentifier";
+constexpr const char* APP_DISTRIBUTION_TYPE = "appDistributionType";
+constexpr const char* BUNDLE_TYPE = "bundleType";
+constexpr const char* ATOMIC_SERVICE_MODULE_UPGRADE = "atomicServiceModuleUpgrade";
+constexpr const char* UID = "uid";
+constexpr const char* SANDBOX_APP_INDEX = "sandbox_app_index";
+constexpr const char* BUNDLE_RESOURCE_CHANGE_TYPE = "bundleResourceChangeType";
+constexpr const char* APP_INDEX = "appIndex";
+constexpr const char* SANDBOX_CREATOR_BUNDLE_NAME = "sandboxCreatorBundleName";
+constexpr const char* TYPE = "type";
+constexpr const char* RESULT_CODE = "resultCode";
+constexpr const char* KEEP_DATA = "keepData";
+constexpr const char* IS_APP_UPDATE = "isAppUpdate";
+constexpr const char* PERMISSION_GET_DISPOSED_STATUS = "ohos.permission.GET_DISPOSED_APP_STATUS";
+constexpr const char* ASSET_ACCESS_GROUPS = "assetAccessGroups";
+constexpr const char* DEVELOPERID = "developerId";
+constexpr const char* CHANGE_DEFAULT_APPLICATION = "ohos.permission.CHANGE_DEFAULT_APPLICATION";
+constexpr const char* UTD_IDS = "utdIds";
+constexpr const char* USER_ID = "userId";
+constexpr const char* PLUGIN_BUNDLE_NAME = "pluginBundleName";
+constexpr const char* SHORTCUT_CHANGED = "usual.event.SHORTCUT_CHANGED";
+constexpr const char* SHORTCUT_ID = "shortcutId";
+constexpr const char* SHORTCUT_IDS = "shortcutIds";
+constexpr const char* BUNDLE_NAMES = "bundleNames";
+constexpr const char* SHORTCUT_OPERATION_TYPE = "operationType";
+constexpr const char* MANAGE_SHORTCUTS = "ohos.permission.MANAGE_SHORTCUTS";
+constexpr const char* IS_BUNDLE_EXIST = "isBundleExist";
+constexpr const char* CROSS_APP_SHARED_CONFIG = "crossAppSharedConfig";
+constexpr const char* IS_RECOVER = "isRecover";
+constexpr const char* IS_ENABLED = "isEnabled";
+constexpr const char* PACKAGE_UNINSTALLED_DATA_CLEARED = "usual.event.PACKAGE_UNINSTALLED_DATA_CLEARED";
+constexpr const char* IS_BMS_EXTENSION_UNINSTALLED = "isBmsExtensionUninstalled";
+constexpr const char* ADDED_SKILLS = "added";
+constexpr const char* CHANGED_SKILLS = "changed";
+constexpr const char* REMOVED_SKILLS = "removed";
+constexpr const char* CHANGE_TYPE = "changeType";
+constexpr int32_t CONTROL_API_VERSION = 25;
+}
+
+BundleCommonEventMgr::BundleCommonEventMgr()
+{
+    APP_LOGD("enter BundleCommonEventMgr");
+    Init();
+}
+
+void BundleCommonEventMgr::Init()
+{
+    commonEventMap_ = {
+        { NotifyType::INSTALL, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_ADDED },
+        { NotifyType::UNINSTALL_BUNDLE, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED },
+        { NotifyType::UNINSTALL_MODULE, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED },
+        { NotifyType::UPDATE, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED },
+        { NotifyType::ABILITY_ENABLE, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED },
+        { NotifyType::UNINSTALL_STATE, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED },
+        { NotifyType::APPLICATION_ENABLE, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED },
+        { NotifyType::BUNDLE_DATA_CLEARED, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_DATA_CLEARED },
+        { NotifyType::BUNDLE_CACHE_CLEARED, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CACHE_CLEARED },
+        { NotifyType::OVERLAY_INSTALL, OVERLAY_ADD_ACTION},
+        { NotifyType::OVERLAY_UPDATE, OVERLAY_CHANGED_ACTION},
+        { NotifyType::START_INSTALL, EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_INSTALLATION_STARTED },
+    };
+    eventSet_ = {
+        EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_ADDED,
+        EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED,
+        EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED,
+        EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CACHE_CLEARED,
+        OVERLAY_ADD_ACTION,
+        OVERLAY_CHANGED_ACTION,
+    };
+}
+
+void BundleCommonEventMgr::NotifyBundleStatus(const NotifyBundleEvents &installResult,
+    const std::shared_ptr<BundleDataMgr> &dataMgr)
+{
+    APP_LOGD("notify type %{public}d with %{public}d for %{public}s-%{public}s in %{public}s",
+        static_cast<int32_t>(installResult.type), installResult.resultCode, installResult.modulePackage.c_str(),
+        installResult.abilityName.c_str(), installResult.bundleName.c_str());
+    OHOS::AAFwk::Want want;
+    SetNotifyWant(want, installResult);
+    EventFwk::CommonEventData commonData { want };
+    // trigger BundleEventCallback first
+    if (dataMgr != nullptr && !(want.GetAction() == EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED &&
+        installResult.resultCode != ERR_OK)) {
+        LOG_NOFUNC_I(BMS_TAG_DEFAULT, "eventBack begin");
+        dataMgr->NotifyBundleEventCallback(commonData);
+        LOG_NOFUNC_I(BMS_TAG_DEFAULT, "eventBack end");
+    }
+
+    uint8_t installType = ((installResult.type == NotifyType::UNINSTALL_BUNDLE) ||
+            (installResult.type == NotifyType::UNINSTALL_MODULE)) ?
+            static_cast<uint8_t>(InstallType::UNINSTALL_CALLBACK) :
+            static_cast<uint8_t>(InstallType::INSTALL_CALLBACK);
+    int32_t bundleUserId = installResult.userId == Constants::INVALID_USERID ?
+        BundleUtil::GetUserIdByUid(installResult.uid) : installResult.userId;
+    int32_t publishUserId = (bundleUserId == Constants::DEFAULT_USERID || bundleUserId == Constants::U1) ?
+        AccountHelper::GetUserIdByCallerType() : bundleUserId;
+
+    // trigger the status callback for status listening
+    if ((dataMgr != nullptr) && (installResult.type != NotifyType::START_INSTALL)) {
+        auto &callbackMutex = dataMgr->GetStatusCallbackMutex();
+        std::shared_lock<std::shared_mutex> lock(callbackMutex);
+        auto callbackList = dataMgr->GetCallBackList();
+        for (const auto& callback : callbackList) {
+            int32_t callbackUserId = callback->GetUserId();
+            if (callbackUserId != Constants::UNSPECIFIED_USERID && callbackUserId != publishUserId) {
+                LOG_W(BMS_TAG_DEFAULT, "not callback userId %{public}d incorrect", callbackUserId);
+                continue;
+            }
+            if (callback->GetBundleName() == installResult.bundleName) {
+                // if the msg needed, it could convert in the proxy node
+                callback->OnBundleStateChanged(installType, installResult.resultCode, Constants::EMPTY_STRING,
+                    installResult.bundleName);
+            }
+        }
+    }
+
+    if (installResult.resultCode != ERR_OK || installResult.isBmsExtensionUninstalled) {
+        APP_LOGI("install ret: %{public}d, extension: %{public}d",
+            installResult.resultCode, installResult.isBmsExtensionUninstalled);
+        return;
+    }
+
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    (void)PublishCommonEvent(installResult.bundleName, want.GetAction(), publishUserId, commonData,
+        installResult.allowListenBundles);
+    (void)ProcessBundleChangedEventForOtherUsers(dataMgr, installResult, publishUserId, commonData);
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+bool BundleCommonEventMgr::PublishCommonEvent(
+    const std::string &bundleName,
+    const std::string &action,
+    const int32_t publishUserId,
+    const EventFwk::CommonEventData &commonData,
+    const std::vector<std::string> &allowListenBundles)
+{
+    std::string appDistributionType = commonData.GetWant().GetStringParam(APP_DISTRIBUTION_TYPE);
+    int32_t appIndex = commonData.GetWant().GetIntParam(APP_INDEX, 0);
+    if (appDistributionType.empty()) {
+        APP_LOGD("appDistributionType is empty");
+    }
+    if (eventSet_.find(action) != eventSet_.end()) {
+        if (appDistributionType != Constants::APP_DISTRIBUTION_TYPE_ENTERPRISE) {
+            EventFwk::CommonEventPublishInfo publishInfo;
+            std::vector<std::string> permissionVec { Constants::LISTEN_BUNDLE_CHANGE };
+            publishInfo.SetSubscriberPermissions(permissionVec);
+            publishInfo.SetBundleName(bundleName);
+            publishInfo.SetSubscriberType(EventFwk::SubscriberType::SYSTEM_SUBSCRIBER_TYPE);
+            publishInfo.SetValidationRule(EventFwk::ValidationRule::OR);
+            if (!EventFwk::CommonEventManager::PublishCommonEventAsUser(commonData, publishInfo, publishUserId)) {
+                APP_LOGE("PublishCommonEventAsUser failed, userId:%{public}d", publishUserId);
+                return false;
+            }
+        } else {
+            EventFwk::CommonEventPublishInfo publishInfo;
+            publishInfo.SetSubscriberType(EventFwk::SubscriberType::SYSTEM_SUBSCRIBER_TYPE);
+            publishInfo.SetSubscriberMaximumVersion(CONTROL_API_VERSION);
+            publishInfo.SetBundleName(bundleName);
+            publishInfo.SetValidationRule(EventFwk::ValidationRule::OR);
+            if (!EventFwk::CommonEventManager::PublishCommonEventAsUser(commonData, publishInfo, publishUserId)) {
+                APP_LOGE_NOFUNC("enterprise PublishCommonEventAsUser failed, userId:%{public}d", publishUserId);
+            }
+            std::vector<std::string> allowListenBundleNames = allowListenBundles;
+            if (commonData.GetWant().GetAction() != EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED
+                || appIndex != Constants::DEFAULT_APP_INDEX) {
+                auto dataMgr = DelayedSingleton<BundleMgrService>::GetInstance()->GetDataMgr();
+                allowListenBundleNames = dataMgr->GetAllowListenBundleNames(bundleName);
+            }
+            if (allowListenBundleNames.empty()) {
+                return true;
+            }
+            APP_LOGI_NOFUNC("allowListenBundleNames size:%{public}zu -n:%{public}s", allowListenBundleNames.size(),
+                bundleName.c_str());
+            for (const auto &allowListenBundleName : allowListenBundleNames) {
+                (void)PublishCommonEventForEnterpriseAsync(allowListenBundleName, publishUserId, commonData);
+            }
+        }
+    } else {
+        if (!EventFwk::CommonEventManager::PublishCommonEventAsUser(commonData, publishUserId)) {
+            APP_LOGE("PublishCommonEventAsUser failed, userId:%{public}d", publishUserId);
+            return false;
+        }
+    }
+    return true;
+}
+
+bool BundleCommonEventMgr::PublishCommonEventForEnterprise(
+    const std::string &bundleName,
+    const int32_t publishUserId,
+    const EventFwk::CommonEventData &commonData)
+{
+    EventFwk::CommonEventPublishInfo publishInfo;
+    publishInfo.SetBundleName(bundleName);
+    if (!EventFwk::CommonEventManager::PublishCommonEventAsUser(commonData, publishInfo, publishUserId)) {
+        APP_LOGE("PublishCommonEventAsUser failed, userId:%{public}d", publishUserId);
+        return false;
+    }
+    return true;
+}
+
+bool BundleCommonEventMgr::ProcessBundleChangedEventForOtherUsers(
+    const std::shared_ptr<BundleDataMgr> &dataMgr,
+    const NotifyBundleEvents &event,
+    const int32_t publishUserId,
+    const EventFwk::CommonEventData &commonData)
+{
+    if ((event.type != NotifyType::INSTALL) && (event.type != NotifyType::UPDATE)) {
+        return false;
+    }
+    if ((event.type == NotifyType::INSTALL) &&
+        (event.isInstallByBundleName || event.isRecover || (event.appIndex != 0))) {
+        return false;
+    }
+    if (dataMgr == nullptr) {
+        APP_LOGE("dataMgr is nullptr -n %{public}s", event.bundleName.c_str());
+        return false;
+    }
+    auto userIds = dataMgr->GetUserIds(event.bundleName);
+    if (userIds.size() <= 1) {
+        APP_LOGD("-n %{public}s only has one user", event.bundleName.c_str());
+        return false;
+    }
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { Constants::LISTEN_BUNDLE_CHANGE };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    for (const auto &userId : userIds) {
+        if (userId == publishUserId) {
+            continue;
+        }
+        OHOS::AAFwk::Want want = commonData.GetWant();
+        if (event.type == NotifyType::INSTALL) {
+            want.SetAction(EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED);
+        }
+        ApplicationInfo appInfo;
+        if (dataMgr->GetApplicationInfoV9(event.bundleName,
+            static_cast<int32_t>(GetApplicationFlag::GET_APPLICATION_INFO_WITH_DISABLE), userId, appInfo) != ERR_OK) {
+            APP_LOGE("-n %{public}s -u %{public}d get appInfo failed when publish event",
+                event.bundleName.c_str(), userId);
+            continue;
+        }
+        // need modify uid, userId, tokenId
+        want.SetParam(Constants::UID, appInfo.uid);
+        want.SetParam(Constants::USER_ID, userId);
+        want.SetParam(ACCESS_TOKEN_ID, static_cast<int32_t>(appInfo.accessTokenId));
+        APP_LOGI("-n %{public}s publish change event for -u %{public}d", event.bundleName.c_str(), userId);
+        EventFwk::CommonEventData newCommonData { want };
+        if (!EventFwk::CommonEventManager::PublishCommonEventAsUser(newCommonData, publishInfo, userId)) {
+            APP_LOGE("PublishCommonEventAsUser failed, userId:%{public}d", userId);
+        }
+    }
+    return true;
+}
+
+void BundleCommonEventMgr::SetNotifyWant(OHOS::AAFwk::Want& want, const NotifyBundleEvents &installResult)
+{
+    std::string eventData = GetCommonEventData(installResult.type);
+    APP_LOGD("will send event data %{public}s", eventData.c_str());
+    want.SetAction(eventData);
+    ElementName element;
+    element.SetBundleName(installResult.bundleName);
+    element.SetModuleName(installResult.modulePackage);
+    element.SetAbilityName(installResult.abilityName);
+    want.SetElement(element);
+    want.SetParam(Constants::BUNDLE_NAME, installResult.bundleName);
+    want.SetParam(Constants::UID, installResult.uid);
+    want.SetParam(Constants::USER_ID, BundleUtil::GetUserIdByUid(installResult.uid));
+    want.SetParam(Constants::ABILITY_NAME, installResult.abilityName);
+    want.SetParam(ACCESS_TOKEN_ID, static_cast<int32_t>(installResult.accessTokenId));
+    want.SetParam(IS_AGING_UNINSTALL, installResult.isAgingUninstall);
+    want.SetParam(APP_ID, installResult.appId);
+    want.SetParam(IS_MODULE_UPDATE, installResult.isModuleUpdate);
+    want.SetParam(APP_IDENTIFIER, installResult.appIdentifier);
+    want.SetParam(APP_DISTRIBUTION_TYPE, installResult.appDistributionType);
+    want.SetParam(BUNDLE_TYPE, installResult.bundleType);
+    want.SetParam(ATOMIC_SERVICE_MODULE_UPGRADE, installResult.atomicServiceModuleUpgrade);
+    want.SetParam(APP_INDEX, installResult.appIndex);
+    want.SetParam(TYPE, static_cast<int32_t>(installResult.type));
+    want.SetParam(RESULT_CODE, installResult.resultCode);
+    want.SetParam(KEEP_DATA, installResult.keepData);
+    want.SetParam(IS_APP_UPDATE, installResult.isAppUpdate);
+    if (want.GetAction() == EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED) {
+        want.SetParam(IS_BMS_EXTENSION_UNINSTALLED, false);
+        if (!installResult.assetAccessGroups.empty()) {
+            want.SetParam(ASSET_ACCESS_GROUPS, installResult.assetAccessGroups);
+            want.SetParam(DEVELOPERID, installResult.developerId);
+        }
+    }
+    want.SetParam(IS_BUNDLE_EXIST, installResult.isBundleExist);
+    want.SetParam(CROSS_APP_SHARED_CONFIG, installResult.crossAppSharedConfig);
+    want.SetParam(IS_RECOVER, installResult.isRecover);
+    want.SetParam(CHANGE_TYPE, static_cast<int32_t>(installResult.changeType));
+    for (const auto &item : installResult.metadataConfigInfos) {
+            want.SetParam(item.first, item.second);
+    }
+}
+
+ErrCode BundleCommonEventMgr::NotifySandboxAppStatus(const InnerBundleInfo &info, int32_t uid, int32_t userId,
+    const SandboxInstallType &type)
+{
+    OHOS::AAFwk::Want want;
+    if (type == SandboxInstallType::INSTALL) {
+        want.SetAction(COMMON_EVENT_SANDBOX_PACKAGE_ADDED);
+    } else if (type == SandboxInstallType::UNINSTALL) {
+        want.SetAction(COMMON_EVENT_SANDBOX_PACKAGE_REMOVED);
+    } else {
+        return ERR_APPEXECFWK_SANDBOX_INSTALL_UNKNOWN_INSTALL_TYPE;
+    }
+    ElementName element;
+    element.SetBundleName(info.GetBundleName());
+    element.SetAbilityName(info.GetMainAbility());
+    want.SetElement(element);
+    want.SetParam(UID, uid);
+    want.SetParam(Constants::USER_ID, userId);
+    want.SetParam(Constants::ABILITY_NAME, info.GetMainAbility());
+    want.SetParam(SANDBOX_APP_INDEX, info.GetAppIndex());
+    want.SetParam(ACCESS_TOKEN_ID, static_cast<int32_t>(info.GetAccessTokenId(userId)));
+    want.SetParam(APP_ID, info.GetAppId());
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { Constants::LISTEN_BUNDLE_CHANGE };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+    return ERR_OK;
+}
+
+ErrCode BundleCommonEventMgr::NotifyCliSandboxAppStatus(const NotifyBundleEvents &event,
+    const std::string &action)
+{
+    APP_LOGI("NotifyCliSandboxAppStatus bundle:%{public}s appIndex:%{public}d creator:%{public}s",
+        event.bundleName.c_str(), event.appIndex, event.sandboxCreatorBundleName.c_str());
+    OHOS::AAFwk::Want want;
+    want.SetAction(action);
+    ElementName element;
+    element.SetBundleName(event.bundleName);
+    want.SetElement(element);
+    want.SetParam(Constants::USER_ID, event.userId);
+    want.SetParam(APP_INDEX, event.appIndex);
+    want.SetParam(UID, event.uid);
+    want.SetParam(ACCESS_TOKEN_ID, static_cast<int32_t>(event.accessTokenId));
+    want.SetParam(APP_ID, event.appId);
+    want.SetParam(APP_IDENTIFIER, event.appIdentifier);
+    want.SetParam(APP_DISTRIBUTION_TYPE, event.appDistributionType);
+    want.SetParam(SANDBOX_CREATOR_BUNDLE_NAME, event.sandboxCreatorBundleName);
+
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    publishInfo.SetSubscriberType(EventFwk::SubscriberType::SYSTEM_SUBSCRIBER_TYPE);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed for cli sandbox bundle:%{public}s appIndex:%{public}d",
+            event.bundleName.c_str(), event.appIndex);
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+    return ERR_OK;
+}
+
+void BundleCommonEventMgr::NotifyOverlayModuleStateStatus(const std::string &bundleName,
+    const std::string &moduleName, bool isEnabled, int32_t userId, int32_t uid)
+{
+    OHOS::AAFwk::Want want;
+    want.SetAction(OVERLAY_STATE_CHANGED);
+    ElementName element;
+    element.SetBundleName(bundleName);
+    element.SetModuleName(moduleName);
+    want.SetElement(element);
+    want.SetParam(UID, uid);
+    want.SetParam(Constants::USER_ID, userId);
+    want.SetParam(Constants::OVERLAY_STATE, isEnabled);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { Constants::LISTEN_BUNDLE_CHANGE };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+std::string BundleCommonEventMgr::GetCommonEventData(const NotifyType &type)
+{
+    auto iter = commonEventMap_.find(type);
+    if (iter == commonEventMap_.end()) {
+        APP_LOGW("event type error");
+        return EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED;
+    }
+    return iter->second;
+}
+
+void BundleCommonEventMgr::NotifySetDisposedRule(
+    const std::string &appId, int32_t userId, const std::string &data, int32_t appIndex)
+{
+    OHOS::AAFwk::Want want;
+    want.SetAction(DISPOSED_RULE_ADDED);
+    want.SetParam(Constants::USER_ID, userId);
+    want.SetParam(APP_ID, appId);
+    want.SetParam(APP_INDEX, appIndex);
+    EventFwk::CommonEventData commonData { want };
+    commonData.SetData(data);
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { PERMISSION_GET_DISPOSED_STATUS };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyDeleteDisposedRule(const std::string &appId, int32_t userId, int32_t appIndex)
+{
+    OHOS::AAFwk::Want want;
+    want.SetAction(DISPOSED_RULE_DELETED);
+    want.SetParam(Constants::USER_ID, userId);
+    want.SetParam(APP_ID, appId);
+    want.SetParam(APP_INDEX, appIndex);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { PERMISSION_GET_DISPOSED_STATUS };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyDynamicIconEvent(
+    const std::string &bundleName, bool isEnableDynamicIcon, int32_t userId, int32_t appIndex,
+    const DynamicIconType type)
+{
+    APP_LOGI("NotifyDynamicIconEvent bundleName: %{public}s, %{public}d, %{public}d, %{public}d, %{public}d",
+        bundleName.c_str(), isEnableDynamicIcon, userId, appIndex, static_cast<int32_t>(type));
+    OHOS::AAFwk::Want want;
+    want.SetAction(DYNAMIC_ICON_CHANGED);
+    ElementName element;
+    element.SetBundleName(bundleName);
+    want.SetElement(element);
+    want.SetParam(IS_ENABLE_DYNAMIC_ICON, isEnableDynamicIcon);
+    if ((userId != Constants::UNSPECIFIED_USERID) || (appIndex != Constants::DEFAULT_APP_INDEX)) {
+        want.SetParam(Constants::USER_ID, userId);
+        want.SetParam(Constants::APP_INDEX, appIndex);
+    }
+    want.SetParam(DYNAMIC_ICON_TYPE, static_cast<int32_t>(type));
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyBundleResourcesChanged(const int32_t userId, const uint32_t type)
+{
+    OHOS::AAFwk::Want want;
+    want.SetAction(BUNDLE_RESOURCES_CHANGED);
+    want.SetParam(Constants::USER_ID, userId);
+    want.SetParam(BUNDLE_RESOURCE_CHANGE_TYPE, static_cast<int32_t>(type));
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { ServiceConstants::PERMISSION_GET_BUNDLE_RESOURCES };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyDefaultAppChanged(const int32_t userId, std::vector<std::string> &utdIdVec)
+{
+    OHOS::AAFwk::Want want;
+    want.SetAction(DEFAULT_APPLICATION_CHANGED);
+    want.SetParam(Constants::USER_ID, userId);
+    want.SetParam(UTD_IDS, utdIdVec);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { CHANGE_DEFAULT_APPLICATION };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("Publish defaultApp changed event failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyPluginEvents(const NotifyBundleEvents &event,
+    const std::shared_ptr<BundleDataMgr> &dataMgr, bool isHsp)
+{
+    OHOS::AAFwk::Want want;
+    std::string eventData = GetCommonEventData(event.type);
+    want.SetAction(eventData);
+    ElementName element;
+    element.SetBundleName(event.bundleName);
+    element.SetModuleName(event.modulePackage);
+    want.SetElement(element);
+    want.SetParam(Constants::BUNDLE_NAME, event.bundleName);
+    want.SetParam(BUNDLE_TYPE, event.bundleType);
+    want.SetParam(Constants::UID, event.uid);
+    EventFwk::CommonEventData commonData { want };
+    if (dataMgr != nullptr) {
+        LOG_NOFUNC_I(BMS_TAG_DEFAULT, "pluginEventBack begin");
+        std::string hostBundleName;
+        dataMgr->GetBundleNameForUid(event.uid, hostBundleName);
+        dataMgr->NotifyPluginEventCallback(commonData, hostBundleName, isHsp);
+        LOG_NOFUNC_I(BMS_TAG_DEFAULT, "pluginEventBack end");
+    }
+}
+
+void BundleCommonEventMgr::NotifyPluginCommonEvents(const std::string &hostBundleName,
+    const std::string &pluginBundleName, const NotifyType &type)
+{
+    APP_LOGI("NotifyPluginCommonEvents -n %{public}s -p %{public}s",
+        hostBundleName.c_str(), pluginBundleName.c_str());
+    OHOS::AAFwk::Want want;
+    if (type == NotifyType::INSTALL) {
+        want.SetAction(PLUGIN_PACKAGE_ADDED);
+    } else if (type == NotifyType::UNINSTALL_BUNDLE) {
+        want.SetAction(PLUGIN_PACKAGE_REMOVED);
+    } else if (type == NotifyType::UPDATE) {
+        want.SetAction(PLUGIN_PACKAGE_CHANGED);
+    } else {
+        APP_LOGE("NotifyPluginCommonEvents type error");
+        return;
+    }
+    ElementName element;
+    element.SetBundleName(hostBundleName);
+    want.SetElement(element);
+    want.SetParam(PLUGIN_BUNDLE_NAME, pluginBundleName);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    publishInfo.SetBundleName(hostBundleName);
+    publishInfo.SetSubscriberType(EventFwk::SubscriberType::SYSTEM_SUBSCRIBER_TYPE);
+    publishInfo.SetValidationRule(EventFwk::ValidationRule::OR);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifySkillEvents(
+    const std::string &bundleName, int32_t userId, const std::vector<std::string> &addedSkills,
+    const std::vector<std::string> &changedSkills, const std::vector<std::string> &removedSkills)
+{
+    if (bundleName.empty() || (addedSkills.empty() && changedSkills.empty() && removedSkills.empty())) {
+        APP_LOGD("NotifySkillEvents ignored, bundleName or skill changes is empty");
+        return;
+    }
+
+    OHOS::AAFwk::Want want;
+    want.SetAction(SKILL_CHANGED);
+
+    ElementName element;
+    element.SetBundleName(bundleName);
+    want.SetElement(element);
+    want.SetParam(Constants::BUNDLE_NAME, bundleName);
+    want.SetParam(Constants::USER_ID, userId);
+    want.SetParam(ADDED_SKILLS, addedSkills);
+    want.SetParam(CHANGED_SKILLS, changedSkills);
+    want.SetParam(REMOVED_SKILLS, removedSkills);
+
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    publishInfo.SetSubscriberPermissions({ Constants::PERMISSION_MANAGE_SKILL_PRIVILEGE });
+    publishInfo.SetBundleName(bundleName);
+    publishInfo.SetValidationRule(EventFwk::ValidationRule::OR);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("Publish skill common event failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyShortcutVisibleChanged(
+    const std::string &bundlename, const std::string &id, int32_t userId, int32_t appIndex, bool visible)
+{
+    OHOS::AAFwk::Want want;
+    want.SetAction(SHORTCUT_CHANGED);
+    ElementName element;
+    element.SetBundleName(bundlename);
+    want.SetElement(element);
+    want.SetParam(SHORTCUT_ID, id);
+    want.SetParam(USER_ID, userId);
+    want.SetParam(APP_INDEX, appIndex);
+    want.SetParam("visible", visible);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { MANAGE_SHORTCUTS };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyDynamicShortcutChanged(const std::string &bundlename,
+    const std::vector<std::string> &ids, int32_t userId, int32_t appIndex, const std::string &operationType)
+{
+    OHOS::AAFwk::Want want;
+    want.SetAction(SHORTCUT_CHANGED);
+    ElementName element;
+    element.SetBundleName(bundlename);
+    want.SetElement(element);
+    want.SetParam(SHORTCUT_IDS, ids);
+    want.SetParam(USER_ID, userId);
+    want.SetParam(APP_INDEX, appIndex);
+    want.SetParam(SHORTCUT_OPERATION_TYPE, operationType);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { MANAGE_SHORTCUTS };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyUninstalledBundleCleared(const NotifyBundleEvents &installResult)
+{
+    OHOS::AAFwk::Want want;
+    want.SetAction(PACKAGE_UNINSTALLED_DATA_CLEARED);
+    ElementName element;
+    element.SetBundleName(installResult.bundleName);
+    want.SetElement(element);
+    want.SetParam(RESULT_CODE, installResult.resultCode);
+    want.SetParam(ACCESS_TOKEN_ID, static_cast<int32_t>(installResult.accessTokenId));
+    want.SetParam(Constants::UID, installResult.uid);
+    want.SetParam(BUNDLE_TYPE, installResult.bundleType);
+    want.SetParam(APP_ID, installResult.appId);
+    want.SetParam(APP_IDENTIFIER, installResult.appIdentifier);
+    want.SetParam(KEEP_DATA, installResult.keepData);
+    want.SetParam(APP_INDEX, installResult.appIndex);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { Constants::LISTEN_BUNDLE_CHANGE };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    publishInfo.SetSubscriberType(EventFwk::SubscriberType::SYSTEM_SUBSCRIBER_TYPE);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::NotifyShortcutsEnabledChanged(const std::vector<ShortcutInfo> &shortcutInfos,
+    bool isEnabled)
+{
+    std::vector<std::string> bundleNames;
+    std::vector<std::string> ids;
+    for (auto &shortcutInfo : shortcutInfos) {
+        bundleNames.emplace_back(shortcutInfo.bundleName);
+        ids.emplace_back(shortcutInfo.id);
+    }
+    OHOS::AAFwk::Want want;
+    want.SetAction(SHORTCUT_CHANGED);
+    want.SetParam(BUNDLE_NAMES, bundleNames);
+    want.SetParam(SHORTCUT_IDS, ids);
+    want.SetParam(IS_ENABLED, isEnabled);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventPublishInfo publishInfo;
+    std::vector<std::string> permissionVec { MANAGE_SHORTCUTS };
+    publishInfo.SetSubscriberPermissions(permissionVec);
+    std::string identity = IPCSkeleton::ResetCallingIdentity();
+    if (!EventFwk::CommonEventManager::PublishCommonEvent(commonData, publishInfo)) {
+        APP_LOGE("PublishCommonEvent failed");
+    }
+    IPCSkeleton::SetCallingIdentity(identity);
+}
+
+void BundleCommonEventMgr::SubmitEventAsync(const EventPublishFunc &publishFunc)
+{
+    {
+        std::lock_guard<std::mutex> lock(eventQueueMutex_);
+        eventQueue_.push(publishFunc);
+    }
+    StartAsyncProcessingIfNeeded();
+}
+
+void BundleCommonEventMgr::StartAsyncProcessingIfNeeded()
+{
+    std::lock_guard<std::mutex> lock(eventQueueMutex_);
+
+    // Check if queue is empty while holding the lock
+    if (eventQueue_.empty()) {
+        return;
+    }
+
+    // Try to start processing if not already running
+    bool expected = false;
+    if (isProcessingQueue_.compare_exchange_strong(expected, true)) {
+        // Capture shared_ptr to ensure object lifetime during async execution
+        std::shared_ptr<BundleCommonEventMgr> self = shared_from_this();
+        auto task = [self]() {
+            self->ProcessEventQueue();
+        };
+        ffrt::submit(task);
+    }
+}
+
+void BundleCommonEventMgr::ProcessEventQueue()
+{
+    APP_LOGI_NOFUNC("ProcessEventQueue started");
+
+    while (true) {
+        std::vector<EventPublishFunc> batch;
+        batch.reserve(MAX_EVENTS_PER_BATCH);
+
+        // Extract a batch of events
+        {
+            std::lock_guard<std::mutex> lock(eventQueueMutex_);
+            if (eventQueue_.empty()) {
+                isProcessingQueue_.store(false);
+                APP_LOGI_NOFUNC("ProcessEventQueue completed, queue empty");
+                break;
+            }
+
+            for (int32_t i = 0; i < MAX_EVENTS_PER_BATCH && !eventQueue_.empty(); ++i) {
+                batch.push_back(eventQueue_.front());
+                eventQueue_.pop();
+            }
+        }
+
+        // Process the batch: execute each publish function
+        for (const auto &publishFunc : batch) {
+            if (publishFunc) {
+                publishFunc();
+            }
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(BATCH_INTERVAL_MS));
+
+        APP_LOGD("Processed batch of %{public}zu events", batch.size());
+    }
+
+    APP_LOGI_NOFUNC("ProcessEventQueue finished");
+}
+
+void BundleCommonEventMgr::NotifySetDisposedRuleAsync(
+    const std::string &appId, int32_t userId, const std::string &data, int32_t appIndex)
+{
+    SubmitEventAsync([this, appId, userId, data, appIndex]() {
+        NotifySetDisposedRule(appId, userId, data, appIndex);
+    });
+}
+
+void BundleCommonEventMgr::NotifyDeleteDisposedRuleAsync(const std::string &appId, int32_t userId, int32_t appIndex)
+{
+    SubmitEventAsync([this, appId, userId, appIndex]() {
+        NotifyDeleteDisposedRule(appId, userId, appIndex);
+    });
+}
+
+void BundleCommonEventMgr::PublishCommonEventForEnterpriseAsync(
+    const std::string &bundleName,
+    const int32_t publishUserId,
+    const EventFwk::CommonEventData &commonData)
+{
+    SubmitEventAsync([this, bundleName, publishUserId, commonData]() {
+        PublishCommonEventForEnterprise(bundleName, publishUserId, commonData);
+    });
+}
+} // AppExecFwk
+} // OHOS

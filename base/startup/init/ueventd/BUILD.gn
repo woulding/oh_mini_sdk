@@ -1,0 +1,193 @@
+# Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+
+if (defined(ohos_lite)) {
+  group("libueventd_ramdisk_static_real") {
+
+  }
+  if (ohos_kernel_type == "linux") {
+    service_ueventd_deps = [
+      "//base/startup/init/interfaces/innerkits/socket:libsocket",
+      "//base/startup/init/services/log:init_log",
+      "//base/startup/init/services/param/base:param_base",
+      "//base/startup/init/services/utils:libinit_utils",
+    ]
+
+    executable("ueventd_linux") {
+      sources = [
+        "//base/startup/init/services/utils/init_utils.c",
+        "//base/startup/init/ueventd/lite/ueventd_parameter.c",
+        "//base/startup/init/ueventd/ueventd.c",
+        "//base/startup/init/ueventd/ueventd_device_handler.c",
+        "//base/startup/init/ueventd/ueventd_firmware_handler.c",
+        "//base/startup/init/ueventd/ueventd_main.c",
+        "//base/startup/init/ueventd/ueventd_read_cfg.c",
+        "//base/startup/init/ueventd/ueventd_socket.c",
+      ]
+      defines = [ "__MUSL__" ]
+      defines += [ "_GNU_SOURCE" ]
+
+      include_dirs = [
+        "//base/startup/init/services/log",
+        "//base/startup/init/interfaces/innerkits/include",
+        "//base/startup/init/interfaces/innerkits/include/param",
+        "//base/startup/init/services/utils",
+        "//base/startup/init/ueventd/include",
+      ]
+
+      deps = service_ueventd_deps
+      deps += [ "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared" ]
+      deps += [ "//base/startup/init/interfaces/innerkits:libbegetutil" ]
+      external_deps = [ "bounds_checking_function:libsec_static" ]
+    }
+    copy("ueventd.config") {
+      sources = [ "etc/ueventd_l1.config" ]
+      outputs = [ "$root_out_dir/etc/ueventd.config" ]
+    }
+  }
+} else {
+  import("//build/ohos.gni")
+  service_ueventd_sources = [
+    "//base/startup/init/ueventd/ueventd.c",
+    "//base/startup/init/ueventd/ueventd_device_handler.c",
+    "//base/startup/init/ueventd/ueventd_firmware_handler.c",
+    "//base/startup/init/ueventd/ueventd_read_cfg.c",
+    "//base/startup/init/ueventd/ueventd_socket.c",
+  ]
+
+  service_ueventd_include = [
+    "//base/startup/init/services/log",
+    "//base/startup/init/interfaces/innerkits/include",
+    "//base/startup/init/services/utils",
+    "//base/startup/init/ueventd/include",
+  ]
+
+  service_ueventd_deps = [
+    "//base/startup/init/interfaces/innerkits/socket:libsocket",
+    "//base/startup/init/services/log:init_log",
+    "//base/startup/init/services/utils:libinit_utils",
+  ]
+
+  service_ueventd_ramdisk_deps = [
+    "//base/startup/init/interfaces/innerkits/socket:libsocket",
+    "//base/startup/init/services/utils:libinit_utils",
+  ]
+
+  #
+  # exported include directories
+  #
+  config("libueventd_exported_config") {
+    visibility = [ ":*" ]
+    include_dirs = [ "./include" ]
+  }
+  ohos_static_library("libueventd_ramdisk_static") {
+    branch_protector_ret = "pac_ret"
+    sources = service_ueventd_sources
+    include_dirs = service_ueventd_include
+    deps = service_ueventd_deps
+    defines = [ "__RAMDISK__" ]
+    external_deps = []
+    cflags = []
+    if (build_selinux) {
+      external_deps += [ "selinux_adapter:librestorecon" ]
+      cflags += [ "-DWITH_SELINUX" ]
+    }
+    external_deps += [ "selinux:libselinux" ]
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+    public_configs = [ ":libueventd_exported_config" ]
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_static_library("libueventd_ramdisk_static_real") {
+    branch_protector_ret = "pac_ret"
+    sources = service_ueventd_sources
+    include_dirs = service_ueventd_include
+    deps = service_ueventd_ramdisk_deps
+    defines = [ "__RAMDISK__" ]
+    external_deps = []
+    cflags = []
+    if (build_selinux) {
+      external_deps += [ "selinux_adapter:librestorecon_static" ]
+      cflags += [ "-DWITH_SELINUX" ]
+    }
+    external_deps += [ "selinux:libselinux_static" ]
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+    public_configs = [ ":libueventd_exported_config" ]
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_executable("ueventd") {
+    branch_protector_ret = "pac_ret"
+    sources = service_ueventd_sources
+    sources += [
+      "//base/startup/init/ueventd/standard/ueventd_parameter.c",
+      "//base/startup/init/ueventd/ueventd_main.c",
+    ]
+    include_dirs = service_ueventd_include
+    include_dirs += [
+      "//base/startup/init/interfaces/innerkits/include/param",
+      "//base/startup/init/interfaces/innerkits/include",
+    ]
+    deps = service_ueventd_deps
+    deps += [ "//base/startup/init/services/param/linux:param_client" ]
+    external_deps = [ "selinux:libselinux" ]
+    external_deps += [ "bounds_checking_function:libsec_static" ]
+    cflags = []
+    deps += [ "//base/startup/init/services/param/base:param_base" ]
+    deps += [ "//base/startup/init/interfaces/innerkits:libbegetutil" ]
+    if (build_selinux) {
+      external_deps += [ "selinux_adapter:librestorecon" ]
+      cflags += [ "-DWITH_SELINUX" ]
+    }
+
+    install_images = [
+      "system",
+      "updater",
+    ]
+    install_enable = true
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("ueventd.config") {
+    source = "//base/startup/init/ueventd/etc/ueventd.config"
+    part_name = "init"
+    subsystem_name = "startup"
+    install_images = [
+      "system",
+      "updater",
+    ]
+  }
+}
+
+group("startup_ueventd") {
+  if (defined(ohos_lite)) {
+    if (ohos_kernel_type == "linux") {
+      deps = [
+        ":ueventd.config",
+        ":ueventd_linux",
+      ]
+    } else {
+      deps = []
+    }
+  } else {
+    deps = [
+      "//base/startup/init/ueventd:libueventd_ramdisk_static",
+      "//base/startup/init/ueventd:ueventd",
+      "//base/startup/init/ueventd:ueventd.config",
+    ]
+  }
+}

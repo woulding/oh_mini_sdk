@@ -1,0 +1,18 @@
+{
+  global:
+  extern "C" {
+        OH_HiCollie_Init_StuckDetection;
+        OH_HiCollie_Init_StuckDetectionWithTimeout;
+        OH_HiCollie_Init_JankDetection;
+        OH_HiCollie_Report;
+        OH_HiCollie_ReportInputBlock;
+        OH_HiCollie_SetTimer;
+        OH_HiCollie_CancelTimer;
+        OH_HiCollie_SetFreezeCallback;
+        OH_HiCollie_AssociateProcessReport;
+    };
+    extern "C++" {
+    };
+  local:
+    *;
+};

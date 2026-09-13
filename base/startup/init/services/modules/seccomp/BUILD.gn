@@ -1,0 +1,237 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/startup/init/begetd.gni")
+import(
+    "//base/startup/init/services/modules/seccomp/scripts/seccomp_policy_fixer.gni")
+import("//build/config/clang/clang.gni")
+import("//build/ohos.gni")
+import("//build/ohos/kernel/kernel.gni")
+
+INIT_PART = "init"
+declare_args() {
+  appspawn_featrue = false
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.startup_appspawn)) {
+    appspawn_featrue = true
+  }
+}
+
+if (build_variant == "root") {
+  seccomp_enable_debug = true
+} else {
+  seccomp_enable_debug = false
+}
+
+ohos_prebuilt_seccomp("system_filter") {
+  sources = [ "seccomp_policy/system.seccomp.policy" ]
+
+  filtername = "system"
+  process_type = "system"
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+ohos_prebuilt_seccomp("appspawn_filter") {
+  sources = [ "seccomp_policy/spawn.seccomp.policy" ]
+
+  filtername = "appspawn"
+  process_type = "system"
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  include_dirs = [ "." ]
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+ohos_prebuilt_seccomp("nwebspawn_filter") {
+  sources = [ "seccomp_policy/nwebspawn.seccomp.policy" ]
+
+  filtername = "nwebspawn"
+  process_type = "system"
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  include_dirs = [ "." ]
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+ohos_prebuilt_seccomp("app_filter") {
+  sources = [ "seccomp_policy/app.seccomp.policy" ]
+
+  filtername = "app"
+  process_type = "app"
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+ohos_prebuilt_seccomp("app_atomic_filter") {
+  sources = [ "seccomp_policy/app_atomic.seccomp.policy" ]
+
+  filtername = "app_atomic"
+  process_type = "app"
+  uid_is_root = true
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+ohos_prebuilt_seccomp("app_allow_iouring_filter") {
+  sources = [ "seccomp_policy/app_allow_iouring.seccomp.policy" ]
+
+  filtername = "app_allow_iouring"
+  process_type = "app"
+  uid_is_root = true
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+ohos_prebuilt_seccomp("app_privilege_filter") {
+  sources = [ "seccomp_policy/app_privilege.seccomp.policy" ]
+
+  filtername = "app_privilege"
+  process_type = "system"
+  uid_is_root = true
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+ohos_prebuilt_seccomp("updater_filter") {
+  sources = [ "seccomp_policy/updater.seccomp.policy" ]
+
+  filtername = "updater"
+  process_type = "system"
+  uid_is_root = true
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  install_enable = true
+  install_images = [ "updater" ]
+}
+
+ohos_prebuilt_seccomp("app_custom_filter") {
+  sources = [ "seccomp_policy/app_custom.seccomp.policy" ]
+
+  filtername = "app_custom"
+  process_type = "app"
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+ohos_prebuilt_seccomp("app_normal_filter") {
+  sources = [ "seccomp_policy/app_normal.seccomp.policy" ]
+
+  filtername = "app_normal"
+  process_type = "app"
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+
+  install_enable = true
+  install_images = [ "system" ]
+}
+
+config("libseccomp_static_config") {
+  include_dirs = [
+    "..",
+    "../../../interfaces/innerkits/seccomp/include",
+  ]
+
+  if (seccomp_enable_debug) {
+    include_dirs += [
+      "../../../interfaces/innerkits/include",
+      "../../../interfaces/innerkits/include/param",
+    ]
+
+    defines = [ "WITH_SECCOMP_DEBUG" ]
+  }
+}
+
+ohos_source_set("libseccomp_static") {
+  sources = [
+    "seccomp_policy.c",
+    "seccomp_policy_static.c",
+  ]
+  public_configs = [
+    ":libseccomp_static_config",
+    "../../../interfaces/innerkits/init_module_engine:init_module_engine_exported_config",
+  ]
+
+  branch_protector_ret = "pac_ret"
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "config_policy:configpolicy_util",
+  ]
+
+  part_name = INIT_PART
+  subsystem_name = "startup"
+}
+
+group("seccomp_filter") {
+  deps = [
+    ":app_allow_iouring_filter",
+    ":app_atomic_filter",
+    ":app_filter",
+    ":system_filter",
+    ":updater_filter",
+  ]
+  if (appspawn_featrue) {
+    deps += [
+      ":appspawn_filter",
+      ":nwebspawn_filter",
+    ]
+    if (init_feature_custom_sandbox) {
+      deps += [ ":app_custom_filter" ]
+    }
+    if (init_feature_normal_sandbox) {
+      deps -= [ ":app_filter" ]
+      deps += [ ":app_normal_filter" ]
+    }
+    if (init_feature_seccomp_privilege) {
+      deps += [ ":app_privilege_filter" ]
+    }
+  }
+}

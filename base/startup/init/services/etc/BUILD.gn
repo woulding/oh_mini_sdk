@@ -1,0 +1,267 @@
+# Copyright (c) 2020-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+import("//base/startup/init/services/etc/passwd_appender/passwd_appender.gni")
+
+if (defined(ohos_lite)) {
+  copy("ohos.para") {
+    sources = [ "//base/startup/init/services/etc/param/ohos.para" ]
+    outputs = [ "$root_out_dir/system/etc/param/ohos.para" ]
+  }
+
+  copy("ohos.para.dac") {
+    sources = [ "//base/startup/init/services/etc/param/ohos.para.dac" ]
+    outputs = [ "$root_out_dir/system/etc/param/ohos.para.dac" ]
+  }
+  copy("ohos.const") {
+    sources =
+        [ "//base/startup/init/services/etc_lite/param/ohos_const/ohos.para" ]
+    outputs = [ "$root_out_dir/system/etc/param/ohos_const/ohos.para" ]
+  }
+
+  copy("ohos.passwd") {
+    sources = [ "//base/startup/init/services/etc_lite/passwd" ]
+    outputs = [ "$root_out_dir/etc/passwd" ]
+  }
+  copy("ohos.group") {
+    sources = [ "//base/startup/init/services/etc_lite/group" ]
+    outputs = [ "$root_out_dir/etc/group" ]
+  }
+
+  group("etc_files") {
+    deps = [
+      ":ohos.const",
+      ":ohos.para",
+      ":ohos.para.dac",
+    ]
+    if (ohos_kernel_type == "linux") {
+      deps += [
+        ":ohos.group",
+        ":ohos.passwd",
+      ]
+    }
+  }
+} else {
+  import("//build/config/components/init/param/param_fixer.gni")
+  import("//build/ohos.gni")
+
+  # init etc files group
+  ohos_prebuilt_etc("init.cfg") {
+    if (!enable_ramdisk) {
+      source = "//base/startup/init/services/etc/init.without_two_stages.cfg"
+    } else {
+      source = "//base/startup/init/services/etc/init.cfg"
+    }
+    output = "init.cfg"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("watchdog.cfg") {
+    source = "//base/startup/init/services/etc/watchdog.cfg"
+    relative_install_dir = "init"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("console.cfg") {
+    source = "//base/startup/init/services/etc/console.cfg"
+    relative_install_dir = "init"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("init_prelinker_dso_list") {
+    source = "//base/startup/init/services/etc/init_prelinker_dso_list"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("ueventd.cfg") {
+    source = "//base/startup/init/services/etc/ueventd.cfg"
+    relative_install_dir = "init"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_passwd_appender("passwd") {
+    sources = [ "//base/startup/init/services/etc/passwd" ]
+    ranges = [ "0-6999" ]
+    output = "//base/startup/init/services/etc/passwd"
+    install_images = [
+      "system",
+      "updater",
+    ]
+    if (init_extra_static_modules != "") {
+      install_enable = false
+    }
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("group") {
+    source = "//base/startup/init/services/etc/group"
+    install_images = [
+      "system",
+      "updater",
+    ]
+    if (init_extra_static_modules != "") {
+      install_enable = false
+    }
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("init.usb.cfg") {
+    source = "//base/startup/init/services/etc/init.usb.cfg"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_para("ohos.para") {
+    source = "//base/startup/init/services/etc/param/ohos.para"
+    install_images = [
+      "system",
+      "updater",
+    ]
+    part_name = "init"
+    subsystem_name = "startup"
+    extra_paras = []
+    if (target_cpu == "arm64") {
+      extra_paras += [ "const.product.cpu.abilist=arm64-v8a" ]
+    }
+    if (target_cpu == "x86_64") {
+      extra_paras += [ "const.product.cpu.abilist=x86_64" ]
+    }
+    if (target_cpu == "riscv64") {
+      extra_paras += [ "const.product.cpu.abilist=riscv64" ]
+    }
+    if (build_variant == "user") {
+      extra_paras += [
+        "const.secure=1",
+        "const.debuggable=0",
+      ]
+    } else if (build_variant == "root") {
+      extra_paras += [
+        "const.secure=0",
+        "const.debuggable=1",
+      ]
+    }
+    if (device_type != "default") {
+      extra_paras += [
+        "const.product.devicetype=${device_type}",
+        "const.build.characteristics=${device_type}",
+      ]
+    }
+    module_install_dir = "etc/param"
+  }
+
+  ohos_prebuilt_para("ohos.startup.para") {
+    source = "//base/startup/init/services/etc/param/ohos.startup.para"
+    install_images = [
+      "system",
+      "updater",
+    ]
+    part_name = "init"
+    subsystem_name = "startup"
+    module_install_dir = "etc/param"
+  }
+
+  ohos_prebuilt_para("ohos.para.dac") {
+    source = "//base/startup/init/services/etc/param/ohos.para.dac"
+    install_images = [
+      "system",
+      "updater",
+    ]
+    part_name = "init"
+    subsystem_name = "startup"
+    module_install_dir = "etc/param"
+  }
+
+  ohos_prebuilt_para("ohos_const.para") {
+    source = "//base/startup/init/services/etc/param/ohos_const/ohos.para"
+    part_name = "init"
+    subsystem_name = "startup"
+    module_install_dir = "etc/param/ohos_const"
+  }
+
+  ohos_prebuilt_para("ohos.para.size") {
+    source = "//base/startup/init/services/etc/param/ohos.para.size"
+    install_images = [
+      "system",
+      "updater",
+    ]
+    part_name = "init"
+    subsystem_name = "startup"
+    module_install_dir = "etc/param"
+  }
+
+  ohos_prebuilt_etc("boot.group") {
+    source = "//base/startup/init/services/etc/device.boot.group.cfg"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("syscap.para") {
+    source = "${preloader_output_dir}/system/etc/param/syscap.para"
+    module_install_dir = "etc/param/"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("syscap.json") {
+    source = "${preloader_output_dir}/system/etc/syscap.json"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("systemcapability.json") {
+    source = "${preloader_output_dir}/system/etc/SystemCapability.json"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("features.json") {
+    source = "${preloader_output_dir}/features.json"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_prebuilt_etc("init.reboot") {
+    source = "//base/startup/init/services/etc/init.reboot.cfg"
+    part_name = "init"
+    subsystem_name = "startup"
+    module_install_dir = "etc/init"
+  }
+
+  group("etc_files") {
+    deps = [
+      ":boot.group",
+      ":console.cfg",
+      ":features.json",
+      ":group",
+      ":init.cfg",
+      ":init.reboot",
+      ":init.usb.cfg",
+      ":ohos.para",
+      ":ohos.para.dac",
+      ":ohos.para.size",
+      ":ohos.startup.para",
+      ":ohos_const.para",
+      ":passwd",
+      ":syscap.json",
+      ":syscap.para",
+      ":systemcapability.json",
+    ]
+  }
+}

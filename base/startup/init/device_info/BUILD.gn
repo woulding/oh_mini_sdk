@@ -1,0 +1,94 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+if (!defined(ohos_lite)) {
+  import("//build/ohos.gni")
+  import("//build/ohos/sa_profile/sa_profile.gni")
+
+  ohos_sa_profile("device_info_profile") {
+    sources = [ "etc/3902.json" ]
+    part_name = "init"
+  }
+
+  ohos_prebuilt_etc("device_info.cfg") {
+    source = "etc/deviceinfoservice.cfg"
+    relative_install_dir = "init"
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+
+  ohos_shared_library("deviceinfoservice") {
+    sources = [
+      "//base/startup/init/interfaces/innerkits/syspara/param_comm.c",
+      "device_info_service.cpp",
+    ]
+
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+
+    shlib_type = "sa"
+
+    include_dirs = [
+      ".",
+      "//base/startup/init/interfaces/innerkits/include",
+      "//base/startup/init/interfaces/innerkits/include/param",
+      "//base/startup/init/interfaces/innerkits/include/syspara",
+      "//base/startup/init/interfaces/innerkits/syspara",
+      "//base/startup/init/interfaces/hals",
+    ]
+    defines = [
+      "INIT_AGENT",
+      "_GNU_SOURCE",
+      "USE_MBEDTLS",
+      "DINFO_TAG=\"DeviceInfoService\"",
+    ]
+    deps = [
+      "//base/startup/init/interfaces/innerkits:deviceinfo_stub",
+      "//base/startup/init/interfaces/innerkits:libbegetutil",
+      "//base/startup/init/services/log:agent_log",
+      "//base/startup/init/services/modules/udid:libudidcomm",
+      "//base/startup/init/services/utils:libinit_utils",
+    ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "hilog:libhilog",
+      "ipc:ipc_single",
+      "safwk:system_ability_fwk",
+      "samgr:samgr_proxy",
+    ]
+    if (defined(global_parts_info) &&
+        defined(global_parts_info.security_access_token)) {
+      external_deps += [ "access_token:libaccesstoken_sdk" ]
+      defines += [ "INIT_SUPPORT_ACCESS_TOKEN" ]
+    }
+    install_images = [ "system" ]
+    part_name = "init"
+    subsystem_name = "startup"
+  }
+}
+
+group("device_info_group") {
+  if (!defined(ohos_lite) && enable_ohos_startup_init_feature_deviceinfo) {
+    deps = [
+      ":device_info.cfg",
+      ":device_info_profile",
+      ":deviceinfoservice",
+    ]
+  }
+}

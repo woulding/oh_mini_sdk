@@ -1,0 +1,124 @@
+# Copyright (C) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/security/huks/build/config.gni")
+import("//build/ohos.gni")
+
+config("huks_config") {
+  include_dirs = [ "include" ]
+}
+
+if (os_level == "standard") {
+  ohos_shared_library("libhukssdk") {
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      integer_overflow = true
+      cfi = true
+      debug = false
+      cfi_cross_dso = true
+      boundary_sanitize = true
+      ubsan = true
+    }
+    subsystem_name = "security"
+    part_name = "huks"
+    innerapi_tags = [
+      "platformsdk",
+      "sasdk",
+      "chipsetsdk",
+    ]
+    version_script = "libhukssdk.map"
+    public_configs = [ ":huks_config" ]
+    configs = [
+      "//base/security/huks/frameworks/config/build:l2_standard_common_config",
+    ]
+
+    include_dirs = [
+      "//base/security/huks/utils/crypto_adapter",
+      "../source",
+      "//base/security/huks/utils/mutex",
+    ]
+    sources = [
+      "../source/hks_api.c",
+      "../source/hks_api_adapter.c",
+      "//base/security/huks/frameworks/huks_standard/main/common/src/hks_ukey_global_errInfo.c",
+    ]
+
+    deps = [
+      "//base/security/huks/frameworks/huks_standard/main:huks_standard_frameworks",
+      "//base/security/huks/utils/crypto_adapter:libhuks_utils_client_service_adapter_static",
+      "//base/security/huks/utils/mutex:libhuks_utils_mutex_static",
+    ]
+    external_deps = [
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+    install_images = [
+      system_base_dir,
+      updater_base_dir,
+    ]
+  }
+
+  ohos_shared_library("libhukschipsetsdk") {
+    branch_protector_ret = "pac_ret"
+
+    sanitize = {
+      integer_overflow = true
+      cfi = true
+      debug = false
+      cfi_cross_dso = true
+      boundary_sanitize = true
+      ubsan = true
+    }
+    subsystem_name = "security"
+    part_name = "huks"
+    innerapi_tags = [ "chipsetsdk" ]
+    version_script = "libhukschipsetsdk.map"
+    public_configs = [ ":huks_config" ]
+    configs = [
+      "//base/security/huks/frameworks/config/build:l2_standard_common_config",
+    ]
+
+    defines = [ "HKS_CHIPSET_API" ]
+
+    include_dirs = [
+      "../source",
+      "//base/security/huks/utils/mutex",
+    ]
+    sources = [
+      "../source/hks_api.c",
+      "//base/security/huks/frameworks/huks_standard/main/common/src/hks_ukey_global_errInfo.c",
+    ]
+
+    deps = [
+      "//base/security/huks/frameworks/huks_standard/main:huks_standard_frameworks",
+      "//base/security/huks/utils/mutex:libhuks_utils_mutex_static",
+    ]
+    external_deps = [
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+    install_images = [
+      system_base_dir,
+      updater_base_dir,
+    ]
+  }
+}
+
+if (os_level == "small" || os_level == "mini") {
+  group("libhukssdk") {
+  }
+
+  group("libhukschipsetsdk") {
+  }
+}

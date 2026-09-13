@@ -1,0 +1,423 @@
+/*
+ * Copyright (C) 2021-2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <sstream>
+#include "network_selection_manager.h"
+#include "wifi_settings.h"
+#include "wifi_logger.h"
+#include "network_selection_utils.h"
+#include "wifi_common_util.h"
+#include "wifi_hisysevent.h"
+#include "wifi_sensor_scene.h"
+#include "wifi_channel_helper.h"
+#include "wifi_service_manager.h"
+#include "wifi_config_center.h"
+#include "wifi_chr_adapter.h"
+
+namespace OHOS::Wifi {
+DEFINE_WIFILOG_LABEL("networkSelectionManager")
+
+const int OUTDOOR_NETWORK_SELECT_THRES = 3;
+
+NetworkSelectionManager::NetworkSelectionManager()
+{
+    pNetworkSelectorFactory = std::make_unique<NetworkSelectorFactory>();
+}
+
+void NetworkSelectionManager::SelectNetworkWithSsid(WifiDeviceConfig& deviceConfig, std::string& autoSelectBssid)
+{
+    WIFI_LOGI("Enter SelectNetworkWithSsid.");
+    std::vector<WifiScanInfo> wifiScanInfoList;
+    WifiConfigCenter::GetInstance().GetWifiScanConfig()->GetScanInfoList(wifiScanInfoList);
+    std::vector<InterScanInfo> interScanInfoList;
+    for (auto &wifiScanInfo : wifiScanInfoList) {
+        std::string deviceKeyMgmt;
+        wifiScanInfo.GetDeviceMgmt(deviceKeyMgmt);
+        if (wifiScanInfo.ssid == deviceConfig.ssid &&
+            WifiSettings::GetInstance().InKeyMgmtBitset(deviceConfig, deviceKeyMgmt)) {
+            InterScanInfo interScanInfo;
+            ConvertScanInfo(wifiScanInfo, interScanInfo);
+            interScanInfoList.push_back(interScanInfo);
+        }
+    }
+    WIFI_LOGI("select scanInfo size: %{public}zu", interScanInfoList.size());
+    NetworkSelectionResult networkSelectionResult;
+    std::string failReason;
+    SelectNetwork(networkSelectionResult, NetworkSelectType::USER_CONNECT, interScanInfoList, failReason);
+    autoSelectBssid = networkSelectionResult.interScanInfo.bssid;
+}
+
+void NetworkSelectionManager::ConvertScanInfo(WifiScanInfo &wifiScanInfo, InterScanInfo &interScanInfo)
+{
+    interScanInfo.bssid = wifiScanInfo.bssid;
+    interScanInfo.ssid = wifiScanInfo.ssid;
+    interScanInfo.oriSsid = wifiScanInfo.oriSsid;
+    interScanInfo.capabilities = wifiScanInfo.capabilities;
+    interScanInfo.frequency = wifiScanInfo.frequency;
+    interScanInfo.channelWidth = wifiScanInfo.channelWidth;
+    interScanInfo.centerFrequency0 = wifiScanInfo.centerFrequency0;
+    interScanInfo.centerFrequency1 = wifiScanInfo.centerFrequency1;
+    interScanInfo.rssi = wifiScanInfo.rssi;
+    interScanInfo.securityType = wifiScanInfo.securityType;
+    interScanInfo.infoElems = wifiScanInfo.infoElems;
+    interScanInfo.features = wifiScanInfo.features;
+    interScanInfo.timestamp = wifiScanInfo.timestamp;
+    interScanInfo.band = wifiScanInfo.band;
+    interScanInfo.isHiLinkNetwork = wifiScanInfo.isHiLinkNetwork;
+    interScanInfo.supportedWifiCategory = wifiScanInfo.supportedWifiCategory;
+#ifdef WIFI_LOCAL_SECURITY_DETECT_ENABLE
+    interScanInfo.riskType = wifiScanInfo.riskType;
+#endif
+}
+
+bool NetworkSelectionManager::SelectNetwork(NetworkSelectionResult &networkSelectionResult,
+                                            NetworkSelectType type,
+                                            const std::vector<InterScanInfo> &scanInfos,
+                                            std::string &failReason)
+{
+    if (scanInfos.empty()) {
+        WIFI_LOGI("scanInfos is empty, ignore this selection");
+        return false;
+    }
+
+    /* networkCandidates must be declared before networkSelector,
+     * so it can be accessed in the destruct of networkSelector and wifiFilter */
+    std::vector<NetworkSelection::NetworkCandidate> networkCandidates;
+    auto networkSelectorOptional = pNetworkSelectorFactory->GetNetworkSelector(type);
+    if (!(networkSelectorOptional.has_value())) {
+        WIFI_LOGE("Get NetworkSelector failed for type %{public}d", static_cast<int>(type));
+        return false;
+    }
+    auto &networkSelector = networkSelectorOptional.value();
+    WIFI_LOGI("NetworkSelector: %{public}s", networkSelector->GetNetworkSelectorMsg().c_str());
+
+    /* Get the device config for each scanInfo, then create networkCandidate and put it into networkCandidates */
+    GetAllDeviceConfigs(networkCandidates, scanInfos);
+    bool isSavedNetEmpty = false;
+    std::string savedResult = GetSavedNetInfoForChr(networkCandidates, isSavedNetEmpty);
+
+    /* Traverse networkCandidates and reserve qualified networkCandidate */
+    TryNominate(networkCandidates, networkSelector);
+    std::string filteredReason = GetFilteredReasonForChr(networkCandidates);
+
+    /* Get best networkCandidate from the reserved networkCandidates */
+    std::vector<NetworkSelection::NetworkCandidate *> bestNetworkCandidates;
+    networkSelector->GetBestCandidates(bestNetworkCandidates);
+
+    std::string selectedInfo;
+    if (bestNetworkCandidates.empty()) {
+        if (!isSavedNetEmpty) {
+            failReason = GetFilteredLastReasonForChr(networkCandidates);
+            EnhanceWriteAutoSelectHiSysEvent(static_cast<int>(type), selectedInfo, filteredReason, savedResult);
+        }
+        return false;
+    } else {
+        selectedInfo = GetSelectedInfoForChr(bestNetworkCandidates.at(0));
+        EnhanceWriteAutoSelectHiSysEvent(static_cast<int>(type), selectedInfo, filteredReason, savedResult);
+    }
+
+    /* Determine whether to select bestNetworkCandidates in outdoor scene */
+    IodStatisticInfo iodStatisticInfo;
+    iodStatisticInfo.outdoorAutoSelectCnt++;
+    if (IsOutdoorFilter(bestNetworkCandidates.at(0))) {
+        WIFI_LOGI("bestNetworkCandidates do not satisfy outdoor select condition");
+        iodStatisticInfo.outdoorFilterCnt++;
+        EnhanceWriteAutoConnectFailEvent("AUTO_SELECT_IOD_FILTER", "");
+        EnhanceWriteIodHiSysEvent(iodStatisticInfo);
+        return false;
+    }
+    EnhanceWriteIodHiSysEvent(iodStatisticInfo);
+
+    /* if bestNetworkCandidates is not empty, assign the value of first bestNetworkCandidate
+     * to the network selection result, and return true which means the network selection is successful */
+    networkSelectionResult.wifiDeviceConfig = bestNetworkCandidates.at(0)->wifiDeviceConfig;
+    networkSelectionResult.interScanInfo = bestNetworkCandidates.at(0)->interScanInfo;
+    return true;
+}
+
+std::string NetworkSelectionManager::BuildReasonsString(const std::map<std::string,
+    std::set<NetworkSelection::FiltedReason, NetworkSelection::FiltedReasonComparator,
+    std::allocator<NetworkSelection::FiltedReason>>> &filtedReason, int subcode)
+{
+    std::string reasons;
+    std::string subcodeStr = std::to_string(subcode);
+    for (const auto &pair : filtedReason) {
+        for (const auto &reason : pair.second) {
+            if (!reasons.empty()) {
+                reasons += "|";
+            }
+            reasons += NetworkSelection::filtReasonToString[reason];
+            if (reasons == "NETWORK_STATUS_DISABLE") {
+                reasons += "_";
+                reasons += subcodeStr;
+            }
+        }
+    }
+    return reasons;
+}
+ 
+std::string NetworkSelectionManager::GetFilteredLastReasonForChr(
+    std::vector<NetworkSelection::NetworkCandidate> &networkCandidates)
+{
+    std::map<int, std::string> reasonMap;
+    
+    for (size_t i = 0; i < networkCandidates.size(); i++) {
+        int networkId = networkCandidates.at(i).wifiDeviceConfig.networkId;
+        if (networkId == INVALID_NETWORK_ID) {
+            continue;
+        }
+        int subcode = static_cast<int>(networkCandidates.at(i).wifiDeviceConfig.
+            networkSelectionStatus.networkSelectionDisableReason);
+        std::string reasons = BuildReasonsString(networkCandidates.at(i).filtedReason, subcode);
+        if (!reasons.empty()) {
+            reasonMap[networkId] = reasons;
+        }
+    }
+    
+    return MapToJson(reasonMap);
+}
+
+void NetworkSelectionManager::GetAllDeviceConfigs(std::vector<NetworkSelection::NetworkCandidate> &networkCandidates,
+                                                  const std::vector<InterScanInfo> &scanInfos)
+{
+    std::map<int, std::size_t> wifiDeviceConfigs;
+    std::map<int, std::size_t> wifiCandidateConfigs;
+    for (auto &scanInfo : scanInfos) {
+        auto& networkCandidate = networkCandidates.emplace_back(scanInfo);
+        std::string deviceKeyMgmt;
+        scanInfo.GetDeviceMgmt(deviceKeyMgmt);
+        WifiSettings::GetInstance().GetDeviceConfig(scanInfo.ssid, deviceKeyMgmt, networkCandidate.wifiDeviceConfig);
+
+        // save the indexes of saved network candidate in networkCandidates;
+        if (networkCandidates.back().wifiDeviceConfig.networkId != INVALID_NETWORK_ID) {
+            wifiDeviceConfigs.insert({networkCandidate.wifiDeviceConfig.networkId, networkCandidates.size() - 1});
+            WifiSettings::GetInstance().SetNetworkCandidateScanResult(networkCandidate.wifiDeviceConfig.networkId);
+            continue;
+        }
+
+        // add suggesion network
+        WifiSettings::GetInstance().GetCandidateConfigWithoutUid(scanInfo.ssid, deviceKeyMgmt,
+            networkCandidate.wifiDeviceConfig);
+        if (networkCandidates.back().wifiDeviceConfig.networkId != INVALID_NETWORK_ID &&
+            networkCandidates.back().wifiDeviceConfig.uid != WIFI_INVALID_UID &&
+            networkCandidates.back().wifiDeviceConfig.isShared == false) {
+            wifiCandidateConfigs.insert({networkCandidate.wifiDeviceConfig.networkId, networkCandidates.size() - 1});
+        }
+    }
+
+    std::stringstream wifiDevicesInfo;
+    for (auto &pair: wifiDeviceConfigs) {
+        size_t index = static_cast<size_t>(pair.second);
+        if (index >= networkCandidates.size()) {
+        LOGE("wifiDeviceConfigs: Invalid index");
+        continue;
+    }
+        if (wifiDevicesInfo.rdbuf() ->in_avail() != 0) { wifiDevicesInfo << ","; }
+        wifiDevicesInfo << "\"" << pair.first << "_" <<
+            SsidAnonymize(networkCandidates.at(pair.second).wifiDeviceConfig.ssid) << "_" <<
+            networkCandidates.at(pair.second).wifiDeviceConfig.keyMgmt << "\"";
+    }
+
+    std::stringstream wifiCandidateInfos;
+    for (auto &pair: wifiCandidateConfigs) {
+    size_t index = static_cast<size_t>(pair.second);
+    if (index >= networkCandidates.size()) {
+        LOGE("wifiCandidateConfigs: Invalid index");
+        continue;
+    }
+        if (wifiCandidateInfos.rdbuf() ->in_avail() != 0) { wifiCandidateInfos << ","; }
+        wifiCandidateInfos << "\"" << pair.first << "_" <<
+            SsidAnonymize(networkCandidates.at(pair.second).wifiDeviceConfig.ssid) << "\"";
+    }
+    if (!wifiCandidateConfigs.empty() || !wifiDeviceConfigs.empty()) {
+        WIFI_LOGI("Find savedNetworks in scanInfos [%{public}s]\n" "Find suggestion networks in scanInfos [%{public}s]",
+            wifiDevicesInfo.str().c_str(),
+            wifiCandidateInfos.str().c_str());
+    }
+}
+
+void NetworkSelectionManager::TryNominate(std::vector<NetworkSelection::NetworkCandidate> &networkCandidates,
+                                          const std::unique_ptr<NetworkSelection::INetworkSelector> &networkSelector)
+{
+    std::for_each(networkCandidates.begin(), networkCandidates.end(), [&networkSelector](auto &networkCandidate) {
+        networkSelector->TryNominate(networkCandidate);
+    });
+}
+
+std::string NetworkSelectionManager::GetSavedNetInfoForChr(
+    std::vector<NetworkSelection::NetworkCandidate> &networkCandidates, bool &isSavedNetEmpty)
+{
+    std::map<int, NetworkSelection::NetworkCandidate> savedCandidates;
+    for (size_t i = 0; i < networkCandidates.size(); i++) {
+        if (networkCandidates.at(i).wifiDeviceConfig.networkId == INVALID_NETWORK_ID) {
+            continue;
+        }
+        savedCandidates.insert({networkCandidates.at(i).wifiDeviceConfig.networkId,
+            networkCandidates.at(i)});
+    }
+    if (savedCandidates.empty()) {
+        isSavedNetEmpty = true;
+    }
+    std::string savedResult;
+    savedResult += "[";
+    for (auto pair : savedCandidates) {
+        savedResult += "[";
+        savedResult += std::to_string(pair.first);
+        savedResult += "_";
+        savedResult += SsidAnonymize(pair.second.wifiDeviceConfig.ssid);
+        savedResult += "_";
+        savedResult += pair.second.wifiDeviceConfig.keyMgmt;
+        savedResult += "]";
+    }
+    savedResult += "]";
+    return savedResult;
+}
+
+std::string NetworkSelectionManager::GetFilteredReasonForChr(
+    std::vector<NetworkSelection::NetworkCandidate> &networkCandidates)
+{
+    std::string filteredReasons;
+    filteredReasons += "[";
+    for (size_t i = 0; i < networkCandidates.size(); i++) {
+        if (networkCandidates.at(i).wifiDeviceConfig.networkId == INVALID_NETWORK_ID) {
+            continue;
+        }
+        std::map<std::string, std::set<NetworkSelection::FiltedReason,
+            NetworkSelection::FiltedReasonComparator, std::allocator<NetworkSelection::FiltedReason>>> filtedReason
+                = networkCandidates.at(i).filtedReason;
+        if (filtedReason.size() == 0) {
+            continue;
+        }
+#ifdef WIFI_LOCAL_SECURITY_DETECT_ENABLE
+        ReportWifiForgeryProtectionHiSysEvent(networkCandidates.at(i));
+#endif
+        filteredReasons += "[";
+        for (const auto& pair : filtedReason) {
+            std::string filterName = pair.first;
+            filteredReasons += filterName;
+            filteredReasons += "_";
+            filteredReasons += networkCandidates.at(i).ToString(filterName);
+        }
+        filteredReasons += "]";
+        if (i < networkCandidates.size() - 1) {
+            filteredReasons += ", ";
+        }
+    }
+    filteredReasons += "]";
+    return filteredReasons;
+}
+
+#ifdef WIFI_LOCAL_SECURITY_DETECT_ENABLE
+void NetworkSelectionManager::ReportWifiForgeryProtectionHiSysEvent(
+    NetworkSelection::NetworkCandidate &networkCandidate)
+{
+    std::map<std::string, std::set<NetworkSelection::FiltedReason,
+        NetworkSelection::FiltedReasonComparator, std::allocator<NetworkSelection::FiltedReason>>> filtedReason
+            = networkCandidate.filtedReason;
+    bool isFilteredByLongUnusedOpenNetworkFilter = false;
+    for (const auto& pair : filtedReason) {
+        if (pair.second.count(NetworkSelection::FiltedReason::LONG_TIME_UNUSED_OPEN_NETWORK) != 0) {
+            isFilteredByLongUnusedOpenNetworkFilter = true;
+            break;
+        }
+    }
+    if (!isFilteredByLongUnusedOpenNetworkFilter) {
+        return;
+    }
+    if (networkCandidate.wifiDeviceConfig.lastDisconnectTime == -1) {
+        return;
+    }
+    WifiRiskInfo wifiRiskInfo;
+    wifiRiskInfo.riskType = static_cast<int>(WifiRiskInfoReason::WIFI_FORGERY_PROTECTION);
+    wifiRiskInfo.lastDisconnectTime = networkCandidate.wifiDeviceConfig.lastDisconnectTime;
+    wifiRiskInfo.connectInterval =
+        time(nullptr) - networkCandidate.wifiDeviceConfig.lastDisconnectTime;
+    wifiRiskInfo.ssid = networkCandidate.wifiDeviceConfig.ssid;
+    wifiRiskInfo.bssid = networkCandidate.wifiDeviceConfig.bssid;
+    wifiRiskInfo.frequency = networkCandidate.wifiDeviceConfig.frequency;
+    wifiRiskInfo.band = networkCandidate.interScanInfo.band;
+    wifiRiskInfo.rssi = networkCandidate.wifiDeviceConfig.rssi;
+    wifiRiskInfo.cloudRiskType = networkCandidate.wifiDeviceConfig.isSecureWifi ?
+        static_cast<int>(WifiCloudRiskType::SAFE) : static_cast<int>(WifiCloudRiskType::UNSAFE);
+    WriteWifiRiskInfoHiSysEvent(wifiRiskInfo);
+}
+#endif
+
+std::string NetworkSelectionManager::GetSelectedInfoForChr(NetworkSelection::NetworkCandidate *networkCandidate)
+{
+    std::string selectedInfo;
+    WifiDeviceConfig selectedConfig = networkCandidate->wifiDeviceConfig;
+    selectedInfo += std::to_string(selectedConfig.networkId);
+    selectedInfo += "_";
+    selectedInfo += SsidAnonymize(selectedConfig.ssid);
+    selectedInfo += "_";
+    selectedInfo += MacAnonymize(selectedConfig.bssid);
+    selectedInfo += "_";
+    selectedInfo += selectedConfig.keyMgmt;
+    selectedInfo += "_";
+    selectedInfo += std::to_string(networkCandidate->interScanInfo.frequency);
+    selectedInfo += "_";
+    selectedInfo += std::to_string(networkCandidate->interScanInfo.rssi);
+    return selectedInfo;
+}
+
+bool NetworkSelectionManager::IsOutdoorFilter(NetworkSelection::NetworkCandidate *networkCandidate)
+{
+    std::lock_guard<std::mutex> lock(rssiCntMutex_);
+    if (WifiConfigCenter::GetInstance().IsWlanPage()) {
+        WIFI_LOGI("IsOutdoorFilter wlan setting page do not filter");
+        rssiCntMap_.clear();
+        return false;
+    }
+
+    if (!WifiSensorScene::GetInstance().IsOutdoorScene()) {
+        WIFI_LOGI("IsOutdoorFilter indoor scene do not filter");
+        rssiCntMap_.clear();
+        return false;
+    }
+
+    if ((WifiChannelHelper::GetInstance().IsValid5GHz(networkCandidate->interScanInfo.frequency) &&
+            networkCandidate->interScanInfo.rssi >= RSSI_LEVEL_4_5G) ||
+        (WifiChannelHelper::GetInstance().IsValid24GHz(networkCandidate->interScanInfo.frequency) &&
+            networkCandidate->interScanInfo.rssi >= RSSI_LEVEL_4_2G)) {
+        WIFI_LOGI("IsOutdoorFilter outdoor strong signal do not filter");
+        rssiCntMap_.clear();
+        return false;
+    }
+
+    int rssi = networkCandidate->interScanInfo.rssi;
+    if (rssi >= networkCandidate->wifiDeviceConfig.networkSelectionStatus.rssi - RSSI_MINUS_MARGIN) {
+        WIFI_LOGI("IsOutdoorFilter current rssi %{public}d is close to last selected rssi %{public}d do not filter",
+            rssi, networkCandidate->wifiDeviceConfig.networkSelectionStatus.rssi);
+        rssiCntMap_.clear();
+        return false;
+    }
+
+    if (rssiCntMap_[networkCandidate->interScanInfo.bssid] < OUTDOOR_NETWORK_SELECT_THRES) {
+        rssiCntMap_[networkCandidate->interScanInfo.bssid]++;
+        int instId = 0;
+        IScanService *pScanService = WifiServiceManager::GetInstance().GetScanServiceInst(instId);
+        if (pScanService == nullptr || pScanService->ResetScanInterval() != WIFI_OPT_SUCCESS) {
+            WIFI_LOGE("IsOutdoorFilter ResetScanInterval failed");
+            rssiCntMap_.clear();
+            return false;
+        }
+        return true;
+    }
+    WIFI_LOGI("IsOutdoorFilter signal satisfy outdoor select condition");
+    rssiCntMap_.clear();
+    return false;
+}
+}

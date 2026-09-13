@@ -1,0 +1,110 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+
+module_output_path = "hilog/hilog"
+
+config("module_private_config") {
+  visibility = [ ":*" ]
+}
+
+ohos_moduletest("HiLogNDKTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "moduletest/common/hilog_base_ndk_test.cpp",
+    "moduletest/common/hilog_ndk_test.cpp",
+  ]
+
+  configs = [ ":module_private_config" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "hilog:libhilog",
+    "hilog:libhilog_base",
+    "init:libbegetutil",
+  ]
+
+  include_dirs = [
+    "//base/hiviewdfx/hilog/interfaces/native/innerkits/include",
+    "//base/hiviewdfx/hilog/frameworks/libhilog/include",
+  ]
+
+  subsystem_name = "hiviewdfx"
+  part_name = "hilog"
+}
+
+ohos_moduletest("HiLogNDKZTest") {
+  module_out_path = module_output_path
+
+  sources = [ "moduletest/common/hilog_ndk_z_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  external_deps = [
+    "hilog:hilog_ndk",
+    "init:libbegetutil",
+  ]
+
+  include_dirs = [ "//base/hiviewdfx/hilog/interfaces/native/kits/include" ]
+
+  subsystem_name = "hiviewdfx"
+  part_name = "hilog"
+}
+
+ohos_moduletest("HiLogAdapterTest") {
+  module_out_path = module_output_path
+
+  sources = [ "moduletest/common/adapter_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  include_dirs = [
+    "//base/hiviewdfx/hilog/adapter",
+    "//base/hiviewdfx/hilog/frameworks/libhilog/param/include",
+    "//base/hiviewdfx/hilog/frameworks/libhilog/utils/include/",
+  ]
+
+  subsystem_name = "hiviewdfx"
+  part_name = "hilog"
+}
+
+group("hilog_moduletest") {
+  testonly = true
+  deps = [
+    ":HiLogAdapterTest",
+    ":HiLogNDKTest",
+    ":HiLogNDKZTest",
+    "moduletest:HilogCommandTest",
+  ]
+}
+
+group("hilog_unittest") {
+  testonly = true
+  deps = [
+    "unittest/common:HilogPrintTest",
+    "unittest/common:HilogToolTest",
+    "unittest/common:HilogUtilsTest",
+  ]
+}
+
+group("fuzztest") {
+  testonly = true
+  deps = [
+    "fuzztest/hilogclient_fuzzer:HiLogClientFuzzTest",
+    "fuzztest/hilogserver_fuzzer:HiLogServerFuzzTest",
+  ]
+}

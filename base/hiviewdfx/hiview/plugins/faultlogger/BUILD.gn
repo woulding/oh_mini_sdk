@@ -1,0 +1,91 @@
+# Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+ohos_shared_library("libfaultlogger") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  configs = [ "service/idl:faultlogger_service_impl_config" ]
+  public_configs = [ "interfaces/cpp/innerkits:faultlogger_innerkits_config" ]
+  deps = [ "interfaces/cpp/innerkits:faultlogger_client_impl_with_cfi" ]
+  external_deps = [ "hilog:libhilog" ]
+
+  innerapi_tags = [
+    "chipsetsdk_indirect",
+    "platformsdk_indirect",
+  ]
+  version_script = "interfaces/cpp/innerkits/libfaultlogger.map"
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_source_set("faultlogger") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  deps = [
+    "config:Faultlogger",
+    "config:faultloggerPipeline",
+    "service:faultlogger_service_with_cfi",
+  ]
+
+  external_deps = [ "hilog:libhilog" ]
+}
+
+group("fuzztest") {
+  testonly = true
+  deps = [
+    "test/common/fuzztest/faultloggerclient_fuzzer:fuzztest",
+    "test/common/fuzztest/faultloggerservice_fuzzer:fuzztest",
+    "test/common/fuzztest/faultloggerservicestub_fuzzer:fuzztest",
+  ]
+}
+
+group("unittest") {
+  testonly = true
+  deps = [
+    "interfaces/js/test/unittest:unittest",
+    "service/bdfr_base/test:AsanUnittest",
+    "service/bdfr_base/test:FaultloggerBaseUnittest",
+    "service/bdfr_base/test:FreezeJsonGeneratorUnittest",
+    "test:FaultloggerClientUnittest",
+    "test:FaultloggerUnittest",
+  ]
+}
+
+group("moduletest") {
+  testonly = true
+  deps = [ "interfaces/cpp/innerkits/test:FaultloggerNativeInterfaceTest" ]
+}
+
+group("fwk_group_fault_log_extension") {
+  deps = [
+    "framework/native/extension:faultlogextension",
+    "interfaces/ets/ani/faultlogger:faultlog_extension_ability_ani_etc",
+    "interfaces/js/napi/fault_log_extension:faultlogextensionability_napi",
+    "interfaces/js/napi/fault_log_extension_context:faultlogextensioncontext_napi",
+  ]
+}

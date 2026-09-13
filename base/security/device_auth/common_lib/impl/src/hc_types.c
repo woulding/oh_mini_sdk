@@ -1,0 +1,78 @@
+/*
+ * Copyright (C) 2021 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "hc_types.h"
+#include <stdlib.h>
+#include "hc_log.h"
+#include "securec.h"
+
+#if defined(OHOS_MEM)
+#include "ohos_mem_pool.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define MAX_STR_LEN (512 * 1024)
+#define MAX_MALLOC_SIZE (1024 * 1024 * 100)
+
+void *HcMalloc(uint32_t size, char val)
+{
+    if (size == 0) {
+        LOGE("Malloc size is invalid.");
+        return NULL;
+    }
+    if (size > MAX_MALLOC_SIZE) {
+        LOGE("Malloc size is too large.");
+        return NULL;
+    }
+#if defined(OHOS_MEM)
+    void *addr = OhosMalloc(MEM_TYPE_HICHAIN, size);
+#else
+    void *addr = malloc(size);
+#endif
+    if (addr == NULL) {
+        LOGE("[OS]: malloc fail. [Size]: %" LOG_PUB "u", size);
+        return NULL;
+    }
+    (void)memset_s(addr, size, val, size);
+    return addr;
+}
+
+void HcFree(void *addr)
+{
+    if (addr != NULL) {
+#if defined(OHOS_MEM)
+    OhosFree(addr);
+#else
+    free(addr);
+#endif
+    }
+}
+
+uint32_t HcStrlen(const char *str)
+{
+    if (str == NULL) {
+        return 0;
+    }
+    const char *p = str;
+    while (*p++ != '\0' && (p - str - 1) < MAX_STR_LEN) {}
+    return p - str - 1;
+}
+
+#ifdef __cplusplus
+}
+#endif

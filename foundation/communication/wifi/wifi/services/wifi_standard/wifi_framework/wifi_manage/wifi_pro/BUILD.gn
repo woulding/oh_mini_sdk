@@ -1,0 +1,164 @@
+# Copyright (C) 2023-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/communication/wifi/wifi/wifi.gni")
+
+ohos_static_library("wifi_pro") {
+  branch_protector_ret = "pac_ret"
+
+  sanitize = {
+    cfi = true  # Enable/disable control flow integrity detection
+    boundary_sanitize = false  # Enable boundary san detection
+    cfi_cross_dso = true  # Cross-SO CFI Checks
+    integer_overflow = false  # Enable integer overflow detection
+    ubsan = false  # Enable some Ubsan options
+    debug = false
+  }
+  include_dirs = [
+    "$WIFI_ROOT_DIR/frameworks/native/interfaces",
+    "$WIFI_ROOT_DIR/base/utils",
+    "$WIFI_ROOT_DIR/interfaces/inner_api",
+    "$WIFI_ROOT_DIR/services/wifi_standard/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_self_cure",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/common",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/wifi_hal_interface",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/app_network_speed_limit",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_controller",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/hal_device_manage",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_native/client/idl_client/idl_interface",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sta_sa",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_scan_sa",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_ap_sa",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p/hid2d",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_p2p_sa",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/wifi_country_code",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/network_select",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/network_black_list",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/network_status_history",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_sub_manage",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/include",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/log",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/net_helper",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/utils",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/config",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_toolkit/wifi_asset",
+    "$WIFI_ROOT_DIR/utils/inc",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro/perf_5g",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro/perf_5g/entity",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro/perf_5g/infrastructure",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro/perf_5g/repostitory",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro/perf_5g/service",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_pro/wifi_intelligence",
+    "$WIFI_ROOT_DIR/services/wifi_standard/wifi_framework/wifi_manage/wifi_common/rdb",
+  ]
+
+  sources = [
+    "perf_5g/entity/ap_connection_info.cpp",
+    "perf_5g/entity/relation_ap.cpp",
+    "perf_5g/entity/relation_info.cpp",
+    "perf_5g/infrastructure/dual_band_rdb_helper.cpp",
+    "perf_5g/infrastructure/dual_band_utils.cpp",
+    "perf_5g/perf_5g_handover_service.cpp",
+    "perf_5g/repostitory/dual_band_repostitory.cpp",
+    "perf_5g/service/dual_band_learning_alg_service.cpp",
+    "perf_5g/service/dual_band_selector.cpp",
+    "perf_5g/service/score_service.cpp",
+    "perf_5g/service/wifi_scan_controller.cpp",
+    "wifi_pro_chr.cpp",
+    "wifi_pro_interface.cpp",
+    "wifi_pro_service.cpp",
+    "wifi_pro_state_machine.cpp",
+    "wifi_pro_utils.cpp",
+  ]
+
+  deps = [
+    "$WIFI_ROOT_DIR/base:wifi_base",
+    "$WIFI_ROOT_DIR/utils:wifi_utils",
+  ]
+
+  external_deps = [
+    "ability_runtime:app_manager",
+    "c_utils:utils",
+    "cJSON:cjson",
+    "common_event_service:cesfwk_core",
+    "dhcp:dhcp_sdk",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+    "netmanager_base:net_conn_manager_if",
+    "netmanager_base:net_stats_manager_if",
+    "netmanager_base:netsys_controller",
+    "samgr:samgr_proxy",
+    "window_manager:libdm_lite",
+  ]
+
+  defines = []
+
+  if (wifi_feature_wifi_pro_ctrl) {
+    defines += [ "FEATURE_WIFI_PRO_SUPPORT" ]
+  }
+
+  if (wifi_feature_network_selection) {
+    defines += [ "FEATURE_ITNETWORK_PREFERRED_SUPPORT" ]
+  }
+
+  if (wifi_feature_enhance_switch_support) {
+    sources += [
+      "wifi_pro_enhance.cpp",
+    ]
+    defines += [ "FEATURE_WIFI_ENHANCE_SWITCH_SUPPORT" ]
+  }
+
+  defines += [ "FEATURE_SELF_CURE_SUPPORT" ]
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.telephony_core_service) &&
+      defined(global_parts_info.telephony_state_registry) &&
+      defined(global_parts_info.telephony_cellular_data) &&
+      wifi_feature_autoopen_specified_location) {
+      sources += [
+        "wifi_intelligence/ap_info_helper.cpp",
+        "wifi_intelligence/wifi_intelligence_state_machine.cpp",
+      ]
+      external_deps += [ "core_service:tel_core_service_api" ]
+      external_deps += [ "cellular_data:tel_cellular_data_api" ]
+      external_deps += [ "state_registry:tel_state_registry_api" ]
+      defines += [ "FEATURE_AUTOOPEN_SPEC_LOC_SUPPORT" ]
+  }
+
+  cflags = memory_optimization_cflags
+  cflags_cc = memory_optimization_cflags_cc
+  cflags_cc += [
+    "-std=c++17",
+    "-Wall",
+  ]
+
+  ldflags = [
+    "-fPIC",
+    "-Wl,-E",
+  ]
+
+  part_name = "wifi"
+  subsystem_name = "communication"
+}

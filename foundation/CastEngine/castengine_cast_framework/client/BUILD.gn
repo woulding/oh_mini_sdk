@@ -1,0 +1,66 @@
+# Copyright (C) 2023-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+import("//foundation/CastEngine/castengine_cast_framework/cast_engine.gni")
+
+config("cast_client_config") {
+  include_dirs = [
+    "include",
+    "${cast_engine_interfaces}/inner_api/include",
+  ]
+}
+
+ohos_static_library("cast_client_inner") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  sources = [
+    "src/cast_engine_service_load_callback.cpp",
+    "src/cast_service_listener_impl_stub.cpp",
+    "src/cast_session.cpp",
+    "src/cast_session_impl_proxy.cpp",
+    "src/cast_session_listener_impl_stub.cpp",
+    "src/cast_session_manager.cpp",
+    "src/cast_session_manager_adaptor.cpp",
+    "src/cast_session_manager_service_proxy.cpp",
+    "src/mirror_player.cpp",
+    "src/mirror_player_impl_proxy.cpp",
+    "src/stream_player.cpp",
+    "src/stream_player_impl_proxy.cpp",
+    "src/stream_player_listener_impl_stub.cpp",
+  ]
+
+  configs = [
+    ":cast_client_config",
+    "${cast_engine_root}:cast_engine_default_config",
+  ]
+
+  public_configs = [ ":cast_client_config" ]
+
+  deps = [ "${cast_engine_common}:cast_engine_common_sources" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "graphic_surface:surface",
+    "hilog:libhilog",
+    "image_framework:image_native",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "samgr:samgr_proxy",
+  ]
+
+  subsystem_name = "castplus"
+  part_name = "cast_engine"
+}

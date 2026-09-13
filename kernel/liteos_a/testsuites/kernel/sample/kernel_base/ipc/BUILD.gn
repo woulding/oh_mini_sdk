@@ -1,0 +1,111 @@
+# Copyright (c) 2013-2019 Huawei Technologies Co., Ltd. All rights reserved.
+# Copyright (c) 2020-2021 Huawei Device Co., Ltd. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+#    conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list
+#    of conditions and the following disclaimer in the documentation and/or other materials
+#    provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used
+#    to endorse or promote products derived from this software without specific prior written
+#    permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+# THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import("//kernel/liteos_a/liteos.gni")
+
+kernel_module("test_ipc") {
+  sources = [ "mux/It_los_mux.c" ]
+
+  sources += [
+    "mux/full/It_los_mutex_006.c",
+    "mux/full/It_los_mutex_007.c",
+    "mux/full/It_los_mutex_008.c",
+    "mux/full/It_los_mutex_009.c",
+    "mux/full/It_los_mutex_010.c",
+    "mux/full/It_los_mutex_011.c",
+    "mux/full/It_los_mutex_012.c",
+    "mux/full/It_los_mutex_013.c",
+    "mux/full/It_los_mutex_015.c",
+    "mux/full/It_los_mutex_016.c",
+    "mux/full/It_los_mutex_017.c",
+    "mux/full/It_los_mutex_018.c",
+    "mux/full/It_los_mutex_020.c",
+    "mux/full/It_los_mutex_021.c",
+    "mux/full/It_los_mutex_025.c",
+    "mux/full/It_los_mutex_026.c",
+    "mux/full/It_los_mutex_027.c",
+    "mux/full/It_los_mutex_028.c",
+    "mux/full/It_los_mutex_029.c",
+    "mux/full/It_los_mutex_031.c",
+    "mux/full/It_los_mutex_035.c",
+    "mux/full/It_los_mutex_036.c",
+    "mux/full/It_los_mutex_037.c",
+    "mux/full/It_los_mutex_038.c",
+    "mux/full/It_los_mutex_039.c",
+    "mux/full/It_los_mutex_040.c",
+    "mux/full/It_los_mutex_041.c",
+    "mux/full/It_los_mutex_042.c",
+    "mux/full/It_los_mutex_043.c",
+    "mux/smoke/It_los_mutex_001.c",
+    "mux/smoke/It_los_mutex_002.c",
+    "mux/smoke/It_los_mutex_003.c",
+    "mux/smoke/It_los_mutex_004.c",
+    "mux/smp/It_smp_los_mux_001.c",
+    "mux/smp/It_smp_los_mux_002.c",
+    "mux/smp/It_smp_los_mux_003.c",
+    "mux/smp/It_smp_los_mux_004.c",
+    "mux/smp/It_smp_los_mux_005.c",
+    "mux/smp/It_smp_los_mux_006.c",
+    "mux/smp/It_smp_los_mux_007.c",
+    "mux/smp/It_smp_los_mux_2001.c",
+    "mux/smp/It_smp_los_mux_2002.c",
+    "mux/smp/It_smp_los_mux_2003.c",
+    "mux/smp/It_smp_los_mux_2004.c",
+    "mux/smp/It_smp_los_mux_2005.c",
+    "mux/smp/It_smp_los_mux_2006.c",
+    "mux/smp/It_smp_los_mux_2007.c",
+    "mux/smp/It_smp_los_mux_2008.c",
+    "mux/smp/It_smp_los_mux_2009.c",
+    "mux/smp/It_smp_los_mux_2010.c",
+    "mux/smp/It_smp_los_mux_2011.c",
+    "mux/smp/It_smp_los_mux_2012.c",
+    "mux/smp/It_smp_los_mux_2013.c",
+    "mux/smp/It_smp_los_mux_2014.c",
+    "mux/smp/It_smp_los_mux_2015.c",
+    "mux/smp/It_smp_los_mux_2016.c",
+    "mux/smp/It_smp_los_mux_2017.c",
+    "mux/smp/It_smp_los_mux_2018.c",
+    "mux/smp/It_smp_los_mux_2021.c",
+    "mux/smp/It_smp_los_mux_2022.c",
+    "mux/smp/It_smp_los_mux_2024.c",
+    "mux/smp/It_smp_los_mux_2025.c",
+    "mux/smp/It_smp_los_mux_2026.c",
+    "mux/smp/It_smp_los_mux_2027.c",
+    "mux/smp/It_smp_los_mux_2028.c",
+    "mux/smp/It_smp_los_mux_2029.c",
+  ]
+  include_dirs = [
+    "sem",
+    "event",
+    "mux",
+    "queue",
+  ]
+
+  public_configs =
+      [ "$LITEOSTOPDIR/testsuites/kernel:liteos_kernel_test_public" ]
+}

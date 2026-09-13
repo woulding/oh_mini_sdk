@@ -1,0 +1,117 @@
+# Copyright (c) 2020-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../config.gni")
+import("//base/startup/bootstrap_lite/config.gni")
+
+defines = []
+
+if (defined(config_ohos_systemabilitymgr_samgr_lite_shared_task_size) &&
+    config_ohos_systemabilitymgr_samgr_lite_shared_task_size > 0) {
+  defines += [ "SHARED_TASK_STACK_SIZE=$config_ohos_systemabilitymgr_samgr_lite_shared_task_size" ]
+}
+
+if (!enable_ohos_systemabilitymgr_samgr_lite_specified_task) {
+  defines += [ "DISABLE_SAMGR_LITE_SPECIFIED_TASK" ]
+}
+
+if (!enable_ohos_systemabilitymgr_samgr_lite_no_task) {
+  defines += [ "DISABLE_SAMGR_LITE_NO_TASK" ]
+}
+
+config("external_settings_shared") {
+  defines += [ "LAYER_INIT_SHARED_LIB" ]
+}
+
+config("samgr_public") {
+  include_dirs = [
+    "adapter",
+    "registry",
+    "//commonlibrary/utils_lite/include",
+    "//foundation/systemabilitymgr/samgr_lite/interfaces/kits/registry",
+    "//foundation/systemabilitymgr/samgr_lite/interfaces/kits/samgr",
+  ]
+}
+
+if (ohos_kernel_type == "liteos_m" || ohos_kernel_type == "uniproton") {
+  static_library("samgr") {
+    sources = [
+      "registry/service_registry.c",
+      "source/samgr_lite.c",
+    ]
+
+    if (!enable_ohos_systemabilitymgr_samgr_lite_system_capability) {
+      defines += [ "DISABLE_SAMGR_LITE_SYSTEM_CAPABILITY" ]
+    }
+
+    public_configs = [ ":samgr_public" ]
+
+    include_dirs =
+        [ "//base/hiviewdfx/hilog_lite/interfaces/native/kits/hilog_lite" ]
+
+    if (!bootstrap_lite_enable_bootstrap_service) {
+      defines += [ "BOOTSTRAP_NO_SERVICE" ]
+      include_dirs +=
+          [ "//base/startup/bootstrap_lite/services/source" ]
+    }
+
+    public_deps = [
+      "//foundation/systemabilitymgr/samgr_lite/samgr/adapter:samgr_adapter",
+      "//foundation/systemabilitymgr/samgr_lite/samgr/source:samgr_source",
+    ]
+
+    if (enable_ohos_systemabilitymgr_samgr_lite_rpc_mini) {
+      defines += [ "MINI_SAMGR_LITE_RPC" ]
+      include_dirs +=
+          [ "//foundation/systemabilitymgr/samgr_lite/samgr_endpoint/source" ]
+      public_deps += [
+        "//foundation/communication/ipc/interfaces/innerkits/c/dbinder:dbinder",
+      ]
+    }
+  }
+}
+
+if (ohos_kernel_type == "liteos_a" || ohos_kernel_type == "linux") {
+  shared_library("samgr") {
+    sources = [ "source/samgr_lite.c" ]
+
+    if (!enable_ohos_systemabilitymgr_samgr_lite_system_capability) {
+      defines += [ "DISABLE_SAMGR_LITE_SYSTEM_CAPABILITY" ]
+    }
+
+    cflags = [
+      "-fPIC",
+      "-Wall",
+    ]
+
+    public_configs = [ ":samgr_public" ]
+
+    include_dirs = [
+      "//third_party/bounds_checking_function/include",
+      "//third_party/cJSON",
+      "//foundation/systemabilitymgr/samgr_lite/samgr_endpoint/source",
+    ]
+
+    public_deps = [
+      "//build/lite/config/component/cJSON:cjson_shared",
+      "//foundation/communication/ipc/interfaces/innerkits/c/ipc:ipc_single",
+      "//foundation/systemabilitymgr/samgr_lite/samgr/source:samgr_source",
+      "//foundation/systemabilitymgr/samgr_lite/samgr_client:client",
+    ]
+    public_configs += [ ":external_settings_shared" ]
+    if (ohos_kernel_type == "linux") {
+      deps = [ "//third_party/mksh" ]
+      external_deps = [ "toybox:toybox" ]
+    }
+  }
+}

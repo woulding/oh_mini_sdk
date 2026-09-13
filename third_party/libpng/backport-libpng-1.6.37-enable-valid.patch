@@ -1,0 +1,158 @@
+diff --git a/arm/arm_init.c b/arm/arm_init.c
+index ab22525b3..3a89998ab 100644
+--- a/arm/arm_init.c
++++ b/arm/arm_init.c
+@@ -30,26 +30,21 @@
+  * has partial support is contrib/arm-neon/linux.c - a generic Linux
+  * implementation which reads /proc/cpufino.
+  */
+-#include <signal.h> /* for sig_atomic_t */
+-
+ #ifndef PNG_ARM_NEON_FILE
+-#  if defined(__aarch64__) || defined(_M_ARM64)
+-     /* ARM Neon is expected to be unconditionally available on ARM64. */
+-#    error PNG_ARM_NEON_CHECK_SUPPORTED must not be defined on ARM64
+-#  elif defined(__ARM_NEON__) || defined(__ARM_NEON)
+-     /* ARM Neon is expected to be available on the target CPU architecture. */
+-#    error PNG_ARM_NEON_CHECK_SUPPORTED must not be defined on this CPU arch
+-#  elif defined(__linux__)
+-#    define PNG_ARM_NEON_FILE "contrib/arm-neon/linux.c"
+-#  else
+-#    error No support for run-time ARM Neon checking; use compile-time options
++#ifdef __linux__
++#define PNG_ARM_NEON_FILE "contrib/arm-neon/linux.c"
+ #  endif
+ #endif
+
+-static int png_have_neon(png_structp png_ptr);
+ #ifdef PNG_ARM_NEON_FILE
+-#  include PNG_ARM_NEON_FILE
+-#endif
++
++#include <signal.h> /* for sig_atomic_t */
++static int png_have_neon(png_structp png_ptr);
++#include PNG_ARM_NEON_FILE
++
++#else  /* PNG_ARM_NEON_FILE */
++#  error "PNG_ARM_NEON_FILE undefined: no support for run-time ARM NEON checks"
++#endif /* PNG_ARM_NEON_FILE */
+ #endif /* PNG_ARM_NEON_CHECK_SUPPORTED */
+
+ #ifndef PNG_ALIGNED_MEMORY_SUPPORTED
+diff --git a/arm/palette_neon_intrinsics.c b/arm/palette_neon_intrinsics.c
+index 92c7d6f9f..49909d475 100644
+--- a/arm/palette_neon_intrinsics.c
++++ b/arm/palette_neon_intrinsics.c
+@@ -64,12 +64,10 @@ png_do_expand_palette_rgba8_neon(png_structrp png_ptr, png_row_infop row_info,
+    png_uint_32 row_width = row_info->width;
+    const png_uint_32 *riffled_palette =
+       png_aligncastconst(png_const_uint_32p, png_ptr->riffled_palette);
+-   const png_uint_32 pixels_per_chunk = 4;
+-   png_uint_32 i;
+-
++   const png_int_32 pixels_per_chunk = 4;
++   int i;
+    png_debug(1, "in png_do_expand_palette_rgba8_neon");
+
+-   PNG_UNUSED(row)
+    if (row_width < pixels_per_chunk)
+       return 0;
+
+@@ -109,11 +107,10 @@ png_do_expand_palette_rgb8_neon(png_structrp png_ptr, png_row_infop row_info,
+    png_uint_32 row_width = row_info->width;
+    png_const_bytep palette = (png_const_bytep)png_ptr->palette;
+    const png_uint_32 pixels_per_chunk = 8;
+-   png_uint_32 i;
++   int i;
+
+    png_debug(1, "in png_do_expand_palette_rgb8_neon");
+
+-   PNG_UNUSED(row)
+    if (row_width <= pixels_per_chunk)
+       return 0;
+
+diff --git a/pngread.c b/pngread.c
+index 5ab922403..8fa7d9f16 100644
+--- a/pngread.c
++++ b/pngread.c
+@@ -3403,6 +3403,7 @@ png_image_read_background(png_voidp argument)
+
+             for (pass = 0; pass < passes; ++pass)
+             {
++               png_bytep row = png_voidcast(png_bytep, display->first_row);
+                unsigned int startx, stepx, stepy;
+                png_uint_32 y;
+
+@@ -3507,6 +3508,8 @@ png_image_read_background(png_voidp argument)
+
+                         inrow += 2; /* gray and alpha channel */
+                      }
++
++                     row += display->row_step;
+                   }
+                }
+             }
+diff --git a/pngrutil.c b/pngrutil.c
+index ca060dd15..9ac8ec11f 100644
+--- a/pngrutil.c
++++ b/pngrutil.c
+@@ -2071,9 +2071,8 @@ png_handle_hIST(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
+     */
+    num = (unsigned int)length / 2 ;
+
+-   if (length != num * 2 ||
+-       num != (unsigned int)png_ptr->num_palette ||
+-       num > (unsigned int)PNG_MAX_PALETTE_LENGTH)
++   if (num != (unsigned int) png_ptr->num_palette ||
++       num > (unsigned int) PNG_MAX_PALETTE_LENGTH)
+    {
+       png_crc_finish(png_ptr, length);
+       png_chunk_benign_error(png_ptr, "invalid");
+@@ -4636,11 +4635,11 @@ defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
+        */
+       {
+          png_bytep temp = png_ptr->big_row_buf + 32;
+-         size_t extra = (size_t)temp & 0x0f;
++         int extra = (int)((temp - (png_bytep)0) & 0x0f);
+          png_ptr->row_buf = temp - extra - 1/*filter byte*/;
+
+          temp = png_ptr->big_prev_row + 32;
+-         extra = (size_t)temp & 0x0f;
++         extra = (int)((temp - (png_bytep)0) & 0x0f);
+          png_ptr->prev_row = temp - extra - 1/*filter byte*/;
+       }
+ #else
+diff --git a/pngset.c b/pngset.c
+index 8c372cf41..6444c0615 100644
+--- a/pngset.c
++++ b/pngset.c
+@@ -1172,8 +1172,6 @@ png_set_tRNS(png_structrp png_ptr, png_inforp info_ptr,
+               png_malloc(png_ptr, PNG_MAX_PALETTE_LENGTH));
+           memcpy(info_ptr->trans_alpha, trans_alpha, (size_t)num_trans);
+
+-          info_ptr->free_me |= PNG_FREE_TRNS;
+-          info_ptr->valid |= PNG_INFO_tRNS;
+        }
+        png_ptr->trans_alpha = info_ptr->trans_alpha;
+    }
+diff --git a/pngwrite.c b/pngwrite.c
+index 06c45d16a..b9a0ca188 100644
+--- a/pngwrite.c
++++ b/pngwrite.c
+@@ -525,16 +525,6 @@ png_convert_from_time_t(png_timep ptime, time_t ttime)
+    png_debug(1, "in png_convert_from_time_t");
+
+    tbuf = gmtime(&ttime);
+-   if (tbuf == NULL)
+-   {
+-      /* TODO: add a safe function which takes a png_ptr argument and raises
+-       * a png_error if the ttime argument is invalid and the call to gmtime
+-       * fails as a consequence.
+-       */
+-      memset(ptime, 0, sizeof(*ptime));
+-      return;
+-   }
+-
+    png_convert_from_struct_tm(ptime, tbuf);
+ }
+ #endif

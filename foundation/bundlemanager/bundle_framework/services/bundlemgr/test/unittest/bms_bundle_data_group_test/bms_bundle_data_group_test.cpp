@@ -1,0 +1,2967 @@
+/*
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#define private public
+#define protected public
+
+#include <fstream>
+#include <gtest/gtest.h>
+
+#include "app_provision_info_manager.h"
+#include "base_bundle_installer.h"
+#include "bundle_data_mgr.h"
+#include "bundle_mgr_service.h"
+#include "data_group_info.h"
+#include "installd/installd_service.h"
+#include "installd_client.h"
+#include "migrate_data_user_auth_callback.h"
+#include "parameters.h"
+#include "scope_guard.h"
+
+using namespace testing::ext;
+using namespace OHOS::AppExecFwk;
+using OHOS::Parcel;
+
+namespace OHOS {
+namespace {
+const std::string BUNDLE_NAME = "com.example.demo.testDataGroup";
+const std::string BUNDLE_NAME_TEST = "com.example.demo.testDataGroup.test";
+const std::string DATA_GROUP_ID_TEST_ONE = "data-group-id-1";
+const std::string DATA_GROUP_ID_TEST_TWO = "data-group-id-2";
+const std::string DATA_GROUP_ID_TEST_THREE = "data-group-id-3";
+const std::string DATA_GROUP_UUID_ONE = "2105e98a-12ae-4a4f-8ed1-fc32e5f45416";
+const std::string DATA_GROUP_UUID_TWO = "4f4b48a2-7c27-466b-8601-8e5e9965036d";
+const std::string DATA_GROUP_DIR_TEST = "data/app/el5/100/group/2105e98a-12ae-4a4f-8ed1-fc32e5f45416";
+const std::string TEST_HAP_PATH = "/data/test/test.hap";
+const std::string TEST_USER_KEY = "com.example.demo.testDataGroup_100";
+constexpr int32_t BMS_UID = 1000;
+constexpr int32_t USERID = 100;
+constexpr int32_t USERID_TWO = 101;
+constexpr int32_t TEST_UID = 20019999;
+constexpr int32_t TEST_UID_INVALID = 20019998;
+constexpr int32_t TEST_GROUP_INDEX_ONE = 1;
+constexpr int32_t TEST_GROUP_INDEX_TWO = 2;
+constexpr int32_t TEST_GROUP_INDEX_THREE = 3;
+constexpr int32_t TEST_GROUP_INDEX_FORE = 4;
+const int32_t WAIT_TIME = 2;
+constexpr int32_t DATA_GROUP_UID_OFFSET = 100000;
+}  // namespace
+
+class BmsBundleDataGroupTest : public testing::Test {
+public:
+    BmsBundleDataGroupTest();
+    ~BmsBundleDataGroupTest();
+    static void SetUpTestCase();
+    static void TearDownTestCase();
+    void SetUp();
+    void TearDown();
+    const std::shared_ptr<BundleDataMgr> GetBundleDataMgr() const;
+
+private:
+    static std::shared_ptr<BundleMgrService> bundleMgrService_;
+};
+
+std::shared_ptr<BundleMgrService> BmsBundleDataGroupTest::bundleMgrService_ =
+    DelayedSingleton<BundleMgrService>::GetInstance();
+
+BmsBundleDataGroupTest::BmsBundleDataGroupTest()
+{}
+
+BmsBundleDataGroupTest::~BmsBundleDataGroupTest()
+{}
+
+void BmsBundleDataGroupTest::SetUpTestCase()
+{
+    bundleMgrService_->InitBundleInstaller();
+    bundleMgrService_->InitBundleDataMgr();
+    bundleMgrService_->GetDataMgr()->AddUserId(USERID);
+    bundleMgrService_->GetDataMgr()->LoadDataFromPersistentStorage();
+}
+
+void BmsBundleDataGroupTest::TearDownTestCase()
+{
+    bundleMgrService_->OnStop();
+}
+
+void BmsBundleDataGroupTest::SetUp()
+{
+}
+
+void BmsBundleDataGroupTest::TearDown()
+{}
+
+const std::shared_ptr<BundleDataMgr> BmsBundleDataGroupTest::GetBundleDataMgr() const
+{
+    return bundleMgrService_->GetDataMgr();
+}
+
+/**
+ * @tc.number: RemoveDataGroupDirs_0010
+ * @tc.name: test RemoveDataGroupDirs
+ * @tc.desc: 1.RemoveDataGroupDirs
+ */
+HWTEST_F(BmsBundleDataGroupTest, RemoveDataGroupDirs_0010, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    auto result = installer.RemoveDataGroupDirs(BUNDLE_NAME, USERID);
+    EXPECT_EQ(result, ERR_APPEXECFWK_NULL_PTR);
+}
+
+/**
+ * @tc.number: RemoveDataGroupDirs_0020
+ * @tc.name: test RemoveDataGroupDirs
+ * @tc.desc: 1.RemoveDataGroupDirs
+ */
+HWTEST_F(BmsBundleDataGroupTest, RemoveDataGroupDirs_0020, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    auto result = installer.RemoveDataGroupDirs(BUNDLE_NAME, USERID);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.number: RemoveDataGroupDirs_0030
+ * @tc.name: test RemoveDataGroupDirs
+ * @tc.desc: 1.RemoveDataGroupDirs
+ */
+HWTEST_F(BmsBundleDataGroupTest, RemoveDataGroupDirs_0030, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+    InnerBundleInfo info;
+    DataGroupInfo dataGroupInfo;
+    dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+    dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+    dataGroupInfo.userId = USERID;
+    info.AddDataGroupInfo(DATA_GROUP_ID_TEST_ONE, dataGroupInfo);
+
+    auto &bundleInfos = installer.dataMgr_->bundleInfos_;
+    auto iter = bundleInfos.find(BUNDLE_NAME);
+    if (iter == bundleInfos.end()) {
+        bundleInfos.emplace(BUNDLE_NAME, info);
+    }
+    setuid(Constants::FOUNDATION_UID);
+    ScopeGuard uidGuard([&] { setuid(Constants::ROOT_UID); });
+    ErrCode ret = installer.RemoveDataGroupDirs(BUNDLE_NAME, USERID);
+    EXPECT_EQ(ret, ERR_OK);
+    if (iter == bundleInfos.end()) {
+        bundleInfos.erase(BUNDLE_NAME);
+    }
+}
+
+/**
+ * @tc.number: RemoveDataGroupDirs_0040
+ * @tc.name: test RemoveDataGroupDirs
+ * @tc.desc: 1.RemoveDataGroupDirs
+ */
+HWTEST_F(BmsBundleDataGroupTest, RemoveDataGroupDirs_0040, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+    InnerBundleInfo info;
+    DataGroupInfo dataGroupInfo;
+    dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+    dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+    dataGroupInfo.userId = USERID;
+    info.AddDataGroupInfo(DATA_GROUP_ID_TEST_ONE, dataGroupInfo);
+
+    auto &bundleInfos = installer.dataMgr_->bundleInfos_;
+    auto iter = bundleInfos.find(BUNDLE_NAME);
+    if (iter == bundleInfos.end()) {
+        bundleInfos.emplace(BUNDLE_NAME, info);
+    }
+    setuid(Constants::FOUNDATION_UID);
+    ScopeGuard uidGuard([&] { setuid(Constants::ROOT_UID); });
+    CreateDirParam createDirParam;
+    createDirParam.bundleDirScene = BundleDirScene::SCREEN_LOCK_FILE_DATA_GROUP_DIR;
+    auto createDirRes = InstalldClient::GetInstance()->Mkdir(
+        DATA_GROUP_DIR_TEST, S_IRWXU, BMS_UID, BMS_UID, createDirParam);
+    EXPECT_EQ(createDirRes, ERR_APPEXECFWK_INSTALLD_PARAM_ERROR);
+
+    ErrCode ret = installer.RemoveDataGroupDirs(BUNDLE_NAME, USERID);
+    EXPECT_EQ(ret, ERR_OK);
+    if (iter == bundleInfos.end()) {
+        bundleInfos.erase(BUNDLE_NAME);
+    }
+}
+
+/**
+ * @tc.number: QueryDataGroupInfos_0010
+ * @tc.name: test QueryDataGroupInfos
+ * @tc.desc: 1.QueryDataGroupInfos
+ */
+HWTEST_F(BmsBundleDataGroupTest, QueryDataGroupInfos_0010, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    std::vector<DataGroupInfo> infos;
+    bool res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, infos);
+    EXPECT_FALSE(res);
+    EXPECT_TRUE(infos.empty());
+}
+
+/**
+ * @tc.number: QueryDataGroupInfos_0020
+ * @tc.name: test QueryDataGroupInfos
+ * @tc.desc: 1.QueryDataGroupInfos
+ */
+HWTEST_F(BmsBundleDataGroupTest, QueryDataGroupInfos_0020, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    InnerBundleInfo info;
+    dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+    ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+    std::vector<DataGroupInfo> infos;
+    bool res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, infos);
+    EXPECT_TRUE(res);
+    EXPECT_TRUE(infos.empty());
+}
+
+/**
+ * @tc.number: QueryDataGroupInfos_0030
+ * @tc.name: test QueryDataGroupInfos
+ * @tc.desc: 1.QueryDataGroupInfos
+ */
+HWTEST_F(BmsBundleDataGroupTest, QueryDataGroupInfos_0030, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    InnerBundleInfo info;
+    DataGroupInfo dataGroupInfo;
+    dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+    dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+    dataGroupInfo.userId = USERID;
+    info.dataGroupInfos_.emplace(DATA_GROUP_ID_TEST_ONE, std::vector<DataGroupInfo> { dataGroupInfo });
+    dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+    ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+    std::vector<DataGroupInfo> infos;
+    bool res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, infos);
+    EXPECT_TRUE(res);
+    EXPECT_FALSE(infos.empty());
+}
+
+/**
+ * @tc.number: GetGroupDir_0010
+ * @tc.name: test GetGroupDir
+ * @tc.desc: 1.GetGroupDir
+ */
+HWTEST_F(BmsBundleDataGroupTest, GetGroupDir_0010, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+
+    InnerBundleInfo info;
+    DataGroupInfo dataGroupInfo;
+    dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+    dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+    dataGroupInfo.userId = USERID;
+    info.dataGroupInfos_.emplace(DATA_GROUP_ID_TEST_ONE, std::vector<DataGroupInfo> { dataGroupInfo });
+    dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+    ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+    std::string dir;
+    bool res = dataMgr->GetGroupDir(DATA_GROUP_ID_TEST_ONE, dir, USERID);
+    EXPECT_TRUE(res);
+    EXPECT_FALSE(dir.empty());
+}
+
+/**
+ * @tc.number: GetGroupDir_0020
+ * @tc.name: test GetGroupDir
+ * @tc.desc: 1.GetGroupDir
+ */
+HWTEST_F(BmsBundleDataGroupTest, GetGroupDir_0020, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+
+    InnerBundleInfo info;
+    InnerBundleUserInfo innerBundleUserInfo;
+    innerBundleUserInfo.uid = TEST_UID;
+    info.innerBundleUserInfos_.emplace(TEST_USER_KEY, innerBundleUserInfo);
+
+    DataGroupInfo dataGroupInfo;
+    dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+    dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+    dataGroupInfo.userId = USERID;
+    info.dataGroupInfos_.emplace(DATA_GROUP_ID_TEST_ONE, std::vector<DataGroupInfo> { dataGroupInfo });
+    dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+    ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+    setuid(TEST_UID);
+    ScopeGuard uidGuard([&] { setuid(Constants::ROOT_UID); });
+    std::string dir;
+    bool res = dataMgr->GetGroupDir(DATA_GROUP_ID_TEST_ONE, dir, USERID);
+    EXPECT_TRUE(res);
+    EXPECT_FALSE(dir.empty());
+}
+
+/**
+ * @tc.number: GetGroupDir_0030
+ * @tc.name: test GetGroupDir
+ * @tc.desc: 1.GetGroupDir
+ */
+HWTEST_F(BmsBundleDataGroupTest, GetGroupDir_0030, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+
+    InnerBundleInfo info;
+    InnerBundleUserInfo innerBundleUserInfo;
+    innerBundleUserInfo.uid = TEST_UID;
+    info.innerBundleUserInfos_.emplace(TEST_USER_KEY, innerBundleUserInfo);
+    dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+    ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+    setuid(TEST_UID);
+    ScopeGuard uidGuard([&] { setuid(Constants::ROOT_UID); });
+    std::string dir;
+    bool res = dataMgr->GetGroupDir(DATA_GROUP_ID_TEST_ONE, dir, USERID);
+    EXPECT_FALSE(res);
+    EXPECT_TRUE(dir.empty());
+}
+
+/**
+ * @tc.number: GetGroupDir_0040
+ * @tc.name: test GetGroupDir
+ * @tc.desc: 1.GetGroupDir
+ */
+HWTEST_F(BmsBundleDataGroupTest, GetGroupDir_0040, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+
+    setuid(TEST_UID);
+    ScopeGuard uidGuard([&] { setuid(Constants::ROOT_UID); });
+    std::string dir;
+    bool res = dataMgr->GetGroupDir(DATA_GROUP_ID_TEST_ONE, dir, USERID);
+    EXPECT_FALSE(res);
+    EXPECT_TRUE(dir.empty());
+}
+
+/**
+ * @tc.number: GetGroupDir_0050
+ * @tc.name: test GetGroupDir
+ * @tc.desc: 1.GetGroupDir
+ */
+HWTEST_F(BmsBundleDataGroupTest, GetGroupDir_0050, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    std::string dir;
+    bool res = dataMgr->GetGroupDir(DATA_GROUP_ID_TEST_ONE, dir, USERID);
+    EXPECT_FALSE(res);
+    EXPECT_TRUE(dir.empty());
+}
+
+/**
+ * @tc.number: GenerateDataGroupInfos_0010
+ * @tc.name: test GenerateDataGroupInfos
+ * @tc.desc: 1.GenerateDataGroupInfos, bundleName not exist
+ */
+HWTEST_F(BmsBundleDataGroupTest, GenerateDataGroupInfos_0010, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        std::unordered_set<std::string> dataGroupIdList;
+        dataMgr->GenerateDataGroupInfos(BUNDLE_NAME, dataGroupIdList, USERID);
+        std::vector<DataGroupInfo> dataGroupInfos;
+        bool res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, dataGroupInfos);
+        EXPECT_FALSE(res);
+        EXPECT_TRUE(dataGroupInfos.empty());
+    }
+}
+
+/**
+ * @tc.number: GenerateDataGroupInfos_0020
+ * @tc.name: test GenerateDataGroupInfos
+ * @tc.desc: 1.GenerateDataGroupInfos, groupId empty
+ */
+HWTEST_F(BmsBundleDataGroupTest, GenerateDataGroupInfos_0020, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        InnerBundleInfo info;
+        InnerBundleUserInfo innerBundleUserInfo;
+        innerBundleUserInfo.uid = TEST_UID;
+        info.innerBundleUserInfos_.emplace(TEST_USER_KEY, innerBundleUserInfo);
+        dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+        ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+        std::unordered_set<std::string> dataGroupIdList;
+        dataMgr->GenerateDataGroupInfos(BUNDLE_NAME, dataGroupIdList, USERID);
+
+        std::vector<DataGroupInfo> dataGroupInfos;
+        bool res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, dataGroupInfos);
+        EXPECT_TRUE(res);
+        EXPECT_TRUE(dataGroupInfos.empty());
+    }
+}
+
+/**
+ * @tc.number: GenerateDataGroupInfos_0030
+ * @tc.name: test GenerateDataGroupInfos
+ * @tc.desc: 1.GenerateDataGroupInfos
+ */
+HWTEST_F(BmsBundleDataGroupTest, GenerateDataGroupInfos_0030, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        DataGroupInfo dataGroupInfo;
+        dataGroupInfo.userId = USERID;
+        std::vector<DataGroupInfo> dataGroupVector;
+        dataGroupVector.push_back(dataGroupInfo);
+
+        InnerBundleInfo info;
+        info.dataGroupInfos_[DATA_GROUP_ID_TEST_ONE] = dataGroupVector;
+        info.dataGroupInfos_[DATA_GROUP_ID_TEST_TWO] = dataGroupVector;
+        InnerBundleUserInfo innerBundleUserInfo;
+        innerBundleUserInfo.uid = TEST_UID;
+        info.innerBundleUserInfos_.emplace(TEST_USER_KEY, innerBundleUserInfo);
+        dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+        ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+        std::vector<DataGroupInfo> dataGroupInfos;
+        bool res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, dataGroupInfos);
+        EXPECT_TRUE(res);
+        EXPECT_FALSE(dataGroupInfos.empty());
+
+        std::unordered_set<std::string> dataGroupIdList;
+        dataMgr->GenerateDataGroupInfos(BUNDLE_NAME, dataGroupIdList, USERID);
+
+        dataGroupInfos.clear();
+        res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, dataGroupInfos);
+        EXPECT_TRUE(res);
+        EXPECT_TRUE(dataGroupInfos.empty());
+    }
+}
+
+/**
+ * @tc.number: GenerateDataGroupInfos_0040
+ * @tc.name: test GenerateDataGroupInfos
+ * @tc.desc: 1.GenerateDataGroupInfos
+ */
+HWTEST_F(BmsBundleDataGroupTest, GenerateDataGroupInfos_0040, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        DataGroupInfo dataGroupInfo;
+        dataGroupInfo.userId = USERID;
+        dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+        std::vector<DataGroupInfo> dataGroupVector;
+        dataGroupVector.push_back(dataGroupInfo);
+
+        InnerBundleInfo info;
+        info.dataGroupInfos_[DATA_GROUP_ID_TEST_ONE] = dataGroupVector;
+        info.dataGroupInfos_[DATA_GROUP_ID_TEST_TWO] = dataGroupVector;
+        InnerBundleUserInfo innerBundleUserInfo;
+        innerBundleUserInfo.uid = TEST_UID;
+        info.innerBundleUserInfos_.emplace(TEST_USER_KEY, innerBundleUserInfo);
+        dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+        ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+        std::vector<DataGroupInfo> dataGroupInfos;
+        bool res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, dataGroupInfos);
+        EXPECT_TRUE(res);
+        EXPECT_FALSE(dataGroupInfos.empty());
+
+        std::unordered_set<std::string> dataGroupIdList;
+        dataGroupIdList.insert(DATA_GROUP_ID_TEST_ONE);
+        dataMgr->GenerateDataGroupInfos(BUNDLE_NAME, dataGroupIdList, USERID);
+
+        dataGroupInfos.clear();
+        res = dataMgr->QueryDataGroupInfos(BUNDLE_NAME, USERID, dataGroupInfos);
+        EXPECT_TRUE(res);
+        EXPECT_FALSE(dataGroupInfos.empty());
+    }
+}
+
+/**
+ * @tc.number: GetDataGroupIndexMap_0010
+ * @tc.name: test GetDataGroupIndexMap
+ * @tc.desc: 1.GetDataGroupIndexMap
+ */
+HWTEST_F(BmsBundleDataGroupTest, GetDataGroupIndexMap_0010, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        DataGroupInfo dataGroupInfo;
+        dataGroupInfo.userId = USERID;
+        dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+        dataGroupInfo.uid = TEST_UID;
+        std::vector<DataGroupInfo> dataGroupVector;
+        dataGroupVector.push_back(dataGroupInfo);
+
+        InnerBundleInfo info;
+        info.dataGroupInfos_[DATA_GROUP_ID_TEST_ONE] = dataGroupVector;
+        dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+        ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+        std::map<std::string, std::pair<int32_t, std::string>> dataGroupIndexMap;
+        std::unordered_set<int32_t> uniqueIdSet;
+        dataMgr->GetDataGroupIndexMap(dataGroupIndexMap, uniqueIdSet);
+        EXPECT_FALSE(dataGroupIndexMap.empty());
+        EXPECT_FALSE(uniqueIdSet.empty());
+    }
+}
+
+/**
+ * @tc.number: IsShareDataGroupIdNoLock_0010
+ * @tc.name: test IsShareDataGroupIdNoLock
+ * @tc.desc: 1.IsShareDataGroupIdNoLock
+ */
+HWTEST_F(BmsBundleDataGroupTest, IsShareDataGroupIdNoLock_0010, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        bool res = dataMgr->IsShareDataGroupIdNoLock(BUNDLE_NAME, USERID);
+        EXPECT_FALSE(res);
+    }
+}
+
+/**
+ * @tc.number: IsShareDataGroupIdNoLock_0020
+ * @tc.name: test IsShareDataGroupIdNoLock
+ * @tc.desc: 1.IsShareDataGroupIdNoLock
+ */
+HWTEST_F(BmsBundleDataGroupTest, IsShareDataGroupIdNoLock_0020, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        DataGroupInfo dataGroupInfo;
+        dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+        dataGroupInfo.userId = USERID;
+        dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+        dataGroupInfo.uid = TEST_UID;
+        std::vector<DataGroupInfo> dataGroupVector;
+        dataGroupVector.push_back(dataGroupInfo);
+
+        InnerBundleInfo info;
+        info.dataGroupInfos_[DATA_GROUP_ID_TEST_ONE] = dataGroupVector;
+        dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+        ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+        bool res = dataMgr->IsShareDataGroupIdNoLock(DATA_GROUP_ID_TEST_ONE, USERID);
+        EXPECT_FALSE(res);
+    }
+}
+
+/**
+ * @tc.number: IsShareDataGroupIdNoLock_0030
+ * @tc.name: test IsShareDataGroupIdNoLock
+ * @tc.desc: 1.IsShareDataGroupIdNoLock
+ */
+HWTEST_F(BmsBundleDataGroupTest, IsShareDataGroupIdNoLock_0030, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        DataGroupInfo dataGroupInfo;
+        dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+        dataGroupInfo.userId = USERID;
+        dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+        dataGroupInfo.uid = TEST_UID;
+        std::vector<DataGroupInfo> dataGroupVector;
+        dataGroupVector.push_back(dataGroupInfo);
+
+        InnerBundleInfo info;
+        info.dataGroupInfos_[DATA_GROUP_ID_TEST_ONE] = dataGroupVector;
+        dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+        dataMgr->bundleInfos_.emplace(BUNDLE_NAME_TEST, info);
+        ScopeGuard bundleInfoGuard([&] {
+            dataMgr->bundleInfos_.erase(BUNDLE_NAME);
+            dataMgr->bundleInfos_.erase(BUNDLE_NAME_TEST);
+        });
+
+        bool res = dataMgr->IsShareDataGroupIdNoLock(DATA_GROUP_ID_TEST_ONE, USERID);
+        EXPECT_TRUE(res);
+    }
+}
+
+/**
+ * @tc.number: IsDataGroupIdExistNoLock_0010
+ * @tc.name: test IsDataGroupIdExistNoLock
+ * @tc.desc: 1.IsDataGroupIdExistNoLock
+ */
+HWTEST_F(BmsBundleDataGroupTest, IsDataGroupIdExistNoLock_0010, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        bool res = dataMgr->IsShareDataGroupIdNoLock(DATA_GROUP_ID_TEST_ONE, USERID);
+        EXPECT_FALSE(res);
+    }
+}
+
+/**
+ * @tc.number: IsDataGroupIdExistNoLock_0020
+ * @tc.name: test IsDataGroupIdExistNoLock
+ * @tc.desc: 1.IsDataGroupIdExistNoLock
+ */
+HWTEST_F(BmsBundleDataGroupTest, IsDataGroupIdExistNoLock_0020, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        DataGroupInfo dataGroupInfo;
+        dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+        dataGroupInfo.userId = USERID;
+        dataGroupInfo.uuid = DATA_GROUP_UUID_ONE;
+        dataGroupInfo.uid = TEST_UID;
+        std::vector<DataGroupInfo> dataGroupVector;
+        dataGroupVector.push_back(dataGroupInfo);
+
+        InnerBundleInfo info;
+        info.dataGroupInfos_[DATA_GROUP_ID_TEST_ONE] = dataGroupVector;
+        dataMgr->bundleInfos_.emplace(BUNDLE_NAME, info);
+        ScopeGuard bundleInfoGuard([&] { dataMgr->bundleInfos_.erase(BUNDLE_NAME); });
+
+        bool res = dataMgr->IsDataGroupIdExistNoLock(DATA_GROUP_ID_TEST_ONE, USERID);
+        EXPECT_TRUE(res);
+    }
+}
+
+/**
+ * @tc.number: GenerateDataGroupUuidAndUid_0010
+ * @tc.name: test GenerateDataGroupUuidAndUid
+ * @tc.desc: 1.GenerateDataGroupUuidAndUid
+ */
+HWTEST_F(BmsBundleDataGroupTest, GenerateDataGroupUuidAndUid_0010, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    if (dataMgr != nullptr) {
+        DataGroupInfo dataGroupInfo;
+        dataGroupInfo.dataGroupId = DATA_GROUP_ID_TEST_ONE;
+        dataGroupInfo.userId = USERID;
+        dataGroupInfo.uid = 0;
+        dataGroupInfo.uuid = "";
+        std::unordered_set<int32_t> uniqueIdSet;
+        uniqueIdSet.insert(1);
+        dataMgr->GenerateDataGroupUuidAndUid(dataGroupInfo, USERID, uniqueIdSet);
+        EXPECT_NE(dataGroupInfo.uid, 0);
+        EXPECT_EQ(dataGroupInfo.uid, dataGroupInfo.gid);
+        EXPECT_NE(dataGroupInfo.uuid, "");
+    }
+}
+
+/**
+ * @tc.number: MigrateDataUserAuthCallback_0010
+ * @tc.name: test OnResult
+ * @tc.desc: 1.Test OnResult the MigrateDataUserAuthCallback
+*/
+HWTEST_F(BmsBundleDataGroupTest, MigrateDataUserAuthCallback_0010, Function | MediumTest | Level1)
+{
+    MigrateDataUserAuthCallback callback;
+    int32_t result = 0;
+    Attributes extraInfo;
+    callback.OnResult(result, extraInfo);
+    EXPECT_EQ(callback.result_, result);
+}
+
+/**
+ * @tc.number: MigrateDataUserAuthCallback_0020
+ * @tc.name: test OnResult
+ * @tc.desc: 1.Test OnResult the MigrateDataUserAuthCallback
+*/
+HWTEST_F(BmsBundleDataGroupTest, MigrateDataUserAuthCallback_0020, Function | MediumTest | Level1)
+{
+    MigrateDataUserAuthCallback callback;
+    callback.isComplete_.store(true);
+
+    int32_t result = 0;
+    Attributes extraInfo;
+    callback.OnAcquireInfo(0, 1, extraInfo);
+    callback.OnResult(result, extraInfo);
+    EXPECT_EQ(callback.isComplete_, true);
+}
+
+/**
+ * @tc.number: MigrateDataUserAuthCallback_0030
+ * @tc.name: test GetUserAuthResult
+ * @tc.desc: 1.Test GetUserAuthResult the MigrateDataUserAuthCallback
+*/
+HWTEST_F(BmsBundleDataGroupTest, MigrateDataUserAuthCallback_0030, Function | MediumTest | Level1)
+{
+    MigrateDataUserAuthCallback callback;
+    callback.isComplete_.store(true);
+
+    auto ret = callback.GetUserAuthResult();
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_MIGRATE_DATA_USER_AUTHENTICATION_TIME_OUT);
+}
+
+/**
+ * @tc.number: MigrateDataUserAuthCallback_0040
+ * @tc.name: test GetUserAuthResult
+ * @tc.desc: 1.Test GetUserAuthResult the MigrateDataUserAuthCallback
+*/
+HWTEST_F(BmsBundleDataGroupTest, MigrateDataUserAuthCallback_0040, Function | MediumTest | Level1)
+{
+    MigrateDataUserAuthCallback callback;
+    callback.isComplete_.store(false);
+
+    auto ret = callback.GetUserAuthResult();
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_MIGRATE_DATA_USER_AUTHENTICATION_TIME_OUT);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0001
+ * @tc.name: test GetInternalDependentHspInfo
+ * @tc.desc: 1.Test GetInternalDependentHspInfo in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0001, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleName = "entry";
+    innerBundleInfo.innerModuleInfos_["entry"] = innerModuleInfo;
+
+    std::string moduleName = "demo";
+    std::vector<HspInfo> hspInfoVector;
+    innerBundleInfo.GetInternalDependentHspInfo(moduleName, hspInfoVector);
+    EXPECT_TRUE(hspInfoVector.empty());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0002
+ * @tc.name: test GetInternalDependentHspInfo
+ * @tc.desc: 1.Test GetInternalDependentHspInfo in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0002, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleName = "entry";
+
+    Dependency dependency;
+    dependency.bundleName = "com.example.demo";
+    dependency.moduleName = "demo";
+    dependency.versionCode = 1;
+    innerModuleInfo.dependencies.emplace_back(dependency);
+    innerBundleInfo.innerModuleInfos_["entry"] = innerModuleInfo;
+
+    std::string moduleName = "entry";
+    std::vector<HspInfo> hspInfoVector;
+    innerBundleInfo.GetInternalDependentHspInfo(moduleName, hspInfoVector);
+    EXPECT_TRUE(hspInfoVector.empty());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0003
+ * @tc.name: test GetInternalDependentHspInfo
+ * @tc.desc: 1.Test GetInternalDependentHspInfo in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0003, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleName = "entry";
+
+    Dependency dependency;
+    dependency.bundleName = "com.example.demo";
+    dependency.moduleName = "entry";
+    dependency.versionCode = 1;
+    innerModuleInfo.dependencies.emplace_back(dependency);
+    innerBundleInfo.innerModuleInfos_["entry"] = innerModuleInfo;
+
+    std::string moduleName = "entry";
+    std::vector<HspInfo> hspInfoVector;
+    innerBundleInfo.GetInternalDependentHspInfo(moduleName, hspInfoVector);
+    EXPECT_FALSE(hspInfoVector.empty());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0004
+ * @tc.name: test operator=
+ * @tc.desc: 1.Test operator= in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0004, Function | MediumTest | Level1)
+{
+    InnerBundleInfo *innerBundleInfo = new InnerBundleInfo();
+    EXPECT_NE(innerBundleInfo, nullptr);
+    InnerBundleInfo *info2 = innerBundleInfo;
+    InnerBundleInfo *info = innerBundleInfo;
+    *info = *info2;
+    EXPECT_TRUE(innerBundleInfo->GetBundleName().empty());
+    delete(innerBundleInfo);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0005
+ * @tc.name: test GetPreInstallApplicationFlags
+ * @tc.desc: 1.Test GetPreInstallApplicationFlags in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0005, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseBundleInfo_->isPreInstallApp = true;
+
+    ApplicationInfo appInfo;
+    innerBundleInfo.GetPreInstallApplicationFlags(appInfo);
+    EXPECT_GT(appInfo.applicationFlags, 0);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0006
+ * @tc.name: test GetPreInstallApplicationFlags
+ * @tc.desc: 1.Test GetPreInstallApplicationFlags in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0006, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseBundleInfo_->isPreInstallApp = true;
+    innerBundleInfo.baseApplicationInfo_->bundleName = BUNDLE_NAME;
+    ApplicationInfo appInfo;
+    innerBundleInfo.GetPreInstallApplicationFlags(appInfo);
+    EXPECT_TRUE((static_cast<uint32_t>(appInfo.applicationFlags) &
+        static_cast<uint32_t>(ApplicationInfoFlag::FLAG_PREINSTALLED_APP)) ==
+        static_cast<uint32_t>(ApplicationInfoFlag::FLAG_PREINSTALLED_APP));
+
+    innerBundleInfo.baseApplicationInfo_->bundleName =
+        OHOS::system::GetParameter(ServiceConstants::CLOUD_SHADER_OWNER, "");
+    innerBundleInfo.GetPreInstallApplicationFlags(appInfo);
+    EXPECT_TRUE((static_cast<uint32_t>(appInfo.applicationFlags) &
+        static_cast<uint32_t>(ApplicationInfoFlag::FLAG_PREINSTALLED_APP_UPDATE)) ==
+        static_cast<uint32_t>(ApplicationInfoFlag::FLAG_PREINSTALLED_APP_UPDATE));
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0008
+ * @tc.name: test ShouldReplacePermission
+ * @tc.desc: 1.Test ShouldReplacePermission in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0008, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    RequestPermission oldPermission;
+    RequestPermission newPermission;
+    newPermission.name = "test";
+    std::unordered_map<std::string, std::string> moduleNameTypeMap;
+    bool ret = innerBundleInfo.ShouldReplacePermission(oldPermission, newPermission, moduleNameTypeMap);
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0009
+ * @tc.name: test AddModuleRemovableInfo
+ * @tc.desc: 1.Test AddModuleRemovableInfo in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0009, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    InnerModuleInfo info;
+    std::string stringUserId;
+    bool isEnable = false;
+    bool ret = innerBundleInfo.AddModuleRemovableInfo(info, stringUserId, isEnable);
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0010
+ * @tc.name: test SetModuleHapPath
+ * @tc.desc: 1.Test SetModuleHapPath in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0010, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.currentPackage_ = "entry";
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.compressNativeLibs = false;
+    innerModuleInfo.nativeLibraryPath = "data";
+    innerBundleInfo.innerModuleInfos_["entry"] = innerModuleInfo;
+
+    std::string hapPath;
+    innerBundleInfo.SetModuleHapPath(hapPath);
+    EXPECT_EQ(innerBundleInfo.innerModuleInfos_.at("entry").nativeLibraryPath.empty(), false);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0011
+ * @tc.name: test SetModuleHapPath
+ * @tc.desc: 1.Test SetModuleHapPath in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0011, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.currentPackage_ = "entry";
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.compressNativeLibs = false;
+    innerModuleInfo.nativeLibraryPath = "data/";
+    innerBundleInfo.innerModuleInfos_["entry"] = innerModuleInfo;
+
+    std::string hapPath;
+    innerBundleInfo.SetModuleHapPath(hapPath);
+    EXPECT_EQ(innerBundleInfo.innerModuleInfos_.at("entry").nativeLibraryPath.empty(), false);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0012
+ * @tc.name: test SetExtName
+ * @tc.desc: 1.Test SetExtName in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0012, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    std::string moduleName = "entry";
+    std::string abilityName = "entryAbility";
+    std::string extName = "testExt";
+
+    InnerAbilityInfo innerAbilityInfo;
+    innerAbilityInfo.moduleName = moduleName;
+    innerAbilityInfo.supportExtNames.emplace_back(extName);
+    innerBundleInfo.baseAbilityInfos_[abilityName] = innerAbilityInfo;
+    ErrCode ret = innerBundleInfo.SetExtName(moduleName, abilityName, extName);
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_DUPLICATED_EXT_OR_TYPE);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0013
+ * @tc.name: test SetMimeType
+ * @tc.desc: 1.Test SetMimeType in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0013, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    std::string moduleName = "entry";
+    std::string abilityName = "entryAbility";
+    std::string mimeType = "testMime";
+
+    InnerAbilityInfo innerAbilityInfo;
+    innerAbilityInfo.moduleName = moduleName;
+    innerAbilityInfo.supportMimeTypes.emplace_back(mimeType);
+    innerBundleInfo.baseAbilityInfos_[abilityName] = innerAbilityInfo;
+    ErrCode ret = innerBundleInfo.SetMimeType(moduleName, abilityName, mimeType);
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_DUPLICATED_EXT_OR_TYPE);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0014
+ * @tc.name: test HandleOTACodeEncryption
+ * @tc.desc: 1.Test HandleOTACodeEncryption in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0014, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    CheckEncryptionParam checkEncryptionParam;
+    InnerModuleInfo moduleInfo;
+    innerBundleInfo.CheckHapEncryption(checkEncryptionParam, moduleInfo);
+    std::vector<std::string> withoutKeyBundles;
+    std::vector<std::string> withKeyBundles;
+    innerBundleInfo.baseApplicationInfo_->applicationReservedFlag = 1;
+    innerBundleInfo.HandleOTACodeEncryption(withoutKeyBundles, withKeyBundles);
+    innerBundleInfo.UpdateIsCompressNativeLibs();
+    EXPECT_TRUE(withoutKeyBundles.empty());
+    EXPECT_TRUE(withKeyBundles.empty());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0015
+ * @tc.name: test HandleOTACodeEncryption
+ * @tc.desc: 1.Test HandleOTACodeEncryption in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0015, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseApplicationInfo_->bundleName = "test";
+    std::vector<std::string> withoutKeyBundles;
+    std::vector<std::string> withKeyBundles;
+    innerBundleInfo.baseApplicationInfo_->applicationReservedFlag = 1;
+
+    std::map<std::string, InnerBundleUserInfo> innerBundleUserInfos;
+    InnerBundleUserInfo info;
+    info.bundleUserInfo.userId = 100;
+    innerBundleUserInfos["_100"] = info;
+    innerBundleInfo.innerBundleUserInfos_ = innerBundleUserInfos;
+    innerBundleInfo.HandleOTACodeEncryption(withoutKeyBundles, withKeyBundles);
+    EXPECT_TRUE(withoutKeyBundles.empty());
+    EXPECT_FALSE(withKeyBundles.empty());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0016
+ * @tc.name: test CheckSoEncryption
+ * @tc.desc: 1.Test CheckSoEncryption in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0016, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    CheckEncryptionParam checkEncryptionParam;
+    std::string requestPackage = "entry";
+    InnerModuleInfo moduleInfo;
+
+    moduleInfo.compressNativeLibs = false;
+    innerBundleInfo.CheckSoEncryption(checkEncryptionParam, requestPackage, moduleInfo);
+    EXPECT_FALSE(moduleInfo.compressNativeLibs);
+
+    moduleInfo.compressNativeLibs = true;
+    innerBundleInfo.CheckSoEncryption(checkEncryptionParam, requestPackage, moduleInfo);
+    EXPECT_TRUE(moduleInfo.compressNativeLibs);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0017
+ * @tc.name: test CheckSoEncryption
+ * @tc.desc: 1.Test CheckSoEncryption in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0017, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    CheckEncryptionParam checkEncryptionParam;
+    std::string requestPackage = "entry";
+    InnerModuleInfo moduleInfo;
+    moduleInfo.compressNativeLibs = true;
+    moduleInfo.isLibIsolated = true;
+    moduleInfo.cpuAbi = "x86";
+    moduleInfo.nativeLibraryPath = "data/";
+
+    innerBundleInfo.innerModuleInfos_["entry"] = moduleInfo;
+
+    innerBundleInfo.CheckSoEncryption(checkEncryptionParam, requestPackage, moduleInfo);
+    EXPECT_TRUE(moduleInfo.compressNativeLibs);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0018
+ * @tc.name: test SetMoudleIsEncrpted
+ * @tc.desc: 1.Test SetMoudleIsEncrpted in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0018, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    CheckEncryptionParam checkEncryptionParam;
+    std::string requestPackage = "entry";
+    InnerModuleInfo moduleInfo;
+    moduleInfo.compressNativeLibs = true;
+    moduleInfo.isLibIsolated = true;
+    moduleInfo.cpuAbi = "x86";
+    moduleInfo.nativeLibraryPath = "data/";
+    innerBundleInfo.innerModuleInfos_["entry"] = moduleInfo;
+
+    std::string packageName = "entry";
+    bool isEncrypted = true;
+    innerBundleInfo.SetMoudleIsEncrpted(packageName, isEncrypted);
+    EXPECT_TRUE(innerBundleInfo.innerModuleInfos_["entry"].isEncrypted);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0019
+ * @tc.name: test IsContainEncryptedModule & GetAllEncryptedModuleNames
+ * @tc.desc: 1.Test IsContainEncryptedModule & GetAllEncryptedModuleNames in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0019, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    CheckEncryptionParam checkEncryptionParam;
+    std::string requestPackage = "entry";
+    InnerModuleInfo moduleInfo;
+    moduleInfo.compressNativeLibs = true;
+    moduleInfo.isLibIsolated = true;
+    moduleInfo.cpuAbi = "x86";
+    moduleInfo.nativeLibraryPath = "data/";
+    moduleInfo.isEncrypted = true;
+    innerBundleInfo.innerModuleInfos_["entry"] = moduleInfo;
+
+    std::vector<std::string> moduleNames;
+    innerBundleInfo.GetAllEncryptedModuleNames(moduleNames);
+    EXPECT_FALSE(moduleNames.empty());
+
+    bool ret = innerBundleInfo.IsContainEncryptedModule();
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0020
+ * @tc.name: test AddAllowedAcls
+ * @tc.desc: 1.Test AddAllowedAcls in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0020, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    std::vector<std::string> allowedAcls;
+    allowedAcls.emplace_back("testAcl");
+    innerBundleInfo.AddAllowedAcls(allowedAcls);
+    EXPECT_FALSE(innerBundleInfo.allowedAcls_.empty());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0021
+ * @tc.name: test IsTsanEnabled
+ * @tc.desc: 1.Test IsTsanEnabled in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0021, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.tsanEnabled = true;
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos;
+    innerSharedModuleInfos["entry"].emplace_back(innerModuleInfo);
+    innerBundleInfo.innerSharedModuleInfos_ = innerSharedModuleInfos;
+    EXPECT_TRUE(innerBundleInfo.IsTsanEnabled());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0022
+ * @tc.name: test IsTsanEnabled
+ * @tc.desc: 1.Test IsTsanEnabled in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0022, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.tsanEnabled = false;
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos;
+    innerSharedModuleInfos["entry"].emplace_back(innerModuleInfo);
+    innerBundleInfo.innerSharedModuleInfos_ = innerSharedModuleInfos;
+    EXPECT_FALSE(innerBundleInfo.IsTsanEnabled());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0023
+ * @tc.name: test IsHwasanEnabled
+ * @tc.desc: 1.Test IsHwasanEnabled in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0023, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.innerModuleInfoFlag =
+        1 << (static_cast<uint8_t>(GetInnerModuleInfoFlag::GET_INNER_MODULE_INFO_WITH_HWASANENABLED) - 1);
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos;
+    innerSharedModuleInfos["entry"].emplace_back(innerModuleInfo);
+    innerBundleInfo.innerSharedModuleInfos_ = innerSharedModuleInfos;
+    EXPECT_TRUE(innerBundleInfo.IsHwasanEnabled());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0024
+ * @tc.name: test IsHwasanEnabled
+ * @tc.desc: 1.Test IsHwasanEnabled in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0024, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.innerModuleInfoFlag = 0;
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos;
+    innerSharedModuleInfos["entry"].emplace_back(innerModuleInfo);
+    innerBundleInfo.innerSharedModuleInfos_ = innerSharedModuleInfos;
+    EXPECT_FALSE(innerBundleInfo.IsHwasanEnabled());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0025
+ * @tc.name: test IsUbsanEnabled
+ * @tc.desc: 1.Test IsUbsanEnabled in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0025, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.innerModuleInfoFlag =
+        1 << (static_cast<uint8_t>(GetInnerModuleInfoFlag::GET_INNER_MODULE_INFO_WITH_UBSANENABLED) - 1);
+    innerBundleInfo.innerModuleInfos_["entry"] = innerModuleInfo;
+    EXPECT_TRUE(innerBundleInfo.IsUbsanEnabled());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0026
+ * @tc.name: test IsUbsanEnabled
+ * @tc.desc: 1.Test IsUbsanEnabled in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0026, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.innerModuleInfoFlag =
+        1 << (static_cast<uint8_t>(GetInnerModuleInfoFlag::GET_INNER_MODULE_INFO_WITH_UBSANENABLED) - 1);
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos;
+    innerSharedModuleInfos["entry"].emplace_back(innerModuleInfo);
+    innerBundleInfo.innerSharedModuleInfos_ = innerSharedModuleInfos;
+    EXPECT_TRUE(innerBundleInfo.IsUbsanEnabled());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0027
+ * @tc.name: test IsUbsanEnabled
+ * @tc.desc: 1.Test IsUbsanEnabled in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0027, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.innerModuleInfoFlag = 0;
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos;
+    innerSharedModuleInfos["entry"].emplace_back(innerModuleInfo);
+    innerBundleInfo.innerSharedModuleInfos_ = innerSharedModuleInfos;
+    EXPECT_FALSE(innerBundleInfo.IsUbsanEnabled());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_002
+ * @tc.name: test IsUbsanEnabled
+ * @tc.desc: 1.Test IsUbsanEnabled in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0028, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.innerModuleInfoFlag = 0;
+    std::map<std::string, std::vector<InnerModuleInfo>> innerSharedModuleInfos;
+    innerSharedModuleInfos["entry"].emplace_back(innerModuleInfo);
+    innerBundleInfo.innerSharedModuleInfos_ = innerSharedModuleInfos;
+    EXPECT_FALSE(innerBundleInfo.IsUbsanEnabled());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0029
+ * @tc.name: test RemoveCloneBundle
+ * @tc.desc: 1.Test RemoveCloneBundle in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0029, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerAbilityInfo innerAbilityInfo;
+    innerAbilityInfo.name = "ABILITY_NAME";
+    innerAbilityInfo.moduleName = "MODULE_NAME_TEST";
+    bundleInfo.baseAbilityInfos_.insert(std::make_pair("_1", innerAbilityInfo));
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerBundleCloneInfo> cloneInfos;
+    InnerBundleCloneInfo innerBundleCloneInfo;
+    std::vector<std::string> disabledAbilities;
+    disabledAbilities.push_back("ABILITY_NAME");
+    innerBundleCloneInfo.disabledAbilities = disabledAbilities;
+    cloneInfos.insert(std::make_pair("1", innerBundleCloneInfo));
+    innerBundleUserInfo.cloneInfos = cloneInfos;
+    bundleInfo.innerBundleUserInfos_.insert(std::make_pair("_1", innerBundleUserInfo));
+
+    int32_t userId = 1;
+    int32_t appIndex = 6;
+    auto ret = bundleInfo.RemoveCloneBundle(userId, appIndex);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_CLONE_INSTALL_INVALID_APP_INDEX);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0030
+ * @tc.name: test RemoveCloneBundle
+ * @tc.desc: 1.Test RemoveCloneBundle in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0030, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerAbilityInfo innerAbilityInfo;
+    innerAbilityInfo.name = "ABILITY_NAME";
+    innerAbilityInfo.moduleName = "MODULE_NAME_TEST";
+    bundleInfo.baseAbilityInfos_.insert(std::make_pair("_1", innerAbilityInfo));
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerBundleCloneInfo> cloneInfos;
+    InnerBundleCloneInfo innerBundleCloneInfo;
+    std::vector<std::string> disabledAbilities;
+    disabledAbilities.push_back("ABILITY_NAME");
+    innerBundleCloneInfo.disabledAbilities = disabledAbilities;
+    cloneInfos.insert(std::make_pair("1", innerBundleCloneInfo));
+    innerBundleUserInfo.cloneInfos = cloneInfos;
+    bundleInfo.innerBundleUserInfos_.insert(std::make_pair("_1", innerBundleUserInfo));
+
+    int32_t userId = 1;
+    int32_t appIndex = 3;
+    auto ret = bundleInfo.RemoveCloneBundle(userId, appIndex);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0031
+ * @tc.name: test GetAvailableCloneAppIndex
+ * @tc.desc: 1.Test GetAvailableCloneAppIndex in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0031, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerBundleCloneInfo> cloneInfos;
+    InnerBundleCloneInfo innerBundleCloneInfo;
+    std::vector<std::string> disabledAbilities;
+    disabledAbilities.push_back("ABILITY_NAME");
+    innerBundleCloneInfo.disabledAbilities = disabledAbilities;
+    cloneInfos.insert(std::make_pair("1", innerBundleCloneInfo));
+    innerBundleUserInfo.cloneInfos = cloneInfos;
+    bundleInfo.innerBundleUserInfos_.insert(std::make_pair("_1", innerBundleUserInfo));
+
+    int32_t userId = 100;
+    int32_t appIndex = 3;
+    auto ret = bundleInfo.GetAvailableCloneAppIndex(userId, appIndex);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_CLONE_INSTALL_USER_NOT_EXIST);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0032
+ * @tc.name: test GetAvailableCloneAppIndex
+ * @tc.desc: 1.Test GetAvailableCloneAppIndex in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0032, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerBundleCloneInfo> cloneInfos;
+    InnerBundleCloneInfo innerBundleCloneInfo;
+    std::vector<std::string> disabledAbilities;
+    disabledAbilities.push_back("ABILITY_NAME");
+    innerBundleCloneInfo.disabledAbilities = disabledAbilities;
+    cloneInfos.insert(std::make_pair("1", innerBundleCloneInfo));
+    innerBundleUserInfo.cloneInfos = cloneInfos;
+    bundleInfo.innerBundleUserInfos_.insert(std::make_pair("_1", innerBundleUserInfo));
+
+    int32_t userId = 100;
+    int32_t appIndex = 3;
+    bool res = false;
+    auto ret = bundleInfo.IsCloneAppIndexExisted(userId, appIndex, res);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_CLONE_INSTALL_USER_NOT_EXIST);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0033
+ * @tc.name: test GetApplicationInfoAdaptBundleClone
+ * @tc.desc: 1.Test GetApplicationInfoAdaptBundleClone in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0033, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerBundleCloneInfo> cloneInfos;
+    InnerBundleCloneInfo innerBundleCloneInfo;
+    std::vector<std::string> disabledAbilities;
+    disabledAbilities.push_back("ABILITY_NAME");
+    innerBundleCloneInfo.disabledAbilities = disabledAbilities;
+    cloneInfos.insert(std::make_pair("1", innerBundleCloneInfo));
+    innerBundleUserInfo.cloneInfos = cloneInfos;
+    bundleInfo.innerBundleUserInfos_.insert(std::make_pair("_1", innerBundleUserInfo));
+
+    int32_t appIndex = 0;
+    ApplicationInfo appInfo;
+    appInfo.removable = true;
+    innerBundleUserInfo.isRemovable = false;
+    auto ret = bundleInfo.GetApplicationInfoAdaptBundleClone(innerBundleUserInfo, appIndex, appInfo);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(appInfo.removable, false);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0034
+ * @tc.name: test VerifyAndAckCloneAppIndex
+ * @tc.desc: 1.Test VerifyAndAckCloneAppIndex in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0034, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    bundleInfo.baseApplicationInfo_->multiAppMode.multiAppModeType = MultiAppModeType::APP_CLONE;
+
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    auto ret = bundleInfo.VerifyAndAckCloneAppIndex(userId, appIndex);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0035
+ * @tc.name: test VerifyAndAckCloneAppIndex
+ * @tc.desc: 1.Test VerifyAndAckCloneAppIndex in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0035, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    bundleInfo.baseApplicationInfo_->multiAppMode.multiAppModeType = MultiAppModeType::APP_CLONE;
+
+    int32_t userId = 100;
+    int32_t appIndex = 1;
+    auto ret = bundleInfo.VerifyAndAckCloneAppIndex(userId, appIndex);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0036
+ * @tc.name: test VerifyAndAckCloneAppIndex
+ * @tc.desc: 1.Test VerifyAndAckCloneAppIndex in the InnerBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0036, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    bundleInfo.baseApplicationInfo_->multiAppMode.multiAppModeType = MultiAppModeType::APP_CLONE;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerBundleCloneInfo> cloneInfos;
+    InnerBundleCloneInfo innerBundleCloneInfo;
+    std::vector<std::string> disabledAbilities;
+    disabledAbilities.push_back("ABILITY_NAME");
+    innerBundleCloneInfo.disabledAbilities = disabledAbilities;
+    innerBundleCloneInfo.appIndex = 1;
+    cloneInfos.insert(std::make_pair("1", innerBundleCloneInfo));
+    innerBundleUserInfo.cloneInfos = cloneInfos;
+    bundleInfo.innerBundleUserInfos_.insert(std::make_pair("_1", innerBundleUserInfo));
+
+    std::set<int32_t> ret = bundleInfo.GetCloneBundleAppIndexes();
+    EXPECT_NE(ret.empty(), true);
+}
+
+/**
+ * @tc.number: AdaptInstallSource_0010
+ * @tc.name: test AdaptInstallSource with empty installSource
+ * @tc.desc: 1.Test AdaptInstallSource with empty installSource
+*/
+HWTEST_F(BmsBundleDataGroupTest, AdaptInstallSource_0010, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo appInfo;
+    appInfo.bundleName = BUNDLE_NAME;
+    appInfo.installSource = "";
+    std::string originalInstallSource = appInfo.installSource;
+
+    innerBundleInfo.AdaptInstallSource(appInfo);
+
+    EXPECT_EQ(appInfo.installSource, originalInstallSource);
+}
+
+/**
+ * @tc.number: AdaptInstallSource_0020
+ * @tc.name: test AdaptInstallSource with normal installSource
+ * @tc.desc: 1.Test AdaptInstallSource with normal installSource (not clone prefix)
+*/
+HWTEST_F(BmsBundleDataGroupTest, AdaptInstallSource_0020, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo appInfo;
+    appInfo.bundleName = BUNDLE_NAME;
+    appInfo.installSource = "galaxy";
+    std::string originalInstallSource = appInfo.installSource;
+
+    innerBundleInfo.AdaptInstallSource(appInfo);
+
+    EXPECT_EQ(appInfo.installSource, originalInstallSource);
+}
+
+/**
+ * @tc.number: AdaptInstallSource_0030
+ * @tc.name: test AdaptInstallSource with incomplete clone format (no separator)
+ * @tc.desc: 1.Test AdaptInstallSource with incomplete clone format
+*/
+HWTEST_F(BmsBundleDataGroupTest, AdaptInstallSource_0030, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo appInfo;
+    appInfo.bundleName = BUNDLE_NAME;
+    appInfo.installSource = "+installSource:com.example.caller";
+    std::string originalInstallSource = appInfo.installSource;
+
+    innerBundleInfo.AdaptInstallSource(appInfo);
+
+    EXPECT_EQ(appInfo.installSource, originalInstallSource);
+}
+
+/**
+ * @tc.number: AdaptInstallSource_0040
+ * @tc.name: test AdaptInstallSource with valid clone format
+ * @tc.desc: 1.Test AdaptInstallSource with valid clone format
+*/
+HWTEST_F(BmsBundleDataGroupTest, AdaptInstallSource_0040, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo appInfo;
+    appInfo.bundleName = BUNDLE_NAME;
+    appInfo.installSource = "+installSource:com.example.caller+gallery";
+
+    innerBundleInfo.AdaptInstallSource(appInfo);
+
+    EXPECT_EQ(appInfo.installSource, "gallery");
+}
+
+/**
+ * @tc.number: AdaptInstallSource_0050
+ * @tc.name: test AdaptInstallSource with prefix only (length condition)
+ * @tc.desc: 1.Test AdaptInstallSource when lastPlusPos <= strlen(INSTALL_SOURCE_PREFIX)
+*/
+HWTEST_F(BmsBundleDataGroupTest, AdaptInstallSource_0050, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    ApplicationInfo appInfo;
+    appInfo.bundleName = BUNDLE_NAME;
+    // Format: "+installSource:+abc" where lastPlusPos is 15, strlen("+installSource:") is 15
+    appInfo.installSource = "+installSource:+abc";
+    std::string originalInstallSource = appInfo.installSource;
+
+    innerBundleInfo.AdaptInstallSource(appInfo);
+
+    EXPECT_EQ(appInfo.installSource, originalInstallSource);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0001
+ * @tc.name: test InstallBundleByBundleName
+ * @tc.desc: 1.InstallBundleByBundleName
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0001, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+    InstallParam installParam;
+    installParam.needSendEvent = true;
+    installParam.concentrateSendEvent = true;
+
+    std::string bundleName = "test";
+    auto result = installer.InstallBundleByBundleName(bundleName, installParam);
+    EXPECT_NE(result, ERR_OK);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0002
+ * @tc.name: test InstallBundleByBundleName
+ * @tc.desc: 1.InstallBundleByBundleName
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0002, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    installer.dataMgr_ = dataMgr;
+    InnerBundleInfo innerBundleInfo;
+    InnerExtensionInfo innerExtensionInfo;
+    innerExtensionInfo.type = ExtensionAbilityType::DRIVER;
+    innerBundleInfo.baseExtensionInfos_["testExt"] = innerExtensionInfo;
+    dataMgr->bundleInfos_["test.bundleName"] = innerBundleInfo;
+
+    InstallParam installParam;
+    installParam.needSendEvent = true;
+    installParam.concentrateSendEvent = false;
+
+    std::string bundleName = "test.bundleName";
+    auto result = installer.InstallBundleByBundleName(bundleName, installParam);
+    EXPECT_NE(result, ERR_OK);
+
+    dataMgr->bundleInfos_.erase("test.bundleName");
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0003
+ * @tc.name: test InstallBundleByBundleName
+ * @tc.desc: 1.InstallBundleByBundleName
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0003, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+    InstallParam installParam;
+    installParam.needSendEvent = true;
+    installParam.concentrateSendEvent = false;
+
+    std::string bundleName = "test";
+    auto result = installer.InstallBundleByBundleName(bundleName, installParam);
+    EXPECT_NE(result, ERR_OK);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0004
+ * @tc.name: test InstallBundleByBundleName
+ * @tc.desc: 1.InstallBundleByBundleName
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0004, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    std::string bundleName = "test.bundleName";
+    auto dataMgr = GetBundleDataMgr();
+    dataMgr->AddUserId(100);
+    ASSERT_NE(dataMgr, nullptr);
+    installer.dataMgr_ = dataMgr;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseApplicationInfo_->bundleName = bundleName;
+    innerBundleInfo.baseApplicationInfo_->bundleType = BundleType::APP;
+    innerBundleInfo.innerBundleUserInfos_["test.bundleName_100"] = InnerBundleUserInfo();
+    innerBundleInfo.uninstallState_ = false;
+    innerBundleInfo.baseApplicationInfo_->removable = true;
+
+    dataMgr->bundleInfos_[bundleName] = innerBundleInfo;
+
+    InstallParam installParam;
+    installParam.userId = 100;
+    installParam.forceExecuted = false;
+    installParam.killProcess = true;
+    installParam.isUninstallAndRecover = false;
+    installParam.concentrateSendEvent = true;
+
+    auto result = installer.UninstallBundle(bundleName, installParam);
+    EXPECT_EQ(result, ERR_APPEXECFWK_UNINSTALL_STATE_NOT_ALLOW);
+
+    dataMgr->bundleInfos_.erase(bundleName);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0005
+ * @tc.name: test MarkIsForceUninstall
+ * @tc.desc: 1.MarkIsForceUninstall
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0005, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    std::string bundleName = "";
+    bool isForceUninstalled = false;
+    installer.MarkIsForceUninstall(bundleName, isForceUninstalled);
+    EXPECT_TRUE(bundleName.empty());
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0006
+ * @tc.name: test CheckUninstallInnerBundleInfo
+ * @tc.desc: 1.CheckUninstallInnerBundleInfo
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0006, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    InnerBundleInfo info;
+    info.baseApplicationInfo_->removable = false;
+    std::string bundleName;
+    auto ret = installer.CheckUninstallInnerBundleInfo(info, bundleName);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_UNINSTALL_SYSTEM_APP_ERROR);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0007
+ * @tc.name: test CheckUninstallInnerBundleInfo
+ * @tc.desc: 1.CheckUninstallInnerBundleInfo
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0007, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    InnerBundleInfo info;
+    info.baseApplicationInfo_->removable = true;
+    info.uninstallState_ = false;
+    std::string bundleName;
+    auto ret = installer.CheckUninstallInnerBundleInfo(info, bundleName);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_UNINSTALL_STATE_NOT_ALLOW);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0008
+ * @tc.name: test CheckUninstallInnerBundleInfo
+ * @tc.desc: 1.CheckUninstallInnerBundleInfo
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0008, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    InnerBundleInfo info;
+    info.baseApplicationInfo_->removable = true;
+    info.uninstallState_ = true;
+    std::string bundleName;
+    auto ret = installer.CheckUninstallInnerBundleInfo(info, bundleName);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_UNINSTALL_SHARE_APP_LIBRARY_IS_NOT_EXIST);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0009
+ * @tc.name: test CheckUninstallInnerBundleInfo
+ * @tc.desc: 1.CheckUninstallInnerBundleInfo
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0009, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    UninstallParam uninstallParam;
+    uninstallParam.bundleName = "test.demo.wrong";
+    auto ret = installer.UninstallBundleByUninstallParam(uninstallParam);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_UNINSTALL_SHARE_APP_LIBRARY_IS_NOT_EXIST);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0010
+ * @tc.name: test InstallBundleByBundleName
+ * @tc.desc: 1.InstallBundleByBundleName
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0010, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    std::string bundleName = "test.bundleName";
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    installer.dataMgr_ = dataMgr;
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseApplicationInfo_->bundleName = bundleName;
+    innerBundleInfo.baseApplicationInfo_->bundleType = BundleType::APP;
+    innerBundleInfo.innerBundleUserInfos_["test.bundleName_100"] = InnerBundleUserInfo();
+    innerBundleInfo.uninstallState_ = false;
+    innerBundleInfo.baseApplicationInfo_->removable = false;
+
+    dataMgr->bundleInfos_[bundleName] = innerBundleInfo;
+
+    UninstallParam uninstallParam;
+    uninstallParam.bundleName = bundleName;
+    auto ret = installer.UninstallBundleByUninstallParam(uninstallParam);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_UNINSTALL_SYSTEM_APP_ERROR);
+
+    dataMgr->bundleInfos_.erase(bundleName);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0011
+ * @tc.name: test RollBack
+ * @tc.desc: 1.RollBack
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0011, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.isAppExist_ = false;
+    installer.isHnpInstalled_ = true;
+
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseBundleInfo_->isPreInstallApp = true;
+
+    std::unordered_map<std::string, InnerBundleInfo> newInfos;
+    newInfos["test"] = innerBundleInfo;
+    InnerBundleInfo oldInfo;
+    installer.RollBack(newInfos, oldInfo);
+    EXPECT_NE(newInfos.begin(), newInfos.end());
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0012
+ * @tc.name: test RollBack
+ * @tc.desc: 1.RollBack
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0012, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.isAppExist_ = false;
+    installer.isHnpInstalled_ = true;
+
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseBundleInfo_->isPreInstallApp = false;
+    innerBundleInfo.baseApplicationInfo_->bundleType = BundleType::ATOMIC_SERVICE;
+
+    std::unordered_map<std::string, InnerBundleInfo> newInfos;
+    newInfos["test"] = innerBundleInfo;
+    InnerBundleInfo oldInfo;
+    installer.RollBack(newInfos, oldInfo);
+    EXPECT_NE(newInfos.begin(), newInfos.end());
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0013
+ * @tc.name: test RollBack
+ * @tc.desc: 1.RollBack
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0013, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.isAppExist_ = false;
+    installer.userId_ = 100;
+    installer.isHnpInstalled_ = true;
+
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseApplicationInfo_->bundleName = "test.bundle";
+    innerBundleInfo.baseBundleInfo_->isPreInstallApp = false;
+    innerBundleInfo.baseApplicationInfo_->bundleType = BundleType::ATOMIC_SERVICE;
+
+    InnerBundleUserInfo innerBundleUserInfo;
+    innerBundleUserInfo.uid = 1001;
+    innerBundleInfo.innerBundleUserInfos_["test.bundle_100"] = innerBundleUserInfo;
+
+    std::unordered_map<std::string, InnerBundleInfo> newInfos;
+    newInfos["test"] = innerBundleInfo;
+    InnerBundleInfo oldInfo;
+    installer.RollBack(newInfos, oldInfo);
+    EXPECT_NE(newInfos.begin(), newInfos.end());
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0014
+ * @tc.name: test RollBack
+ * @tc.desc: 1.RollBack
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0014, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.isAppExist_ = false;
+    installer.userId_ = 100;
+    installer.isHnpInstalled_ = true;
+
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseApplicationInfo_->bundleName = "test.bundle";
+    innerBundleInfo.baseBundleInfo_->isPreInstallApp = false;
+    innerBundleInfo.baseApplicationInfo_->bundleType = BundleType::APP;
+
+    InnerBundleUserInfo innerBundleUserInfo;
+    innerBundleUserInfo.uid = 1001;
+    innerBundleInfo.innerBundleUserInfos_["test.bundle_100"] = innerBundleUserInfo;
+
+    std::unordered_map<std::string, InnerBundleInfo> newInfos;
+    newInfos["test"] = innerBundleInfo;
+    InnerBundleInfo oldInfo;
+    installer.RollBack(newInfos, oldInfo);
+    EXPECT_NE(newInfos.begin(), newInfos.end());
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0015
+ * @tc.name: test RemoveInfo
+ * @tc.desc: 1.RemoveInfo
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0015, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+
+    installer.bundleName_ = "test";
+    std::string bundleName;
+    std::string packageName = "test";
+    installer.RemoveInfo(bundleName, packageName);
+    EXPECT_EQ(installer.isAppExist_, false);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0016
+ * @tc.name: test ProcessBundleUpdateStatus
+ * @tc.desc: 1.ProcessBundleUpdateStatus
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0016, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    InnerBundleInfo oldInfo;
+    oldInfo.baseApplicationInfo_->singleton = true;
+
+    InnerBundleInfo newInfo;
+    newInfo.currentPackage_ = "entry";
+    newInfo.baseApplicationInfo_->singleton = false;
+    newInfo.baseBundleInfo_->isPreInstallApp = true;
+    newInfo.baseApplicationInfo_->bundleName = "com.ohos.sceneboard";
+
+    bool isReplace = false;
+    bool killProcess = false;
+    installer.ProcessBundleUpdateStatus(oldInfo, newInfo, isReplace, killProcess);
+    EXPECT_EQ(installer.singletonState_, AppExecFwk::BaseBundleInstaller::SingletonState::SINGLETON_TO_NON);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0017
+ * @tc.name: test ProcessBundleUpdateStatus
+ * @tc.desc: 1.ProcessBundleUpdateStatus
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0017, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    InnerBundleInfo oldInfo;
+    oldInfo.baseApplicationInfo_->singleton = false;
+
+    InnerBundleInfo newInfo;
+    newInfo.currentPackage_ = "entry";
+    newInfo.baseApplicationInfo_->singleton = true;
+    newInfo.baseBundleInfo_->isPreInstallApp = true;
+    newInfo.baseApplicationInfo_->bundleName = "com.ohos.sceneboard";
+
+    bool isReplace = false;
+    bool killProcess = false;
+    installer.ProcessBundleUpdateStatus(oldInfo, newInfo, isReplace, killProcess);
+    EXPECT_EQ(installer.singletonState_, AppExecFwk::BaseBundleInstaller::SingletonState::NON_TO_SINGLETON);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0019
+ * @tc.name: test ProcessBundleUpdateStatus
+ * @tc.desc: 1.ProcessBundleUpdateStatus
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0019, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = GetBundleDataMgr();
+
+    InnerBundleInfo oldInfo;
+    oldInfo.baseApplicationInfo_->singleton = false;
+    oldInfo.overlayType_ = NON_OVERLAY_TYPE;
+    oldInfo.currentPackage_ = "entry";
+    oldInfo.innerModuleInfos_["entry"] = InnerModuleInfo();
+
+    InnerBundleInfo newInfo;
+    newInfo.currentPackage_ = "entry";
+    newInfo.baseApplicationInfo_->singleton = false;
+    newInfo.baseBundleInfo_->isPreInstallApp = false;
+    newInfo.baseApplicationInfo_->bundleName = "com.ohos.sceneboard";
+    newInfo.overlayType_ = OVERLAY_EXTERNAL_BUNDLE;
+    newInfo.innerModuleInfos_["entry"] = InnerModuleInfo();
+
+    bool isReplace = false;
+    bool killProcess = false;
+    auto ret = installer.ProcessBundleUpdateStatus(oldInfo, newInfo, isReplace, killProcess);
+#ifdef BUNDLE_FRAMEWORK_OVERLAY_INSTALLATION
+    EXPECT_EQ(ret, ERR_BUNDLEMANAGER_OVERLAY_INSTALLATION_FAILED_OVERLAY_TYPE_NOT_SAME);
+#else
+    EXPECT_EQ(ret, ERR_APPEXECFWK_INSTALL_STATE_ERROR);
+#endif
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0020
+ * @tc.name: test ProcessBundleUpdateStatus
+ * @tc.desc: 1.ProcessBundleUpdateStatus
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0020, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    installer.dataMgr_ = dataMgr;
+
+    InnerBundleInfo oldInfo;
+    oldInfo.baseApplicationInfo_->singleton = false;
+    oldInfo.overlayType_ = OVERLAY_EXTERNAL_BUNDLE;
+
+    InnerBundleInfo newInfo;
+    newInfo.currentPackage_ = "entry";
+    newInfo.baseApplicationInfo_->singleton = false;
+    newInfo.baseBundleInfo_->isPreInstallApp = false;
+    newInfo.baseApplicationInfo_->bundleName = "com.ohos.sceneboard";
+    newInfo.overlayType_ = OVERLAY_EXTERNAL_BUNDLE;
+
+    bool isReplace = false;
+    bool killProcess = false;
+
+    dataMgr->installStates_["entry"] = InstallState::ROLL_BACK;
+    installer.bundleName_ = "entry";
+    auto ret = installer.ProcessBundleUpdateStatus(oldInfo, newInfo, isReplace, killProcess);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_INSTALL_STATE_ERROR);
+
+    dataMgr->installStates_.erase("entry");
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0021
+ * @tc.name: test ProcessBundleUpdateStatus
+ * @tc.desc: 1.ProcessBundleUpdateStatus
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0021, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    installer.dataMgr_ = dataMgr;
+
+    InnerBundleInfo oldInfo;
+    oldInfo.baseApplicationInfo_->singleton = false;
+    oldInfo.overlayType_ = OVERLAY_EXTERNAL_BUNDLE;
+    oldInfo.baseBundleInfo_->signatureInfo.appIdentifier = "test1";
+    oldInfo.baseBundleInfo_->appId = "_123";
+
+    InnerBundleInfo newInfo;
+    newInfo.currentPackage_ = "entry";
+    newInfo.baseApplicationInfo_->singleton = false;
+    newInfo.baseBundleInfo_->isPreInstallApp = false;
+    newInfo.baseApplicationInfo_->bundleName = "com.ohos.sceneboard";
+    newInfo.overlayType_ = OVERLAY_EXTERNAL_BUNDLE;
+    newInfo.baseBundleInfo_->signatureInfo.appIdentifier = "test2";
+    newInfo.baseBundleInfo_->appId = "_1234";
+
+    bool isReplace = false;
+    bool killProcess = false;
+
+    dataMgr->installStates_["entry"] = InstallState::INSTALL_START;
+    installer.bundleName_ = "entry";
+    auto checkRes = installer.CheckAppIdentifier(oldInfo.GetAppIdentifier(), newInfo.GetAppIdentifier(),
+        oldInfo.GetProvisionId(), newInfo.GetProvisionId());
+    EXPECT_FALSE(checkRes);
+    auto ret = installer.ProcessBundleUpdateStatus(oldInfo, newInfo, isReplace, killProcess);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_INSTALL_FAILED_INCONSISTENT_SIGNATURE);
+
+    dataMgr->installStates_.erase("entry");
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0022
+ * @tc.name: test RemovePluginOnlyInCurrentUser
+ * @tc.desc: 1.RemovePluginOnlyInCurrentUser
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0022, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.userId_ = 100;
+    InnerBundleInfo info;
+    InnerBundleUserInfo userInfo;
+    info.baseApplicationInfo_->bundleName = "com.example.test";
+
+    InnerBundleUserInfo innerBundleUserInfo;
+    innerBundleUserInfo.uid = 20022222;
+    innerBundleUserInfo.installedPluginSet.insert("testPlugin");
+
+    info.innerBundleUserInfos_["com.example.test_100"] = innerBundleUserInfo;
+
+    PluginBundleInfo pluginBundleInfo;
+    info.pluginBundleInfos_["testPlugin"] = pluginBundleInfo;
+
+    EXPECT_TRUE(info.GetInnerBundleUserInfo(installer.userId_, userInfo));
+    installer.RemovePluginOnlyInCurrentUser(info);
+
+    info.innerBundleUserInfos_["com.example.test_101"] = innerBundleUserInfo;
+    EXPECT_TRUE(info.HasMultiUserPlugin("testPlugin"));
+    installer.RemovePluginOnlyInCurrentUser(info);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0023
+ * @tc.name: test UninstallDebugAppSandbox
+ * @tc.desc: 1.UninstallDebugAppSandbox
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0023, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+
+    ErrCode result = ERR_OK;
+    installer.isPreBundleRecovered_ = false;
+    installer.CheckPreBundleRecoverResult(result);
+    EXPECT_EQ(result, ERR_OK);
+
+    installer.isPreBundleRecovered_ = true;
+    installer.CheckPreBundleRecoverResult(result);
+    EXPECT_EQ(result, ERR_OK);
+
+    result = -1;
+    installer.sysEventInfo_.callingUid = AppExecFwk::ServiceConstants::SHELL_UID;
+    installer.CheckPreBundleRecoverResult(result);
+    EXPECT_EQ(result, -1);
+
+    installer.sysEventInfo_.callingUid = 0;
+    installer.CheckPreBundleRecoverResult(result);
+    EXPECT_EQ(result, -1);
+
+    installer.sysEventInfo_.callingUid = 5523;
+    installer.CheckPreBundleRecoverResult(result);
+    EXPECT_EQ(result, ERR_APPEXECFWK_INSTALL_FAILED_AND_RESTORE_TO_PREINSTALLED);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0024
+ * @tc.name: test installerCheckPreAppAllowHdcInstall
+ * @tc.desc: 1.installerCheckPreAppAllowHdcInstall
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0024, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+    installer.sysEventInfo_.callingUid = 1;
+
+    InstallParam installParam;
+    installParam.isCallByShell = true;
+    std::vector<Security::Verify::HapVerifyResult> hapVerifyRes;
+
+    ErrCode result = installer.CheckPreAppAllowHdcInstall(installParam, hapVerifyRes);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0025
+ * @tc.name: test installerCheckPreAppAllowHdcInstall
+ * @tc.desc: 1.installerCheckPreAppAllowHdcInstall
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0025, Function | SmallTest | Level0)
+{
+    BaseBundleInstaller installer;
+
+    InstallParam installParam;
+    installParam.isCallByShell = true;
+    Security::Verify::HapVerifyResult hapVerifyResult;
+    hapVerifyResult.provisionInfo.isOpenHarmony = true;
+    std::vector<Security::Verify::HapVerifyResult> hapVerifyRes { hapVerifyResult };
+
+    ErrCode result = installer.CheckPreAppAllowHdcInstall(installParam, hapVerifyRes);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0026
+ * @tc.name: test CheckShellCanInstallPreApp
+ * @tc.desc: 1.CheckShellCanInstallPreApp
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0026, Function | SmallTest | Level0)
+{
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    BaseBundleInstaller installer;
+    installer.dataMgr_ = dataMgr;
+
+    installer.sysEventInfo_.callingUid = AppExecFwk::ServiceConstants::SHELL_UID;
+    std::unordered_map<std::string, InnerBundleInfo> newInfos;
+
+    auto result = installer.CheckShellCanInstallPreApp(newInfos);
+    EXPECT_EQ(result, ERR_OK);
+
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.baseApplicationInfo_->bundleName = "test.bundle";
+    dataMgr->bundleInfos_["test.bundle"] = innerBundleInfo;
+    newInfos["test.bundle"] = innerBundleInfo;
+
+    auto result2 = installer.CheckShellCanInstallPreApp(newInfos);
+    EXPECT_EQ(result2, ERR_OK);
+
+    dataMgr->bundleInfos_.erase("test.bundle");
+
+    auto result3 = installer.CheckShellCanInstallPreApp(newInfos);
+    EXPECT_EQ(result3, ERR_OK);
+
+    ASSERT_NE(dataMgr->preInstallDataStorage_, nullptr);
+    PreInstallBundleInfo preInstallBundleInfo;
+    preInstallBundleInfo.bundleName_ = "test.bundle";
+    EXPECT_TRUE(dataMgr->preInstallDataStorage_->SavePreInstallStorageBundleInfo(preInstallBundleInfo));
+    auto result4 = installer.CheckShellCanInstallPreApp(newInfos);
+    EXPECT_EQ(result4, ERR_OK);
+
+    preInstallBundleInfo.bundlePaths_.emplace_back("data/");
+    EXPECT_TRUE(dataMgr->preInstallDataStorage_->SavePreInstallStorageBundleInfo(preInstallBundleInfo));
+    auto result5 = installer.CheckShellCanInstallPreApp(newInfos);
+    EXPECT_EQ(result5, ERR_OK);
+}
+
+/**
+ * @tc.number: DeleteUninstallTmpDirs_0001
+ * @tc.name: test DeleteUninstallTmpDirs
+ * @tc.desc: 1.test InstalldClient DeleteUninstallTmpDirs
+ */
+HWTEST_F(BmsBundleDataGroupTest, DeleteUninstallTmpDirs_0001, Function | SmallTest | Level1)
+{
+    std::vector<std::string> dirs;
+    auto ret = InstalldClient::GetInstance()->DeleteUninstallTmpDirs(dirs);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.number: IsModuleRemovable_0001
+ * @tc.name: test IsModuleRemovable
+ * @tc.desc: 1.Test IsModuleRemovable when bundleType is ATOMIC_SERVICE
+*/
+HWTEST_F(BmsBundleDataGroupTest, IsModuleRemovable_0001, Function | MediumTest | Level1)
+{
+    InnerBundleInfo info;
+    std::string moduleName = "test";
+    int32_t userId = 100;
+    info.innerModuleInfos_[moduleName] = InnerModuleInfo();
+    info.innerModuleInfos_[moduleName].moduleName = moduleName;
+    info.innerModuleInfos_[moduleName].isRemovableSet.insert("#100");
+    info.baseApplicationInfo_->bundleType = BundleType::ATOMIC_SERVICE;
+    bool isRemovable = true;
+    auto ret = info.IsModuleRemovable(moduleName, userId, isRemovable);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(isRemovable, false);
+}
+
+/**
+ * @tc.number: IsModuleRemovable_0002
+ * @tc.name: test IsModuleRemovable
+ * @tc.desc: 1.Test IsModuleRemovable when bundleType is ATOMIC_SERVICE and isRemovableSet is empty
+*/
+HWTEST_F(BmsBundleDataGroupTest, IsModuleRemovable_0002, Function | MediumTest | Level1)
+{
+    InnerBundleInfo info;
+    std::string moduleName = "test";
+    int32_t userId = 100;
+    info.innerModuleInfos_[moduleName] = InnerModuleInfo();
+    info.innerModuleInfos_[moduleName].moduleName = moduleName;
+    info.baseApplicationInfo_->bundleType = BundleType::ATOMIC_SERVICE;
+    bool isRemovable = false;
+    auto ret = info.IsModuleRemovable(moduleName, userId, isRemovable);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(isRemovable, true);
+}
+
+/**
+ * @tc.number: IsModuleRemovable_0003
+ * @tc.name: test IsModuleRemovable
+ * @tc.desc: 1.Test IsModuleRemovable when bundleType is ATOMIC_SERVICE and isRemovableSet is empty
+*/
+HWTEST_F(BmsBundleDataGroupTest, IsModuleRemovable_0003, Function | MediumTest | Level1)
+{
+    InnerBundleInfo info;
+    std::string moduleName = "test";
+    int32_t userId = 100;
+    info.innerModuleInfos_[moduleName] = InnerModuleInfo();
+    info.innerModuleInfos_[moduleName].moduleName = moduleName;
+    info.innerModuleInfos_[moduleName].isRemovable.emplace(std::to_string(userId), false);
+    info.baseApplicationInfo_->bundleType = BundleType::ATOMIC_SERVICE;
+    bool isRemovable = true;
+    auto ret = info.IsModuleRemovable(moduleName, userId, isRemovable);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(isRemovable, false);
+}
+
+/**
+ * @tc.number: GetRequiredDeviceFeatures_0001
+ * @tc.name: test GetRequiredDeviceFeatures
+ * @tc.desc: 1.Test GetRequiredDeviceFeatures
+*/
+HWTEST_F(BmsBundleDataGroupTest, GetRequiredDeviceFeatures_0001, Function | MediumTest | Level1)
+{
+    InnerBundleInfo info;
+    std::string packageName = "test";
+    EXPECT_TRUE(info.innerModuleInfos_.empty());
+    auto retMap = info.GetRequiredDeviceFeatures(packageName);
+    EXPECT_TRUE(retMap.empty());
+}
+
+/**
+ * @tc.number: GetRequiredDeviceFeatures_0002
+ * @tc.name: test GetRequiredDeviceFeatures
+ * @tc.desc: 1.Test GetRequiredDeviceFeatures
+*/
+HWTEST_F(BmsBundleDataGroupTest, GetRequiredDeviceFeatures_0002, Function | MediumTest | Level1)
+{
+    InnerBundleInfo info;
+    std::string packageName = "test";
+    info.innerModuleInfos_["test"] = InnerModuleInfo();
+    info.innerModuleInfos_["test"].requiredDeviceFeatures.emplace("test", std::vector<std::string>());
+    EXPECT_FALSE(info.innerModuleInfos_.empty());
+    auto retMap = info.GetRequiredDeviceFeatures(packageName);
+    EXPECT_FALSE(retMap.empty());
+}
+
+/**
+ * @tc.number: IsGwpAsanEnabled_0001
+ * @tc.name: test IsGwpAsanEnabled
+ * @tc.desc: 1.Test IsGwpAsanEnabled
+*/
+HWTEST_F(BmsBundleDataGroupTest, IsGwpAsanEnabled_0001, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.innerModuleInfos_["test"] = InnerModuleInfo();
+    innerBundleInfo.innerModuleInfos_["test"].gwpAsanEnabled = true;
+    auto ret = innerBundleInfo.IsGwpAsanEnabled();
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: IsTsanEnabled_0001
+ * @tc.name: test IsTsanEnabled
+ * @tc.desc: 1.Test IsTsanEnabled
+*/
+HWTEST_F(BmsBundleDataGroupTest, IsTsanEnabled_0001, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.innerModuleInfos_["test"] = InnerModuleInfo();
+    innerBundleInfo.innerModuleInfos_["test"].tsanEnabled = true;
+    auto ret = innerBundleInfo.IsTsanEnabled();
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: SetCanUninstall_0001
+ * @tc.name: test SetCanUninstall
+ * @tc.desc: 1.Test SetCanUninstall
+*/
+HWTEST_F(BmsBundleDataGroupTest, SetCanUninstall_0001, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    std::map<std::string, InnerBundleUserInfo> innerBundleUserInfos;
+    InnerBundleUserInfo userInfo;
+    int32_t userId = 100;
+    userInfo.canUninstall = true;
+    userInfo.bundleUserInfo.userId = userId;
+    std::string bundleName = "test";
+    innerBundleInfo.baseApplicationInfo_->bundleName = bundleName;
+    innerBundleUserInfos["test_100"] = userInfo;
+    innerBundleInfo.innerBundleUserInfos_ = innerBundleUserInfos;
+    bool state = true;
+    bool stateChange = true;
+    auto ret = innerBundleInfo.SetCanUninstall(0, state, stateChange);
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST);
+    ret = innerBundleInfo.SetCanUninstall(userId, state, stateChange);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(stateChange, false);
+    state = false;
+    ret = innerBundleInfo.SetCanUninstall(userId, state, stateChange);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(stateChange, true);
+}
+
+/**
+ * @tc.number: UpdatePluginBundleInfo_0001
+ * @tc.name: test UpdatePluginBundleInfo
+ * @tc.desc: 1.Test UpdatePluginBundleInfo
+*/
+HWTEST_F(BmsBundleDataGroupTest, UpdatePluginBundleInfo_0001, Function | MediumTest | Level1)
+{
+    PluginBundleInfo pluginBundleInfo;
+    pluginBundleInfo.pluginBundleName = "test";
+    InnerBundleInfo innerBundleInfo;
+    innerBundleInfo.pluginBundleInfos_.emplace(pluginBundleInfo.pluginBundleName, pluginBundleInfo);
+    auto ret = innerBundleInfo.UpdatePluginBundleInfo(pluginBundleInfo);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.number: SetInnerModuleAtomicResizeable_0001
+ * @tc.name: test SetInnerModuleAtomicResizeable
+ * @tc.desc: 1.Test SetInnerModuleAtomicResizeable
+*/
+HWTEST_F(BmsBundleDataGroupTest, SetInnerModuleAtomicResizeable_0001, Function | MediumTest | Level1)
+{
+    std::string moduleName = "test";
+    bool resizeable = true;
+    InnerBundleInfo innerBundleInfo;
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleName = "entry";
+    innerBundleInfo.innerModuleInfos_["entry"] = innerModuleInfo;
+    auto ret = innerBundleInfo.SetInnerModuleAtomicResizeable(moduleName, resizeable);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: GetInnerModuleInfoForEntry_0001
+ * @tc.name: test GetInnerModuleInfoForEntry
+ * @tc.desc: 1.Test GetInnerModuleInfoForEntry
+*/
+HWTEST_F(BmsBundleDataGroupTest, GetInnerModuleInfoForEntry_0001, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.isEntry = false;
+    innerModuleInfo.moduleName = "feature";
+    innerBundleInfo.innerModuleInfos_["feature"] = innerModuleInfo;
+    auto ret = innerBundleInfo.GetInnerModuleInfoForEntry();
+    EXPECT_EQ(ret, std::nullopt);
+}
+
+/**
+ * @tc.number: SetHybridSpawn_0001
+ * @tc.name: test SetHybridSpawn
+ * @tc.desc: 1.Test SetHybridSpawn
+*/
+HWTEST_F(BmsBundleDataGroupTest, SetHybridSpawn_0001, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+    installer.bundleName_ = "test";
+    installer.SetHybridSpawn();
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    InnerBundleInfo info;
+    auto ret = dataMgr->FetchInnerBundleInfo(installer.bundleName_, info);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.number: SetHybridSpawn_0002
+ * @tc.name: test SetHybridSpawn
+ * @tc.desc: 1.Test SetHybridSpawn
+*/
+HWTEST_F(BmsBundleDataGroupTest, SetHybridSpawn_0002, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+    installer.bundleName_ = "test";
+    InnerBundleInfo info;
+    info.baseApplicationInfo_->bundleName = "test";
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleArkTSMode = Constants::ARKTS_MODE_DYNAMIC;
+    info.innerModuleInfos_.try_emplace("entry", innerModuleInfo);
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    dataMgr->bundleInfos_.emplace("test", info);
+    installer.SetHybridSpawn();
+    EXPECT_EQ(info.GetApplicationArkTSMode(), Constants::ARKTS_MODE_DYNAMIC);
+    dataMgr->bundleInfos_.erase("test");
+}
+
+/**
+ * @tc.number: SetHybridSpawn_0003
+ * @tc.name: test SetHybridSpawn
+ * @tc.desc: 1.Test SetHybridSpawn
+*/
+HWTEST_F(BmsBundleDataGroupTest, SetHybridSpawn_0003, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+    installer.bundleName_ = "test";
+    InnerBundleInfo info;
+    info.baseApplicationInfo_->bundleName = "test";
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleArkTSMode = Constants::ARKTS_MODE_STATIC;
+    info.innerModuleInfos_.try_emplace("entry", innerModuleInfo);
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    dataMgr->bundleInfos_.emplace("test", info);
+    installer.SetHybridSpawn();
+    EXPECT_EQ(info.GetApplicationArkTSMode(), Constants::ARKTS_MODE_STATIC);
+    dataMgr->bundleInfos_.erase("test");
+}
+
+/**
+ * @tc.number: SetHybridSpawn_0004
+ * @tc.name: test SetHybridSpawn
+ * @tc.desc: 1.Test SetHybridSpawn
+*/
+HWTEST_F(BmsBundleDataGroupTest, SetHybridSpawn_0004, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+    installer.bundleName_ = "test";
+    InnerBundleInfo info;
+    info.baseApplicationInfo_->bundleName = "test";
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleArkTSMode = Constants::ARKTS_MODE_STATIC;
+    info.innerModuleInfos_.try_emplace("entry", innerModuleInfo);
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    dataMgr->bundleInfos_.emplace("test", info);
+    system::SetParameter(ServiceConstants::HYBRID_SPAWN_UNIFIED, "true");
+    installer.SetHybridSpawn();
+    EXPECT_EQ(info.GetApplicationArkTSMode(), Constants::ARKTS_MODE_STATIC);
+    dataMgr->bundleInfos_.erase("test");
+}
+
+/**
+ * @tc.number: SetHybridSpawn_0005
+ * @tc.name: test SetHybridSpawn
+ * @tc.desc: 1.Test SetHybridSpawn
+*/
+HWTEST_F(BmsBundleDataGroupTest, SetHybridSpawn_0005, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+    installer.bundleName_ = "test";
+    InnerBundleInfo info;
+    info.baseApplicationInfo_->bundleName = "test";
+    InnerModuleInfo innerModuleInfo;
+    innerModuleInfo.moduleArkTSMode = Constants::ARKTS_MODE_STATIC;
+    info.innerModuleInfos_.try_emplace("entry", innerModuleInfo);
+    auto dataMgr = GetBundleDataMgr();
+    ASSERT_NE(dataMgr, nullptr);
+    dataMgr->bundleInfos_.emplace("test", info);
+    system::SetParameter(ServiceConstants::HYBRID_SPAWN_UNIFIED, "false");
+    installer.SetHybridSpawn();
+    EXPECT_EQ(info.GetApplicationArkTSMode(), Constants::ARKTS_MODE_STATIC);
+    dataMgr->bundleInfos_.erase("test");
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0027
+ * @tc.name: test GetTempHapPath
+ * @tc.desc: Test GetTempHapPath branch coverage with different scenarios
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0027, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+    InnerBundleInfo info;
+    InnerModuleInfo moduleInfo;
+    std::map<std::string, InnerModuleInfo> moduleInfos;
+
+    const std::string moduleName = "entry";
+    info.SetCurrentModulePackage(moduleName);
+
+    moduleInfo.hapPath = "/data/app/entry/test.hap";
+    moduleInfos.clear();
+    moduleInfos[moduleName] = moduleInfo;
+    info.AddInnerModuleInfo(moduleInfos);
+
+    installer.isFeatureNeedUninstall_ = true;
+    std::string result = installer.GetTempHapPath(info);
+    EXPECT_FALSE(result.empty());
+
+    installer.isFeatureNeedUninstall_ = false;
+    installer.installedModules_.clear();
+    installer.installedModules_[moduleName] = false;
+
+    result = installer.GetTempHapPath(info);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result.find(ServiceConstants::TMP_SUFFIX), std::string::npos);
+
+    installer.installedModules_[moduleName] = true;
+    result = installer.GetTempHapPath(info);
+    EXPECT_FALSE(result.empty());
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0028
+ * @tc.name: test IsBundleEncrypted when encrypted module not updated
+ * @tc.desc: Test IsBundleEncrypted returns false when old encrypted module is not updated
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0028, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+
+    InnerBundleInfo oldInfo;
+    InnerModuleInfo encryptedModule;
+    std::map<std::string, InnerModuleInfo> oldModules;
+
+    const std::string encryptedModuleName = "encryptedA";
+
+    encryptedModule.modulePackage = encryptedModuleName;
+    encryptedModule.isEncrypted = true;
+    oldModules[encryptedModuleName] = encryptedModule;
+
+    oldInfo.AddInnerModuleInfo(oldModules);
+    oldInfo.SetCurrentModulePackage(encryptedModuleName);
+    installer.versionCode_ = oldInfo.GetVersionCode();
+
+    std::unordered_map<std::string, InnerBundleInfo> infos;
+
+    InnerBundleInfo newInstalledInfo;
+    InnerModuleInfo normalModule;
+    std::map<std::string, InnerModuleInfo> newModules;
+
+    const std::string normalModuleName = "normalB";
+
+    normalModule.modulePackage = normalModuleName;
+    normalModule.isEncrypted = false;
+    newModules[normalModuleName] = normalModule;
+
+    newInstalledInfo.AddInnerModuleInfo(newModules);
+    newInstalledInfo.SetCurrentModulePackage(normalModuleName);
+
+    infos[normalModuleName] = newInstalledInfo;
+
+    InnerBundleInfo newInfo = newInstalledInfo;
+    EXPECT_FALSE(installer.IsBundleEncrypted(infos, oldInfo, newInfo));
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0029
+ * @tc.name: test IsBundleEncrypted when all encrypted modules updated
+ * @tc.desc: Test IsBundleEncrypted returns true when all encrypted modules are updated
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0029, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+
+    InnerBundleInfo oldInfo;
+    InnerModuleInfo encryptedModule;
+    std::map<std::string, InnerModuleInfo> oldModules;
+
+    const std::string moduleName = "encryptedA";
+
+    encryptedModule.modulePackage = moduleName;
+    encryptedModule.isEncrypted = true;
+    oldModules[moduleName] = encryptedModule;
+
+    oldInfo.AddInnerModuleInfo(oldModules);
+    oldInfo.SetCurrentModulePackage(moduleName);
+    installer.versionCode_ = oldInfo.GetVersionCode();
+    
+    std::unordered_map<std::string, InnerBundleInfo> infos;
+    InnerBundleInfo updatedInfo;
+    updatedInfo.AddInnerModuleInfo(oldModules);
+    updatedInfo.SetCurrentModulePackage(moduleName);
+
+    infos[moduleName] = updatedInfo;
+    InnerBundleInfo newInfo = updatedInfo;
+
+    EXPECT_TRUE(installer.IsBundleEncrypted(infos, oldInfo, newInfo));
+}
+
+/**
+ * @tc.number: BaseBundleInstaller_0030
+ * @tc.name: test IsBundleEncrypted when old has no encrypted module
+ * @tc.desc: Test IsBundleEncrypted returns false when old bundle has no encrypted modules
+ */
+HWTEST_F(BmsBundleDataGroupTest, BaseBundleInstaller_0030, Function | MediumTest | Level1)
+{
+    BaseBundleInstaller installer;
+
+    InnerBundleInfo oldInfo;
+
+    installer.versionCode_ = oldInfo.GetVersionCode();
+
+    std::unordered_map<std::string, InnerBundleInfo> infos;
+    InnerBundleInfo newInfo;
+    
+    EXPECT_FALSE(installer.IsBundleEncrypted(infos, oldInfo, newInfo));
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0037
+ * @tc.name: test HasInputMethodExtension with INPUTMETHOD extension
+ * @tc.desc: Test HasInputMethodExtension returns true when bundle has INPUTMETHOD extension
+ */
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0037, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    
+    // Create an INPUTMETHOD extension
+    InnerExtensionInfo inputMethodExtension;
+    inputMethodExtension.bundleName = "com.test.inputmethod";
+    inputMethodExtension.moduleName = "testModule";
+    inputMethodExtension.name = "InputMethodExtension";
+    inputMethodExtension.type = ExtensionAbilityType::INPUTMETHOD;
+    
+    // Add extension to bundle
+    std::string extensionKey = "com.test.inputmethod.testModule.InputMethodExtension";
+    innerBundleInfo.baseExtensionInfos_[extensionKey] = inputMethodExtension;
+    
+    // Verify HasInputMethodExtension returns true
+    EXPECT_TRUE(innerBundleInfo.HasInputMethodExtension());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0038
+ * @tc.name: test HasInputMethodExtension with no extensions
+ * @tc.desc: Test HasInputMethodExtension returns false when bundle has no extensions
+ */
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0038, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    
+    // No extensions added
+    
+    // Verify HasInputMethodExtension returns false
+    EXPECT_FALSE(innerBundleInfo.HasInputMethodExtension());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0039
+ * @tc.name: test HasInputMethodExtension with non-INPUTMETHOD extensions
+ * @tc.desc: Test HasInputMethodExtension returns false when bundle has non-INPUTMETHOD extensions
+ */
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0039, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    
+    // Create a non-INPUTMETHOD extension (e.g., FORM)
+    InnerExtensionInfo formExtension;
+    formExtension.bundleName = "com.test.form";
+    formExtension.moduleName = "testModule";
+    formExtension.name = "FormExtension";
+    formExtension.type = ExtensionAbilityType::FORM;
+    
+    // Add extension to bundle
+    std::string extensionKey = "com.test.form.testModule.FormExtension";
+    innerBundleInfo.baseExtensionInfos_[extensionKey] = formExtension;
+    
+    // Verify HasInputMethodExtension returns false
+    EXPECT_FALSE(innerBundleInfo.HasInputMethodExtension());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0040
+ * @tc.name: test HasInputMethodExtension with multiple extensions including INPUTMETHOD
+ * @tc.desc: Test HasInputMethodExtension returns true when bundle has multiple extensions including INPUTMETHOD
+ */
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0040, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    
+    // Create a non-INPUTMETHOD extension
+    InnerExtensionInfo formExtension;
+    formExtension.bundleName = "com.test.mixed";
+    formExtension.moduleName = "testModule";
+    formExtension.name = "FormExtension";
+    formExtension.type = ExtensionAbilityType::FORM;
+    
+    // Create an INPUTMETHOD extension
+    InnerExtensionInfo inputMethodExtension;
+    inputMethodExtension.bundleName = "com.test.mixed";
+    inputMethodExtension.moduleName = "testModule";
+    inputMethodExtension.name = "InputMethodExtension";
+    inputMethodExtension.type = ExtensionAbilityType::INPUTMETHOD;
+    
+    // Create another non-INPUTMETHOD extension
+    InnerExtensionInfo serviceExtension;
+    serviceExtension.bundleName = "com.test.mixed";
+    serviceExtension.moduleName = "testModule";
+    serviceExtension.name = "ServiceExtension";
+    serviceExtension.type = ExtensionAbilityType::SERVICE;
+    
+    // Add all extensions to bundle
+    std::string formKey = "com.test.mixed.testModule.FormExtension";
+    innerBundleInfo.baseExtensionInfos_[formKey] = formExtension;
+    
+    std::string inputMethodKey = "com.test.mixed.testModule.InputMethodExtension";
+    innerBundleInfo.baseExtensionInfos_[inputMethodKey] = inputMethodExtension;
+    
+    std::string serviceKey = "com.test.mixed.testModule.ServiceExtension";
+    innerBundleInfo.baseExtensionInfos_[serviceKey] = serviceExtension;
+    
+    // Verify HasInputMethodExtension returns true (because one extension is INPUTMETHOD)
+    EXPECT_TRUE(innerBundleInfo.HasInputMethodExtension());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0041
+ * @tc.name: test HasInputMethodExtension with multiple extensions but no INPUTMETHOD
+ * @tc.desc: Test HasInputMethodExtension returns false when bundle has multiple extensions but no INPUTMETHOD
+ */
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0041, Function | MediumTest | Level1)
+{
+    InnerBundleInfo innerBundleInfo;
+    
+    // Create multiple non-INPUTMETHOD extensions
+    InnerExtensionInfo formExtension;
+    formExtension.bundleName = "com.test.noninput";
+    formExtension.moduleName = "testModule";
+    formExtension.name = "FormExtension";
+    formExtension.type = ExtensionAbilityType::FORM;
+    
+    InnerExtensionInfo serviceExtension;
+    serviceExtension.bundleName = "com.test.noninput";
+    serviceExtension.moduleName = "testModule";
+    serviceExtension.name = "ServiceExtension";
+    serviceExtension.type = ExtensionAbilityType::SERVICE;
+    
+    InnerExtensionInfo dataShareExtension;
+    dataShareExtension.bundleName = "com.test.noninput";
+    dataShareExtension.moduleName = "testModule";
+    dataShareExtension.name = "DataShareExtension";
+    dataShareExtension.type = ExtensionAbilityType::DATASHARE;
+    
+    // Add all extensions to bundle
+    std::string formKey = "com.test.noninput.testModule.FormExtension";
+    innerBundleInfo.baseExtensionInfos_[formKey] = formExtension;
+    
+    std::string serviceKey = "com.test.noninput.testModule.ServiceExtension";
+    innerBundleInfo.baseExtensionInfos_[serviceKey] = serviceExtension;
+    
+    std::string dataShareKey = "com.test.noninput.testModule.DataShareExtension";
+    innerBundleInfo.baseExtensionInfos_[dataShareKey] = dataShareExtension;
+    
+    // Verify HasInputMethodExtension returns false (no INPUTMETHOD extensions)
+    EXPECT_FALSE(innerBundleInfo.HasInputMethodExtension());
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0042
+ * @tc.name: test GetApplicationInfoAdaptCliSandbox
+ * @tc.desc: 1.Test GetApplicationInfoAdaptCliSandbox when appIndex exists in sandboxInfos
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0042, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerCliSandboxInfo> sandboxInfos;
+    InnerCliSandboxInfo sandboxInfo;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    sandboxInfo.appIndex = appIndex;
+    sandboxInfo.uid = 2002000;
+    sandboxInfo.accessTokenId = 12345;
+    sandboxInfo.accessTokenIdEx = 67890;
+    sandboxInfos.insert(std::make_pair(InnerBundleUserInfo::AppIndexToKey(appIndex), sandboxInfo));
+    innerBundleUserInfo.sandboxInfos = sandboxInfos;
+
+    ApplicationInfo appInfo;
+    auto ret = bundleInfo.GetApplicationInfoAdaptCliSandbox(innerBundleUserInfo, appIndex, appInfo);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(appInfo.appIndex, appIndex);
+    EXPECT_EQ(appInfo.uid, 2002000);
+    EXPECT_EQ(appInfo.accessTokenId, static_cast<uint32_t>(12345));
+    EXPECT_EQ(appInfo.accessTokenIdEx, static_cast<uint64_t>(67890));
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0043
+ * @tc.name: test GetApplicationInfoAdaptCliSandbox
+ * @tc.desc: 1.Test GetApplicationInfoAdaptCliSandbox when appIndex does not exist in sandboxInfos
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0043, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    ApplicationInfo appInfo;
+    auto ret = bundleInfo.GetApplicationInfoAdaptCliSandbox(innerBundleUserInfo, appIndex, appInfo);
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0044
+ * @tc.name: test GetBundleInfoAdaptCliSandbox
+ * @tc.desc: 1.Test GetBundleInfoAdaptCliSandbox when appIndex exists in sandboxInfos
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0044, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerCliSandboxInfo> sandboxInfos;
+    InnerCliSandboxInfo sandboxInfo;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    sandboxInfo.appIndex = appIndex;
+    sandboxInfo.uid = 2002000;
+    sandboxInfo.installTime = 1000;
+    sandboxInfo.gids.push_back(2000);
+    sandboxInfo.creatorBundleNames.push_back("com.example.creator");
+    sandboxInfos.insert(std::make_pair(InnerBundleUserInfo::AppIndexToKey(appIndex), sandboxInfo));
+    innerBundleUserInfo.sandboxInfos = sandboxInfos;
+    innerBundleUserInfo.firstInstallTime = 500;
+    innerBundleUserInfo.updateTime = 800;
+
+    BundleInfo info;
+    auto ret = bundleInfo.GetBundleInfoAdaptCliSandbox(innerBundleUserInfo, appIndex, info);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(info.appIndex, appIndex);
+    EXPECT_EQ(info.uid, 2002000);
+    EXPECT_EQ(info.gid, 2000);
+    EXPECT_EQ(info.firstInstallTime, 500);
+    EXPECT_EQ(info.updateTime, 800);
+    EXPECT_EQ(info.installTime, 1000);
+    EXPECT_EQ(info.sandboxCreatorBundleName, "com.example.creator");
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0045
+ * @tc.name: test GetBundleInfoAdaptCliSandbox
+ * @tc.desc: 1.Test GetBundleInfoAdaptCliSandbox when appIndex does not exist in sandboxInfos
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0045, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    BundleInfo info;
+    auto ret = bundleInfo.GetBundleInfoAdaptCliSandbox(innerBundleUserInfo, appIndex, info);
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0046
+ * @tc.name: test IsCliSandboxCreator
+ * @tc.desc: 1.Test IsCliSandboxCreator when creatorBundleName exists in creatorBundleNames
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0046, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerCliSandboxInfo> sandboxInfos;
+    InnerCliSandboxInfo sandboxInfo;
+    int32_t userId = 100;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    sandboxInfo.creatorBundleNames.push_back("com.example.creator");
+    sandboxInfos.insert(std::make_pair(InnerBundleUserInfo::AppIndexToKey(appIndex), sandboxInfo));
+    innerBundleUserInfo.sandboxInfos = sandboxInfos;
+    bundleInfo.innerBundleUserInfos_.insert(
+        std::make_pair("_" + std::to_string(userId), innerBundleUserInfo));
+
+    auto ret = bundleInfo.IsCliSandboxCreator(userId, appIndex, "com.example.creator");
+    EXPECT_EQ(ret, true);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0047
+ * @tc.name: test IsCliSandboxCreator
+ * @tc.desc: 1.Test IsCliSandboxCreator when user does not exist
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0047, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    int32_t userId = 100;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    auto ret = bundleInfo.IsCliSandboxCreator(userId, appIndex, "com.example.creator");
+    EXPECT_EQ(ret, false);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0048
+ * @tc.name: test IsCliSandboxCreator
+ * @tc.desc: 1.Test IsCliSandboxCreator when sandbox not exist or creator not in creatorBundleNames
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0048, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerCliSandboxInfo> sandboxInfos;
+    InnerCliSandboxInfo sandboxInfo;
+    int32_t userId = 100;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    sandboxInfo.creatorBundleNames.push_back("com.example.creator");
+    sandboxInfos.insert(std::make_pair(InnerBundleUserInfo::AppIndexToKey(appIndex), sandboxInfo));
+    innerBundleUserInfo.sandboxInfos = sandboxInfos;
+    bundleInfo.innerBundleUserInfos_.insert(
+        std::make_pair("_" + std::to_string(userId), innerBundleUserInfo));
+
+    // sandbox appIndex not existed
+    EXPECT_EQ(bundleInfo.IsCliSandboxCreator(userId, appIndex + 1, "com.example.creator"), false);
+    // creator not in creatorBundleNames
+    EXPECT_EQ(bundleInfo.IsCliSandboxCreator(userId, appIndex, "com.example.other"), false);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0049
+ * @tc.name: test GetBundleInfoForCliSandbox
+ * @tc.desc: 1.Test GetBundleInfoForCliSandbox when userId not found
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0049, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    int32_t userId = 100;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    BundleInfo info;
+    auto ret = bundleInfo.GetBundleInfoForCliSandbox(0, info, userId, appIndex);
+    EXPECT_EQ(ret, ERR_BUNDLE_MANAGER_INTERNAL_ERROR);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0050
+ * @tc.name: test GetBundleInfoForCliSandbox
+ * @tc.desc: 1.Test GetBundleInfoForCliSandbox when sandbox appIndex does not exist
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0050, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    int32_t userId = 100;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    bundleInfo.innerBundleUserInfos_.insert(
+        std::make_pair("_" + std::to_string(userId), innerBundleUserInfo));
+
+    BundleInfo info;
+    auto ret = bundleInfo.GetBundleInfoForCliSandbox(0, info, userId, appIndex);
+    EXPECT_EQ(ret, ERR_APPEXECFWK_CLI_SANDBOX_NOT_EXISTED);
+}
+
+/**
+ * @tc.number: InnerBundleInfo_0051
+ * @tc.name: test GetBundleInfoForCliSandbox
+ * @tc.desc: 1.Test GetBundleInfoForCliSandbox when sandbox exists
+*/
+HWTEST_F(BmsBundleDataGroupTest, InnerBundleInfo_0051, Function | MediumTest | Level1)
+{
+    InnerBundleInfo bundleInfo;
+    InnerBundleUserInfo innerBundleUserInfo;
+    std::map<std::string, InnerCliSandboxInfo> sandboxInfos;
+    InnerCliSandboxInfo sandboxInfo;
+    int32_t userId = 100;
+    int32_t appIndex = Constants::CLI_SANDBOX_APP_INDEX_MIN;
+    sandboxInfo.appIndex = appIndex;
+    sandboxInfo.uid = 2002000;
+    sandboxInfo.creatorBundleNames.push_back("com.example.creator");
+    sandboxInfos.insert(std::make_pair(InnerBundleUserInfo::AppIndexToKey(appIndex), sandboxInfo));
+    innerBundleUserInfo.sandboxInfos = sandboxInfos;
+    bundleInfo.innerBundleUserInfos_.insert(
+        std::make_pair("_" + std::to_string(userId), innerBundleUserInfo));
+
+    BundleInfo info;
+    auto ret = bundleInfo.GetBundleInfoForCliSandbox(0, info, userId, appIndex);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(info.appIndex, appIndex);
+    EXPECT_EQ(info.uid, 2002000);
+    EXPECT_EQ(info.sandboxCreatorBundleName, "com.example.creator");
+}
+
+} // OHOS

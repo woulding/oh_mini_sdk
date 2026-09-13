@@ -1,0 +1,55 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+
+config("hiappevent_policy_config") {
+  visibility = [ "*:*" ]
+  include_dirs = [ "include" ]
+}
+
+ohos_source_set("hiappevent_policy") {
+  branch_protector_ret = "pac_ret"
+  public_configs = [ ":hiappevent_policy_config" ]
+
+  sources = [
+    "address_sanitizer_policy.cpp",
+    "app_crash_policy.cpp",
+    "app_freeze_policy.cpp",
+    "cpu_usage_high_policy.cpp",
+    "event_policy_mgr.cpp",
+    "event_policy_utils.cpp",
+    "main_thread_jank_policy.cpp",
+    "resource_overlimit_policy.cpp",
+  ]
+
+  deps = [ "../utility:hiappevent_utility" ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_runtime:app_context",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "hicollie:libhicollie",
+    "hilog:libhilog",
+    "hilog:libsandboxlog",
+    "ipc:ipc_single",
+    "resource_management:global_resmgr",
+    "storage_service:storage_manager_acl",
+    "storage_service:storage_manager_sa_proxy",
+  ]
+
+  part_name = "hiappevent"
+  subsystem_name = "hiviewdfx"
+}

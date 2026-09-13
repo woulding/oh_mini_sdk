@@ -1,0 +1,261 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../../dsoftbus.gni")
+import("../connection/common/conn_common.gni")
+import("../transmission/common/trans_common.gni")
+
+softbus_adapter_common = "${dsoftbus_root_path}/adapter/common"
+
+if (!dsoftbus_feature_compile_guard) {
+  common_utils_src = [
+    "bitmap/softbus_bitmap.c",
+    "network/softbus_network_utils.c",
+    "json_utils/softbus_json_utils.c",
+    "queue/softbus_queue.c",
+    "security/sequence_verification/softbus_sequence_verification.c",
+    "softbus_property/softbus_feature_config.c",
+    "$dsoftbus_root_path/core/frame/common/src/softbus_init_common.c",
+    "utils/softbus_tlv_utils.c",
+    "utils/softbus_utils.c",
+    "$dsoftbus_dfx_path/event/legacy/softbus_hisysevt_bus_center.c",
+    "$dsoftbus_dfx_path/event/legacy/softbus_hisysevt_common.c",
+    "$dsoftbus_dfx_path/event/legacy/softbus_hisysevt_connreporter.c",
+    "$dsoftbus_dfx_path/event/legacy/softbus_hisysevt_discreporter.c",
+    "$dsoftbus_dfx_path/event/legacy/softbus_hisysevt_transreporter.c",
+  ]
+}
+
+dsoftbus_plugin_inc = [
+  "$dsoftbus_root_path/interfaces/kits/adapter",
+  "$dsoftbus_root_path/interfaces/kits/authentication",
+  "$dsoftbus_root_path/interfaces/kits/authentication/enhance",
+  "$dsoftbus_root_path/interfaces/kits/broadcast",
+  "$dsoftbus_root_path/interfaces/kits/bus_center",
+  "$dsoftbus_root_path/interfaces/kits/connect",
+  "$dsoftbus_root_path/interfaces/kits/disc",
+  "$dsoftbus_root_path/interfaces/kits/lnn",
+  "$dsoftbus_root_path/interfaces/kits/lnn/enhance",
+  "$dsoftbus_root_path/interfaces/kits/transport",
+  "$dsoftbus_root_path/core/common/include",
+  "$dsoftbus_root_path/adapter/common/include",
+  "$dsoftbus_root_path/sdk/bus_center/interface/common",
+  "$dsoftbus_root_path/core/frame/init/include",
+  "$dsoftbus_root_path/core/connection/wifi_direct_cpp/adapter",
+  "$dsoftbus_root_path/core/connection/wifi_direct_cpp/entity",
+  "$dsoftbus_root_path/core/connection/wifi_direct_cpp/data",
+  "$dsoftbus_root_path/core/connection/wifi_direct_cpp",
+  "$dsoftbus_root_path/core/connection/wifi_direct_cpp/utils",
+  "$dsoftbus_root_path/core/connection/wifi_direct_cpp/protocol",
+  "$dsoftbus_root_path/interfaces/kits/broadcast/enhance",
+  "$dsoftbus_root_path/interfaces/kits/adapter/enhance",
+  "$dsoftbus_root_path/interfaces/kits/nstackx",
+  "$dsoftbus_root_path/interfaces/kits/sdk",
+  "$dsoftbus_root_path/sdk/transmission/trans_channel/udp/stream/libsoftbus_stream",
+  "$dsoftbus_root_path/interfaces/inner_kits/lnn",
+  "$dsoftbus_root_path/sdk/frame/init/include",
+  "$dsoftbus_root_path/core/frame/common/include",
+]
+external_deps = []
+
+if (defined(ohos_lite)) {
+  if (ohos_kernel_type == "liteos_m") {
+    diff_deps = [
+      "$hilog_lite_deps_path",
+      "//build/lite/config/component/cJSON:cjson_static",
+    ]
+    diff_external_deps = [ "bounds_checking_function:libsec_static" ]
+    build_type = "static_library"
+  } else {
+    diff_deps = [
+      "$hilog_lite_deps_path",
+      "//build/lite/config/component/cJSON:cjson_shared",
+    ]
+    diff_external_deps = [ "bounds_checking_function:libsec_shared" ]
+    build_type = "shared_library"
+  }
+  config("dsoftbus_utils_interface") {
+    include_dirs = [
+      "$dsoftbus_dfx_path/interface/include",
+      "$dsoftbus_root_path/core/common/include",
+      "$dsoftbus_root_path/interfaces/kits/common",
+      "$softbus_adapter_common/include",
+      "$hilog_lite_include_path",
+      "$utils_lite_include_path",
+    ]
+    include_dirs += conn_common_inc + trans_common_inc + dsoftbus_plugin_inc
+    if (board_toolchain_type != "iccarm") {
+      cflags = [
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-Os",
+      ]
+    } else {
+      cflags = [
+        "--diag_suppress",
+        "Pe186",
+        "-Os",
+      ]
+    }
+    cflags_cc = cflags
+  }
+
+  target(build_type, "softbus_utils") {
+    if (dsoftbus_feature_compile_guard) {
+      install_enable = false
+    } else {
+      include_dirs = [
+        "$dsoftbus_root_path/interfaces/kits/common",
+        "$dsoftbus_root_path/components/nstackx/nstackx_core/dfile/interface",
+        "$dsoftbus_root_path/core/frame/init/include",
+      ]
+      include_dirs += conn_common_inc + trans_common_inc + dsoftbus_plugin_inc
+      dfx_src =
+          [ "$dsoftbus_dfx_path/event/legacy/softbus_hisysevt_nstack_virtual.c" ]
+      sources = common_utils_src
+      sources += conn_common_src + trans_common_src + dfx_src
+      sources += [ "message_handler/message_handler.c" ]
+      if (board_toolchain_type != "iccarm") {
+        cflags = [
+          "-Wall",
+          "-fPIC",
+          "-std=c99",
+        ]
+      }
+      if (ohos_kernel_type == "liteos_m") {
+        defines += [ "SOFTBUS_LITEOS_M" ]
+        defines += [ "__STDC_FORMAT_MACROS" ]
+      } else {
+        defines += [ "DEFAULT_STORAGE_PATH=\"/storage/data\"" ]
+        defines += [ "__STDC_FORMAT_MACROS" ]
+        defines += [ "SOFTBUS_LITEOS_A" ]
+      }
+      deps = [
+        "$dsoftbus_dfx_path:softbus_dfx",
+        "$dsoftbus_root_path/adapter:softbus_adapter",
+      ]
+      deps += diff_deps
+      external_deps += diff_external_deps
+      public_configs = [ ":dsoftbus_utils_interface" ]
+    }
+  }
+} else {
+  cflags = [ "-DFILLP_LINUX" ]
+  config("dsoftbus_utils_interface_L2") {
+    include_dirs = [
+      "$dsoftbus_dfx_path/interface/include",
+      "$dsoftbus_root_path/core/common/include",
+      "$dsoftbus_root_path/interfaces/kits/common",
+      "$softbus_adapter_common/include",
+      "$dsoftbus_root_path/components/nstackx/nstackx_core/dfile/interface",
+    ]
+    include_dirs += conn_common_inc + trans_common_inc + dsoftbus_plugin_inc
+  }
+  config("dsoftbus_utils_link_config") {
+    ldflags = [ "-Wl,--lto-O0" ]
+  }
+  ohos_shared_library("softbus_utils") {
+    if (dsoftbus_feature_compile_guard) {
+      install_enable = false
+    } else {
+      sanitize = {
+        ubsan = true
+        integer_overflow = true
+        boundary_sanitize = true
+        cfi = true
+        cfi_cross_dso = true
+        debug = false
+      }
+      branch_protector_ret = "pac_ret"
+
+      include_dirs = [
+        "$dsoftbus_root_path/interfaces/kits/common",
+        "$dsoftbus_root_path/interfaces/kits/lnn",
+        "$dsoftbus_root_path/core/bus_center/utils/include",
+        "$dsoftbus_root_path/core/common/include",
+        "$dsoftbus_root_path/components/nstackx/fillp/include",
+        "$dsoftbus_root_path/components/nstackx/nstackx_core/dfile/interface",
+        "$dsoftbus_root_path/components/nstackx/nstackx_util/interface",
+        "$dsoftbus_root_path/components/nstackx/nstackx_ctrl/interface",
+        "$dsoftbus_root_path/interfaces/kits/nstackx",
+        "$dsoftbus_root_path/core/frame/init/include",
+      ]
+      include_dirs += conn_common_inc + trans_common_inc + dsoftbus_plugin_inc
+      dfx_source = [
+        "$dsoftbus_dfx_path/dumper/legacy/softbus_hidumper.c",
+        "$dsoftbus_dfx_path/dumper/legacy/softbus_hidumper_bc_mgr.c",
+        "$dsoftbus_dfx_path/dumper/legacy/softbus_hidumper_broadcast.c",
+        "$dsoftbus_dfx_path/dumper/legacy/softbus_hidumper_disc.c",
+        "$dsoftbus_dfx_path/dumper/legacy/softbus_hidumper_conn.c",
+        "$dsoftbus_dfx_path/dumper/legacy/softbus_hidumper_nstack.c",
+        "$dsoftbus_dfx_path/dumper/legacy/softbus_hidumper_trans.c",
+        "$dsoftbus_dfx_path/dumper/legacy/softbus_hidumper_buscenter.c",
+        "$dsoftbus_dfx_path/event/legacy/softbus_hisysevt_nstack.c",
+      ]
+      sources = common_utils_src + conn_common_src + trans_common_src + dfx_source
+      sources += [
+        "$dsoftbus_root_path/core/common/utils/sqlite3_utils.c",
+        "$dsoftbus_root_path/core/frame/init/src/g_enhance_adapter_func.c",
+      ]
+      defines += [ "DEFAULT_STORAGE_PATH=\"/data/service/el1/public\"" ]
+      defines += [ "__STDC_FORMAT_MACROS" ]
+      if (is_asan) {
+        defines += [ "ASAN_BUILD" ]
+      }
+
+      configs = [ ":dsoftbus_utils_link_config" ]
+      public_configs = [ ":dsoftbus_utils_interface_L2" ]
+      deps = [
+        "$dsoftbus_dfx_path:softbus_dfx",
+        "$dsoftbus_root_path/adapter:softbus_adapter",
+      ]
+      public_external_deps = [
+        "cJSON:cjson",
+        "sqlite:sqlite",
+      ]
+      external_deps += [
+        "bounds_checking_function:libsec_shared",
+        "cJSON:cjson",
+      ]
+      if (defined(global_parts_info) &&
+          !defined(global_parts_info.communication_dsoftbus_service_ext)) {
+        cflags += [ "-DFILLP_ENHANCED" ]
+        if (dsoftbus_feature_dfile) {
+          cflags += [ "-DDFILE_OPEN" ]
+        }
+        if (dsoftbus_feature_vtp) {
+          cflags += [ "-DDFILLP_OPEN" ]
+        }
+        deps += [
+          "$dsoftbus_root_path/components/nstackx/fillp:FillpSo.open",
+          "$dsoftbus_root_path/components/nstackx/nstackx_core/dfile:nstackx_dfile.open",
+          "$dsoftbus_root_path/components/nstackx/nstackx_ctrl:nstackx_ctrl",
+          "$dsoftbus_root_path/components/nstackx/nstackx_util:nstackx_util.open",
+        ]
+      }
+      if (is_standard_system) {
+        sources += [ "message_handler/message_handler_ffrt.cpp" ]
+        external_deps += [
+          "ffrt:libffrt",
+          "hilog:libhilog",
+          "hisysevent:libhisysevent",
+        ]
+      } else {
+        sources += [ "message_handler/message_handler.c" ]
+      }
+      innerapi_tags = [ "platformsdk_indirect" ]
+      part_name = "dsoftbus"
+      subsystem_name = "communication"
+    }
+  }
+}

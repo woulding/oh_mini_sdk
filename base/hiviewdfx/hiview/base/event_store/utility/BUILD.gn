@@ -1,0 +1,60 @@
+# Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("event_store_utility_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    "$hiview_base/event_raw/include",
+    "$hiview_base/event_store/include",
+    "$hiview_base/utility/include",
+    "$hiview_base/include",
+    "$hiview_root/include",
+    "base/include",
+    "reader/include",
+    "writer/include",
+  ]
+}
+
+ohos_source_set("event_store_utility_source") {
+  branch_protector_ret = "pac_ret"
+
+  public_configs = [ ":event_store_utility_config" ]
+
+  sources = [
+    "base/event_db_file_util.cpp",
+    "reader/content_reader.cpp",
+    "reader/content_reader_factory.cpp",
+    "reader/content_reader_version_1.cpp",
+    "reader/content_reader_version_2.cpp",
+    "reader/content_reader_version_3.cpp",
+    "reader/content_reader_version_4.cpp",
+    "reader/sys_event_doc_reader.cpp",
+    "writer/sys_event_doc_writer.cpp",
+  ]
+
+  deps = [ "../config:event_store_config_source" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "jsoncpp:jsoncpp",
+  ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}

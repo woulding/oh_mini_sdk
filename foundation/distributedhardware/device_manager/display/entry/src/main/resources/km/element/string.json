@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_allow_this_time",
+            "value":"ទុកចិត្តតែលើកនេះប៉ុណ្ណោះ",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_connect_code",
+            "value":"កូដតភ្ជាប់",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"%1$s នៅលើ %2$s ចង់ចូលប្រើឧបករណ៍នេះ។ ទុកចិត្តកម្មវិធីនេះឬ?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"បោះបង់",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"វាយបញ្ចូលកូដតភ្ជាប់",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"តម្រូវឱ្យមានវាសម្រាប់ការធ្វើសមកាលកម្មទិន្នន័យ និងការសហការឆ្លងឧបករណ៍។",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"ទុកចិត្តលើកនេះ",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"ទុកចិត្តជានិច្ច",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s ចង់ចូលប្រើសេវាកម្ម %2$s នៅលើឧបករណ៍របស់អ្នក។ ទុកចិត្តឧបករណ៍នេះឬ?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"កម្មវិធី %2$s នៅលើ %1$s ចង់ចូលប្រើសេវាកម្ម %3$s នៅលើឧបករណ៍របស់អ្នក។ ទុកចិត្តកម្មវិធីនេះឬ?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s ចង់ភ្ជាប់ទៅសេវាកម្មនៅលើឧបករណ៍របស់អ្នក។ ជ្រើសរើសសេវាកម្មដើម្បីអនុញ្ញាត៖",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

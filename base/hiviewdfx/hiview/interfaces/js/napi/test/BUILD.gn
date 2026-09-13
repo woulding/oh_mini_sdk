@@ -1,0 +1,93 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+module_output_path = "hiview/hiview/interface"
+
+group("unittest") {
+  testonly = true
+  deps = [
+    ":InterfaceJsNapiTest",
+    ":LoglibraryAgentTest",
+  ]
+}
+
+config("unittest_config") {
+  include_dirs = [
+    "$hiview_adapter/service/test/unittest/common",
+    "$hiview_base/include",
+    "$hiview_interfaces/inner_api/unified_collection",
+    "$hiview_interfaces/js/napi/include",
+    "unittest/common",
+  ]
+
+  cflags_cc = [
+    "-D__UNITTEST__",
+    "-D__HIVIEW_OHOS__",
+  ]
+}
+
+ohos_unittest("InterfaceJsNapiTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [ "unittest/common/interface_js_napi_test.cpp" ]
+
+  deps = [ "$hiview_base/utility:hiview_utility" ]
+
+  external_deps = [
+    "access_token:libtokenid_sdk",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+  ]
+}
+
+ohos_unittest("LoglibraryAgentTest") {
+  module_out_path = module_output_path
+  configs = [ ":unittest_config" ]
+
+  sources = [
+    "$hiview_adapter/service/test/unittest/common/adapter_loglibrary_test_tools.cpp",
+    "$hiview_interfaces/js/napi/src/hiview_service_agent.cpp",
+    "unittest/common/loglibrary_agent_test.cpp",
+  ]
+
+  cflags_cc = [ "-DTEST_LOCAL_SRC" ]
+
+  deps = [
+    "$hiview_adapter/service/client:hiview_service_proxy",
+    "$hiview_base:hiview_base",
+  ]
+
+  external_deps = [
+    "ability_runtime:app_context",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "icu:shared_icuuc",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "selinux_adapter:librestorecon",
+    "storage_service:storage_manager_acl",
+  ]
+}

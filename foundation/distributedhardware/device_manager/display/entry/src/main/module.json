@@ -1,0 +1,89 @@
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    "srcEntrance": "",
+    "description": "$string:entry_desc",
+    "mainElement": "MainAbility",
+    "deviceTypes":  ["default", "tablet", "2in1", "wearable", "car"],
+    "deliveryWithInstall": true,
+    "installationFree": false,
+    "pages": "$profile:main_pages",
+    "uiSyntax": "ets",
+    "abilities": [
+      {
+          "name": "com.ohos.devicemanagerui.MainAbility",
+          "startWindowBackground": "$color:start_window_background",
+          "startWindowIcon": "$media:icon",
+          "srcEntrance": "",
+          "description": "$string:MainAbility_desc",
+          "icon": "$media:icon",
+          "ic_device_earphone_hero":"$media:ic_device_earphone_hero",
+          "ic_public_devices_phone": "$media:ic_public_devices_phone",
+          "ic_device_pad": "$media:ic_device_pad",
+          "ic_device_watch": "$media:ic_device_watch",
+          "ic_public_car": "$media:ic_public_car",
+          "ic_device_smartscreen": "$media:ic_device_smartscreen",
+          "ic_device_soundx": "$media:ic_device_soundx",
+          "ic_device_glass": "$media:ic_device_glass",
+          "label": "$string:MainAbility_label",
+          "visible": false,
+          "launchType": "standard"
+      }
+    ],
+    "extensionAbilities": [
+      {
+        "name": "com.ohos.devicemanagerui.InputUIExtAbility",
+        "srcEntry": "./ets/UIExtAbility/InputUIExtAbility.ets",
+        "description": "$string:ServiceExtAbility_desc",
+        "icon": "$media:icon",
+        "label": "$string:ServiceExtAbility_label",
+        "exported": true,
+        "type": "sysDialog/common"
+      },
+      {
+        "name": "com.ohos.devicemanagerui.PincodeUIExtAbility",
+        "srcEntry": "./ets/UIExtAbility/PincodeUIExtAbility.ets",
+        "description": "$string:ServiceExtAbility_desc",
+        "icon": "$media:icon",
+        "label": "$string:ServiceExtAbility_label",
+        "exported": true,
+        "type": "sysDialog/common"
+      },
+      {
+        "name": "com.ohos.devicemanagerui.ConfirmUIExtAbility",
+        "srcEntry": "./ets/UIExtAbility/ConfirmUIExtAbility.ets",
+        "description": "$string:ServiceExtAbility_desc",
+        "icon": "$media:icon",
+        "label": "$string:ServiceExtAbility_label",
+        "exported": true,
+        "type": "sysDialog/common"
+      },
+      {
+        "name": "com.ohos.devicemanagerui.BluetoothDialogAbility",
+        "srcEntrance": "./ets/UIExtAbility/BluetoothUIExtAbility.ets",
+        "description": "$string:ServiceExtAbility_desc",
+        "icon": "$media:icon",
+        "label": "$string:ServiceExtAbility_label",
+        "exported": true,
+        "type": "sysDialog/common"
+      }
+    ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.GET_BUNDLE_INFO"
+      },
+      {
+        "name": "ohos.permission.ACCESS_SERVICE_DM"
+      },
+      {
+        "name": "ohos.permission.PRIVACY_WINDOW"
+      }
+    ],
+    "metadata": [
+      {
+        "name": "ohos.graphics2d.text.adapter_text_height"
+      }
+    ]
+  }
+}

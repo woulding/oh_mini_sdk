@@ -1,0 +1,15 @@
+requests
+
+[:python_version < "3.8"]
+urllib3<2.1
+
+[full]
+cryptography
+psutil
+
+[full:python_version >= "3.10"]
+fastapi
+filelock
+python-multipart
+sqlmodel
+uvicorn

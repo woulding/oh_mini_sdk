@@ -1,0 +1,92 @@
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("hiview_service_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    ".",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/include",
+    "$hiview_framework/native/unified_collection/collector/impl/trace/strategy/include",
+    "$hiview_framework/native/unified_collection/collector/inner_include",
+    "$hiview_interfaces/inner_api/unified_collection",
+  ]
+}
+
+ohos_prebuilt_etc("hiview.cfg") {
+  source = "config/hiview.cfg"
+  relative_install_dir = "init"
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_prebuilt_etc("log_type.json") {
+  source = "config/log_type.json"
+  relative_install_dir = "hiview"
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_source_set("hiview_service") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  public_configs = [ ":hiview_service_config", "$hiview_adapter/service/client:hiview_service_stub_inner_public_config" ]
+
+  sources = [ "hiview_service.cpp" ]
+
+  deps = [
+    ":hiview.cfg",
+    ":log_type.json",
+    "$hiview_adapter/service:hiview_service_adapter",
+    "$hiview_base:hiviewbase",
+    "$hiview_core:hiview_core",
+    "$hiview_interfaces/inner_api/unified_collection/utility:libucollection_utility",
+    "$hiview_adapter/service/client:hiview_service_idl_interface",
+  ]
+
+  if (hiview_unified_collector_trace_enable) {
+    deps += [ "$hiview_framework/native/unified_collection/trace_manager:libtrace_manager" ]
+    defines = [ "UNIFIED_COLLECTOR_TRACE_ENABLE" ]
+  }
+
+  external_deps = [
+    "ability_base:base",
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+    "zlib:libz",
+    "hitrace:hitrace_dump",
+    "relational_store:native_rdb",
+  ]
+}
+
+group("fuzztest") {
+  testonly = true
+  deps = [ "test/fuzztest/common/hiviewservice_fuzzer:HiviewServiceFuzzTest" ]
+}

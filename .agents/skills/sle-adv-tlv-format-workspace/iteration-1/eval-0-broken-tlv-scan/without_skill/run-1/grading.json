@@ -1,0 +1,37 @@
+{
+  "eval_dir": "eval-0-broken-tlv-scan",
+  "config": "without_skill",
+  "summary": {
+    "passed": 4,
+    "failed": 1,
+    "total": 5,
+    "pass_rate": 0.8
+  },
+  "expectations": [
+    {
+      "text": "states the TLV order is [type][length][value]",
+      "passed": false,
+      "evidence": "not found"
+    },
+    {
+      "text": "identifies the length off-by-one / type-inclusive root cause",
+      "passed": true,
+      "evidence": "多算"
+    },
+    {
+      "text": "gives corrected announce bytes 01 01 01 02 01 00",
+      "passed": true,
+      "evidence": "01 01 01 02 01 00"
+    },
+    {
+      "text": "gives corrected seek bytes 0c 01 06 0b 0a ...",
+      "passed": true,
+      "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"
+    },
+    {
+      "text": "explains a malformed discovery-level TLV makes the device invisible",
+      "passed": true,
+      "evidence": "发现等级 / 接入层能力 / 发送功率的值本来都只有 **1 字节**，却被写成 `length=0x02`； - 本地名称 `\"sle_server\"` 只有 **10(0x0A"
+    }
+  ]
+}

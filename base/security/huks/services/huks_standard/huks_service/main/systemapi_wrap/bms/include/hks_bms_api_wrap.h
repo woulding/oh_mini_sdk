@@ -1,0 +1,66 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef HKS_BMS_API_WRAP_H
+#define HKS_BMS_API_WRAP_H
+
+#ifdef __cplusplus
+#include <string>
+#include <vector>
+#endif
+#include "hks_type_inner.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef __cplusplus
+typedef struct HksCallerInfo {
+    bool isHap;
+    std::string id;
+    std::string extend;
+    std::string appIdentifier;
+    std::string appMode;
+} HksCallerInfo;
+#endif
+
+int32_t HksGetHapInfo(const struct HksProcessInfo *processInfo, struct HksBlob *hapInfo);
+
+int32_t HksGetSaInfo(struct HksBlob *saInfo);
+
+int32_t GetCallerName(const struct HksProcessInfo *processInfo, struct HksBlob *appInfo);
+
+enum HksCallerType HksGetCallerType(void);
+
+#ifdef L2_STANDARD
+int32_t HksGetDeveloperId(const struct HksProcessInfo *processInfo, struct HksBlob *developerId);
+
+int32_t HksCheckAssetAccessGroup(const struct HksProcessInfo *processInfo, const struct HksParamSet *paramSet);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef L2_STANDARD
+#ifdef __cplusplus
+int32_t HksGetDeleteGroups(const struct HksProcessInfo *processInfo, const std::string &developerId,
+    const std::vector<std::string> &thisGroups, std::vector<std::string> &deleteGroups);
+
+int32_t HksGetBundleNameFromUid(uint32_t uid, std::string &bundleName);
+#endif // __cplusplus
+#endif // L2_STANDARD
+
+#endif // HKS_BMS_API_WRAP_H

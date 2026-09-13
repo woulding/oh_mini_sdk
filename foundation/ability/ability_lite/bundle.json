@@ -1,0 +1,55 @@
+{
+    "name": "@ohos/ability_lite",
+    "description": "App development framework for mini and small system.",
+    "version": "3.1",
+    "license": "Apache License 2.0",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/ability/ability_lite"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "ability_lite",
+        "subsystem": "ability",
+        "syscap": [],
+        "features": [
+            "ability_lite_enable_ohos_appexecfwk_feature_ability",
+            "ability_lite_enable_ohos_aafwk_multi_tasks_feature",
+            "ability_lite_config_ohos_aafwk_ams_task_size",
+            "ability_lite_config_ohos_aafwk_aafwk_lite_task_stack_size",
+            "ability_lite_config_ohos_aafwk_ability_list_capacity"
+        ],
+        "adapted_system_type": [
+            "mini",
+            "small"
+        ],
+        "rom": "",
+        "ram": "",
+        "deps": {
+            "components": [
+                "bundle_framework_lite",
+                "kv_store",
+                "ui_lite",
+                "surface_lite",
+                "hilog",
+                "samgr_lite",
+                "window_manager_lite"
+            ],
+            "third_party": [
+                "bounds_checking_function",
+                "cJSON",
+                "freetype"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//foundation/ability/ability_lite/frameworks/ability_lite:aafwk_abilitykit_lite",
+                "//foundation/ability/ability_lite/frameworks/abilitymgr_lite:aafwk_abilityManager_lite",
+                "//foundation/ability/ability_lite/services/abilitymgr_lite:aafwk_services_lite"
+            ],
+            "inner_kits": [],
+            "test": []
+        }
+    }
+}

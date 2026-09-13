@@ -1,0 +1,159 @@
+/*
+ * Copyright (C) 2021-2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_WIFI_APP_NETWORK_SPEED_LIMIT_SERVICE_H
+#define OHOS_WIFI_APP_NETWORK_SPEED_LIMIT_SERVICE_H
+
+#include <unordered_set>
+
+#include "wifi_errcode.h"
+#include "wifi_event_handler.h"
+#include "define.h"
+#include "app_mgr_interface.h"
+#include "sta_service_callback.h"
+#include "app_network_speed_limit_chr.h"
+
+namespace OHOS {
+namespace Wifi {
+const std::string UNKNOWN_BUNDLENAME = "-1";
+constexpr const int UNKNOWN_UID = -1;
+constexpr const int UNKNOWN_MODE = -1;
+constexpr const int POWER_MODE_FREQUENCY_DEFAULT = 0;
+
+enum PowerSceneFlag : uint32_t {
+    POWER_SCENE_NONE = 0,
+    POWER_SCENE_GAME = (1 << 0),
+    POWER_SCENE_LOW_LATENCY = (1 << 1)
+};
+
+enum LowLatencySceneId : int {
+    MSG_LOW_LATENCY_EXIT = 0,
+    MSG_LOW_LATENCY_ENTER = 1,
+};
+
+struct AsyncParamInfo {
+    int controlId;
+    int limitMode;
+    WifiNetworkControlInfo networkControlInfo;
+    std::string funcName;
+    std::string bundleName;
+    int uid;
+
+    AsyncParamInfo()
+    {
+        controlId = -1;
+        limitMode = -1;
+        funcName = "";
+        bundleName = "";
+        uid = -1;
+    }
+};
+
+class AppNetworkSpeedLimitService {
+public:
+    explicit AppNetworkSpeedLimitService();
+    ~AppNetworkSpeedLimitService();
+    static AppNetworkSpeedLimitService &GetInstance();
+    StaServiceCallback GetStaCallback() const;
+    void HandleForegroundAppChangedAction(const AppExecFwk::AppStateData &appStateData);
+    void HandleProcessCreatedEvent(const AppExecFwk::ProcessData &processData);
+    void HandleProcessStateChangedEvent(const AppExecFwk::ProcessData &processData);
+    void ReceiveNetworkControlInfo(const WifiNetworkControlInfo &networkControlInfo);
+    void LimitSpeed(const int controlId, const int limitMode);
+    void HandleNetworkConnectivityChange(int32_t bearType, int32_t code);
+    void UpdateGameRttData(int rtt);
+
+private:
+    void Init();
+    void InitWifiLimitRecord();
+    void InitCellarLimitRecord();
+    void DealStaConnChanged(OperateResState state, const WifiLinkedInfo &info, int instId = 0);
+    void HandleWifiConnectStateChanged(const bool isWifiConnected);
+    bool ShouldLimitSpeedInBackground(const std::string &bundleName);
+    void SendLimitInfo();
+    void FilterLimitSpeedConfigs();
+    int GetBgLimitMaxMode();
+    ErrCode GetAppList(std::vector<AppExecFwk::RunningProcessInfo> &appList, bool getFgAppFlag);
+    int GetAncoAppList(std::vector<WifiNetworkControlInfo>& bgAncoAppList, bool getFgAppFlag);
+    bool CheckNetWorkCanBeLimited(const int controlId);
+    void UpdateSpeedLimitConfigs(const int enable);
+    void UpdateNoSpeedLimitConfigs(const WifiNetworkControlInfo &networkControlInfo);
+    void UpdateBackgroundAppConfigs(const int enable);
+    void UpdateForegroundAppConfigs();
+    bool IsLimitSpeedBgApp(const int controlId, const std::string &bundleName, const int enable);
+    bool IsLimitSpeedBgApp(const int controlId, const AppExecFwk::RunningProcessInfo &processInfo, const int enable);
+    bool IsTopNLimitSpeedSceneInNow();
+    void AsyncLimitSpeed(const AsyncParamInfo &asyncParamInfo);
+    void WifiConnectStateChanged();
+    void ForegroundAppChangedAction(const std::string &bundleName);
+    void BackgroundAppChangedAction(const AsyncParamInfo &asyncParamInfo);
+    void ForegroundAppStateChangedAction(const AsyncParamInfo &asyncParamInfo);
+    void HandleRequest(const AsyncParamInfo &asyncParamInfo);
+    void SendLimitCmd2Drv(const int controlId, const int limitMode, const int enable,
+        const int uid = -1);
+    void HighPriorityTransmit(int uid, int protocol, int enable);
+    void GameNetworkSpeedLimitConfigs(const WifiNetworkControlInfo &networkControlInfo);
+    void AdjustSpeedLimitByRtt(const int rtt);
+    void LowLatencyNetworkSpeedLimitConfigs(const WifiNetworkControlInfo &networkControlInfo);
+    void VideoCallNetworkSpeedLimitConfigs(const WifiNetworkControlInfo &networkControlInfo);
+    void LogSpeedLimitConfigs();
+    void SetActivePowerScenes(PowerSceneFlag scene, bool active);
+    void UpdatePowerModeByScenes();
+    void ResetPowerMode();
+    void CheckAndResetGamePowerMode(const std::string &bundleName);
+    void UpdateAncoAppInfos(const WifiNetworkControlInfo &networkControlInfo);
+    void ReportGameLatencyFeature(bool enabled, const std::string& featureName);
+    void ReportGameSceneInfo(const WifiNetworkControlInfo &networkControlInfo);
+    void RecordAppNetworkSpeedLimitServiceChr(const std::string &records);
+    int GetEffectiveLevel(int controlId) const;
+#ifdef FEATURE_BT_PROXY_SPEED_LIMIT
+    void BtProxyStateChangedAction();
+#endif
+
+private:
+    StaServiceCallback m_staCallback;
+    std::atomic<bool> m_isWifiConnected = false;
+    int m_isHighPriorityTransmit = 0;
+    std::map<int, int> m_bgLimitRecordMap;
+    int m_limitSpeedMode{0};
+    std::unordered_set<int> m_bgUidSet;
+    std::unordered_set<int> m_bgPidSet;
+    std::unordered_set<int> m_fgUidSet;
+    std::unordered_set<std::string> m_bgSpeedLimitAppBundleNameSet;
+    std::unordered_set<std::string> m_fgAppBundleNameSet;
+    int m_lastLimitSpeedMode{UNKNOWN_MODE};
+    std::unordered_set<int> m_lastBgUidSet;
+    std::unordered_set<int> m_lastBgPidSet;
+    std::unordered_set<int> m_lastFgUidSet;
+    std::unordered_set<int> m_bgAudioPlaybackUidSet;
+    std::unordered_set<int> m_bgAudioPlaybackPidSet;
+    std::unordered_set<int> m_additionalWindowUidSet;
+    std::unordered_set<int> m_additionalWindowPidSet;
+    std::unordered_map<int, WifiNetworkControlInfo> m_AncoAppInfos;
+    std::unique_ptr<WifiEventHandler> m_asyncSendLimit = nullptr;
+    int64_t m_delayTime;
+    std::atomic<bool> isVpnConnected_ = false;
+    std::atomic<int> cachedPowerMode_ = UNKNOWN_MODE;
+    std::atomic<uint32_t> activePowerScenes_{POWER_SCENE_NONE};
+    std::atomic<bool> isFirstRtt_{false};
+    std::mutex rttMutex_;
+#ifdef FEATURE_BT_PROXY_SPEED_LIMIT
+    std::atomic<bool> isBtProxyConnected_ = false;
+#endif
+};
+} // namespace Wifi
+} // namespace OHOS
+
+#endif

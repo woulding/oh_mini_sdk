@@ -1,0 +1,37 @@
+{
+  "eval_dir": "eval-0-broken-tlv-scan",
+  "config": "with_skill",
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  },
+  "expectations": [
+    {
+      "text": "states the TLV order is [type][length][value]",
+      "passed": true,
+      "evidence": "[type][length][value"
+    },
+    {
+      "text": "identifies the length off-by-one / type-inclusive root cause",
+      "passed": true,
+      "evidence": "value 的字节数"
+    },
+    {
+      "text": "gives corrected announce bytes 01 01 01 02 01 00",
+      "passed": true,
+      "evidence": "01 01 01 02 01 00"
+    },
+    {
+      "text": "gives corrected seek bytes 0c 01 06 0b 0a ...",
+      "passed": true,
+      "evidence": "0c 01 06 0b 0a 73 6c 65 5f 73 65 72 76 65 72"
+    },
+    {
+      "text": "explains a malformed discovery-level TLV makes the device invisible",
+      "passed": true,
+      "evidence": "发现等级（discovery level）TLV 被写坏 —— `01 02 01 02 02 00` 被解析成 `type=0x01 length=2 value=01 02`，"
+    }
+  ]
+}

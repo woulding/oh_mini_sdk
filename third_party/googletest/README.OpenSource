@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "googletest",
+    "License": "BSD 3-Clause License",
+    "License File": "LICENSE",
+    "Version Number": "1.17.0",
+    "Owner": "",
+    "Upstream URL": "https://github.com/google/googletest/releases/tag/v1.17.0",
+    "Description": "Welcome to GoogleTest, Google's C++ test framework!"
+  }
+]

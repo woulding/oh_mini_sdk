@@ -1,0 +1,9 @@
+{
+  global:
+    extern "C++" {
+      OHOS::HiviewDFX::DfxJsonFormatter::FormatJsonStack*;
+      OHOS::HiviewDFX::DfxJsonFormatter::FormatKernelStack*;
+    };
+  local:
+    *;
+};

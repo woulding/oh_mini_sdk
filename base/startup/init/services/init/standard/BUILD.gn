@@ -1,0 +1,271 @@
+# Copyright (c) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/startup/init/begetd.gni")
+
+init_common_sources = [
+  "../init_capability.c",
+  "../init_cgroup.c",
+  "../init_common_cmds.c",
+  "../init_common_service.c",
+  "../init_config.c",
+  "../init_group_manager.c",
+  "../init_service_file.c",
+  "../init_service_manager.c",
+  "../init_service_socket.c",
+  "../main.c",
+]
+
+import("//build/ohos.gni")
+import("//build/ohos/native_stub/native_stub.gni")
+
+ohos_executable("init_early") {
+  branch_protector_ret = "pac_ret"
+  sources = [
+    "../bootstagehooker.c",
+    "//base/startup/init/interfaces/innerkits/hookmgr/hookmgr.c",
+    "//base/startup/init/services/log/init_commlog.c",
+    "device.c",
+    "init_firststage.c",
+    "init_mount.c",
+    "main_early.c",
+  ]
+  include_dirs = [
+    "//base/startup/init/interfaces/innerkits/include",
+    "//base/startup/init/services/init/include",
+    "//base/startup/init/interfaces/innerkits/init_module_engine/include",
+  ]
+  configs = [ "//build/config/gcc:symbol_visibility_hidden" ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson_static",
+  ]
+  deps = [
+    "//base/startup/init/interfaces/innerkits/fs_manager:libfsmanager_static_real",
+    "//base/startup/init/services/log:init_log",
+    "//base/startup/init/ueventd:libueventd_ramdisk_static_real",
+  ]
+  if (init_extra_static_modules != "") {
+    deps += [ init_extra_static_modules ]
+  }
+  defines = []
+  if (is_asan) {
+    defines += [ "INIT_ASAN" ]
+  }
+  if (asan_detector && init_feature_support_asan) {
+    defines += [ "ASAN_DETECTOR" ]
+  }
+  if (init_startup_feature_erofs_overlay) {
+    defines += [ "EROFS_OVERLAY" ]
+  }
+  install_images = [ "ramdisk" ]
+  install_enable = true
+  part_name = "init"
+  subsystem_name = "startup"
+}
+
+ohos_executable("init") {
+  branch_protector_ret = "pac_ret"
+  sources = [
+    "../adapter/init_adapter.c",
+    "../bootstagehooker.c",
+    "../standard/device.c",
+    "../standard/fd_holder_service.c",
+    "../standard/init.c",
+    "../standard/init_cmdexecutor.c",
+    "../standard/init_cmds.c",
+    "../standard/init_control_fd_service.c",
+    "../standard/init_firststage.c",
+    "../standard/init_jobs.c",
+    "../standard/init_mount.c",
+    "../standard/init_reboot.c",
+    "../standard/init_service.c",
+    "../standard/init_signal_handler.c",
+  ]
+
+  if (init_startup_feature_system_call_switch) {
+    sources += [ "../standard/system_call_wrap.c" ]
+  }
+  modulemgr_sources = [
+    "//base/startup/init/interfaces/innerkits/hookmgr/hookmgr.c",
+    "//base/startup/init/interfaces/innerkits/modulemgr/modulemgr.c",
+  ]
+  sources += modulemgr_sources
+  sources += init_common_sources
+
+  include_dirs = [
+    "//base/startup/init/interfaces/innerkits/include/param",
+    "//base/startup/init/services/init/include",
+    "//base/startup/init/services/modules/reboot",
+    "//base/startup/init/services/modules/init_context",
+    "//base/startup/init/services/loopevent/task",
+    "//base/startup/init/services/loopevent/loop",
+    "//base/startup/init/services/loopevent/include",
+    "//base/startup/init/interfaces/innerkits/include",
+    "//base/startup/init/services/loopevent/utils",
+    "//base/startup/init/services/param/include",
+  ]
+
+  deps = [
+    "//base/startup/init/interfaces/innerkits/control_fd:libcontrolfd",
+    "//base/startup/init/interfaces/innerkits/fd_holder:fdholder",
+    "//base/startup/init/interfaces/innerkits/fs_manager:libfsmanager_static",
+    "//base/startup/init/services/loopevent:loopevent",
+    "//base/startup/init/services/param/linux:param_init",
+    "//base/startup/init/services/sandbox:sandbox",
+    "//base/startup/init/services/utils:libinit_utils",
+  ]
+  deps += [ "//base/startup/init/services/param/base:param_base" ]
+  external_deps = [
+    "config_policy:configpolicy_util",
+    "storage_service:libfscryptutils_static",
+  ]
+
+  if (!defined(ohos_lite)) {
+    include_dirs += [
+      "//base/startup/init/services/modules",
+      "//base/startup/init/services/modules/sysevent",
+    ]
+    sources +=
+        [ "//base/startup/init/services/modules/sysevent/init_hisysevent.c" ]
+    external_deps += [ "hisysevent:libhisysevent" ]
+  }
+
+  deps += [ "//base/startup/init/ueventd:libueventd_ramdisk_static" ]
+  external_deps += [ "storage_service:libfscryptutils_static" ]
+  external_deps += [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson_static",
+  ]
+
+  deps += [ "//base/startup/init/interfaces/innerkits/init_module_engine:libinit_stub_versionscript" ]
+  deps += [ "//base/startup/init/interfaces/innerkits/init_module_engine:init_module_engine_sources" ]
+  deps += [ "//base/startup/init/services/modules:static_modules" ]
+  external_deps += [
+    "hilog:libhilog",
+    "storage_service:libfscryptutils_static",
+  ]
+  defines = []
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.security_access_token)) {
+    external_deps += [
+      "access_token:libnativetoken",
+      "access_token:libtoken_setproc",
+    ]
+    defines += [ "INIT_SUPPORT_ACCESS_TOKEN" ]
+  }
+  cflags = []
+  if (init_startup_feature_system_call_switch) {
+    ldflags = [
+      "-Wl,--wrap=getuid",
+      "-Wl,--wrap=mkdir",
+      "-Wl,--wrap=rmdir",
+      "-Wl,--wrap=fork",
+      "-Wl,--wrap=mount",
+      "-Wl,--wrap=chown",
+      "-Wl,--wrap=chmod",
+      "-Wl,--wrap=kill",
+      "-Wl,--wrap=fopen",
+    ]
+
+    include_dirs += [ "//base/startup/init/services/modules/bootevent" ]
+  }
+
+  if (build_seccomp) {
+    cflags += [ "-DWITH_SECCOMP" ]
+  }
+
+  if (build_variant == "root") {
+    cflags += [ "-DIS_DEBUG_VERSION" ]
+  }
+
+  if (build_selinux) {
+    external_deps += [ "selinux:libselinux" ]
+    external_deps += [
+      "selinux_adapter:libload_policy",
+      "selinux_adapter:librestorecon",
+    ]
+    cflags += [ "-DWITH_SELINUX" ]
+  }
+
+  defines += [ "PARAM_SUPPORT_TRIGGER" ]
+  if (param_test) {
+    defines += [
+      "OHOS_SERVICE_DUMP",
+      "INIT_TEST",
+    ]
+  }
+
+  if (target_cpu == "arm64" || target_cpu == "x86_64" ||
+      target_cpu == "riscv64") {
+    defines += [ "SUPPORT_64BIT" ]
+  }
+
+  if (init_feature_use_hook_mgr) {
+    defines += [ "ENABLE_HOOK_MGR" ]
+  }
+
+  if (init_feature_support_umount_panic) {
+    defines += [ "ENABLE_UMOUNT_PANIC" ]
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.developtools_hiprofiler)) {
+    defines += [ "SUPPORT_PROFILER_HIDEBUG" ]
+    external_deps += [ "hiprofiler:libhidebug_init" ]
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.security_code_signature)) {
+    defines += [ "CODE_SIGNATURE_ENABLE" ]
+    external_deps += [ "code_signature:libcode_sign_attr_utils" ]
+  }
+
+  if (is_asan) {
+    defines += [ "INIT_ASAN" ]
+  }
+  if (asan_detector) {
+    defines += [ "ASAN_DETECTOR" ]
+  }
+  if (init_extra_static_modules != "") {
+    deps += [ init_extra_static_modules ]
+  }
+
+  if (!is_asan && init_feature_support_saspawn) {
+    defines += [ "INIT_FEATURE_SUPPORT_SASPAWN" ]
+  }
+
+  version_script = get_label_info(
+                       "//base/startup/init/interfaces/innerkits/init_module_engine:libinit_stub_versionscript",
+                       "target_gen_dir") + "/" + get_label_info(
+                       "//base/startup/init/interfaces/innerkits/init_module_engine:libinit_stub_versionscript",
+                       "name") + stub_version_script_suffix
+  defines += [ "_GNU_SOURCE" ]
+
+  if (init_startup_feature_erofs_overlay) {
+    defines += [ "EROFS_OVERLAY" ]
+  }
+  if (use_musl) {
+    defines += [ "__MUSL__" ]
+  }
+
+  install_images = [
+    "system",
+    "updater",
+  ]
+
+  deps +=
+      [ "//base/startup/init/services/modules/crashhandler:libcrashhandler" ]
+  install_enable = true
+  part_name = "init"
+  subsystem_name = "startup"
+}

@@ -1,0 +1,184 @@
+# Copyright (c) 2020 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//build/lite/config/component/lite_component.gni")
+import(
+    "//foundation/bundlemanager/bundle_framework_lite/bundle_framework_lite.gni")
+
+config("bundle_config") {
+  defines = [ "OHOS_APPEXECFWK_BMS_BUNDLEMANAGER" ]
+  cflags_cc = [ "-std=c++14" ]
+}
+
+if (ohos_kernel_type == "liteos_m") {
+  static_library("bundlems") {
+    sources = [
+      "src/bundle_map.cpp",
+      "src/bundle_mgr_service.cpp",
+      "src/bundle_mgr_slite_feature.cpp",
+      "src/bundle_util.cpp",
+      "src/gt_bundle_extractor.cpp",
+      "src/gt_bundle_installer.cpp",
+      "src/gt_bundle_manager_service.cpp",
+      "src/gt_bundle_parser.cpp",
+      "src/gt_extractor_util.cpp",
+    ]
+
+    defines = [ "JERRY_FOR_IAR_CONFIG" ]
+    if (bundle_framework_lite_enable_ohos_bundle_manager_service == true) {
+      defines += [ "_MINI_BMS_" ]
+    }
+
+    if (bundle_framework_lite_enable_ohos_bundle_manager_service_permission ==
+        true) {
+      defines += [
+        "_MINI_BMS_PERMISSION_",
+        "BC_TRANS_ENABLE",
+      ]
+    }
+
+    if (bundle_framework_lite_enable_ohos_bundle_manager_service_parse_metadata == true) {
+      defines += [ "_MINI_BMS_PARSE_METADATA_" ]
+    }
+
+    deps = [
+      "${ace_engine_lite_path}/frameworks:ace_lite",
+      "${appexecfwk_lite_path}/frameworks/bundle_lite:bundle",
+      "${hilog_lite_path}/frameworks/featured:hilog_static",
+      "${resource_management_lite_path}/frameworks/resmgr_lite:global_resmgr",
+      "${samgr_lite_path}/samgr:samgr",
+      "//build/lite/config/component/cJSON:cjson_static",
+      "//third_party/jerryscript/jerry-core:jerry-core_static",
+    ]
+
+    include_dirs = [
+      "${appexecfwk_lite_path}/services/bundlemgr_lite/include",
+      "${appexecfwk_lite_path}/interfaces/inner_api/bundlemgr_lite/slite",
+      "${appexecfwk_lite_path}/interfaces/inner_api/bundlemgr_lite",
+      "${appexecfwk_lite_path}/interfaces/kits/bundle_lite/slite",
+      "${appexecfwk_lite_path}/interfaces/kits/bundle_lite",
+      "${appexecfwk_lite_path}/utils/bundle_lite",
+      "${appexecfwk_lite_path}/frameworks/bundle_lite/include",
+      "${hilog_lite_path}/interfaces/native/kits/hilog_lite",
+      "${startup_path}/init/interfaces/innerkits/include/syspara",
+      "${aafwk_lite_path}/interfaces/kits/ability_lite/slite",
+      "${aafwk_lite_path}/services/abilitymgr_lite/include",
+      "${aafwk_lite_path}/interfaces/inner_api/abilitymgr_lite",
+      "${aafwk_lite_path}/interfaces/kits/ability_lite",
+      "${aafwk_lite_path}/interfaces/kits/want_lite",
+      "${aafwk_lite_path}/frameworks/want_lite/include",
+      "${resource_management_lite_path}/interfaces/inner_api/include",
+      "${samgr_lite_path}/interfaces/kits/registry",
+      "${samgr_lite_path}/interfaces/kits/samgr",
+      "//third_party/jerryscript/jerry-core",
+      "//third_party/jerryscript/jerry-core/api",
+      "//third_party/jerryscript/jerry-core/ecma/base",
+      "//third_party/jerryscript/jerry-core/include",
+      "//third_party/jerryscript/jerry-core/jrt",
+      "//third_party/jerryscript/jerry-core/jmem",
+      "//third_party/jerryscript/jerry-core/lit",
+      "//third_party/cJSON",
+      "//third_party/zlib",
+      "//third_party/zlib/contrib/minizip",
+      "${permission_lite_path}/interfaces/kits",
+      "${permission_lite_path}/services/pms/include",
+      "${appverify_lite_path}/include",
+      "//third_party/bounds_checking_function/include",
+      "${utils_lite_path}/include",
+      "${utils_lite_path}/memory/include",
+      "include",
+    ]
+  }
+  lite_component("appexecfwk_services_lite") {
+    features = [ ":bundlems" ]
+  }
+} else {
+  shared_library("bundlems") {
+    configs -= [ "//build/lite/config:language_cpp" ]
+    configs += [ ":bundle_config" ]
+
+    cflags = [
+      "-Wall",
+      "-Wno-format",
+      "-Wno-format-extra-args",
+    ]
+    cflags_cc = cflags
+
+    sources = [
+      "src/bundle_daemon_client.cpp",
+      "src/bundle_extractor.cpp",
+      "src/bundle_info_creator.cpp",
+      "src/bundle_inner_feature.cpp",
+      "src/bundle_installer.cpp",
+      "src/bundle_manager_service.cpp",
+      "src/bundle_map.cpp",
+      "src/bundle_ms_feature.cpp",
+      "src/bundle_ms_host.cpp",
+      "src/bundle_parser.cpp",
+      "src/bundle_res_transform.cpp",
+      "src/bundle_util.cpp",
+      "src/extractor_util.cpp",
+      "src/hap_sign_verify.cpp",
+      "src/zip_file.cpp",
+    ]
+    include_dirs = [
+      "${resource_management_lite_path}/interfaces/inner_api/include",
+      "${aafwk_lite_path}/services/abilitymgr_lite/include",
+      "${aafwk_lite_path}/interfaces/inner_api/abilitymgr_lite",
+      "${aafwk_lite_path}/interfaces/kits/ability_lite",
+      "${aafwk_lite_path}/interfaces/kits/want_lite",
+      "${aafwk_lite_path}/frameworks/want_lite/include",
+      "${appexecfwk_lite_path}/interfaces/inner_api/bundlemgr_lite",
+      "${appexecfwk_lite_path}/frameworks/bundle_lite/include",
+      "${appexecfwk_lite_path}/interfaces/kits/bundle_lite",
+      "${appexecfwk_lite_path}/utils/bundle_lite",
+      "${samgr_lite_path}/interfaces/kits/registry",
+      "${samgr_lite_path}/interfaces/kits/samgr",
+      "//third_party/cJSON",
+      "//third_party/zlib",
+      "//third_party/zlib/contrib/minizip",
+      "${permission_lite_path}/interfaces/kits",
+      "${permission_lite_path}/services/pms/include",
+      "${appverify_lite_path}/include",
+      "//third_party/bounds_checking_function/include",
+      "${utils_lite_path}/include",
+      "${utils_lite_path}/memory",
+      "include",
+    ]
+
+    public_deps = [
+      "${appexecfwk_lite_path}/frameworks/bundle_lite:bundle",
+      "${appverify_lite_path}:verify",
+      "${hilog_lite_path}/frameworks/featured:hilog_shared",
+      "${resource_management_lite_path}/frameworks/resmgr_lite:global_resmgr",
+      "${samgr_lite_path}/samgr:samgr",
+      "//build/lite/config/component/cJSON:cjson_shared",
+      "//build/lite/config/component/zlib:zlib_shared",
+    ]
+  }
+  lite_component("appexecfwk_services_lite") {
+    features = [
+      ":bundlems",
+      "tools:bm",
+      "bundle_daemon:bundle_daemon",
+    ]
+  }
+}
+
+generate_notice_file("appexecfwk_services_lite_notice_file") {
+  module_name = "appexecfwk_services_lite"
+  module_source_dir_list = [
+    "//third_party/cJSON",
+    "//third_party/zlib",
+    "//third_party/bounds_checking_function",
+  ]
+}

@@ -1,0 +1,714 @@
+/*
+ * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+@!namespace("@ohos.security.cryptoFramework", "cryptoFramework")
+
+@!sts_inject("""
+static { loadLibraryWithPermissionCheck("crypto_framework_ani.z", "@ohos.security.cryptoFramework"); }
+""")
+
+enum Result: i32 {
+  INVALID_PARAMS = 401,
+  NOT_SUPPORT = 801,
+  ERR_OUT_OF_MEMORY = 17620001,
+  ERR_RUNTIME_ERROR = 17620002,
+  ERR_PARAMETER_CHECK_FAILED = 17620003,
+  ERR_INVALID_CALL = 17620004,
+  ERR_CRYPTO_OPERATION = 17630001
+}
+
+struct DataBlob {
+  data: @typedarray Array<u8>;
+}
+
+union OptUint8Arr {
+  UINT8ARRAY: @typedarray Array<u8>;
+  EMPTY: @null unit;
+}
+
+union OptString {
+  STRING: String;
+  EMPTY: @null unit;
+}
+
+union OptDataBlob {
+  DATABLOB: DataBlob;
+  EMPTY: @null unit;
+}
+
+union OptStrUint8Arr {
+  STRING: String;
+  UINT8ARRAY: @typedarray Array<u8>;
+}
+
+union OptStrInt {
+  STRING: String;
+  INT32: i32;
+}
+
+union OptIntUint8Arr {
+  INT32: i32;
+  UINT8ARRAY: @typedarray Array<u8>;
+}
+
+interface Md {
+  @gen_async("update")
+  @gen_promise("update")
+  UpdateSync(input: DataBlob): void;
+  @gen_async("digest")
+  @gen_promise("digest")
+  DigestSync(): DataBlob;
+  GetMdLength(): i32;
+  @get("algName") GetAlgName(): String;
+}
+function CreateMd(algName: String): Md;
+
+interface Random {
+  @gen_async("generateRandom")
+  @gen_promise("generateRandom")
+  GenerateRandomSync(len: i32): DataBlob;
+  SetSeed(seed: DataBlob): void;
+  EnableHardwareEntropy(): void;
+  @get("algName") GetAlgName(): String;
+}
+function CreateRandom(): Random;
+
+struct MacSpec {
+  algName: String;
+}
+
+struct HmacSpec {
+  @extends base: MacSpec;
+  mdName: String;
+}
+
+struct CmacSpec {
+  @extends base: MacSpec;
+  cipherName: String;
+}
+
+union OptExtMacSpec {
+  HMACSPEC: HmacSpec;
+  CMACSPEC: CmacSpec;
+  MACSPEC: MacSpec;
+}
+
+interface Mac {
+  @gen_async("init")
+  @gen_promise("init")
+  InitSync(key: SymKey): void;
+  @gen_async("update")
+  @gen_promise("update")
+  UpdateSync(input: DataBlob): void;
+  @gen_async("doFinal")
+  @gen_promise("doFinal")
+  DoFinalSync(): DataBlob;
+  GetMacLength(): i32;
+  @get("algName") GetAlgName(): String;
+}
+@overload("createMac")
+function CreateMacByStr(algName: String): Mac;
+@overload("createMac")
+function CreateMacBySpec(macSpec: OptExtMacSpec): Mac;
+
+interface Key {
+  GetKeyObj(): i64;
+  GetEncoded(): DataBlob;
+  GetKeySize(): i32;
+  @get("format") GetFormat(): String;
+  @get("algName") GetAlgName(): String;
+}
+
+enum AsyKeySpecType: i32 {
+  COMMON_PARAMS_SPEC = 0,
+  PRIVATE_KEY_SPEC = 1,
+  PUBLIC_KEY_SPEC = 2,
+  KEY_PAIR_SPEC = 3
+}
+
+enum AsyKeySpecItem: i32 {
+  DSA_P_BN = 101,
+  DSA_Q_BN = 102,
+  DSA_G_BN = 103,
+  DSA_SK_BN = 104,
+  DSA_PK_BN = 105,
+  ECC_FP_P_BN = 201,
+  ECC_A_BN = 202,
+  ECC_B_BN = 203,
+  ECC_G_X_BN = 204,
+  ECC_G_Y_BN = 205,
+  ECC_N_BN = 206,
+  ECC_H_NUM = 207,
+  ECC_SK_BN = 208,
+  ECC_PK_X_BN = 209,
+  ECC_PK_Y_BN = 210,
+  ECC_FIELD_TYPE_STR = 211,
+  ECC_FIELD_SIZE_NUM = 212,
+  ECC_CURVE_NAME_STR = 213,
+  RSA_N_BN = 301,
+  RSA_SK_BN = 302,
+  RSA_PK_BN = 303,
+  DH_P_BN = 401,
+  DH_G_BN = 402,
+  DH_L_NUM = 403,
+  DH_SK_BN = 404,
+  DH_PK_BN = 405,
+  ED25519_SK_BN = 501,
+  ED25519_PK_BN = 502,
+  X25519_SK_BN = 601,
+  X25519_PK_BN = 602
+}
+
+enum CipherSpecItem: i32 {
+  OAEP_MD_NAME_STR = 100,
+  OAEP_MGF_NAME_STR = 101,
+  OAEP_MGF1_MD_STR = 102,
+  OAEP_MGF1_PSRC_UINT8ARR = 103,
+  SM2_MD_NAME_STR = 104
+}
+
+enum SignSpecItem: i32 {
+  PSS_MD_NAME_STR = 100,
+  PSS_MGF_NAME_STR = 101,
+  PSS_MGF1_MD_STR = 102,
+  PSS_SALT_LEN_NUM = 103,
+  PSS_TRAILER_FIELD_NUM = 104,
+  SM2_USER_ID_UINT8ARR = 105,
+  ML_DSA_DETERMINISTIC_BOOL = 106,
+  ML_DSA_MU_BOOL = 107,
+  ML_DSA_CONTEXT_UINT8ARR = 108
+}
+
+enum AsyKeyDataItem: i32 {
+  ML_DSA_PRIVATE_SEED = 0,
+  ML_DSA_PRIVATE_RAW = 1,
+  ML_DSA_PUBLIC_RAW = 2,
+  ML_KEM_PRIVATE_SEED = 3,
+  ML_KEM_PRIVATE_RAW = 4,
+  ML_KEM_PUBLIC_RAW = 5,
+  EC_PRIVATE_K = 6,
+  EC_PRIVATE_04_X_Y_K = 7,
+  EC_PUBLIC_X_Y = 8,
+  EC_PUBLIC_04_X_Y = 9,
+  EC_PUBLIC_COMPRESS_X = 10
+}
+
+struct KeyEncodingConfig {
+  password: String;
+  cipherName: String;
+}
+
+union OptKeySpec {
+  BIGINT: @bigint Array<u8>;
+  STRING: String;
+  INT32: i32;
+}
+
+interface PriKey: Key {
+  GetPriKeyObj(): i64;
+  ClearMem(): void;
+  GetAsyKeySpec(itemType: AsyKeySpecItem): OptKeySpec;
+  GetEncodedDer(format: String): DataBlob;
+  @overload("getEncodedPem")
+  GetEncodedPem(format: String): String;
+  @overload("getEncodedPem")
+  GetEncodedPemEx(format: String, config: KeyEncodingConfig): String;
+  @gen_promise("getPubKey")
+  GetPubKeySync(): PubKey;
+  @gen_promise("getKeyData")
+  GetKeyDataSync(type: AsyKeyDataItem): @typedarray Array<u8>;
+}
+
+interface PubKey: Key {
+  @!sts_inject_into_class("""
+  static { loadLibraryWithPermissionCheck("crypto_framework_ani.z", "@ohos.security.cryptoFramework"); }
+  """)
+  GetPubKeyObj(): i64;
+  GetAsyKeySpec(itemType: AsyKeySpecItem): OptKeySpec;
+  GetEncodedDer(format: String): DataBlob;
+  GetEncodedPem(format: String): String;
+  @gen_promise("getKeyData")
+  GetKeyDataSync(type: AsyKeyDataItem): @typedarray Array<u8>;
+}
+
+interface KeyPair {
+  @get("priKey") GetPriKey(): PriKey;
+  @get("pubKey") GetPubKey(): PubKey;
+}
+
+interface SymKey: Key {
+  GetSymKeyObj(): i64;
+  ClearMem(): void;
+}
+
+interface SymKeyGenerator {
+  @gen_async("generateSymKey")
+  @gen_promise("generateSymKey")
+  GenerateSymKeySync(): SymKey;
+  @gen_async("convertKey")
+  @gen_promise("convertKey")
+  ConvertKeySync(key: DataBlob): SymKey;
+  @get("algName") GetAlgName(): String;
+}
+function CreateSymKeyGenerator(algName: String): SymKeyGenerator;
+
+interface AsyKeyGenerator {
+  @gen_async("generateKeyPair")
+  @gen_promise("generateKeyPair")
+  GenerateKeyPairSync(): KeyPair;
+  @gen_async("convertKey")
+  @gen_promise("convertKey")
+  ConvertKeySync(pubKey: OptDataBlob, priKey: OptDataBlob): KeyPair;
+  @gen_promise("convertPemKey")
+  @overload("convertPemKeySync")
+  ConvertPemKeySync(pubKey: OptString, priKey: OptString): KeyPair;
+  @gen_promise("convertPemKey")
+  @overload("convertPemKeySync")
+  ConvertPemKeySyncEx(pubKey: OptString, priKey: OptString, password: String): KeyPair;
+  @get("algName") GetAlgName(): String;
+}
+function CreateAsyKeyGenerator(algName: String): AsyKeyGenerator;
+
+struct KdfSpec {
+  algName: String;
+}
+
+struct PBKDF2Spec {
+  @extends base: KdfSpec;
+  password: OptStrUint8Arr;
+  salt: @typedarray Array<u8>;
+  iterations: i32;
+  keySize: i32;
+}
+
+struct HKDFSpec {
+  @extends base: KdfSpec;
+  key: OptStrUint8Arr;
+  salt: @typedarray Array<u8>;
+  info: @typedarray Array<u8>;
+  keySize: i32;
+}
+
+struct ScryptSpec {
+  @extends base: KdfSpec;
+  passphrase: OptStrUint8Arr;
+  salt: @typedarray Array<u8>;
+  n: i64;
+  r: i64;
+  p: i64;
+  maxMemory: i64;
+  keySize: i32;
+}
+
+struct X963KdfSpec {
+  @extends base: KdfSpec;
+  key: OptStrUint8Arr;
+  info: @typedarray Array<u8>;
+  keySize: i32;
+}
+
+union OptExtKdfSpec {
+  PBKDF2SPEC: PBKDF2Spec;
+  HKDFSPEC: HKDFSpec;
+  SCRYPTSPEC: ScryptSpec;
+  X963KDFSPEC: X963KdfSpec;
+  KDFSPEC: KdfSpec;
+}
+
+interface Kdf {
+  @gen_async("generateSecret")
+  @gen_promise("generateSecret")
+  GenerateSecretSync(params: OptExtKdfSpec): DataBlob;
+  @get("algName") GetAlgName(): String;
+}
+function CreateKdf(algName: String): Kdf;
+
+enum CryptoMode: i32 {
+  ENCRYPT_MODE = 0,
+  DECRYPT_MODE = 1
+}
+
+struct ParamsSpec {
+  algName: String;
+}
+
+struct IvParamsSpec {
+  @extends base: ParamsSpec;
+  iv: DataBlob;
+}
+
+struct GcmParamsSpec {
+  @extends base: ParamsSpec;
+  iv: DataBlob;
+  aad: DataBlob;
+  authTag: DataBlob;
+}
+
+struct CcmParamsSpec {
+  @extends base: ParamsSpec;
+  iv: DataBlob;
+  aad: DataBlob;
+  authTag: DataBlob;
+}
+
+struct Poly1305ParamsSpec {
+  @extends base: ParamsSpec;
+  iv: DataBlob;
+  aad: DataBlob;
+  authTag: DataBlob;
+}
+
+struct AeadParamsSpec {
+  @extends base: ParamsSpec;
+  nonce: @typedarray Array<u8>;
+  authenticatedData: Optional<@typedarray Array<u8>>;
+  tagLen: Optional<i32>;
+}
+
+union OptExtParamsSpec {
+  IVPARAMSSPEC: IvParamsSpec;
+  GCMPARAMSSPEC: GcmParamsSpec;
+  CCMPARAMSSPEC: CcmParamsSpec;
+  POLY1305PARAMSSPEC: Poly1305ParamsSpec;
+  AEADPARAMSSPEC: AeadParamsSpec;
+  PARAMSSPEC: ParamsSpec;
+}
+
+union OptParamsSpec {
+  PARAMSSPEC: OptExtParamsSpec;
+  EMPTY: @null unit;
+}
+
+interface Cipher {
+  @gen_async("init")
+  @gen_promise("init")
+  InitSync(opMode: CryptoMode, key: Key, params: OptParamsSpec): void;
+  @gen_async("update")
+  @gen_promise("update")
+  UpdateSync(input: DataBlob): OptDataBlob;
+  @gen_async("doFinal")
+  @gen_promise("doFinal")
+  DoFinalSync(input: OptDataBlob): OptDataBlob;
+  SetCipherSpec(itemType: CipherSpecItem, itemValue: @typedarray Array<u8>): void;
+  GetCipherSpec(itemType: CipherSpecItem): OptStrUint8Arr;
+  @get("algName") GetAlgName(): String;
+}
+function CreateCipher(transformation: String): Cipher;
+
+interface Verify {
+  @gen_async("init")
+  @gen_promise("init")
+  InitSync(pubKey: PubKey): void;
+  @gen_async("update")
+  @gen_promise("update")
+  UpdateSync(input: DataBlob): void;
+  @gen_async("verify")
+  @gen_promise("verify")
+  VerifySync(data: OptDataBlob, signature: DataBlob): bool;
+  @gen_promise("recover")
+  RecoverSync(signature: DataBlob): OptDataBlob;
+  @overload("setVerifySpec")
+  SetVerifySpec(itemType: SignSpecItem, itemValue: OptIntUint8Arr): void;
+  @overload("setVerifySpec")
+  SetVerifySpecBoolean(itemType: SignSpecItem, itemValue: bool): void;
+  GetVerifySpec(itemType: SignSpecItem): OptStrInt;
+  @get("algName") GetAlgName(): String;
+}
+function CreateVerify(algName: String): Verify;
+
+interface Sign {
+  @gen_async("init")
+  @gen_promise("init")
+  InitSync(priKey: PriKey): void;
+  @gen_async("update")
+  @gen_promise("update")
+  UpdateSync(data: DataBlob): void;
+  @gen_async("sign")
+  @gen_promise("sign")
+  SignSync(data: OptDataBlob): DataBlob;
+  @overload("setSignSpec")
+  SetSignSpec(itemType: SignSpecItem, itemValue: OptIntUint8Arr): void;
+  @overload("setSignSpec")
+  SetSignSpecBoolean(itemType: SignSpecItem, itemValue: bool): void;
+  GetSignSpec(itemType: SignSpecItem): OptStrInt;
+  @get("algName") GetAlgName(): String;
+}
+function CreateSign(algName: String): Sign;
+
+struct AsyKeySpec {
+  algName: String;
+  specType: AsyKeySpecType;
+}
+
+struct DSACommonParamsSpec {
+  @extends base: AsyKeySpec;
+  p: @bigint Array<u8>;
+  q: @bigint Array<u8>;
+  g: @bigint Array<u8>;
+}
+
+struct DSAPubKeySpec {
+  @extends base: AsyKeySpec;
+  params: DSACommonParamsSpec;
+  pk: @bigint Array<u8>;
+}
+
+struct DSAKeyPairSpec {
+  @extends base: AsyKeySpec;
+  params: DSACommonParamsSpec;
+  sk: @bigint Array<u8>;
+  pk: @bigint Array<u8>;
+}
+
+struct DSAAsyKeySpec {
+  @extends base: AsyKeySpec;
+  params: DSACommonParamsSpec;
+  sk: @bigint Array<u8>;
+}
+
+struct Point {
+  x: @bigint Array<u8>;
+  y: @bigint Array<u8>;
+}
+
+struct ECCCommonParamsSpec {
+  @extends base: AsyKeySpec;
+  field: OptECField;
+  a: @bigint Array<u8>;
+  b: @bigint Array<u8>;
+  g: Point;
+  n: @bigint Array<u8>;
+  h: i32;
+}
+
+struct ECCPriKeySpec {
+  @extends base: AsyKeySpec;
+  params: ECCCommonParamsSpec;
+  sk: @bigint Array<u8>;
+}
+
+struct ECCPubKeySpec {
+  @extends base: AsyKeySpec;
+  params: ECCCommonParamsSpec;
+  pk: Point;
+}
+
+struct ECCKeyPairSpec {
+  @extends base: AsyKeySpec;
+  params: ECCCommonParamsSpec;
+  sk: @bigint Array<u8>;
+  pk: Point;
+}
+
+struct ECCAsyKeySpec {
+  @extends base: AsyKeySpec;
+  params: ECCCommonParamsSpec;
+  sk: @bigint Array<u8>;
+}
+
+struct DHCommonParamsSpec {
+  @extends base: AsyKeySpec;
+  p: @bigint Array<u8>;
+  g: @bigint Array<u8>;
+  l: i32;
+}
+
+struct DHPriKeySpec {
+  @extends base: AsyKeySpec;
+  params: DHCommonParamsSpec;
+  sk: @bigint Array<u8>;
+}
+
+struct DHPubKeySpec {
+  @extends base: AsyKeySpec;
+  params: DHCommonParamsSpec;
+  pk: @bigint Array<u8>;
+}
+
+struct DHKeyPairSpec {
+  @extends base: AsyKeySpec;
+  params: DHCommonParamsSpec;
+  sk: @bigint Array<u8>;
+  pk: @bigint Array<u8>;
+}
+
+struct ED25519PriKeySpec {
+  @extends base: AsyKeySpec;
+  sk: @bigint Array<u8>;
+}
+
+struct ED25519PubKeySpec {
+  @extends base: AsyKeySpec;
+  pk: @bigint Array<u8>;
+}
+
+struct ED25519KeyPairSpec {
+  @extends base: AsyKeySpec;
+  sk: @bigint Array<u8>;
+  pk: @bigint Array<u8>;
+}
+
+struct X25519PriKeySpec {
+  @extends base: AsyKeySpec;
+  sk: @bigint Array<u8>;
+}
+
+struct X25519PubKeySpec {
+  @extends base: AsyKeySpec;
+  pk: @bigint Array<u8>;
+}
+
+struct X25519KeyPairSpec {
+  @extends base: AsyKeySpec;
+  sk: @bigint Array<u8>;
+  pk: @bigint Array<u8>;
+}
+
+struct RSACommonParamsSpec {
+  @extends base: AsyKeySpec;
+  n: @bigint Array<u8>;
+}
+
+struct RSAPubKeySpec {
+  @extends base: AsyKeySpec;
+  params: RSACommonParamsSpec;
+  pk: @bigint Array<u8>;
+}
+
+struct RSAKeyPairSpec {
+  @extends base: AsyKeySpec;
+  params: RSACommonParamsSpec;
+  sk: @bigint Array<u8>;
+  pk: @bigint Array<u8>;
+}
+
+struct ECField {
+  fieldType: String;
+}
+
+struct ECFieldFp {
+  @extends base: ECField;
+  p: @bigint Array<u8>;
+}
+
+union OptECField {
+  ECFIELDFP: ECFieldFp;
+  ECFIELD: ECField;
+}
+
+union OptAsyKeySpec {
+  DSACOMMONPARAMSSPEC: DSACommonParamsSpec;
+  DSAPUBKEYSPEC: DSAPubKeySpec;
+  DSAKEYPAIRSPEC: DSAKeyPairSpec;
+  ECCCOMMONPARAMSSPEC: ECCCommonParamsSpec;
+  ECCPRIKEYSPEC: ECCPriKeySpec;
+  ECCPUBKEYSPEC: ECCPubKeySpec;
+  ECCKEYPAIRSPEC: ECCKeyPairSpec;
+  DHCOMMONPARAMSSPEC: DHCommonParamsSpec;
+  DHPRIKEYSPEC: DHPriKeySpec;
+  DHPUBKEYSPEC: DHPubKeySpec;
+  DHKEYPAIRSPEC: DHKeyPairSpec;
+  ED25519PRIKEYSPEC: ED25519PriKeySpec;
+  ED25519PUBKEYSPEC: ED25519PubKeySpec;
+  ED25519KEYPAIRSPEC: ED25519KeyPairSpec;
+  X25519PRIKEYSPEC: X25519PriKeySpec;
+  X25519PUBKEYSPEC: X25519PubKeySpec;
+  X25519KEYPAIRSPEC: X25519KeyPairSpec;
+  RSACOMMONPARAMSSPEC: RSACommonParamsSpec;
+  RSAPUBKEYSPEC: RSAPubKeySpec;
+  RSAKEYPAIRSPEC: RSAKeyPairSpec;
+  ASYKEYSPEC: AsyKeySpec;
+}
+
+interface AsyKeyGeneratorBySpec {
+  @gen_async("generateKeyPair")
+  @gen_promise("generateKeyPair")
+  GenerateKeyPairSync(): KeyPair;
+  @gen_async("generatePriKey")
+  @gen_promise("generatePriKey")
+  GeneratePriKeySync(): PriKey;
+  @gen_async("generatePubKey")
+  @gen_promise("generatePubKey")
+  GeneratePubKeySync(): PubKey;
+  @get("algName") GetAlgName(): String;
+}
+function CreateAsyKeyGeneratorBySpec(asyKeySpec: OptAsyKeySpec): AsyKeyGeneratorBySpec;
+
+interface KeyAgreement {
+  @gen_async("generateSecret")
+  @gen_promise("generateSecret")
+  GenerateSecretSync(priKey: PriKey, pubKey: PubKey): DataBlob;
+  @get("algName") GetAlgName(): String;
+}
+function CreateKeyAgreement(algName: String): KeyAgreement;
+
+@class
+interface DHKeyUtil {}
+@static("DHKeyUtil")
+function GenDHCommonParamsSpec(pLen: i32, skLen: Optional<i32>): DHCommonParamsSpec;
+
+@class
+interface ECCKeyUtil {}
+@static("ECCKeyUtil")
+function GenECCCommonParamsSpec(curveName: String): ECCCommonParamsSpec;
+@static("ECCKeyUtil")
+function ConvertPoint(curveName: String, encodedPoint: @typedarray Array<u8>): Point;
+@static("ECCKeyUtil")
+function GetEncodedPoint(curveName: String, point: Point, format: String): @typedarray Array<u8>;
+
+struct SM2CipherTextSpec {
+  xCoordinate: @bigint Array<u8>;
+  yCoordinate: @bigint Array<u8>;
+  cipherTextData: @typedarray Array<u8>;
+  hashData: @typedarray Array<u8>;
+}
+
+@class
+interface SM2CryptoUtil {}
+@static("SM2CryptoUtil")
+function GenCipherTextBySpec(spec: SM2CipherTextSpec, mode: Optional<String>): DataBlob;
+@static("SM2CryptoUtil")
+function GetCipherTextSpec(cipherText: DataBlob, mode: Optional<String>): SM2CipherTextSpec;
+
+struct EccSignatureSpec {
+  r: @bigint Array<u8>;
+  s: @bigint Array<u8>;
+}
+
+@class
+interface SignatureUtils {}
+@static("SignatureUtils")
+function GenEccSignatureSpec(data: @typedarray Array<u8>): EccSignatureSpec;
+@static("SignatureUtils")
+function GenEccSignature(spec: EccSignatureSpec): @typedarray Array<u8>;
+
+struct KemEncapResult {
+  sharedSecret: @typedarray Array<u8>;
+  wrappedKey: @typedarray Array<u8>;
+}
+
+enum KemAlgNameId: i32 {
+  ML_KEM_512 = 0,
+  ML_KEM_768 = 1,
+  ML_KEM_1024 = 2
+}
+
+interface Kem {
+  @gen_promise("encapsulate")
+  EncapsulateSync(pubKey: PubKey, ikme: OptUint8Arr): KemEncapResult;
+  @gen_promise("decapsulate")
+  DecapsulateSync(priKey: PriKey, wrappedKey: @typedarray Array<u8>): @typedarray Array<u8>;
+}
+function CreateKem(algName: KemAlgNameId): Kem;

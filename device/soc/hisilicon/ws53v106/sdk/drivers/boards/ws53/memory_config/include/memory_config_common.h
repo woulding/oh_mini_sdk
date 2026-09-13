@@ -1,0 +1,285 @@
+/*
+ * Copyright (c) @CompanyNameMagicTag 2021-2021. All rights reserved.
+ * Description:  Default memory configurations
+ * Author: @CompanyNameTag
+ * Create:  2021-06-16
+ */
+
+#ifndef MEMORY_CONFIG_COMMON_H
+#define MEMORY_CONFIG_COMMON_H
+#include "product.h"
+#include "chip_definitions.h"
+#include "chip_core_definition.h"
+
+/**
+ * @defgroup connectivity_config_memory MEMORY
+ * @ingroup  connectivity_config
+ * @{
+ */
+/* Standard lengths */
+#define BT_VECTORS_LENGTH     0x204
+#define APP_VECTORS_LENGTH    360
+#define VERSION_LENGTH        88
+#define CHANGE_ID_LENGTH      16
+
+#ifdef MASTER_LOAD_SLAVE
+#define BUILD_INFO_LENGRH     408
+#else
+#define BUILD_INFO_LENGRH     0
+#endif
+
+#define FILL_4_BYTE           4
+
+#define BCPU_RAM_START        0x0
+/*
+ * ********************* ROM ALLOCATION ***********************
+ *
+ */
+/* 96K ROM */
+#define ROM_START  0x10000
+#define ROM_LENGTH 0x18000
+#define ROM_END    (ROM_START + ROM_LENGTH)
+
+#define CHIP_SRAM_ORIGIN 0x20030000
+#define CHIP_SRAM_LENGTH 0x38000
+#define CHIP_SRAM_END    (CHIP_SRAM_ORIGIN + CHIP_SRAM_LENGTH)
+#define SHARED_MEM_START    0x20060000
+
+#define SHARED_MEM_LENGTH   0x4000
+#define SHARED_MEM_END      (SHARED_MEM_START + SHARED_MEM_LENGTH)
+
+#define SSB_BOOT_RAM_ORIGIN         0x80000200
+#define SSB_BOOT_RAM_LENGTH         0x20000
+
+#define FLASH_START     0x00400000
+#define FLASH_LEN       0x8000000
+#define FLASH_MAX_END   (FLASH_START + FLASH_LEN)
+#define FLASH_PAGE_SIZE 4096
+
+#define CODE_INFO_OFFSET 0x300
+
+#define FALSH_APP_PROGRAM_ORIGIN    (0x45D000 + CODE_INFO_OFFSET)
+#define FALSH_APP_PROGRAM_LENGTH    (0x213000 - CODE_INFO_OFFSET)
+
+#define FALSH_CCORE_PROGRAM_ORIGIN  (0x430000 + CODE_INFO_OFFSET)
+#define FLASH_CCORE_PROGRAM_LENGTH  (0x2D000 - CODE_INFO_OFFSET)
+
+// 代码里面使用的旧宏
+#ifndef APP_ITCM_ORIGIN
+#define APP_ITCM_ORIGIN CHIP_SRAM_ORIGIN
+#endif
+
+#if defined(CONFIG_DEVICE_MODE) || defined(_PRE_FEATURE_WS53_DEVICE_MODE)
+#define ACORE_MUX_RAM_ORIGIN        0x90000
+#define ACORE_MUX_RAM_LEN           0x38000
+#define ACORE_MUX_RAM_END           0xC8000
+#else
+#define ACORE_MUX_RAM_ORIGIN        0xC0000
+#define ACORE_MUX_RAM_LEN           0x8000
+#define ACORE_MUX_RAM_END           0xC8000
+#endif
+#define PKT_RAM_ORIGIN  0x2E000
+#define PKT_RAM_LEN  0x2000
+/* ----------------------------------------------------------------------------------------------------------------- */
+/* IMAGE Area Defines */
+/* MCU SSB Region */
+#if USE_KV_MODE == YES
+#define SSB_FLASH_REGION_PAGES  (SSB_IMAGE_PAGES)
+#define KV_PAGES 5
+#else
+#define SSB_FLASH_REGION_PAGES  (SSB_IMAGE_PAGES + 5)
+#define KV_PAGES 0
+#endif
+#define SSB_FLASH_REGION_START  (FLASH_START)
+#define SSB_FLASH_REGION_LENGTH (SSB_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+
+#define SSB_VECTORS_LOAD_ORIGIN (SSB_FLASH_REGION_START)
+#define SSB_VERSION_LOAD_ORIGIN (SSB_VECTORS_LOAD_ORIGIN + APP_VECTORS_LENGTH)
+#define SSB_CHANGEID_LOAD_ORIGIN (SSB_VERSION_LOAD_ORIGIN + VERSION_LENGTH)
+
+#define SSB_PROGRAM_ORIGIN (SSB_CHANGEID_LOAD_ORIGIN + CHANGE_ID_LENGTH)
+#define SSB_PROGRAM_LENGTH ((SSB_FLASH_REGION_LENGTH) - (APP_VECTORS_LENGTH + VERSION_LENGTH + CHANGE_ID_LENGTH))
+
+/* MCU SSB BACK-UP Region */
+#define SSB_BACKUP_FLASH_REGION_PAGES  24
+#define SSB_BACKUP_FLASH_REGION_START  (SSB_FLASH_REGION_START + SSB_FLASH_REGION_LENGTH + KV_PAGES * FLASH_PAGE_SIZE)
+#define SSB_BACKUP_FLASH_REGION_LENGTH (SSB_BACKUP_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+
+/* SEC_BOOT Region for Signature Certificate */
+#define SEC_BOOT_FLASH_REGION_PAGES  16
+#define SEC_BOOT_FLASH_REGION_START  (SSB_BACKUP_FLASH_REGION_START + SSB_BACKUP_FLASH_REGION_LENGTH)
+#define SEC_BOOT_FLASH_REGION_LENGTH (SEC_BOOT_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+
+/* DTB Region */
+#define DTB_FLASH_REGION_PAGES  (DTB_IMAGE_PAGES)
+#define DTB_FLASH_REGION_START  (SEC_BOOT_FLASH_REGION_START + SEC_BOOT_FLASH_REGION_LENGTH)
+#define DTB_FLASH_REGION_LENGTH (DTB_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+
+/* RECOVERY Region */
+#define RECOVERY_FLASH_REGION_PAGES  (RECOVERY_IMAGE_PAGES)
+#define RECOVERY_FLASH_REGION_START  (DTB_FLASH_REGION_START + DTB_FLASH_REGION_LENGTH)
+#define RECOVERY_FLASH_REGION_LENGTH (RECOVERY_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+#define RECOVERY_FLASH_REGION_OFFSET (RECOVERY_FLASH_REGION_START - FLASH_START)
+
+/* RESERVE Region */
+#define RESERVE_FLASH_REGION_PAGES  (RESERVE_IMAGE_PAGES)
+#define RESERVE_FLASH_REGION_START  (RECOVERY_FLASH_REGION_START + RECOVERY_FLASH_REGION_LENGTH)
+#define RESERVE_FLASH_REGION_LENGTH (RESERVE_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+
+/* BT Region */
+#define BT_FLASH_REGION_PAGES  (BT_IMAGE_PAGES)
+#define BT_FLASH_REGION_START  (RESERVE_FLASH_REGION_START + RESERVE_FLASH_REGION_LENGTH)
+#define BT_FLASH_REGION_LENGTH (BT_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+
+/* DSP Region */
+#define DSP_FLASH_REGION_PAGES  (HIFI0_IMAGE_PAGES)
+#define DSP_FLASH_REGION_START  (BT_FLASH_REGION_START + BT_FLASH_REGION_LENGTH)
+#define DSP_FLASH_REGION_LENGTH (DSP_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+
+/* DSP1 Region */
+#define DSP1_FLASH_REGION_PAGES  (HIFI1_IMAGE_PAGES)
+#define DSP1_FLASH_REGION_START  (DSP_FLASH_REGION_START + DSP_FLASH_REGION_LENGTH)
+#define DSP1_FLASH_REGION_LENGTH (DSP1_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+/* APP Region */
+#define APP_FLASH_REGION_PAGES  (APP_IMAGE_PAGES)
+#define APP_FLASH_REGION_START  (DSP1_FLASH_REGION_START + DSP1_FLASH_REGION_LENGTH)
+#define APP_FLASH_REGION_LENGTH (APP_FLASH_REGION_PAGES * FLASH_PAGE_SIZE)
+#define APP_FLASH_REGION_OFFSET (APP_FLASH_REGION_START - FLASH_START)
+
+#define APP_PROGRAM_ORIGIN (APP_FLASH_REGION_START)
+#define APP_PROGRAM_LENGTH (APP_FLASH_REGION_LENGTH)
+
+/* cores image flash region start */
+#define FLASH_CORE_IMAGES_START (FLASH_START + SSB_FLASH_REGION_LENGTH + SSB_BACKUP_FLASH_REGION_LENGTH + \
+                                 SEC_BOOT_FLASH_REGION_LENGTH + KV_PAGES * FLASH_PAGE_SIZE)
+/* ----------------------------------------------------------------------------------------------------------------- */
+/* KV Region Defines */
+/* Minimum System Configuration pages in FLASH reserved */
+#if USE_KV_MODE == YES
+#define SYSTEM_RESERVED_FLASH_PAGES 4
+#else
+#define SYSTEM_RESERVED_FLASH_PAGES 0
+#endif
+/* Minimum reserved Non Volatile storage + Config Data. */
+#define FLASH_RESERVED_LENGTH (SYSTEM_RESERVED_FLASH_PAGES * FLASH_PAGE_SIZE)
+
+/*
+ * ********************* SEC BOOT REGION *********************
+ */
+#define MCU_ROOT_PUBKEY_START           SEC_BOOT_FLASH_REGION_START
+#define MCU_SUB_PUBKEY_START            (MCU_ROOT_PUBKEY_START + FLASH_PAGE_SIZE)
+#define MCU_SSB_IMAGE_SIGN_START        (MCU_SUB_PUBKEY_START + FLASH_PAGE_SIZE)
+#define MCU_SUB_PUBKEY_BACKUP_START     (MCU_SSB_IMAGE_SIGN_START + FLASH_PAGE_SIZE)
+#define MCU_SSB_IMAGE_SIGN_BACKUP_START (MCU_SUB_PUBKEY_BACKUP_START + FLASH_PAGE_SIZE)
+
+#define MCU_SEC_BOOT_SIGN_BACKUP_START  MCU_SUB_PUBKEY_BACKUP_START
+#define MCU_SEC_BOOT_SIGN_BACKUP_LEN    (2 * FLASH_PAGE_SIZE)
+
+#define MCU_RECOVERY_IMAGE_SIGN_START   (MCU_SEC_BOOT_SIGN_BACKUP_START + FLASH_PAGE_SIZE)
+#define MCU_BT_IMAGE_SIGN_START         (MCU_RECOVERY_IMAGE_SIGN_START + FLASH_PAGE_SIZE)
+#define MCU_APP_IMAGE_SIGN_START        (MCU_BT_IMAGE_SIGN_START + FLASH_PAGE_SIZE)
+
+/*
+ * ********************* Romloader Sec Alloction ***********************
+ */
+/* ROMLOADER USED TO SAVE ROOTKEY(0x400), SUBPUBKEY CERT(0x800), SSB IMAGE SIGN(0x210) */
+#define ROMLOADER_USE_SRAM_LENGTH     0x1000
+#define ROMLOADER_USE_ROOTKEY_LENGTH  0x400
+#define ROMLOADER_USE_CERT_LENGTH     0x800
+#define ROMLOADER_USE_SSB_SIGN_LENGTH 0x400
+
+#define ROMLOADER_USE_SRAM_ORIGIN     (CHIP_SRAM_END - ROMLOADER_USE_SRAM_LENGTH)
+#define ROMLOADER_USE_ROOTKEY_ORIGIN  ROMLOADER_USE_SRAM_ORIGIN
+#define ROMLOADER_USE_CERT_ORIGIN     (ROMLOADER_USE_ROOTKEY_ORIGIN + ROMLOADER_USE_ROOTKEY_LENGTH)
+#define ROMLOADER_USE_SSB_SIGN_ORIGIN (ROMLOADER_USE_CERT_ORIGIN + ROMLOADER_USE_CERT_LENGTH)
+
+/* 0x800 for rsa4096 calculate */
+#define MCU_RSA_PUBLIC_KEY_LENGTH  0x400
+#define MCU_RSA_SIGNATURE_LENGTH   0x200
+#define MCU_RSA_RESULT_LENGTH      0x200
+#define MCU_RSA_REGION_LENGTH      (MCU_RSA_PUBLIC_KEY_LENGTH + MCU_RSA_SIGNATURE_LENGTH + MCU_RSA_RESULT_LENGTH)
+
+#define MCU_RSA_REGION_ORIGIN      (CHIP_SRAM_END - MCU_RSA_REGION_LENGTH)
+#define MCU_RSA_PUBLIC_KEY_ORIGIN  MCU_RSA_REGION_ORIGIN
+#define MCU_RSA_SIGNATURE_ORIGIN   (MCU_RSA_PUBLIC_KEY_ORIGIN + MCU_RSA_PUBLIC_KEY_LENGTH)
+#define MCU_RSA_RESULT_ORIGIN      (MCU_RSA_SIGNATURE_ORIGIN + MCU_RSA_SIGNATURE_LENGTH)
+/*
+ * ********************* RAM ALLOCATION *********************
+ *
+ * Three main RAM areas, the 'BCPU' RAM, the 'APP' RAM, and 'share' RAM.
+ *      'APP' RAM include 'ITCM' for code and 'DTCM' for DATA.
+ * As the name implies, every core can access it's RAM and they all allowed
+ * to access 'share' RAM
+ *
+ * BT core can access all RAM include APP RAM and DSP RAM.
+ *
+ * The 'shared' RAM is used by all cores, this area visible to them all
+ * to exchange larger amounts of data.
+ *
+ * SHARED RAM               IPC mail box
+ *                          LOG Area
+ */
+/* 2048 bits for virtual otp */
+#define OTP_SIZE_IN_BITS  4096 /* Size of OTP memory in bits */
+#define OTP_SIZE_IN_BYTES ((OTP_SIZE_IN_BITS) / 8)
+
+#if defined VIRTUAL_OTP
+#define VIRTUAL_OTP_LENGTH OTP_SIZE_IN_BYTES
+#define COM_RAM_ORIGIN 0x87000000
+#define COM_RAM_LENGTH 0x4000
+#define VIRTUAL_OTP_ORIGIN (ROM_END - VIRTUAL_OTP_LENGTH)
+#endif
+
+/* DSP RAM use and manage by DSP team, M7 just need to know the access mapping. */
+#define DSP_CODE_ADDR_BT_MAPPING 0x58000000
+
+/* 12*N bytes for cpu trace, trace line is 12 bytes, LEN = (len/(3*4byte))*(3*4byte) - 4 */
+#define MCPU_TRACE_MEM_REGION_START 0x52006000
+#define CPU_TRACE_MEM_REGION_LENGTH 0x7F4
+#define EM_RAM_REGION 0x10030000
+#define EM_RAM_LEN 0x8000
+
+/* IPC Mail box region, every core need have a send mail box to other cores
+ * so there is 6 mailbox totally, use (3KB+16B) * 3 share mem.
+ */
+#define IPC_MAILBOX_REGION_START  (SHARED_MEM_START)
+#define IPC_MAILBOX_REGION_LENGTH 0x820
+
+/* 176 bytes for BT core preserve region */
+#define PRESERVED_REGION_ORIGIN (CHIP_SRAM_END - PRESERVED_REGION_LENGTH)
+#define PRESERVED_REGION_LENGTH 0x100
+
+/* 176 bytes for App core preserve region */
+#define APP_PRESERVED_REGION_ORIGIN (PRESERVED_REGION_ORIGIN + PRESERVED_REGION_LENGTH)
+#define APP_PRESERVED_REGION_LENGTH 0x0
+
+/* LOG Region */
+#define CONTROL_LOGGING_LENGTH  (0x800 - APP_LOGGING_LENGTH)
+#define LOGGING_REGION_LENGTH   (APP_LOGGING_LENGTH + CONTROL_LOGGING_LENGTH)
+#define LOGGING_ADDR_OFFSET     4
+#define ACCORE_MEM_ADDR_OFFSET  0x10000000
+
+/* IPC TRNG BUFFER */
+#define TRNG_BUFFER_LENGTH 0x80
+#define SEC_TRNG_ONCE_GET_MAX 0x20
+
+/* IPC Region */
+#define IPC_BUFF_SHARE_CH0_TX_LEN   0x500
+#define IPC_BUFF_SHARE_CH0_RX_LEN   0x500
+#define IPC_BUFF_SHARE_CH1_TX_LEN   0x100
+#define IPC_BUFF_SHARE_CH1_RX_LEN   0x100
+#define IPC_BUFF_SHARE_LEN          0xC00
+#define IPC_BUFF_ADDR_OFFSET        8
+
+/* The offset in the security code (either flash or ROM) to where the version information starts */
+#define VERSION_INFORMATION_OFFSET (VERSION_LENGTH)
+
+/*
+ * ********************* ADDITIONAL MEMORY CONFIGURATION DEFINITIONS *********************
+ * Default values used by the memory_init function - aliased region addresses and lengths must be multiples of 16 bytes
+ */
+#if ((((ROM_START)&0xF) != 0x0) || (((ROM_LENGTH)&0xF) != 0x0))
+#error "The ROM memory regions specified can't be aliased."
+#endif
+
+#endif

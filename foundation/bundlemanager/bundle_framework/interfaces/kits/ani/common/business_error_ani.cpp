@@ -1,0 +1,335 @@
+/*
+* Copyright (c) 2025 Huawei Device Co., Ltd.
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
+#include <ani.h>
+#include <unordered_map>
+
+#include "app_log_wrapper.h"
+#include "bundle_errors.h"
+#include "business_error_ani.h"
+#include "business_error_map.h"
+#include "napi_constants.h"
+#include "common_fun_ani.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+constexpr const char* ERROR_MESSAGE_PLACEHOLDER = "$";
+constexpr const char* BUSINESS_ERROR_CLASS = "@ohos.base.BusinessError";
+constexpr const char* ERROR_MESSAGE_APP_DISABLE_FORBIDDEN = "Or the application is forbidden to be disabled.";
+} // namespace
+    
+void BusinessErrorAni::ThrowError(ani_env *env, int32_t err, const std::string &msg)
+{
+    if (env == nullptr) {
+        APP_LOGE("env is null");
+        return;
+    }
+    ani_object error = CreateError(env, err, msg);
+    ThrowError(env, error);
+}
+
+ani_object BusinessErrorAni::WrapError(ani_env *env, const std::string &msg)
+{
+    if (env == nullptr) {
+        APP_LOGE("env is null");
+        return nullptr;
+    }
+    ani_class cls = nullptr;
+    ani_method method = nullptr;
+    ani_object obj = nullptr;
+
+    ani_string aniMsg = nullptr;
+    if (!CommonFunAni::StringToAniStr(env, msg, aniMsg)) {
+        APP_LOGE("StringToAniStr failed");
+        return nullptr;
+    }
+
+    ani_ref undefRef;
+    ani_status status = env->GetUndefined(&undefRef);
+    if (status != ANI_OK) {
+        APP_LOGW("GetUndefined failed %{public}d", status);
+    }
+
+    status = env->FindClass("std.core.Error", &cls);
+    if (status != ANI_OK) {
+        APP_LOGE("FindClass err : %{public}d", status);
+        return nullptr;
+    }
+    status = env->Class_FindMethod(cls, "<ctor>", "C{std.core.String}C{std.core.ErrorOptions}:", &method);
+    if (status != ANI_OK) {
+        APP_LOGE("Class_FindMethod err : %{public}d", status);
+        return nullptr;
+    }
+    status = env->Object_New(cls, method, &obj, aniMsg, undefRef);
+    if (status != ANI_OK) {
+        APP_LOGE("Object_New err : %{public}d", status);
+        return nullptr;
+    }
+    return obj;
+}
+
+ani_object BusinessErrorAni::CreateError(ani_env *env, int32_t code, const std::string& msg)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return nullptr;
+    }
+    ani_class cls = nullptr;
+    ani_method method = nullptr;
+    ani_object obj = nullptr;
+    ani_status status = env->FindClass(BUSINESS_ERROR_CLASS, &cls);
+    if (status != ANI_OK) {
+        APP_LOGE("FindClass err : %{public}d", status);
+        return nullptr;
+    }
+    status = env->Class_FindMethod(cls, "<ctor>", "iC{std.core.Error}:", &method);
+    if (status != ANI_OK) {
+        APP_LOGE("Class_FindMethod err : %{public}d", status);
+        return nullptr;
+    }
+    ani_object error = WrapError(env, msg);
+    if (error == nullptr) {
+        APP_LOGE("WrapError failed");
+        return nullptr;
+    }
+    ani_int dCode(code);
+    status = env->Object_New(cls, method, &obj, dCode, error);
+    if (status != ANI_OK) {
+        APP_LOGE("Object_New err : %{public}d", status);
+        return nullptr;
+    }
+    return obj;
+}
+
+void BusinessErrorAni::ThrowCommonError(ani_env *env, int32_t err,
+    const std::string &parameter, const std::string &type)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return;
+    }
+    ani_object error = CreateCommonError(env, err, parameter, type);
+    ThrowError(env, error);
+}
+
+void BusinessErrorAni::ThrowCommonNewError(ani_env *env, int32_t err,
+    const std::string &parameter, const std::string &type)
+{
+    if (env == nullptr) {
+        APP_LOGE("env is nullptr");
+        return;
+    }
+    ani_object error = CreateNewCommonError(env, err, parameter, type);
+    ThrowError(env, error);
+}
+
+void BusinessErrorAni::ThrowInstallError(ani_env *env, int32_t err, int32_t innerCode,
+    const std::string &parameter, const std::string &type, bool needSplice)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return;
+    }
+    ani_object error = CreateInstallError(env, err, innerCode, parameter, type, needSplice);
+    ThrowError(env, error);
+}
+
+void BusinessErrorAni::ThrowTooFewParametersError(ani_env *env, int32_t err)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return;
+    }
+    ThrowError(env, err, BusinessErrorNS::ERR_MSG_PARAM_NUMBER_ERROR);
+}
+
+ani_object BusinessErrorAni::CreateCommonError(
+    ani_env *env, int32_t err, const std::string &functionName, const std::string &permissionName)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return nullptr;
+    }
+    std::string errMessage = BusinessErrorNS::ERR_MSG_BUSINESS_ERROR;
+    auto iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, std::to_string(err));
+    }
+    std::unordered_map<int32_t, const char*> errMap;
+    BusinessErrorMap::GetErrMap(errMap);
+    if (errMap.find(err) != errMap.end()) {
+        errMessage += errMap[err];
+    }
+    iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, functionName);
+        iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+        if (iter != std::string::npos) {
+            errMessage = errMessage.replace(iter, 1, permissionName);
+        }
+    }
+    return CreateError(env, err, errMessage);
+}
+
+ani_object BusinessErrorAni::CreateNewCommonError(
+    ani_env *env, int32_t err, const std::string &functionName, const std::string &permissionName)
+{
+    if (env == nullptr) {
+        APP_LOGE("env is nullptr");
+        return nullptr;
+    }
+    std::string errMessage = BusinessErrorNS::ERR_MSG_BUSINESS_ERROR;
+    auto iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, std::to_string(err));
+    }
+    std::unordered_map<int32_t, const char*> errMap;
+    BusinessErrorMap::GetNewErrMap(errMap);
+    if (errMap.find(err) != errMap.end()) {
+        errMessage += errMap[err];
+    } else {
+        BusinessErrorMap::GetErrMap(errMap);
+        if (errMap.find(err) != errMap.end()) {
+            errMessage += errMap[err];
+        }
+    }
+    iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, functionName);
+        iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+        if (iter != std::string::npos) {
+            errMessage = errMessage.replace(iter, 1, permissionName);
+        }
+    }
+    return CreateError(env, err, errMessage);
+}
+
+ani_object BusinessErrorAni::CreateInstallError(ani_env *env, int32_t err, int32_t innerCode,
+    const std::string &functionName, const std::string &permissionName, bool needSplice)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return nullptr;
+    }
+    std::string errMessage = BusinessErrorNS::ERR_MSG_BUSINESS_ERROR;
+    auto iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, std::to_string(err));
+    }
+    std::unordered_map<int32_t, const char*> errMap;
+    BusinessErrorMap::GetErrMap(errMap);
+    if (errMap.find(err) != errMap.end()) {
+        errMessage += errMap[err];
+    }
+    if (needSplice) {
+        errMessage += "[" + std::to_string(innerCode) + "]";
+    }
+    iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, functionName);
+        iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+        if (iter != std::string::npos) {
+            errMessage = errMessage.replace(iter, 1, permissionName);
+        }
+    }
+    return CreateError(env, err, errMessage);
+}
+
+void BusinessErrorAni::ThrowEnumError(ani_env *env,
+    const std::string &parameter, const std::string &type)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return;
+    }
+    ani_object error = CreateEnumError(env, parameter, type);
+    ThrowError(env, error);
+}
+
+ani_object BusinessErrorAni::CreateEnumError(ani_env *env,
+    const std::string &parameter, const std::string &enumClass)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return nullptr;
+    }
+    std::string errMessage = BusinessErrorNS::ERR_MSG_BUSINESS_ERROR;
+    auto iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, std::to_string(ERROR_PARAM_CHECK_ERROR));
+    }
+    errMessage += BusinessErrorNS::ERR_MSG_ENUM_ERROR;
+    iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, parameter);
+        iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+        if (iter != std::string::npos) {
+            errMessage = errMessage.replace(iter, 1, enumClass);
+        }
+    }
+    return CreateError(env, ERROR_PARAM_CHECK_ERROR, errMessage);
+}
+
+void BusinessErrorAni::ThrowError(ani_env *env, ani_object err)
+{
+    if (err == nullptr) {
+        APP_LOGE("err is nullptr");
+        return;
+    }
+    env->ThrowError(static_cast<ani_error>(err));
+}
+
+void BusinessErrorAni::ThrowErrorForSetAppEnabled(ani_env *env, int32_t err,
+    const std::string &parameter, const std::string &type)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return;
+    }
+    ani_object error = CreateErrorForSetAppEnabled(env, err, parameter, type);
+    ThrowError(env, error);
+}
+
+ani_object BusinessErrorAni::CreateErrorForSetAppEnabled(
+    ani_env *env, int32_t err, const std::string &functionName, const std::string &permissionName)
+{
+    if (env == nullptr) {
+        APP_LOGE("err is nullptr");
+        return nullptr;
+    }
+    std::string errMessage = BusinessErrorNS::ERR_MSG_BUSINESS_ERROR;
+    auto iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, std::to_string(err));
+    }
+    std::unordered_map<int32_t, const char*> errMap;
+    BusinessErrorMap::GetErrMap(errMap);
+    if (errMap.find(err) != errMap.end()) {
+        errMessage += errMap[err];
+    }
+    iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+    if (iter != std::string::npos) {
+        errMessage = errMessage.replace(iter, 1, functionName);
+        iter = errMessage.find(ERROR_MESSAGE_PLACEHOLDER);
+        if (iter != std::string::npos) {
+            errMessage = errMessage.replace(iter, 1, permissionName);
+            errMessage += ERROR_MESSAGE_APP_DISABLE_FORBIDDEN;
+        }
+    }
+    return CreateError(env, err, errMessage);
+}
+} // namespace AppExecFwk
+} // namespace OHOS

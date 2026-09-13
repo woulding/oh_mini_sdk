@@ -1,0 +1,64 @@
+/*
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef FOUNDATION_BUNDLEMANAGER_BUNDLE_FRAMEWORK_SERVICES_BUNDLEMGR_INCLUDE_BUNDLE_RESOURCE_CONSTANTS_H
+#define FOUNDATION_BUNDLEMANAGER_BUNDLE_FRAMEWORK_SERVICES_BUNDLEMGR_INCLUDE_BUNDLE_RESOURCE_CONSTANTS_H
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace BundleResourceConstants {
+// resource rdb path
+constexpr const char* BUNDLE_RESOURCE_RDB_PATH = "/data/service/el1/public/bms/bundle_resources";
+// resource rdb storage path
+constexpr const char* BUNDLE_RESOURCE_RDB_STORAGE_PATH = "/data/storage/bundle_resources";
+// resource database name
+constexpr const char* BUNDLE_RESOURCE_RDB_NAME = "/bundleResource.db";
+// resource table name
+constexpr const char* BUNDLE_RESOURCE_RDB_TABLE_NAME = "bundleResource";
+constexpr const char* BUNDLE_ICON_RESOURCE_RDB_TABLE_NAME = "bundleIconResource";
+constexpr const char* UINSTALL_BUNDLE_RESOURCE_RDB = "uninstallBundleResource";
+constexpr const char* SEPARATOR = "/";
+constexpr const char* UNDER_LINE = "_";
+constexpr const char* EXTENSION_ABILITY_SEPARATOR = "+";
+// bundle resource rdb table key
+constexpr const char* NAME = "NAME";
+constexpr const char* USER_ID = "USER_ID";
+constexpr const char* ICON_TYPE = "ICON_TYPE";
+constexpr const char* UPDATE_TIME = "UPDATE_TIME";
+constexpr const char* LABEL = "LABEL";
+constexpr const char* ICON = "ICON";
+constexpr const char* SYSTEM_STATE = "SYSTEM_STATE";
+constexpr const char* FOREGROUND = "FOREGROUND";
+constexpr const char* BACKGROUND = "BACKGROUND";
+constexpr const char* USER_FILE_NAME = "/userFile.json";
+constexpr const char* USER = "user";
+constexpr const char* THEME = "theme";
+constexpr const char* LANGUAGE = "language";
+constexpr const char* THEME_ID = "themeId";
+constexpr const char* TYPE = "type";
+constexpr const char* THEME_ICON = "themeIcon";
+constexpr const char* APP_INDEX = "APP_INDEX";
+
+constexpr int32_t INDEX_NAME = 0;
+constexpr int32_t INDEX_UPDATE_TIME = 1;
+constexpr int32_t INDEX_LABEL = 2;
+constexpr int32_t INDEX_ICON = 3;
+constexpr int32_t INDEX_SYSTEM_STATE = 4;
+constexpr int32_t INDEX_FOREGROUND = 5;
+constexpr int32_t INDEX_BACKGROUND = 6;
+}
+} // AppExecFwk
+} // OHOS
+#endif // FOUNDATION_BUNDLEMANAGER_BUNDLE_FRAMEWORK_SERVICES_BUNDLEMGR_INCLUDE_BUNDLE_RESOURCE_CONSTANTS_H

@@ -1,0 +1,2183 @@
+/*
+ * Copyright (C) 2025-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License,Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,software
+ * distributed under the License is distributed on an "ASIS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import abilityDelegatorRegistry from '@ohos.app.ability.abilityDelegatorRegistry';
+import hilog from '@ohos.hilog'
+import { Callback, BusinessError } from '@ohos.base';
+let domain: int = 0x0000;
+let tag: string = 'uitestTag';
+
+let currentState = 0;
+let executeTime: long = 3;
+
+export default namespace UiTest {
+  loadLibraryWithPermissionCheck("uitest_ani", "@ohos.UiTest");
+  export native function ScheduleEstablishConnection(tokken: String): boolean;
+  export native function GetConnectionStat(): int;
+}
+
+// this function will call concurrency cannot be called in static block or global scope
+function doSetupIfNeeded() {
+  if (UiTest.GetConnectionStat() == 0) {
+    let domain: int = 0x0000;
+    hilog.info(domain, 'uitestTag', 'On static loadAndSetUpUiTest: ' + loadAndSetUpUiTest());
+  }
+}
+
+export function loadAndSetUpUiTest(): boolean {
+  let domain: int = 0x0000;
+  let connectedState = 1;
+  hilog.info(domain, 'uitestTag', 'loadAndSetUpUiTest');
+  if (UiTest.GetConnectionStat() == connectedState) {
+    hilog.info(domain, 'uitestTag', "Uitest is already connected: "+ UiTest.GetConnectionStat())
+    return true;
+  } else {
+    let delegator = abilityDelegatorRegistry.getAbilityDelegator();
+    hilog.info(domain, 'uitestTag', 'after abilityDelegatorRegistry.getAbilityDelegator();');
+    try{
+        if (delegator!=null) {
+            hilog.info(domain, 'uitestTag', 'UiTestKit_exporter: Got AbilityDelegator');
+            let result = UiTest.ScheduleEstablishConnection("default");
+            hilog.info(domain, 'uitestTag', "Uitest.ScheduleEstablishConnection(): "+result )
+            hilog.info(domain, 'uitestTag', 'UiTestKit_exporter: Begin executing shell command to start server-daemon');
+            delegator.executeShellCommand(`uitest start-daemon default`, executeTime).then((value: Any) => {
+                hilog.info(domain, 'uitestTag', `UiTestKit_exporter: Start server-daemon finished!!!!`);
+            }).catch((error:Error) :void=> {
+                hilog.error(domain, 'uitestTag', "UiTestKit_exporter: Start server-daemon failed:"+error)
+            });
+            return true;
+        } else {
+            hilog.error(domain, 'uitestTag', 'UiTestKit_exporter: Cannot get AbilityDelegator, uitest_daemon need to be pre-started');
+            UiTest.ScheduleEstablishConnection('default');
+            return false;
+        }
+    } catch(error){
+        hilog.error(domain, 'uitestTag', "loadAndSetUpUiTest failed" + error.stack);
+        hilog.error(domain, 'uitestTag', "Uitest.GetConnectionStat(): "+UiTest.GetConnectionStat());
+        return false;
+    }
+  }
+}
+
+export enum MatchPattern {
+    EQUALS = 0,
+    CONTAINS = 1,
+    STARTS_WITH = 2,
+    ENDS_WITH = 3,
+    REG_EXP = 4,
+    REG_EXP_ICASE = 5,
+  }
+  
+export enum WindowMode {
+    FULLSCREEN = 0,
+    PRIMARY = 1,
+    SECONDARY = 2,
+    FLOATING = 3,
+}
+  
+export enum ResizeDirection {
+    LEFT = 0,
+    RIGHT = 1,
+    UP = 2,
+    DOWN = 3,
+    LEFT_UP = 4,
+    LEFT_DOWN = 5,
+    RIGHT_UP = 6,
+    RIGHT_DOWN = 7,
+}
+  
+export enum DisplayRotation {
+    ROTATION_0 = 0,
+    ROTATION_90 = 1,
+    ROTATION_180 = 2,
+    ROTATION_270 = 3,
+}
+  
+export enum UiDirection {
+    LEFT = 0,
+    RIGHT = 1,
+    UP = 2,
+    DOWN = 3,
+}
+  
+export enum MouseButton {
+    MOUSE_BUTTON_LEFT = 0,
+    MOUSE_BUTTON_RIGHT = 1,
+    MOUSE_BUTTON_MIDDLE = 2,
+}
+
+export enum WindowChangeType {
+  WINDOW_UNDEFINED = 0,
+  WINDOW_ADDED = 1,
+  WINDOW_REMOVED = 2,
+  WINDOW_BOUNDS_CHANGED = 3,
+}
+
+export enum ComponentEventType {
+  COMPONENT_UNDEFINED = 0,
+  COMPONENT_CLICKED = 1,
+  COMPONENT_LONG_CLICKED = 2,
+  COMPONENT_SCROLL_START = 3,
+  COMPONENT_SCROLL_END = 4,
+  COMPONENT_TEXT_CHANGED = 5,
+}
+
+export enum PenKey {
+  HANDWRITING = 0,
+  SMART = 1,
+  AIR_MOUSE = 2,
+}
+
+export enum PenMode {
+  HANDWRITING = 0,
+  AIR_MOUSE = 1,
+}
+
+export enum PenKeyOperation {
+  CLICK = 0,
+  DOUBLE_CLICK = 1,
+}
+
+export interface PenKeyOperationOptions {
+  point?: Point;
+}
+
+export interface Point {
+ x: int;
+ y: int;
+ displayId?: int;
+}
+  
+class PointInner implements Point {
+  x: int = 0;
+  y: int = 0;
+  displayId?: int = undefined;
+}
+  
+export interface Rect {
+  left: int;
+  top: int;
+  right: int;
+  bottom: int;
+  displayId?: int;
+}
+  
+class RectInner implements Rect {
+  left: int = 0;
+  top: int = 0;
+  right: int = 0;
+  bottom: int = 0;
+  displayId?: int = undefined;
+}
+  
+export interface WindowFilter {
+  bundleName?: string;
+  title?: string;
+  focused?: boolean;
+  active?: boolean;
+  displayId?: int;
+}
+
+class WindowFilterInner implements WindowFilter {
+  bundleName?: string = undefined;
+  title?: string = undefined;
+  focused?: boolean = undefined;
+  active?: boolean = undefined;
+  displayId?: int = undefined;
+}
+
+
+export interface UIElementInfo {
+  bundleName: string;
+  type: string;
+  text: string;
+  windowChangeType?: WindowChangeType;
+  componentEventType?: ComponentEventType;
+  windowId?: int;
+  componentId?: string;
+  componentRect?: Rect;
+}
+
+class UIElementInfoInner implements UIElementInfo {
+  bundleName: string = "";
+  type: string = "";
+  text: string = "";
+  windowChangeType?: WindowChangeType = undefined;
+  componentEventType?: ComponentEventType = undefined;
+  windowId?: int = undefined;
+  componentId?: string = undefined;
+  componentRect?: Rect = undefined;
+}
+
+export interface WindowChangeOptions {
+  timeout?: int;
+  bundleName?: string;
+}
+
+class WindowChangeOptionsInner implements WindowChangeOptions {
+  timeout?: int = undefined;
+  bundleName?: string = undefined;
+}
+
+export interface ComponentEventOptions {
+  timeout?: int;
+  on?: On;
+}
+
+export interface TouchOptions {
+  speed?: int;
+  duration?: int;
+  pressure?: double;
+}
+class TouchOptionsInner implements TouchOptions {
+  speed?: int = undefined;
+  duration?: int = undefined;
+  pressure?: double = undefined;
+}
+
+class ComponentEventOptionsInner implements ComponentEventOptions {
+  timeout?: int = undefined;
+  on?: On = undefined;
+}
+export interface InputTextMode {
+  paste?: boolean;
+  addition?: boolean;
+}
+
+class InputTextModeInner implements InputTextMode {
+  paste?: boolean = undefined;
+  addition?: boolean = undefined;
+}
+
+export interface TouchPadSwipeOptions {
+  stay?: boolean;
+  speed?: int;
+}
+
+export interface KeyOptions {
+  key1?: int;
+  key2?: int;
+}
+
+class KeyOptionsInner implements KeyOptions {
+  key1?: int = undefined;
+  key2?: int = undefined;
+}
+
+class TouchPadSwipeOptionsInner implements TouchPadSwipeOptions {
+  stay?: boolean = undefined;
+  speed?: int = undefined;
+}
+
+export class Component {
+  nativeComponent:string = '';
+  public constructor(Component:string) {
+    doSetupIfNeeded();
+    if (this.nativeComponent == '') {
+      this.nativeComponent = Component;
+    }
+  }
+    private native comClickSync(): boolean;
+    private native comLongClickSync(): boolean;
+    private native comDoubleClickSync(): boolean;
+    private native comDragToSync(target: Component): boolean;
+    private native getTextSync(): string;
+    private native getTypeSync(): string;
+    private native getIdSync(): string;
+    private native getHintSync(): string;
+    private native getDescriptionSync(): string;
+    private native comInputTextSync(text: string): boolean;
+    private native comInputTextWithModeSync(text: string, mode: InputTextMode): boolean;
+    private native clearTextSync(): boolean;
+    private native scrollToTopSync(speed?: int): boolean;
+    private native scrollToBottomSync(speed?: int): boolean;
+    private native scrollSearchSync(on: On, vertical?: boolean, offset?: int): Component;
+    private native pinchInSync(scale: double): boolean;
+    private native pinchOutSync(scale: double): boolean;
+    private native isScrollableSync(): boolean;
+    private native isSelectedSync(): boolean;
+    private native isLongClickableSync(): boolean;
+    private native isClickableSync(): boolean;
+    private native isFocusedSync(): boolean;
+    private native isEnabledSync(): boolean;
+    private native isCheckedSync(): boolean;
+    private native isCheckableSync(): boolean;
+    private native comGetBoundsSync(): Rect;
+    private native getBoundsCenterSync(): Point;
+    private native getDisplayIdSync(): int;
+    private native getOriginalTextSync(): string;
+
+    click(): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.comClickSync());
+            promise1.then((e:Any) => {
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    longClick():Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.comLongClickSync());
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    doubleClick():Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.comDoubleClickSync());
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    
+    scrollSearch(on: On, vertical?: boolean, offset?: int):Promise<Component|null> {
+      let promise = new Promise<Component|null>((resolve, reject) => {
+      let promise1 = taskpool.execute(():Component|null => this.scrollSearchSync(on, vertical, offset));
+          promise1.then((e:Any)=>{
+            if (e) {
+                let value : Component = e as Component;
+                resolve(value);
+            } else {
+                resolve(null)
+            }
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    
+    scrollSearch(on: On):Promise<Component|null> {
+        let promise = new Promise<Component|null>((resolve, reject) => {
+        let promise1 = taskpool.execute(():Component|null => this.scrollSearchSync(on, true, 80));
+            promise1.then((e:Any)=>{
+              if (e) {
+                  let value : Component = e as Component;
+                  resolve(value);
+              } else {
+                  resolve(null)
+              }
+            }, (err: Object): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+      }
+  
+    pinchIn(scale: double):Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.pinchInSync(scale));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }  
+    pinchOut(scale: double):Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.pinchOutSync(scale));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    
+    scrollToTop(speed?: int):Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.scrollToTopSync(speed));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    
+    scrollToBottom(speed?: int):Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.scrollToBottomSync(speed));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    
+    inputText(text: string):Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.comInputTextSync(text));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+
+    inputText(text: string, mode: InputTextMode):Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.comInputTextWithModeSync(text, mode));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    
+    dragTo(target: Component):Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.comDragToSync(target));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+  
+    clearText():Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.clearTextSync());
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getHint():Promise<string> {
+        let promise = new Promise<string>((resolve: (value: string) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():string => this.getHintSync());
+            promise1.then((e:Any)=>{
+                let value : string = e as string;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getDescription():Promise<string> {
+        let promise = new Promise<string>((resolve: (value: string) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():string => this.getDescriptionSync());
+            promise1.then((e:Any)=>{
+                let value : string = e as string;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getType():Promise<string> {
+        let promise = new Promise<string>((resolve: (value: string) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():string => this.getTypeSync());
+            promise1.then((e:Any)=>{
+                let value : string = e as string;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getText():Promise<string> {
+        let promise = new Promise<string>((resolve: (value: string) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():string => this.getTextSync());
+            promise1.then((e:Any)=>{
+                let value : string = e as string;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getId():Promise<string> {
+        let promise = new Promise<string>((resolve: (value: string) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():string => this.getIdSync());
+            promise1.then((e:Any)=>{
+                let value : string = e as string;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    isChecked():Promise<boolean> {
+      let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.isCheckedSync());
+          promise1.then((e:Any)=>{
+              let value : boolean = e as boolean;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    isCheckable():Promise<boolean> {
+      let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.isCheckableSync());
+          promise1.then((e:Any)=>{
+              let value : boolean = e as boolean;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    isScrollable():Promise<boolean> {
+      let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.isScrollableSync());
+          promise1.then((e:Any)=>{
+              let value : boolean = e as boolean;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    isFocused():Promise<boolean> {
+      let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.isFocusedSync());
+          promise1.then((e:Any)=>{
+              let value : boolean = e as boolean;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    isEnabled():Promise<boolean> {
+      let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.isEnabledSync());
+          promise1.then((e:Any)=>{
+              let value : boolean = e as boolean;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    isSelected():Promise<boolean> {
+      let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.isSelectedSync());
+          promise1.then((e:Any)=>{
+              let value : boolean = e as boolean;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    isLongClickable():Promise<boolean> {
+      let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.isLongClickableSync());
+          promise1.then((e:Any)=>{
+              let value : boolean = e as boolean;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    isClickable():Promise<boolean> {
+      let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.isClickableSync());
+          promise1.then((e:Any)=>{
+              let value : boolean = e as boolean;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    getBounds():Promise<Rect> {
+      let promise = new Promise<Rect>((resolve: (value: Rect) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():Rect => this.comGetBoundsSync());
+          promise1.then((e:Any)=>{
+              let value : Rect = e as Rect;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    getBoundsCenter():Promise<Point> {
+      let promise = new Promise<Point>((resolve: (value: Point) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():Point => this.getBoundsCenterSync());
+          promise1.then((e:Any)=>{
+              let value : Point = e as Point;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    getDisplayId(): Promise<int> {
+        let promise = new Promise<int>((resolve: (value: int) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute((): int => this.getDisplayIdSync());
+            promise1.then((e: Any) => {
+                let value : int = e as int;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    getOriginalText(): Promise<string> {
+        let promise = new Promise<string>((resolve: (value: string) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute((): string => this.getOriginalTextSync());
+            promise1.then((e: Any) => {
+                let value : string = e as string;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  }
+  
+  export class UiWindow {
+    nativeWindow:string = '';
+    public constructor(Window:string) {
+      doSetupIfNeeded();
+      this.nativeWindow = Window;
+    }
+    private native splitSync(): boolean;
+    private native resumeSync(): boolean;
+    private native closeSync(): boolean;
+    private native minimizeSync(): boolean;
+    private native maximizeSync(): boolean;
+    private native focusSync(): boolean;
+    private native isFocusedSync(): boolean;
+    private native isActiveSync(): boolean;
+    private native resizeSync(w:int, h:int, d:ResizeDirection): boolean;
+    private native moveToSync(x:int, y:int): boolean;
+    private native getWindowModeSync(): WindowMode;
+    private native getBundleNameSync(): string;
+    private native getTitleSync(): string;
+    private native winGetBoundsSync(): Rect;
+    private native winGetDisplayIdSync(): int;
+
+    getDisplayId(): Promise<int> {
+        let promise = new Promise<int>((resolve: (value: int) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute((): int => this.winGetDisplayIdSync());
+            promise1.then((e: Any) => {
+                let value : int = e as int;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+    
+    split(): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.splitSync());
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    resume():Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.resumeSync());
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    close():Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.closeSync());
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    minimize():Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.minimizeSync());
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    maximize():Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.maximizeSync());
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    focus():Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.focusSync());
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    isFocused():Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.isFocusedSync());
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    isActive():Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.isActiveSync());
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    resize(w:int, h:int, d:ResizeDirection):Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.resizeSync(w, h, d));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    moveTo(x:int, y:int):Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.moveToSync(x, y));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getWindowMode():Promise<WindowMode> {
+        let promise = new Promise<WindowMode>((resolve: (value: WindowMode) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():WindowMode => this.getWindowModeSync());
+            promise1.then((e:Any)=>{
+                let value : WindowMode = e as WindowMode;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getBundleName():Promise<string> {
+        let promise = new Promise<string>((resolve: (value: string) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():string => this.getBundleNameSync());
+            promise1.then((e:Any)=>{
+                let value : string = e as string;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getTitle():Promise<string> {
+        let promise = new Promise<string>((resolve: (value: string) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():string => this.getTitleSync());
+            promise1.then((e:Any)=>{
+                let value : string = e as string;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    getBounds():Promise<Rect> {
+        let promise = new Promise<Rect>((resolve: (value: Rect) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():Rect => this.winGetBoundsSync());
+            promise1.then((e:Any)=>{
+                let value : Rect = e as Rect;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  }
+  
+  export class Driver {
+    private nativeDriver:string = '';
+    public constructor(driver:string) {
+        doSetupIfNeeded();
+        hilog.info(domain, tag, 'driver:'+driver);
+        this.nativeDriver = driver;
+    }
+    private native delayMsSync(t:int):boolean;
+    private native findComponentSync(on: On):Component;
+    public static create():Driver{
+        doSetupIfNeeded();
+        return Driver.createInner();
+    }
+    native static createInner():Driver;
+    private native clickSync(x:int, y:int):boolean;
+    private native longClickSync(x:int, y:int):boolean;
+    private native doubleClickSync(x:int, y:int):boolean;
+    private native flingSync(from:Point, to: Point, stepLen: int, speed: int):boolean;
+    fling(from:Point, to: Point, stepLen: int, speed: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.flingSync(from, to, stepLen, speed));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+          });
+      });
+      return promise;
+    }
+    private native flingSyncDirection(direction:UiDirection, speed: int):boolean;
+    fling(direction:UiDirection, speed: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.flingSyncDirection(direction, speed));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+          });
+      });
+      return promise;
+    }
+    private native flingWithDisplayIdSync(direction:UiDirection, speed: int, displayId: int):boolean;
+    fling(direction:UiDirection, speed: int, displayId: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.flingWithDisplayIdSync(direction, speed, displayId));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+          });
+      });
+      return promise;
+    }
+    private native swipeSync(startx: int, starty: int, endx: int, endy: int, speed?: int):boolean;
+    swipe(startx: int, starty: int, endx: int, endy: int, speed?: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.swipeSync(startx, starty, endx, endy, speed));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+          });
+      });
+      return promise;
+    }
+    private native dragSync(startx: int, starty: int, endx: int, endy: int, speed?: int):boolean;
+    drag(startx: int, starty: int, endx: int, endy: int, speed?: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.dragSync(startx, starty, endx, endy, speed));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+          });
+      });
+      return promise;
+    }
+    private native pressBackSync():boolean;
+    pressBack(): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.pressBackSync());
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+            });
+      });
+      return promise;
+    }
+    private native pressBackWithDisplayIdSync(displayId: int):boolean;
+    pressBack(displayId: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.pressBackWithDisplayIdSync(displayId));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native assertComponentExistSync(on: On):boolean;
+    assertComponentExist(on: On): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+          let promise1 = taskpool.execute(():boolean => this.assertComponentExistSync(on));
+              promise1.then((e:Any)=>{
+                  resolve(Promise.resolve());
+              }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+              });
+          });
+          return promise;
+    }
+    private native triggerKeySync(keyCode: int):boolean;
+    triggerKey(keyCode: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.triggerKeySync(keyCode));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native triggerKeyWithDisplayIdSync(keyCode: int, displayId: int):boolean;
+    triggerKey(keyCode: int, displayId: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.triggerKeyWithDisplayIdSync(keyCode, displayId));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native triggerPenKeySync(key: PenKey, mode: PenMode, operation: PenKeyOperation, options?: PenKeyOperationOptions):boolean;
+    triggerPenKey(key: PenKey, mode: PenMode, operation: PenKeyOperation, options?: PenKeyOperationOptions): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.triggerPenKeySync(key, mode, operation, options));
+        promise1.then((e:Any)=>{
+            resolve(Promise.resolve());
+        }, (err: Error): void => {
+            let br = err as BusinessError<void>;
+            reject(br);
+        });
+      });
+      return promise;
+    }
+    private native inputTextSync(p: Point, text: string):boolean;
+    inputText(p: Point, text: string): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.inputTextSync(p, text));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native inputTextWithModeSync(p: Point, text: string, mode: InputTextMode):boolean;
+    inputText(p: Point, text: string, mode: InputTextMode): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.inputTextWithModeSync(p, text, mode));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native findWindowSync(filter: WindowFilter):UiWindow;
+    findWindow(filter: WindowFilter): Promise<UiWindow|null> {
+      let promise = new Promise<UiWindow|null>((resolve, reject) => {
+          let promise1 = taskpool.execute(():UiWindow|null => this.findWindowSync(filter));
+          promise1.then((e:Any)=>{
+            if (e) {
+                hilog.info(domain, tag, "findWindow return UIWindow object");
+                let value : UiWindow = e as UiWindow;
+                resolve(value);
+            } else {
+                resolve(null)
+            }
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    native createUIEventObserver():UIEventObserver;
+
+    private native wakeUpDisplaySync():boolean;
+     wakeUpDisplay(): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.wakeUpDisplaySync());
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native pressHomeSync():boolean;
+     pressHome(): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.pressHomeSync());
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native pressHomeWithDisplayIdSync(displayId: int):boolean;
+     pressHome(displayId: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.pressHomeWithDisplayIdSync(displayId));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native getDisplaySizeSync():Point;
+     getDisplaySize(): Promise<Point> {
+      let promise = new Promise<Point>((resolve: (value: Point) => void, reject: (error: Error) => void) => {
+          let promise1 = taskpool.execute(():Point => this.getDisplaySizeSync());
+          promise1.then((e:Any)=>{
+              let value : Point = e as Point;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native getDisplaySizeWithDisplayIdSync(displayId: int):Point;
+     getDisplaySize(displayId: int): Promise<Point> {
+      let promise = new Promise<Point>((resolve: (value: Point) => void, reject: (error: Error) => void) => {
+          let promise1 = taskpool.execute(():Point => this.getDisplaySizeWithDisplayIdSync(displayId));
+          promise1.then((e:Any)=>{
+              let value : Point = e as Point;
+              resolve(value);
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native getDisplayDensitySync(displayId?: int): Point;
+    getDisplayDensity(): Promise<Point> {
+      let promise = new Promise<Point>((resolve: (value: Point) => void, reject: (error: Error) => void) => {
+    let promise1 = taskpool.execute(():Point => this.getDisplayDensitySync());
+        promise1.then((e:Any)=>{
+            let value : Point = e as Point;
+            resolve(value);
+        }, (err: Error): void => {
+            let br = err as BusinessError<void>;
+            reject(br);
+    });
+      });
+      return promise;
+    }    
+    getDisplayDensity(displayId: int): Promise<Point> {
+      let promise = new Promise<Point>((resolve: (value: Point) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute((): Point => this.getDisplayDensitySync(displayId));
+        promise1.then((e: Any)=>{
+            let value : Point = e as Point;
+            resolve(value);
+        }, (err: Error): void => {
+            let br = err as BusinessError<void>;
+            reject(br);
+        });
+      });
+      return promise;
+    }
+    private native getDisplayRotationSync(displayId?: int): DisplayRotation;
+    getDisplayRotation(): Promise<DisplayRotation> {
+      let promise = new Promise<DisplayRotation>((resolve: (value: DisplayRotation) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():DisplayRotation => this.getDisplayRotationSync());
+      promise1.then((e:Any)=>{
+          let value : DisplayRotation = e as DisplayRotation;
+          hilog.info(domain, tag, "getDisplayRotationSync return DisplayRotation");
+          resolve(value);
+        }, (err: Error): void => {
+            let br = err as BusinessError<void>;
+            reject(br);
+        });
+      });
+      return promise;
+    }
+    getDisplayRotation(displayId: int): Promise<DisplayRotation> {
+      let promise = new Promise<DisplayRotation>((resolve: (value: DisplayRotation) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute((): DisplayRotation => this.getDisplayRotationSync(displayId));
+      promise1.then((e: Any)=>{
+          let value : DisplayRotation = e as DisplayRotation;
+          hilog.info(domain, tag, "getDisplayRotationSync return DisplayRotation");
+          resolve(value);
+        }, (err: Error): void => {
+            let br = err as BusinessError<void>;
+            reject(br);
+        });
+      });
+      return promise;
+    }
+    private native findComponentsSync(on: On):Array<Component>;
+    findComponents(on: On): Promise<Array<Component>|null> {
+      let promise = new Promise<Array<Component>|null>((resolve, reject) => {
+      let promise1 = taskpool.execute(():Array<Component> => this.findComponentsSync(on));
+          promise1.then((e:Any)=>{
+            if (e){
+                let value : Array<Component> = e as Array<Component>;
+                resolve(value);
+            } else {
+                resolve(null)
+            }
+          }, (err: Error): void => {
+              let br = err as BusinessError<void>;
+              reject(br);
+          });
+      });
+      return promise;
+    }
+    private native waitForIdleSync(idleTime: int, timeout: int):boolean;
+    private native waitForComponentSync(on: On, time: int):Component;
+    private native triggerCombineKeysSync(key0: int, key1: int, key2?: int, displayId?: int):boolean;
+  
+    private native setDisplayRotationEnabledSync(enable: boolean):boolean;
+    private native setDisplayRotationSync(rotation: DisplayRotation):boolean;
+    private native screenCaptureSync(savepath: string, rect?: Rect):boolean;
+    private native screenCapSync(savepath: string, displayId?: int):boolean;
+    private native dumpLayoutSync(savepath: string, displayId?: int):boolean;
+  
+    private native penSwipeSync(f: Point, t: Point, speed?: int, pressure?: double): boolean;
+    private native penClickSync(p: Point):boolean;
+    private native penDoubleClickSync(p: Point):boolean;
+    private native penLongClickSync(p: Point, pressure?: double):boolean;
+  
+    private native mouseScrollSync(p: Point, down: boolean, d:int, key1?: int, key2?: int, speed?: int): boolean;
+    private native mouseMoveWithTrackSync(f: Point, t: Point, speed?: int): boolean;
+    private native mouseMoveToSync(p: Point): boolean;
+    private native mouseDragSync(f: Point, t: Point, speed?: int, duration?: int): boolean;
+    private native mouseDragWithOptionsSync(f: Point, t: Point, touchOptions?: TouchOptions, keyOptions?: KeyOptions): boolean;
+    private native mouseClickSync(p: Point, btnId: MouseButton, key1?: int, key2?: int):boolean;
+    private native mouseDoubleClickSync(p: Point, btnId: MouseButton, key1?: int, key2?: int):boolean;
+    private native mouseLongClickSync(p: Point, btnId: MouseButton, key1?: int, key2?: int, duration?: int):boolean;
+  
+    private native injectMultiPointerActionSync(pointers: PointerMatrix, speed?: int): boolean;
+    private native injectPenPointerActionSync(pointers: PointerMatrix, speed?: int, pressure?: double): boolean;
+    private native touchPadMultiFingerSwipeSync(fingers: int, direction: UiDirection, options?: TouchPadSwipeOptions): boolean;
+    private native kunckleClickOnePointSync(p: Point, times: int):boolean;
+    private native kunckleClickTwoPointSync(p0: Point, p1: Point, times: int):boolean;
+    private native injectKnucklePointerActionSync(pointers: PointerMatrix, speed?: int): boolean;
+    private native clickAtSync(point: Point): boolean;
+    private native clickAtTouchOptionsSync(point: Point, options?: TouchOptions): boolean;
+    private native doubleClickAtSync(point: Point): boolean;
+    private native longClickAtSync(point: Point, duration?: int): boolean;
+    private native longClickAtTouchOptionsSync(point: Point, options?: TouchOptions): boolean;
+    private native swipeBetweenSync(from: Point, to: Point, speed?: int): boolean;
+    private native swipeBetweenTouchOptionsSync(from: Point, to: Point, options?: TouchOptions): boolean;
+    private native dragBetweenSync(from: Point, to: Point, speed?: int, duration?: int): boolean;
+    private native dragBetweenTouchOptionsSync(from: Point, to: Point, options?: TouchOptions): boolean;
+    private native crownRotateSync(d: int, speed?: int): boolean;
+    private native touchPadTwoFingersScrollSync(point: Point, direction: UiDirection, d: int, speed?: int): boolean;
+
+    delayMs(t: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.delayMsSync(t));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    click(x: int, y: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.clickSync(x, y));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    doubleClick(x: int, y: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.doubleClickSync(x, y));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    longClick(x: int, y: int): Promise<void> {
+      let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+      let promise1 = taskpool.execute(():boolean => this.longClickSync(x, y));
+          promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+      });
+      return promise;
+    }
+  
+    findComponent(on: On): Promise<Component|null> {
+        let promise = new Promise<Component|null>((resolve, reject) => {
+            let promise1 = taskpool.execute(():Component|null => this.findComponentSync(on));
+                promise1.then((e:Any)=>{
+                    if (e) {
+                        let value : Component = e as Component;
+                        hilog.info(domain, tag, "findComponent return Component object");
+                        resolve(value);
+                    } else {
+                        resolve(null)
+                    }
+                }, (err: Error): void => {
+                    let br = err as BusinessError<void>;
+                    reject(br);
+                });
+            });
+        return promise;
+    }
+  
+    waitForIdle(idleTime: int, timeout: int): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.waitForIdleSync(idleTime, timeout));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    waitForComponent(on: On, time: int): Promise<Component|null> {
+        let promise = new Promise<Component|null>((resolve, reject) => {
+        let promise1 = taskpool.execute(():Component|null => this.waitForComponentSync(on, time));
+            promise1.then((e:Any)=>{
+                if (e) {
+                    let value : Component = e as Component;
+                    resolve(value);
+                } else {
+                    resolve(null)
+                }
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    triggerCombineKeys(key0: int, key1: int, key2?: int, displayId?: int): Promise<void> {
+        let promise1 = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute(():boolean => this.triggerCombineKeysSync(key0, key1, key2, displayId));
+                promise1.then((e:Any)=>{
+                    resolve(Promise.resolve());
+                }, (err: Error): void => {
+                    let br = err as BusinessError<void>;
+                    reject(br);
+                });
+            });
+            return promise1;
+    }
+  
+    setDisplayRotationEnabled(enable: boolean): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.setDisplayRotationEnabledSync(enable));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    setDisplayRotation(rotation: DisplayRotation): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.setDisplayRotationSync(rotation));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    screenCapture(path: string, rect?: Rect): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.screenCaptureSync(path, rect));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    screenCap(path: string): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.screenCapSync(path));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    screenCap(path: string, displayId: int): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.screenCapSync(path, displayId));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    dumpLayout(savePath: string, displayId?: int): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.dumpLayoutSync(savePath, displayId));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    penSwipe(f: Point, t: Point, speed?: int, pressure?: double): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.penSwipeSync(f, t, speed, pressure));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    penClick(p: Point): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.penClickSync(p));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    penDoubleClick(p: Point): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.penDoubleClickSync(p));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    penLongClick(p: Point, pressure?: double): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.penLongClickSync(p, pressure));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+    
+    mouseScroll(p: Point, down: boolean, d:int, key1?: int, key2?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.mouseScrollSync(p, down, d, key1, key2, 20));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    mouseScroll(p: Point, down: boolean, d:int, key1?: int, key2?: int, speed?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.mouseScrollSync(p, down, d, key1, key2, speed));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    mouseMoveWithTrack(f: Point, t: Point, speed?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.mouseMoveWithTrackSync(f, t, speed));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    mouseMoveTo(p: Point): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.mouseMoveToSync(p));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    mouseDrag(f: Point, t: Point, speed?: int, duration?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute(():boolean => this.mouseDragSync(f, t, speed, duration));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    mouseDragWithOptions(f: Point, t: Point, touchOptions?: TouchOptions, keyOptions?: KeyOptions): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute(():boolean => this.mouseDragWithOptionsSync(f, t, touchOptions, keyOptions));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    mouseClick(p: Point, btnId: MouseButton, key1?: int, key2?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.mouseClickSync(p, btnId, key1, key2));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    mouseDoubleClick(p: Point, btnId: MouseButton, key1?: int, key2?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.mouseDoubleClickSync(p, btnId, key1, key2));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    mouseLongClick(p: Point, btnId: MouseButton, key1?: int, key2?: int, duration?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.mouseLongClickSync(p, btnId, key1, key2, duration));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    injectMultiPointerAction(pointers: PointerMatrix, speed?: int): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.injectMultiPointerActionSync(pointers, speed));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    injectPenPointerAction(pointers: PointerMatrix, speed?: int, pressure?: double): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.injectPenPointerActionSync(pointers, speed, pressure));
+            promise1.then((e:Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  
+    touchPadMultiFingerSwipe(fingers: int, direction: UiDirection, options?: TouchPadSwipeOptions): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute((): boolean => this.touchPadMultiFingerSwipeSync(fingers, direction, options));
+            promise1.then((e: Any)=>{
+              resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    clickAt(point: Point): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.clickAtSync(point));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    clickAtWithOptions(point: Point, options?: TouchOptions): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.clickAtTouchOptionsSync(point, options));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    doubleClickAt(point: Point): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.doubleClickAtSync(point));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+    longClickAt(point: Point, duration?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute(():boolean => this.longClickAtSync(point, duration));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    longClickAtWithOptions(point: Point, options?: TouchOptions): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute(():boolean => this.longClickAtTouchOptionsSync(point, options));
+            promise1.then((e: Any) => {
+                resolve(Promise.resolve());
+            }, (err: Error) => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    swipeBetween(from: Point, to: Point, speed?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.swipeBetweenSync(from, to, speed));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    swipeBetweenWithOptions(from: Point, to: Point, options?: TouchOptions): Promise<void> {
+        let promise = new Promise<void>(
+            (resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.swipeBetweenTouchOptionsSync(from, to, options));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    dragBetween(from: Point, to: Point, speed?: int, duration?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.dragBetweenSync(from, to, speed, duration));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    dragBetweenWithOptions(from: Point, to: Point, options?: TouchOptions): Promise<void> {
+        let promise = new Promise<void>(
+            (resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean =>
+                this.dragBetweenTouchOptionsSync(from, to, options));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    crownRotate(d: int, speed?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.crownRotateSync(d, speed));
+            promise1.then((e: Any)=>{
+                resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+    touchPadTwoFingersScroll(point: Point, direction: UiDirection, d: int, speed?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let promise1 = taskpool.execute((): boolean => this.touchPadTwoFingersScrollSync(point, direction, d, speed));
+            promise1.then((e: Any)=>{
+              resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+
+    knuckleKnock(points: Array<Point>, times: int):Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+            let pointCount = points.length;
+            if (pointCount < 1 || pointCount > 2) {
+                let err = new BusinessError();
+                err.code = 17000007;
+                err.name = "Error";
+                err.message = "Point counts must be 1 to 2.";
+                reject(err);
+            }
+            let p0 = points[0];
+            if (pointCount != 1){
+                let p1 = points[1];
+                let promise1 = taskpool.execute(():boolean => this.kunckleClickTwoPointSync(p0, p1, times));
+                promise1.then((e:Any)=>{
+                    resolve(Promise.resolve());
+                }, (err: Error): void => {
+                    let br = err as BusinessError<void>;
+                    reject(br);
+                });
+            } else {
+                let promise1 = taskpool.execute(():boolean => this.kunckleClickOnePointSync(p0, times));
+                promise1.then((e:Any)=>{
+                    resolve(Promise.resolve());
+                }, (err: Error): void => {
+                    let br = err as BusinessError<void>;
+                    reject(br);
+                });
+            }
+        });
+        return promise;
+    }
+
+    injectKnucklePointerAction(pointers: PointerMatrix, speed?: int): Promise<void> {
+        let promise = new Promise<void>((resolve: (value: PromiseLike<void>) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.injectKnucklePointerActionSync(pointers, speed));
+            promise1.then((e:Any)=>{
+              resolve(Promise.resolve());
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+    private native isComponentPresentWhenLongClickSync(on: On, point: Point, duration?: int): boolean;
+    isComponentPresentWhenLongClick(on: On, point: Point, duration?: int): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.isComponentPresentWhenLongClickSync(on, point, duration));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+    private native isComponentPresentWhenDragSync(on: On, from: Point, to: Point, speed?: int, duration?: int): boolean;
+    isComponentPresentWhenDrag(on: On, from: Point, to: Point, speed?: int, duration?: int): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.isComponentPresentWhenDragSync(on, from, to, speed, duration));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+    private native isComponentPresentWhenSwipeSync(on: On, from: Point, to: Point, speed?: int): boolean;
+    isComponentPresentWhenSwipe(on: On, from: Point, to: Point, speed?: int): Promise<boolean> {
+        let promise = new Promise<boolean>((resolve: (value: boolean) => void, reject: (error: Error) => void) => {
+        let promise1 = taskpool.execute(():boolean => this.isComponentPresentWhenSwipeSync(on, from, to, speed));
+            promise1.then((e:Any)=>{
+                let value : boolean = e as boolean;
+                resolve(value);
+            }, (err: Error): void => {
+                let br = err as BusinessError<void>;
+                reject(br);
+            });
+        });
+        return promise;
+    }
+  }
+  
+  export class PointerMatrix {
+    private nativePointerMatrix:string = '';
+    public constructor(PointerMatrix:string) {
+      doSetupIfNeeded();
+      if (this.nativePointerMatrix == '') {
+        this.nativePointerMatrix = PointerMatrix;
+      }
+    }
+    public static create(fingers: int, steps: int): PointerMatrix{
+      doSetupIfNeeded();
+      return PointerMatrix.createInner(fingers, steps);
+    }
+    native static createInner(fingers: int, steps: int): PointerMatrix;
+    native setPoint(finger: int, step: int, point: Point): void;
+  }
+  export class On {
+    private nativeOn:String = '';
+    public constructor(on:string) {
+      doSetupIfNeeded();
+      hilog.info(domain, tag, "nativeOn: " + on);
+      this.nativeOn = on;
+    }
+    public constructor() {
+      doSetupIfNeeded();
+    }
+    native within(on:On): On;
+    native withinComponent(com: Component): On;
+    native clickable(b?: boolean): On;
+    native longClickable(b?: boolean): On;
+    native scrollable(b?: boolean): On;
+    native enabled(b?: boolean): On;
+    native focused(b?: boolean): On;
+    native selected(b?: boolean): On;
+    native checked(b?: boolean): On;
+    native checkable(b?: boolean): On;
+    native isBefore(on: On): On;
+    native beforeComponent(com: Component): On;
+    native isAfter(on: On): On;
+    native afterComponent(com: Component): On;
+    native inWindow(bundleName: string): On;
+    native text(txt: string, pattern?: MatchPattern): On;
+    native description(val: string, pattern?: MatchPattern): On;
+    native id(id: string, pattern?: MatchPattern): On;
+    native type(tp: string, pattern?: MatchPattern): On;
+    native hint(val: string, pattern?: MatchPattern): On;
+    native belongingDisplay(displayId: int): On;
+    native originalText(text: string, pattern?: MatchPattern): On;
+    
+    id(id: string): On {
+        return this.id(id, MatchPattern.EQUALS);
+    }
+    type(tp: string): On {
+        return this.type(tp, MatchPattern.EQUALS);
+    }
+  }
+
+export class UIEventObserver {
+    private nativeUIEventObserver: string = '';
+    public constructor(UIEventObserver: string) {
+        doSetupIfNeeded();
+        hilog.info(domain, tag, 'UIEventObserver:' + UIEventObserver);
+        if (this.nativeUIEventObserver == '') {
+            this.nativeUIEventObserver = UIEventObserver;
+        }
+    }
+    native onceToastShow(callback: Callback<UIElementInfo>): void;
+    native onceDialogShow(callback: Callback<UIElementInfo>): void;
+    native onceWindowChange(windowChangeType: WindowChangeType, options: WindowChangeOptions, callback: Callback<UIElementInfo>): void;
+    native onceComponentEventOccur(componentEventType: ComponentEventType, options: ComponentEventOptions, callback: Callback<UIElementInfo>): void;
+}
+
+export namespace ON {
+    export let ONInner: On | undefined = undefined; 
+    
+    function initializeONinnerIfNeeded(): void {
+        if (ONInner === undefined) {
+            ONInner = new On();
+        }
+    }
+
+    // need to wrap all On class using ONinner instance
+    export function within(on:On): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.within(on);
+    }
+
+    export function withinComponent(com: Component): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.withinComponent(com);
+    }
+
+    export function clickable(b?: boolean): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.clickable(b);
+    }
+
+    export function longClickable(b?: boolean): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.longClickable(b);
+    }
+
+    export function scrollable(b?: boolean): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.scrollable(b);
+    }
+
+    export function enabled(b?: boolean): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.enabled(b);
+    }
+
+    export function focused(b?: boolean): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.focused(b);
+    }
+
+    export function selected(b?: boolean): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.selected(b);
+    }
+
+    export function checked(b?: boolean): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.checked(b);
+    }
+
+    export function checkable(b?: boolean): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.checkable(b);
+    }
+
+    export function isBefore(on: On): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.isBefore(on);
+    }
+
+    export function beforeComponent(com: Component): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.beforeComponent(com);
+    }
+
+    export function isAfter(on: On): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.isAfter(on);
+    }
+
+    export function afterComponent(com: Component): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.afterComponent(com);
+    }
+
+    export function inWindow(bundleName: string): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.inWindow(bundleName);
+    }
+
+    export function text(txt: string, pattern?: MatchPattern): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.text(txt, pattern);
+    }
+
+    export function description(val: string, pattern?: MatchPattern): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.description(val, pattern);
+    }
+
+    export function id(id: string, pattern?: MatchPattern): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.id(id, pattern);
+    }
+
+    export function type(tp: string, pattern?: MatchPattern): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.type(tp, pattern);
+    }
+
+    export function hint(val: string, pattern?: MatchPattern): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.hint(val, pattern);
+    }
+
+    export function id(id: string): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.id(id);
+    }
+
+    export function type(tp: string): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.type(tp);
+    }
+
+    export function belongingDisplay(displayId: int): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.belongingDisplay(displayId);
+    }
+
+    export function originalText(text: string, pattern?: MatchPattern): On {
+        initializeONinnerIfNeeded();
+        return ONInner!.originalText(text, pattern);
+    }
+}

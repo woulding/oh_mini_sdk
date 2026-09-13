@@ -1,0 +1,56 @@
+{
+  "darwin": {
+    "checkFiles": [],
+    "checkDirectories": [
+      "darwin/ets/",
+      "darwin/js/",
+      "darwin/native/",
+      "darwin/previewer/",
+      "darwin/toolchains/",
+      "darwin/cangjie/"
+    ]
+  },
+  "linux": {
+    "checkFiles": [],
+    "checkDirectories": [
+      "linux/ets/",
+      "linux/js/",
+      "linux/native/",
+      "linux/previewer/",
+      "linux/toolchains/",
+      "linux/cangjie/"
+    ]
+  },
+  "linux-arm64": {
+    "checkFiles": [],
+    "checkDirectories": [
+      "linux-arm64/ets/",
+      "linux-arm64/js/",
+      "linux-arm64/native/",
+      "linux-arm64/toolchains/",
+      "linux-arm64/cangjie/"
+    ]
+  },
+  "windows": {
+    "checkFiles": [],
+    "checkDirectories": [
+      "windows/ets/",
+      "windows/js/",
+      "windows/native/",
+      "windows/previewer/",
+      "windows/toolchains/",
+      "windows/cangjie/"
+    ]
+  },
+  "ohos": {
+    "checkFiles": [],
+    "checkDirectories": [
+      "ohos/ets/",
+      "ohos/js/",
+      "ohos/native/",
+      "ohos/previewer/",
+      "ohos/toolchains/",
+      "ohos/cangjie/"
+    ]
+  }
+}

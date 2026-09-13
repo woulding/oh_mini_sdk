@@ -1,0 +1,121 @@
+/*
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef FOUNDATION_BUNDLE_FRAMEWORK_AOT_AOT_HANDLER
+#define FOUNDATION_BUNDLE_FRAMEWORK_AOT_AOT_HANDLER
+
+#include <mutex>
+#include <optional>
+#include <string>
+#include <unordered_map>
+
+#include "aot/aot_args.h"
+#include "bundle_mgr_service.h"
+#include "event_report.h"
+#include "inner_bundle_info.h"
+#include "nocopyable.h"
+#include "serial_queue.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+class AOTHandler final {
+public:
+    static AOTHandler& GetInstance();
+    static std::string BuildArkProfilePath(
+        const int32_t userId, const std::string &bundleName = "", const std::string &moduleName = "");
+    static AOTCompileStatus ConvertToAOTCompileStatus(const ErrCode ret, const uint8_t triggerType);
+    static void DeleteHostPrivateSharedHspAOT(
+        const std::string &hspBundleName, std::optional<uint32_t> versionCode = std::nullopt);
+
+    void HandleHapInstallAOTAsync(const std::string &bundleName) const;
+    void HandleSharedHspChangedAOTAsync(const std::string &bundleName) const;
+    void HandleOTA();
+    void HandleIdle() const;
+    ErrCode HandleCompile(const std::string &bundleName, const std::string &compileMode, bool isAllBundle,
+        std::vector<std::string> &compileResults) const;
+    void HandleResetBundleAOT(const std::string &bundleName, bool isAllBundle) const;
+    void HandleResetAllAOT() const;
+    ErrCode HandleCopyAp(const std::string &bundleName, bool isAllBundle, std::vector<std::string> &results) const;
+private:
+    AOTHandler();
+    ~AOTHandler() = default;
+    DISALLOW_COPY_AND_MOVE(AOTHandler);
+
+    void HandleHapInstallAOT(const std::string &bundleName) const;
+    void CompileDependentSharedHspAOT(const InnerBundleInfo &hostInfo,
+        const uint8_t triggerType) const;
+    void HandleSharedHspChangedAOT(const std::string &bundleName) const;
+    void CompileHostsForChangedSharedHsp(const InnerBundleInfo &sharedInfo) const;
+    void CompileHostSharedHspAOT(const InnerBundleInfo &hostInfo,
+        const BaseSharedBundleInfo &sharedBundleInfo,
+        const uint8_t triggerType) const;
+    bool ShouldCompileSharedModule(const InnerModuleInfo &moduleInfo) const;
+    bool ShouldCompileSharedHspModule(const BaseSharedBundleInfo &sharedBundleInfo) const;
+    bool ShouldCompileAppModule(const InnerModuleInfo &moduleInfo) const;
+    bool HasCompilableSharedHspModule(const InnerBundleInfo &sharedInfo) const;
+    ErrCode MkApDestDirIfNotExist() const;
+    void CopyApWithBundle(const std::string &bundleName, const BundleInfo &bundleInfo,
+        const int32_t userId, std::vector<std::string> &results) const;
+    std::string GetSouceAp(const std::string &mergedAp, const std::string &rtAp) const;
+    bool IsSupportARM64() const;
+    std::string FindArkProfilePath(const std::string &bundleName, const std::string &moduleName) const;
+    bool BuildAppArgs(const InnerBundleInfo &info, const std::string &compileMode, AOTArgs &aotArgs) const;
+    std::optional<AOTArgs> BuildHostSharedHspAOTArgs(const InnerBundleInfo &hostInfo,
+        const BaseSharedBundleInfo &sharedBundleInfo, const uint8_t triggerType) const;
+    std::optional<AOTArgs> BuildAOTArgs(const InnerBundleInfo &info, const std::string &moduleName,
+        const std::string &compileMode, bool isEnableBaselinePgo, const uint8_t triggerType) const;
+    bool NeedCompile(const InnerBundleInfo &info, const std::string &moduleName) const;
+    ErrCode HandleCompileWithSingleModule(const InnerBundleInfo &info, const std::string &moduleName,
+        const std::string &compileMode, bool isEnableBaselinePgo = false) const;
+    EventInfo HandleCompileWithBundle(const std::string &bundleName, const std::string &compileMode,
+        std::shared_ptr<BundleDataMgr> dataMgr) const;
+    ErrCode HandleCompileBundles(const std::vector<std::string> &bundleNames, const std::string &compileMode,
+        std::shared_ptr<BundleDataMgr> &dataMgr, std::vector<std::string> &compileResults) const;
+    ErrCode HandleCompileModules(const std::vector<std::string> &moduleNames, const std::string &compileMode,
+        InnerBundleInfo &info, std::string &compileResult) const;
+    void ResetAllSysCompAOT() const;
+    void ResetAllBundleAOT() const;
+    void HandleIdleWithSingleSysComp(const std::string &abcPath) const;
+    void HandleIdleWithSingleModule(
+        const InnerBundleInfo &info, const std::string &moduleName, const std::string &compileMode) const;
+    bool CheckDeviceState() const;
+    ErrCode AOTInternal(const std::optional<AOTArgs> &aotArgs, uint32_t versionCode) const;
+    void HandleOTACompile();
+    void BeforeOTACompile();
+    void OTACompile() const;
+    void OTACompileInternal() const;
+    bool GetOTACompileList(std::vector<std::string> &bundleNames) const;
+    bool GetUserBehaviourAppList(std::vector<std::string> &bundleNames, int32_t size) const;
+    bool IsOTACompileSwitchOn() const;
+    void ReportSysEvent(const std::map<std::string, EventInfo> &sysEventMap) const;
+
+    void DeleteArkAp(const BundleInfo &bundleInfo, const int32_t userId) const;
+    void ClearArkAp() const;
+    void HandleArkPathsChange() const;
+    void DelDeprecatedArkPaths() const;
+    void CreateArkProfilePaths() const;
+    std::vector<std::string> GetAOTEnableList(const std::string &configPath) const;
+    void IdleForSysComp() const;
+    void IdleForBundle(const std::string &compileMode) const;
+private:
+    std::atomic<bool> OTACompileDeadline_ { false };
+    mutable std::mutex executeMutex_;
+    mutable std::mutex idleMutex_;
+    mutable std::mutex compileMutex_;
+    std::shared_ptr<SerialQueue> serialQueue_;
+};
+}  // namespace AppExecFwk
+}  // namespace OHOS
+#endif  // FOUNDATION_BUNDLE_FRAMEWORK_AOT_AOT_HANDLER

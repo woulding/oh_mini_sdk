@@ -1,0 +1,20 @@
+{
+    "ioQuota": {
+        "Xperf": 200,
+        "Reliability": 200,
+        "Other": 200
+    },
+    "zipQuota": {
+        "Xperf": 100,
+        "Xpower": 100,
+        "Hiview": 100,
+        "Reliability": 100,
+        "DecreaseUnit": 5
+    },
+    "appSystemQuota": {
+        "AppDurationLimits": 1000,
+        "TotalDurationLimits": 15000,
+        "AppFlowLimits": 1000,
+        "TotalFlowLimits": 2000
+    }
+}

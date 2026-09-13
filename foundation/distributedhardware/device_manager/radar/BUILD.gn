@@ -1,0 +1,183 @@
+# Copyright (c) 2023-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+} else {
+  import("//build/ohos.gni")
+}
+import("//foundation/distributedhardware/device_manager/device_manager.gni")
+if (defined(ohos_lite)) {
+  if (ohos_kernel_type == "linux") {
+    shared_library("devicemanagerradar") {
+      include_dirs = [
+        "include",
+        "${common_path}/include",
+        "${innerkits_path}/native_cpp/include",
+        "${c_utils_path}/include",
+        "${json_path}/include",
+      ]
+
+      sources = [ "src/lite/dm_radar_helper.cpp" ]
+
+      defines = [
+        "LITE_DEVICE",
+        "DH_LOG_TAG=\"dmradar\"",
+        "LOG_DOMAIN=0xD004110",
+      ]
+
+      deps = [
+        "${innerkits_path}/native_cpp:devicemanagersdk",
+        "${json_path}:devicemanagerjson",
+        "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+        "//base/startup/init/interfaces/innerkits:libbegetutil",
+        "//commonlibrary/utils_lite:utils",
+        "//third_party/bounds_checking_function:libsec_shared",
+      ]
+    }
+  }
+} else {
+  config("cflags_config") {
+    cflags = [
+      "-Werror",
+      "-fPIC",
+      "-fstack-protector-strong",
+      "-ffunction-sections",
+      "-fdata-sections",
+      "-fvisibility=hidden",
+      "-Oz",
+      "-flto",
+    ]
+    ldflags = [ "-flto" ]
+  }
+
+  ohos_shared_library("devicemanagerradar") {
+    if (!device_manager_capability) {
+      install_enable = false
+    } else {
+      include_dirs = [
+        "include",
+        "${common_path}/include",
+        "${innerkits_path}/native_cpp/include",
+        "${json_path}/include",
+      ]
+
+      sanitize = {
+        cfi = true
+        cfi_cross_dso = true
+        debug = false
+      }
+
+      cflags = [
+        "-Werror",
+        "-fPIC",
+        "-fstack-protector-strong",
+      ]
+
+      ldflags = [
+        "-Wl,-z,relro",
+        "-Wl,-z,now",
+      ]
+
+      configs = [ ":cflags_config" ]
+
+      sources = [ "src/dm_radar_helper.cpp" ]
+
+      defines = [
+        "HI_LOG_ENABLE",
+        "DH_LOG_TAG=\"dmradar\"",
+        "LOG_DOMAIN=0xD004110",
+      ]
+
+      deps = [
+        "${innerkits_path}/native_cpp:devicemanagersdk",
+        "${json_path}:devicemanagerjson",
+      ]
+
+      external_deps = [
+        "access_token:libaccesstoken_sdk",
+        "access_token:libtokenid_sdk",
+        "cJSON:cjson",
+        "c_utils:utils",
+        "hilog:libhilog",
+        "hisysevent:libhisysevent",
+        "init:libbegetutil",
+        "ipc:ipc_core",
+        "ipc:ipc_single",
+      ]
+
+      subsystem_name = "distributedhardware"
+
+      part_name = "device_manager"
+    }
+  }
+
+  ohos_shared_library("devicemanagerradartest") {
+    if (!device_manager_capability) {
+      install_enable = false
+    } else {
+      include_dirs = [
+        "include",
+        "${common_path}/include",
+        "${innerkits_path}/native_cpp/include",
+        "${json_path}/include",
+      ]
+
+      sanitize = {
+        cfi = true
+        cfi_cross_dso = true
+        debug = false
+      }
+
+      cflags = [
+        "-Werror",
+        "-fPIC",
+        "-fstack-protector-strong",
+      ]
+
+      ldflags = [
+        "-Wl,-z,relro",
+        "-Wl,-z,now",
+      ]
+
+      sources = [ "src/dm_radar_helper.cpp" ]
+
+      defines = [
+        "HI_LOG_ENABLE",
+        "DH_LOG_TAG=\"dmradar\"",
+        "LOG_DOMAIN=0xD004110",
+      ]
+
+      deps = [
+        "${innerkits_path}/native_cpp:devicemanagersdk",
+        "${json_path}:devicemanagerjson",
+      ]
+
+      external_deps = [
+        "access_token:libaccesstoken_sdk",
+        "access_token:libtokenid_sdk",
+        "cJSON:cjson",
+        "c_utils:utils",
+        "hilog:libhilog",
+        "hisysevent:libhisysevent",
+        "init:libbegetutil",
+        "ipc:ipc_core",
+        "ipc:ipc_single",
+      ]
+
+      subsystem_name = "distributedhardware"
+
+      part_name = "device_manager"
+    }
+  }
+}

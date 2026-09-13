@@ -1,0 +1,78 @@
+{
+    "name": "@ohos/bundle_framework_lite",
+    "description": "Bundle installation management frameworks",
+    "homePage": "https://gitee.com/openharmony",
+    "version": "3.1",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/bundlemanager_bundle_framework_lite",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/bundlemanager/bundle_framework_lite"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "bundle_framework_lite",
+        "subsystem": "bundlemanager",
+        "features": [
+            "bundle_framework_lite_enable_ohos_bundle_manager_service_permission",
+            "bundle_framework_lite_enable_ohos_bundle_manager_service",
+            "bundle_framework_lite_enable_ohos_bundle_manager_service_parse_metadata"
+        ],
+        "adapted_system_type": [
+            "mini",
+            "small"
+        ],
+        "rom": "300KB",
+        "ram": ">2MB",
+        "deps": {
+            "components": [
+            "ability_lite",
+            "utils_lite",
+            "hilog_lite",
+            "permission_lite",
+            "samgr_lite",
+            "resource_management_lite",
+            "appverify"
+            ],
+            "third_party": [
+                "zlib",
+                "bounds_checking_function",
+                "cJSON",
+                "jerryscript"
+            ]
+        },
+        "build": {
+            "sub_component": [
+                "//foundation/bundlemanager/bundle_framework_lite/services/bundlemgr_lite:appexecfwk_services_lite",
+                "//foundation/bundlemanager/bundle_framework_lite/frameworks/bundle_lite:appexecfwk_kits_lite"
+            ],
+            "inner_kits": [
+                {
+                    "header": {
+                        "header_base": "foundation/bundlemanager/bundle_framework_lite/interfaces/inner_api/bundlemgr_lite",
+                        "header_files": [
+                            "bundle_daemon_interface.h",
+                            "bundle_inner_interface.h",
+                            "bundle_service_interface.h"
+                        ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework_lite/services/bundlemgr_lite:appexecfwk_services_lite"
+                },
+                {
+                    "header": {
+                      "header_base": "foundation/bundlemanager/bundle_framework_lite/interfaces/kits/bundle_lite",
+                      "header_files": [
+                        "ability_info.h",
+                        "appexecfwk_errors.h",
+                        "bundle_info.h",
+                        "element_name.h",
+                        "module_info.h"
+                      ]
+                    },
+                    "name": "//foundation/bundlemanager/bundle_framework_lite/frameworks/bundle_lite:appexecfwk_kits_lite"
+                }
+            ]
+        }
+    }
+}

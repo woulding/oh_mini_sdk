@@ -1,0 +1,226 @@
+/*
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "trace_db_callback.h"
+
+#include "hiview_logger.h"
+#include "sql_util.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+namespace TraceDbStoreCallback {
+namespace {
+DEFINE_LOG_TAG("TraceDbStoreCallback");
+
+int32_t CreateTraceFlowControlTable(NativeRdb::RdbStore& rdbStore)
+{
+    /**
+     * table: trace_flow_control
+     *
+     * describe: store data that has been used
+     * |-----|-------------|-------------|--------------|---------------|-------------------|
+     * |  id | system_time | caller_name | io_used_size | zip_used_size | dynamic_decrease  |
+     * |-----|-------------|-------------|--------------|---------------|-------------------|
+     * | INT |   VARCHAR   |   VARCHAR   |   INT64      |    INT64      |       INT64       |
+     * |-----|-------------|-------------|--------------|---------------|-------------------|
+     */
+    const std::vector<std::pair<std::string, std::string>> fields = {
+        {COLUMN_SYSTEM_TIME, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_CALLER_NAME, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_IO_USED_SIZE, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_ZIP_USED_SIZE, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_DYNAMIC_DECREASE, SqlUtil::COLUMN_TYPE_INT},
+    };
+    HIVIEW_LOGI("create table trace_flow_control table");
+    std::string sql = SqlUtil::GenerateCreateSql(FLOW_TABLE_NAME, fields);
+    if (rdbStore.ExecuteSql(sql) != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table, sql=%{public}s", sql.c_str());
+        return -1;
+    }
+    return 0;
+}
+
+int32_t CreateAppTaskTable(NativeRdb::RdbStore& rdbStore)
+{
+    /**
+     * table: unified_collection_task
+     *
+     * describe: store data that app task
+     * |-----|-----------|-----------|-------|-------|-------------|----------------|------------|-------------|
+     * |  id | task_date | task_type | uid   | pid   | bundle_name | bundle_version | start_time | finish_time |
+     * |-----|-----------|-----------|-------|-------|-------------|----------------|------------|-------------|
+     * | INT |   INT64   |    INT8   | INT32 | INT32 |      TEXT   | TEXT           |  INT64     | INT64       |
+     * |-----|-----------|-----------|-------|-------|-------------|----------------|------------|-------------|
+     *
+     * |---------------|---------------|----------|-------|
+     * | resource_path | resource_size | cost_cpu | state |
+     * |---------------|---------------|----------|-------|
+     * | TEXT          | INT32         | REAL     | INT32 |
+     * |---------------|---------------|----------|-------|
+     */
+    const std::vector<std::pair<std::string, std::string>> fields = {
+        {COLUMN_TASK_DATE, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_TASK_TYPE, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_UID, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_PID, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_BUNDLE_NAME, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_BUNDLE_VERSION, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_START_TIME, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_FINISH_TIME, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_RESOURCE_PATH, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_RESOURCE_SIZE, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_COST_CPU, SqlUtil::COLUMN_TYPE_DOU},
+        {COLUMN_STATE, SqlUtil::COLUMN_TYPE_INT},
+    };
+    HIVIEW_LOGI("create table app task=%{public}s", TABLE_NAME_TASK);
+    std::string sql = SqlUtil::GenerateCreateSql(TABLE_NAME_TASK, fields);
+    if (rdbStore.ExecuteSql(sql) != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create app task table, sql=%{public}s", sql.c_str());
+        return -1;
+    }
+    return 0;
+}
+
+int32_t CreateTraceBehaviorDbHelperTable(NativeRdb::RdbStore& rdbStore)
+{
+    /**
+     * table: trace_behavior_db_helper
+     *
+     * describe: store trace behavior quota
+     * |-----|-------------|-----------|------------|
+     * | id  | behavior_id | task_date | used_quota |
+     * |-----|-------------|-----------|------------|
+     * | INT |    INT32    |   TEXT    |   INT32    |
+     * |-----|-------------|-----------|------------|
+     */
+    const std::vector<std::pair<std::string, std::string>> fields = {
+        {COLUMN_BEHAVIOR_ID, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_DATE, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_USED_QUOTA, SqlUtil::COLUMN_TYPE_INT},
+    };
+    HIVIEW_LOGI("create table trace_behavior_db_helper table");
+    std::string sql = SqlUtil::GenerateCreateSql(TABLE_NAME_BEHAVIOR, fields);
+    if (rdbStore.ExecuteSql(sql) != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table, sql=%{public}s", sql.c_str());
+        return -1;
+    }
+    return 0;
+}
+
+int32_t CreateTelemetryControlTable(NativeRdb::RdbStore &rdbStore)
+{
+    /**
+     * table: telemetry_flow_control
+     *
+     * describe: store telemetry data
+     * |--------------|------- -|-----------|------------|--------------|
+     * | telemetry_id |  module | used_size |   quota    | running_time |
+     * |--------------|-- ------|-----------|------------|--------------|
+     * |    VARCHAR   | VARCHAR |   INT32   |   INT32    |     INT64    |
+     * |--------------|----- ---|-----------|------------|--------------|
+    */
+    const std::vector<std::pair<std::string, std::string>> fields = {
+        {COLUMN_TELEMTRY_ID, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_MODULE_NAME, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_USED_SIZE, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_QUOTA, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_RUNNING_TIME, SqlUtil::COLUMN_TYPE_INT},
+    };
+    HIVIEW_LOGI("create table %{public}s table", TABLE_TELEMETRY_CONTROL);
+    std::string sql = SqlUtil::GenerateCreateSql(TABLE_TELEMETRY_CONTROL, fields);
+    if (rdbStore.ExecuteSql(sql) != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table, sql=%{public}s", sql.c_str());
+        return -1;
+    }
+    return 0;
+}
+
+int32_t CreateAppSystemTable(NativeRdb::RdbStore &rdbStore)
+{
+    /**
+     * table: app_system_control
+     *
+     * describe: store app system data
+     * |-------|---------------|-------------|---------------|------------|
+     * |  uid  |  package_name | system_time |  trace_during |  used_size |
+     * |-------|---------------|-------------|---------------|------------|
+     * | INT32 |    VARCHAR    |   VARCHAR   |     INT64     |    INT64   |
+     * |-------|---------------|-------------|---------------|------------|
+    */
+    const std::vector<std::pair<std::string, std::string>> fields = {
+        {COLUMN_UID, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_PACKAGE_NAME, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_SYSTEM_TIME, SqlUtil::COLUMN_TYPE_STR},
+        {COLUMN_TRACE_DURATION, SqlUtil::COLUMN_TYPE_INT},
+        {COLUMN_USED_SIZE, SqlUtil::COLUMN_TYPE_INT},
+    };
+    HIVIEW_LOGI("create table %{public}s table", APP_SYSTEM_CONTROL);
+    std::string sql = SqlUtil::GenerateCreateSql(APP_SYSTEM_CONTROL, fields);
+    if (rdbStore.ExecuteSql(sql) != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table, sql=%{public}s", sql.c_str());
+        return -1;
+    }
+    return 0;
+}
+}
+
+int OnCreate(NativeRdb::RdbStore& rdbStore)
+{
+    HIVIEW_LOGI("create dbStore");
+    if (auto ret = CreateTraceFlowControlTable(rdbStore); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table trace_flow_control");
+    }
+    if (auto ret = CreateAppTaskTable(rdbStore); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table unified_collection_task");
+    }
+    if (auto ret = CreateTraceBehaviorDbHelperTable(rdbStore); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table trace_behavior_db_helper");
+    }
+    if (auto ret = CreateTelemetryControlTable(rdbStore); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table telemetry_flow_control");
+    }
+    if (auto ret = CreateAppSystemTable(rdbStore); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to create table app_system_control");
+    }
+    return NativeRdb::E_OK;
+}
+
+int OnUpgrade(NativeRdb::RdbStore& rdbStore, int oldVersion, int newVersion)
+{
+    HIVIEW_LOGI("oldVersion=%{public}d, newVersion=%{public}d", oldVersion, newVersion);
+    std::string flowDropSql = SqlUtil::GenerateDropSql(FLOW_TABLE_NAME);
+    if (int ret = rdbStore.ExecuteSql(flowDropSql); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to drop table %{public}s, ret=%{public}d", FLOW_TABLE_NAME, ret);
+    }
+    std::string taskSql = SqlUtil::GenerateDropSql(TABLE_NAME_TASK);
+    if (int ret = rdbStore.ExecuteSql(taskSql); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to drop table %{public}s, ret=%{public}d", TABLE_NAME_TASK, ret);
+    }
+    std::string behaviorSql = SqlUtil::GenerateDropSql(TABLE_NAME_BEHAVIOR);
+    if (int ret = rdbStore.ExecuteSql(behaviorSql); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to drop table %{public}s, ret=%{public}d", TABLE_NAME_BEHAVIOR, ret);
+    }
+    std::string flowSql = SqlUtil::GenerateDropSql(TABLE_TELEMETRY_CONTROL);
+    if (int ret = rdbStore.ExecuteSql(flowSql); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to drop table %{public}s, ret=%{public}d", TABLE_TELEMETRY_CONTROL, ret);
+    }
+    std::string appSql = SqlUtil::GenerateDropSql(APP_SYSTEM_CONTROL);
+    if (int ret = rdbStore.ExecuteSql(appSql); ret != NativeRdb::E_OK) {
+        HIVIEW_LOGE("failed to drop table %{public}s, ret=%{public}d", APP_SYSTEM_CONTROL, ret);
+    }
+    return OnCreate(rdbStore);
+}
+}
+}
+}

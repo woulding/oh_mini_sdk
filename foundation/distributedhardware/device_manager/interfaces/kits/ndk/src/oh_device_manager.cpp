@@ -1,0 +1,55 @@
+/*
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "oh_device_manager.h"
+
+#include <iostream>
+
+#include "app_manager.h"
+#include "dm_client.h"
+#include "dm_log.h"
+#include "oh_device_manager_err_code.h"
+
+int32_t OH_DeviceManager_GetLocalDeviceName(char **localDeviceName, unsigned int &len)
+{
+    return OH_DeviceManager_GetLocalDeviceNameC(localDeviceName, &len);
+}
+
+int32_t OH_DeviceManager_GetLocalDeviceNameC(char **localDeviceName, unsigned int *len)
+{
+    if (localDeviceName == nullptr || *localDeviceName != nullptr || len == nullptr) {
+        LOGE("localDeviceName is nullptr or *localDeviceName is not nullptr or len is nullptr");
+        return ERR_INVALID_PARAMETER;
+    }
+    std::string deviceName = "";
+    int32_t ret = OHOS::DistributedHardware::DmClient::GetInstance().GetLocalDeviceName(deviceName);
+    if (ret != ERR_OK) {
+        LOGE("Get local device name failed, ret=%{public}d", ret);
+        return ret;
+    }
+    *len = static_cast<unsigned int>(deviceName.size());
+    *localDeviceName = new (std::nothrow) char[*len + 1] {0};
+    if (*localDeviceName == nullptr) {
+        LOGE("create localDeviceName fail");
+        return DM_ERR_FAILED;
+    }
+    if (strcpy_s(*localDeviceName, *len + 1, deviceName.c_str()) != EOK) {
+        LOGE("copy string fail");
+        delete [] *localDeviceName;
+        *localDeviceName = nullptr;
+        return DM_ERR_FAILED;
+    }
+    return ERR_OK;
+}

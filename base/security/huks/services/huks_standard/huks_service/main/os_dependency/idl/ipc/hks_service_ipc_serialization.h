@@ -1,0 +1,134 @@
+/*
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef HKS_IPC_SERIALIZATION_H
+#define HKS_IPC_SERIALIZATION_H
+
+#include "hks_param.h"
+#include "hks_type_inner.h"
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int32_t GetBlobFromBuffer(struct HksBlob *blob, const struct HksBlob *srcBlob, uint32_t *srcOffset);
+
+#ifdef HKS_UKEY_EXTENSION_CRYPTO
+int32_t HksUKeyGeneralUnpack(const struct HksBlob *srcData, struct HksBlob *blob, struct HksParamSet **paramSet);
+
+int32_t HksUkeyBlob2ParamSetUnpack(const struct HksBlob *srcData, struct HksBlob *blob1,
+    struct HksBlob *blob2, struct HksParamSet **paramSet);
+
+int32_t HksSetOrGetRemotePropertyUnpack(const struct HksBlob *srcData,
+    enum HksExtPropertyOperation *operation, struct HksBlob *blob1,
+    struct HksBlob *blob2, struct HksParamSet **paramSet);
+
+int32_t HksUKeyGeneralUnpackWithCertInfo(const struct HksBlob *srcData, struct HksBlob *resourceId,
+    struct HksExtCertInfo *certInfo, struct HksParamSet **paramSet);
+
+int32_t HksBlob3Unpack(const struct HksBlob *srcData, struct HksBlob *blob1,
+    struct HksBlob *blob2, struct HksBlob *blob3);
+
+int32_t PackAuthPinReply(struct HksBlob *outBlob, int32_t ret, int32_t status, uint32_t retryCount);
+#endif
+
+int32_t HksGenerateKeyUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias,
+    struct HksParamSet **paramSetIn, struct HksBlob *keyOut);
+
+int32_t HksParamSetPack(struct HksBlob *inBlob, const struct HksParamSet *paramSet);
+
+int32_t HksImportKeyUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias, struct HksParamSet **paramSet,
+    struct HksBlob *key);
+
+int32_t HksImportWrappedKeyUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias,
+    struct HksBlob *wrappingKeyAlias, struct HksParamSet **paramSet, struct HksBlob *wrappedKeyData);
+
+int32_t HksClearPinAuthStateUnpack(const struct HksBlob *srcData, struct HksBlob *index);
+
+int32_t HksDeleteKeyUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias, struct HksParamSet **paramSet);
+
+int32_t HksExportPublicKeyUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias,
+    struct HksParamSet **paramSet, struct HksBlob *key);
+
+int32_t HksGetKeyParamSetUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias,
+    struct HksParamSet **paramSetIn, struct HksParamSet **paramSetOut);
+
+int32_t HksKeyExistUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias, struct HksParamSet **paramSet);
+
+int32_t HksSignUnpack(const struct HksBlob *srcData, struct HksBlob *key, struct HksParamSet **paramSet,
+    struct HksBlob *unsignedData, struct HksBlob *signature);
+
+int32_t HksVerifyUnpack(const struct HksBlob *srcData, struct HksBlob *key, struct HksParamSet **paramSet,
+    struct HksBlob *unsignedData, struct HksBlob *signature);
+
+int32_t HksEncryptDecryptUnpack(const struct HksBlob *srcData, struct HksBlob *key,
+    struct HksParamSet **paramSet, struct HksBlob *inputText, struct HksBlob *outputText);
+
+int32_t HksAgreeKeyUnpack(const struct HksBlob *srcData, struct HksParamSet **paramSet, struct HksBlob *privateKey,
+    struct HksBlob *peerPublicKey, struct HksBlob *agreedKey);
+
+int32_t HksDeriveKeyUnpack(const struct HksBlob *srcData, struct HksParamSet **paramSet, struct HksBlob *kdfKey,
+    struct HksBlob *derivedKey);
+
+int32_t HksHmacUnpack(const struct HksBlob *srcData, struct HksBlob *key, struct HksParamSet **paramSet,
+    struct HksBlob *inputData, struct HksBlob *mac);
+
+int32_t HksGetKeyInfoListUnpack(const struct HksBlob *srcData, struct HksParamSet **paramSet, uint32_t *listCount,
+    struct HksKeyInfo **keyInfoList);
+
+int32_t HksGetKeyInfoListPackFromService(struct HksBlob *destData, uint32_t listCount,
+    const struct HksKeyInfo *keyInfoList);
+
+int32_t HksCertificateChainUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias,
+    struct HksParamSet **paramSet, struct HksBlob *certChainBlob);
+
+int32_t HksParamSetToParams(const struct HksParamSet *paramSet, struct HksParamOut *outParams, uint32_t cnt);
+
+int32_t HksListAliasesUnpack(const struct HksBlob *srcData, struct HksParamSet **paramSet);
+
+int32_t HksCertificatesPackFromService(const struct HksExtCertInfoSet *certs, struct HksBlob *destData);
+
+int32_t HksListAliasesPackFromService(const struct HksKeyAliasSet *aliasSet, struct HksBlob *destData);
+
+int32_t HksRenameKeyAliasUnpack(const struct HksBlob *srcData, struct HksBlob *oldKeyAlias,
+    struct HksBlob *newKeyAlias, struct HksParamSet **paramSet);
+
+int32_t HksChangeStorageLevelUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias,
+    struct HksParamSet **srcParamSet, struct HksParamSet **destParamSet);
+
+int32_t HksWrapKeyUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias, struct HksParamSet **paramSet,
+    struct HksBlob *wrappedKey);
+
+int32_t HksUnwrapKeyUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias, struct HksParamSet **paramSet,
+    struct HksBlob *wrappedKey);
+
+int32_t HksEncapsulateUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias, struct HksParamSet **paramSet,
+    struct HksBlob *sharedKeyAlias, struct HksParamSet **sharedKeyParamSet);
+
+int32_t HksKeyParamUnpack(const struct HksBlob *srcData, struct HksBlob *keyAlias,
+    struct HksParamSet **paramSet, uint32_t *offset);
+
+int32_t HksDecapsulateUnpack(const struct HksBlob *srcData, struct HksBlob *sharedKeyAlias,
+    struct HksParamSet **sharedKeyParamSet, struct HksBlob *encapOrsharedSecret, uint32_t *offset);
+
+int32_t HksEncapsulateResponsePack(struct HksEncapsulationResult *encapResult, struct HksBlob *responseBlob);
+
+int32_t CopyBlobToBufferForEmptyData(const struct HksBlob *blob, struct HksBlob *destBlob, uint32_t *destOffset);
+#ifdef __cplusplus
+}
+#endif
+
+#endif

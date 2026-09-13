@@ -1,0 +1,98 @@
+{
+    "sandbox-root" : "/mnt/sandbox/chipset",
+    "mount-bind-paths" : [{
+            "src-path" : "/system/bin",
+            "sandbox-path" : "/system/bin",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/system/etc/selinux",
+            "sandbox-path" : "/system/etc/selinux",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/system/lib",
+            "sandbox-path" : "/system/lib",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/vendor",
+            "sandbox-path" : "/vendor",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/dev",
+            "sandbox-path" : "/dev",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/proc",
+            "sandbox-path" : "/proc",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/data",
+            "sandbox-path" : "/data",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/sys",
+            "sandbox-path" : "/sys",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/config",
+            "sandbox-path" : "/config",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/mnt",
+            "sandbox-path" : "/mnt",
+            "sandbox-flags" : [ "bind", "private" ]
+        }, {
+            "src-path" : "/storage",
+            "sandbox-path" : "/storage",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/chip_prod",
+            "sandbox-path" : "/chip_prod",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }
+    ],
+    "mount-bind-files" : [{
+            "src-path" : "/data/service/el1/public/hosts_user/hosts",
+            "sandbox-path" : "/system/etc/hosts",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/etc/passwd",
+            "sandbox-path" : "/system/etc/passwd",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/etc/group",
+            "sandbox-path" : "/system/etc/group",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/system/etc/ld-musl-arm.path",
+            "sandbox-path" : "/system/etc/ld-musl-arm.path",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/system/etc/ld-musl-namespace-arm.ini",
+            "sandbox-path" : "/system/etc/ld-musl-namespace-arm.ini",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/system/lib/ld-musl-arm.so.1",
+            "sandbox-path" : "/system/lib/ld-musl-arm.so.1",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/system/lib/libc.so",
+            "sandbox-path" : "/system/lib/libc.so",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }, {
+            "src-path" : "/system/lib/libc++.so",
+            "sandbox-path" : "/system/lib/libc++.so",
+            "sandbox-flags" : [ "bind", "rec", "private" ]
+        }
+    ],
+    "symbol-links" : [{
+            "target-name" : "/system/lib",
+            "link-name" : "/lib"
+        }, {
+            "target-name" : "/system/bin",
+            "link-name" : "/bin"
+        }, {
+            "target-name" : "/system/etc",
+            "link-name" : "/etc"
+        }
+    ]
+}

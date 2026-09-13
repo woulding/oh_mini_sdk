@@ -1,0 +1,357 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <ani.h>
+#include <array>
+#include <hilog/log.h>
+#include <string>
+#include <vector>
+
+#include "hitrace_meter.h"
+
+#ifdef LOG_DOMAIN
+#undef LOG_DOMAIN
+#define LOG_DOMAIN 0xD002D33
+#endif
+#ifdef LOG_TAG
+#undef LOG_TAG
+#define LOG_TAG "HitraceMeterAni"
+#endif
+
+using namespace OHOS::HiviewDFX;
+constexpr char NAMESPACE_HITRACEMETER[] = "@ohos.hiTraceMeter.hiTraceMeter";
+constexpr char FUNC_NAME_CTOR[] = "<ctor>";
+constexpr char CLASS_NAME_BOOLEAN[] = "std.core.Boolean";
+
+struct CallbackContext {
+    ani_ref callback {};
+    ani_vm* vm = nullptr;
+};
+
+static bool GetAniStringValue(ani_env* env, ani_string strAni, std::string& content)
+{
+    ani_size strSize = 0;
+    if (env->String_GetUTF8Size(strAni, &strSize) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "String_GetUTF8Size failed");
+        return false;
+    }
+    std::vector<char> buffer(strSize + 1);
+    char* charBuffer = buffer.data();
+    ani_size bytesWritten = 0;
+    if (env->String_GetUTF8(strAni, charBuffer, strSize + 1, &bytesWritten) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "String_GetUTF8 failed");
+        return false;
+    }
+    charBuffer[bytesWritten] = '\0';
+    content = std::string(charBuffer);
+    return true;
+}
+
+static bool CreateAniBoolean(ani_env* env, bool value, ani_object& boolObj)
+{
+    ani_class boolCls {};
+    if (env->FindClass(CLASS_NAME_BOOLEAN, &boolCls) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "find class %{public}s failed", CLASS_NAME_BOOLEAN);
+        return false;
+    }
+    ani_method createBooleanMethod {};
+    if (env->Class_FindMethod(boolCls, FUNC_NAME_CTOR, "z:", &createBooleanMethod) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "find method %{public}s constructor failed", CLASS_NAME_BOOLEAN);
+        return false;
+    }
+    ani_boolean boolValue = static_cast<ani_boolean>(value);
+    if (env->Object_New(boolCls, createBooleanMethod, &boolObj, boolValue) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "create object %{public}s failed", CLASS_NAME_BOOLEAN);
+        return false;
+    }
+    return true;
+}
+
+static void EtsStartTrace(ani_env* env, ani_string nameAni, ani_int taskIdAni)
+{
+    std::string name = "";
+    if (!GetAniStringValue(env, nameAni, name)) {
+        HILOG_ERROR(LOG_CORE, "EtsStartTrace name parsing failed");
+        return;
+    }
+    StartAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, name.c_str(), taskIdAni, "", "");
+}
+
+static void EtsFinishTrace(ani_env* env, ani_string nameAni, ani_int taskIdAni)
+{
+    std::string name = "";
+    if (!GetAniStringValue(env, nameAni, name)) {
+        HILOG_ERROR(LOG_CORE, "EtsFinishTrace name parsing failed");
+        return;
+    }
+    FinishAsyncTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, name.c_str(), taskIdAni);
+}
+
+static void EtsTraceByValueV8(ani_env* env, ani_string nameAni, ani_long countAni)
+{
+    std::string name = "";
+    if (!GetAniStringValue(env, nameAni, name)) {
+        HILOG_ERROR(LOG_CORE, "EtsTraceByValueV8 name parsing failed");
+        return;
+    }
+    CountTraceEx(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_APP, name.c_str(), countAni);
+}
+
+static void EtsTraceByValueV19(ani_env* env, ani_enum_item levelAni, ani_string nameAni, ani_long countAni)
+{
+    ani_int level = 0;
+    if (env->EnumItem_GetValue_Int(levelAni, &level) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "EtsTraceByValueV19 level parsing failed");
+        return;
+    }
+    std::string name = "";
+    if (!GetAniStringValue(env, nameAni, name)) {
+        HILOG_ERROR(LOG_CORE, "EtsTraceByValueV19 name parsing failed");
+        return;
+    }
+    CountTraceEx(static_cast<HiTraceOutputLevel>(level), HITRACE_TAG_APP, name.c_str(), countAni);
+}
+
+static void EtsStartSyncTrace(ani_env* env, ani_enum_item levelAni, ani_string nameAni, ani_object customArgsAni)
+{
+    ani_int level = 0;
+    if (env->EnumItem_GetValue_Int(levelAni, &level) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "EtsStartSyncTrace level parsing failed");
+        return;
+    }
+    std::string name = "";
+    if (!GetAniStringValue(env, nameAni, name)) {
+        HILOG_ERROR(LOG_CORE, "EtsStartSyncTrace name parsing failed");
+        return;
+    }
+    ani_boolean isUndefined = true;
+    if (env->Reference_IsUndefined(static_cast<ani_ref>(customArgsAni), &isUndefined) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "EtsStartSyncTrace get ref undefined failed");
+        return;
+    }
+    std::string customArgs = "";
+    if (!isUndefined && !GetAniStringValue(env, static_cast<ani_string>(customArgsAni), customArgs)) {
+        HILOG_ERROR(LOG_CORE, "EtsStartSyncTrace customArgs parsing failed");
+        return;
+    }
+    StartTraceEx(static_cast<HiTraceOutputLevel>(level), HITRACE_TAG_APP, name.c_str(), customArgs.c_str());
+}
+
+static void EtsFinishSyncTrace(ani_env* env, ani_enum_item levelAni)
+{
+    ani_int level = 0;
+    if (env->EnumItem_GetValue_Int(levelAni, &level) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "EtsFinishSyncTrace level parsing failed");
+        return;
+    }
+    FinishTraceEx(static_cast<HiTraceOutputLevel>(level), HITRACE_TAG_APP);
+}
+
+static void EtsStartAsyncTrace(ani_env* env, ani_enum_item levelAni, ani_string nameAni, ani_int taskIdAni,
+    ani_string customCategoryAni, ani_object customArgsAni)
+{
+    ani_int level = 0;
+    if (env->EnumItem_GetValue_Int(levelAni, &level) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "EtsStartAsyncTrace level parsing failed");
+        return;
+    }
+    std::string name = "";
+    if (!GetAniStringValue(env, nameAni, name)) {
+        HILOG_ERROR(LOG_CORE, "EtsStartAsyncTrace name parsing failed");
+        return;
+    }
+    std::string customCategory = "";
+    if (!GetAniStringValue(env, customCategoryAni, customCategory)) {
+        HILOG_ERROR(LOG_CORE, "EtsStartAsyncTrace customCategory parsing failed");
+        return;
+    }
+    ani_boolean isUndefined = true;
+    if (env->Reference_IsUndefined(static_cast<ani_ref>(customArgsAni), &isUndefined) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "EtsStartAsyncTrace get ref undefined failed");
+        return;
+    }
+    std::string customArgs = "";
+    if (!isUndefined) {
+        if (!GetAniStringValue(env, static_cast<ani_string>(customArgsAni), customArgs)) {
+            HILOG_ERROR(LOG_CORE, "EtsStartAsyncTrace customArgs parsing failed");
+            return;
+        }
+    }
+    StartAsyncTraceEx(static_cast<HiTraceOutputLevel>(level), HITRACE_TAG_APP, name.c_str(),
+        taskIdAni, customCategory.c_str(), customArgs.c_str());
+}
+
+static void EtsFinishAsyncTrace(ani_env* env, ani_enum_item levelAni, ani_string nameAni, ani_int taskIdAni)
+{
+    ani_int level = 0;
+    if (env->EnumItem_GetValue_Int(levelAni, &level) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "EtsFinishAsyncTrace level parsing failed");
+        return;
+    }
+    std::string name = "";
+    if (!GetAniStringValue(env, nameAni, name)) {
+        HILOG_ERROR(LOG_CORE, "EtsFinishAsyncTrace name parsing failed");
+        return;
+    }
+    FinishAsyncTraceEx(static_cast<HiTraceOutputLevel>(level), HITRACE_TAG_APP, name.c_str(), taskIdAni);
+}
+
+static ani_boolean EtsIsTraceEnabled(ani_env* env)
+{
+    return static_cast<ani_boolean>(IsTagEnabled(HITRACE_TAG_APP));
+}
+
+static void EtsExcuteCallBack(void* ctx, bool enable)
+{
+    CallbackContext* context = reinterpret_cast<CallbackContext*>(ctx);
+    if (context != nullptr) {
+        ani_env *env;
+        ani_options aniArgs {0, nullptr};
+        auto status = context->vm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &env);
+        bool needDetach = true;
+        do {
+            if (status != ANI_OK) {
+                needDetach = false;
+                HILOG_WARN(LOG_CORE, "EtsExcuteCallBack AttachCurrentThread failed, %{public}d", status);
+                status = context->vm->GetEnv(ANI_VERSION_1, &env);
+            }
+            if (status != ANI_OK) {
+                HILOG_ERROR(LOG_CORE, "EtsExcuteCallBack GetEnv failed, %{public}d", status);
+                break;
+            }
+            ani_object enableObj {};
+            if (!CreateAniBoolean(env, enable, enableObj)) {
+                HILOG_ERROR(LOG_CORE, "EtsExcuteCallBack CreateAniBoolean failed");
+                break;
+            }
+            std::vector<ani_ref> vec;
+            vec.push_back(static_cast<ani_ref>(enableObj));
+            ani_ref result;
+            status = env->FunctionalObject_Call(reinterpret_cast<ani_fn_object>(context->callback),
+                vec.size(), vec.data(), &result);
+            if (status != ANI_OK) {
+                HILOG_ERROR(LOG_CORE, "Excute CallBack failed, %{public}d", status);
+                break;
+            }
+        } while (false);
+        if (needDetach) {
+            context->vm->DetachCurrentThread();
+        }
+    }
+}
+
+static void EtsDeleteCallback(void* ctx)
+{
+    CallbackContext* context = reinterpret_cast<CallbackContext *>(ctx);
+    if (context != nullptr) {
+        ani_env *env;
+        ani_options aniArgs {0, nullptr};
+        auto status = context->vm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &env);
+        bool needDetach = true;
+        do {
+            if (status != ANI_OK) {
+                needDetach = false;
+                HILOG_WARN(LOG_CORE, "EtsDeleteCallback AttachCurrentThread failed, %{public}d", status);
+                status = context->vm->GetEnv(ANI_VERSION_1, &env);
+            }
+            if (status != ANI_OK) {
+                HILOG_WARN(LOG_CORE, "EtsDeleteCallback GetEnv failed, %{public}d", status);
+                break;
+            }
+            status = env->GlobalReference_Delete(context->callback);
+            if (status != ANI_OK) {
+                HILOG_WARN(LOG_CORE, "EtsDeleteCallback GlobalReference_Delete failed, %{public}d", status);
+                break;
+            }
+        } while (false);
+        if (needDetach) {
+            context->vm->DetachCurrentThread();
+        }
+        delete context;
+    }
+}
+
+static ani_int EtsRegisterTraceListener(ani_env* env, ani_fn_object callback)
+{
+    CallbackContext* context = new CallbackContext();
+    bool needDelCtx = false;
+    if (env->GlobalReference_Create(callback, &(context->callback)) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "Failed to create global reference");
+        context->callback = nullptr;
+        needDelCtx = true;
+    }
+    if (env->GetVM(&(context->vm)) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "GetVM failed");
+        if (context->callback) {
+            env->GlobalReference_Delete(context->callback);
+        }
+        needDelCtx = true;
+    }
+    if (needDelCtx) {
+        delete context;
+        context = nullptr;
+    }
+
+    SetCallbacksAni(EtsExcuteCallBack, EtsDeleteCallback);
+    int32_t registerRet = RegisterTraceListenerAni(reinterpret_cast<void *>(context));
+    if (registerRet < 0) {
+        EtsDeleteCallback(reinterpret_cast<void *>(context));
+    }
+    return registerRet;
+}
+
+static ani_int EtsUnregisterTraceListener(ani_env* env, ani_int index)
+{
+    return UnregisterTraceListenerAni(index);
+}
+
+ANI_EXPORT ani_status ANI_Constructor(ani_vm* vm, uint32_t* result)
+{
+    ani_env* env;
+    if (vm->GetEnv(ANI_VERSION_1, &env) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "GetEnv failed");
+        return ANI_ERROR;
+    }
+
+    ani_namespace ns;
+    if (env->FindNamespace(NAMESPACE_HITRACEMETER, &ns) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "FindNamespace %{public}s failed", NAMESPACE_HITRACEMETER);
+        return ANI_ERROR;
+    }
+
+    std::array methods = {
+        ani_native_function {"startTrace", nullptr, reinterpret_cast<void *>(EtsStartTrace)},
+        ani_native_function {"finishTrace", nullptr, reinterpret_cast<void *>(EtsFinishTrace)},
+        ani_native_function {"traceByValue", "C{std.core.String}l:", reinterpret_cast<void *>(EtsTraceByValueV8)},
+        ani_native_function {"traceByValue",
+            "C{@ohos.hiTraceMeter.hiTraceMeter.HiTraceOutputLevel}C{std.core.String}l:",
+            reinterpret_cast<void *>(EtsTraceByValueV19)},
+        ani_native_function {"startSyncTrace", nullptr, reinterpret_cast<void *>(EtsStartSyncTrace)},
+        ani_native_function {"finishSyncTrace", nullptr, reinterpret_cast<void *>(EtsFinishSyncTrace)},
+        ani_native_function {"startAsyncTrace", nullptr, reinterpret_cast<void *>(EtsStartAsyncTrace)},
+        ani_native_function {"finishAsyncTrace", nullptr, reinterpret_cast<void *>(EtsFinishAsyncTrace)},
+        ani_native_function {"isTraceEnabled", nullptr, reinterpret_cast<void *>(EtsIsTraceEnabled)},
+        ani_native_function {"registerTraceListener", nullptr, reinterpret_cast<void *>(EtsRegisterTraceListener)},
+        ani_native_function {"unregisterTraceListener", nullptr, reinterpret_cast<void *>(EtsUnregisterTraceListener)},
+    };
+
+    if (env->Namespace_BindNativeFunctions(ns, methods.data(), methods.size()) != ANI_OK) {
+        HILOG_ERROR(LOG_CORE, "%{public}s bind native function failed", NAMESPACE_HITRACEMETER);
+        return ANI_ERROR;
+    };
+
+    *result = ANI_VERSION_1;
+    return ANI_OK;
+}

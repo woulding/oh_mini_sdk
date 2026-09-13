@@ -1,0 +1,148 @@
+# Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/faultloggerd/faultloggerd.gni")
+
+backtrace_local_sources = [
+  "backtrace_local.cpp",
+  "backtrace_local_mix.cpp",
+  "backtrace_local_thread.cpp",
+  "dfx_kernel_stack.cpp",
+  "fp_backtrace.cpp",
+  "memory_reader.cpp",
+]
+
+if (defined(ohos_lite)) {
+  shared_library("libbacktrace_local") {
+    visibility = [ "*:*" ]
+
+    include_dirs = [
+      "include",
+      "$c_utils_include_path",
+      "$faultloggerd_common_path/dfxlog",
+      "$faultloggerd_common_path/dfxutil",
+      "$faultloggerd_interfaces_path/common",
+      "$faultloggerd_interfaces_path/innerkits/procinfo/include",
+      "$faultloggerd_interfaces_path/innerkits/unwinder/include",
+    ]
+
+    sources = backtrace_local_sources
+
+    defines = [ "is_ohos_lite" ]
+
+    deps = [
+      "$faultloggerd_common_path/dfxlog:dfx_hilog",
+      "$faultloggerd_common_path/dfxutil:dfx_util",
+      "$faultloggerd_common_path/trace:dfx_trace_dlsym",
+      "$faultloggerd_interfaces_path/innerkits/procinfo:libdfx_procinfo",
+      "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder",
+    ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "hilog_lite:hilog_shared",
+    ]
+  }
+
+  static_library("backtrace_local") {
+    # current static library is unuseful in ohos_lite type
+  }
+} else {
+  config("dfx_backtrace_config") {
+    visibility = [ "*:*" ]
+
+    include_dirs = [
+      "include",
+      "$faultloggerd_common_path/dfxlog",
+      "$faultloggerd_common_path/dfxutil",
+      "$faultloggerd_interfaces_path/common",
+      "$faultloggerd_interfaces_path/innerkits/procinfo/include",
+      "$faultloggerd_interfaces_path/innerkits/unwinder/include",
+    ]
+
+    defines = [
+      "is_ohos=${is_ohos}",
+      "DFX_ENABLE_TRACE",
+    ]
+  }
+
+  ohos_shared_library("libbacktrace_local") {
+    branch_protector_ret = "pac_ret"
+    sanitize = {
+        cfi = true
+        cfi_cross_dso = true
+        cfi_vcall_icall_only = true
+        debug = false
+    }
+    public_configs = [
+      ":dfx_backtrace_config",
+      "$faultloggerd_common_path/build:coverage_flags",
+    ]
+
+    sources = backtrace_local_sources
+
+    deps = [
+      "$faultloggerd_common_path/dfxlog:dfx_hilog_cfi",
+      "$faultloggerd_common_path/dfxutil:dfx_util_cfi",
+      "$faultloggerd_common_path/trace:dfx_trace_dlsym_cfi",
+      "$faultloggerd_interfaces_path/innerkits/procinfo:libdfx_procinfo",
+      "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder",
+    ]
+    include_dirs = [ "$faultloggerd_common_path/dfxlog" ]
+    version_script = "libbacktrace_local.map"
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "c_utils:utils",
+      "hilog:libhilog",
+    ]
+
+    install_images = [
+      "system",
+      "updater",
+    ]
+
+    output_extension = "so"
+    innerapi_tags = [
+      "chipsetsdk_sp",
+      "platformsdk_indirect",
+    ]
+    part_name = "faultloggerd"
+    subsystem_name = "hiviewdfx"
+  }
+
+  ohos_static_library("backtrace_local") {
+    branch_protector_ret = "pac_ret"
+    public_configs = [ ":dfx_backtrace_config" ]
+    defines = [ "DFX_LOG_HILOG_BASE" ]
+
+    sources = backtrace_local_sources
+    include_dirs = [
+      "$faultloggerd_common_path/dfxlog",
+      "$faultloggerd_common_path/dfxutil",
+    ]
+
+    deps = [
+      "$faultloggerd_common_path/trace:dfx_trace_dlsym_static",
+      "$faultloggerd_interfaces_path/innerkits/procinfo:dfx_procinfo_static",
+      "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder_base",
+    ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_static",
+      "c_utils:utilsbase",
+    ]
+
+    part_name = "faultloggerd"
+    subsystem_name = "hiviewdfx"
+  }
+}

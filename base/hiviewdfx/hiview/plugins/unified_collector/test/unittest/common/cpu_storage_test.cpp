@@ -1,0 +1,147 @@
+/*
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "cpu_storage_test.h"
+
+#include <memory>
+
+#define private public
+#include "cpu_storage.h"
+#undef private
+#include "file_util.h"
+#include "rdb_predicates.h"
+#include "time_util.h"
+#ifdef POWER_MANAGER_ENABLE
+#include "power_status_manager.h"
+#endif
+#include "gmock/gmock-matchers.h"
+
+using namespace testing::ext;
+using namespace OHOS::HiviewDFX;
+using namespace OHOS::NativeRdb;
+
+namespace {
+const std::string CPU_COLLECTION_TABLE_NAME = "unified_collection_cpu";
+const std::string DB_PATH = "/data/test/cpu_storage";
+const std::string DB_FILE_DIR = "/cpu/";
+const std::string DB_FILE_PREIFIX = "cpu_stat_";
+const std::string DB_FILE_SUFFIX = ".db";
+const std::string TIME_STAMP_FORMAT = "%Y%m%d";
+
+std::string GenerateDbFileName()
+{
+    std::string name;
+    std::string formattedTsStr = TimeUtil::TimestampFormatToDate(std::time(nullptr), TIME_STAMP_FORMAT);
+    name.append(DB_FILE_PREIFIX).append(formattedTsStr).append(DB_FILE_SUFFIX);
+    return name;
+}
+}
+
+void CpuStorageTest::SetUpTestCase()
+{
+}
+
+void CpuStorageTest::TearDownTestCase()
+{
+    FileUtil::ForceRemoveDirectory(DB_PATH);
+}
+
+void CpuStorageTest::SetUp()
+{
+    platform.GetPluginMap();
+}
+
+void CpuStorageTest::TearDown()
+{
+}
+
+/**
+ * @tc.name: CpuStorageTest001
+ * @tc.desc: CpuStorage init test
+ * @tc.type: FUNC
+ * @tc.require: issueI5NULM
+ */
+HWTEST_F(CpuStorageTest, CpuStorageTest001, TestSize.Level3)
+{
+    FileUtil::RemoveFile(DB_PATH);
+    std::shared_ptr cpuStorage = std::make_shared<CpuStorage>(DB_PATH);
+    ASSERT_NE(cpuStorage, nullptr);
+    std::string dbFileName = GenerateDbFileName();
+    std::string dbFile = std::string(DB_PATH);
+    dbFile.append(DB_FILE_DIR).append(dbFileName);
+    ASSERT_TRUE(FileUtil::FileExists(dbFile));
+}
+
+/**
+ * @tc.name: CpuStorageTest002
+ * @tc.desc: CpuStorage store&report test
+ * @tc.type: FUNC
+ * @tc.require: issueI5NULM
+ */
+HWTEST_F(CpuStorageTest, CpuStorageTest002, TestSize.Level3)
+{
+    FileUtil::RemoveFile(DB_PATH);
+    CpuStorage cpuStorage(DB_PATH);
+    ProcessCpuStatInfo processCpuStatInfo = {
+        .pid = 1,
+        .procName = "init",
+        .cpuLoad = 0.0004  // 0.0004 : not meet store condition
+    };
+    cpuStorage.StoreProcessDatas({processCpuStatInfo});
+    cpuStorage.Report();
+    RdbPredicates predicates(CPU_COLLECTION_TABLE_NAME);
+    std::vector<std::string> columns;
+    std::shared_ptr<ResultSet> allVersions = cpuStorage.dbStore_->Query(predicates, columns);
+    ASSERT_NE(allVersions, nullptr);
+    ASSERT_NE(allVersions->GoToFirstRow(), E_OK);
+    processCpuStatInfo.cpuLoad = 1;
+    cpuStorage.StoreProcessDatas({processCpuStatInfo});
+    allVersions = cpuStorage.dbStore_->Query(predicates, columns);
+    ASSERT_NE(allVersions, nullptr);
+    ASSERT_EQ(allVersions->GoToFirstRow(), E_OK);
+}
+
+/**
+ * @tc.name: CpuStorageTest003
+ * @tc.desc: CpuStorage as RdbOpenCallback
+ * @tc.type: FUNC
+ * @tc.require: issueI5NULM
+ */
+HWTEST_F(CpuStorageTest, CpuStorageTest003, TestSize.Level3)
+{
+    FileUtil::RemoveFile(DB_PATH);
+    CpuStorage cpuStorage(DB_PATH);
+    ASSERT_NE(cpuStorage.dbStore_, nullptr);
+}
+
+/**
+ * @tc.name: CpuStorageTest004
+ * @tc.desc: CpuStorage test PowerStatusManager
+ * @tc.type: FUNC
+ * @tc.require: issueI5NULM
+ */
+#ifdef POWER_MANAGER_ENABLE
+HWTEST_F(CpuStorageTest, CpuStorageTest004, TestSize.Level3)
+{
+    int32_t powerState = UCollectUtil::PowerStatusManager::GetInstance().GetPowerState();
+    ASSERT_THAT(powerState, testing::AnyOf(UCollectUtil::SCREEN_OFF, UCollectUtil::SCREEN_ON));
+    UCollectUtil::PowerStatusManager::GetInstance().SetPowerState(UCollectUtil::SCREEN_ON);
+    int32_t powerState2 = UCollectUtil::PowerStatusManager::GetInstance().GetPowerState();
+    ASSERT_EQ(powerState2, UCollectUtil::SCREEN_ON);
+    UCollectUtil::PowerStatusManager::GetInstance().SetPowerState(UCollectUtil::SCREEN_OFF);
+    int32_t powerState3 = UCollectUtil::PowerStatusManager::GetInstance().GetPowerState();
+    ASSERT_EQ(powerState3, UCollectUtil::SCREEN_OFF);
+}
+#endif

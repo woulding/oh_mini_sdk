@@ -1,0 +1,470 @@
+/*
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <gtest/gtest.h>
+#include <securec.h>
+
+#include "permission_entry.c"
+#include "session.h"
+#include "softbus_adapter_mem.h"
+#include "softbus_def.h"
+#include "softbus_error_code.h"
+
+using namespace std;
+using namespace testing::ext;
+
+#define NUM 50
+namespace OHOS {
+
+const char *g_pkgName = "dms";
+const char *g_sessionName = "ohos.distributedschedule.dms.test";
+const char *g_errPkgName = "abc";
+
+class PermissionEntrystaticTest : public testing::Test {
+public:
+    PermissionEntrystaticTest() { }
+    ~PermissionEntrystaticTest() { }
+    static void SetUpTestCase(void);
+    static void TearDownTestCase(void);
+    void SetUp() override { }
+    void TearDown() override { }
+};
+
+void PermissionEntrystaticTest::SetUpTestCase(void) { }
+void PermissionEntrystaticTest::TearDownTestCase(void) { }
+
+/*
+ * @tc.name: GetPeMapValue001
+ * @tc.desc: Verify GetPeMapValue returns UNKNOWN_VALUE for invalid parameter
+ *           Get pe map value test, use the wrong parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, GetPeMapValue001, TestSize.Level0)
+{
+    int32_t ret;
+    const char *tmpString = "";
+    ret = GetPeMapValue(tmpString);
+    EXPECT_EQ(UNKNOWN_VALUE, ret);
+}
+
+/*
+ * @tc.name: StrStartWithTest001
+ * @tc.desc: Verify StrStartWith returns false for invalid parameter
+ *           Str start with test, use the wrong or normal parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, StrStartWithTest001, TestSize.Level0)
+{
+    bool ret;
+    const char tmpString[NUM] = "";
+    const char tmpStringNormal[NUM] = "hfg";
+    const char target[NUM] = "abc";
+    ret = StrStartWith(tmpString, target);
+    EXPECT_TRUE(ret == false);
+
+    ret = StrStartWith(nullptr, nullptr);
+    EXPECT_TRUE(ret == false);
+
+    ret = StrStartWith(tmpStringNormal, target);
+    EXPECT_TRUE(ret == false);
+}
+
+/*
+ * @tc.name: ProcessAppInfoTest001
+ * @tc.desc: Verify ProcessAppInfo returns nullptr for invalid parameter
+ *           Process app info test, use the wrong or normal parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, ProcessAppInfoTest001, TestSize.Level0)
+{
+    SoftBusAppInfo *pRet = nullptr;
+
+    pRet = ProcessAppInfo(nullptr);
+    EXPECT_TRUE(pRet == nullptr);
+}
+
+/*
+ * @tc.name: ProcessPermissionEntryTest001
+ * @tc.desc: Verify ProcessPermissionEntry returns nullptr for invalid parameter
+ *           Process permission entry test, use the wrong or normal parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, ProcessPermissionEntryTest001, TestSize.Level0)
+{
+    SoftBusPermissionEntry *pRet = nullptr;
+    cJSON object;
+
+    pRet = ProcessPermissionEntry(nullptr);
+    EXPECT_TRUE(pRet == nullptr);
+
+    pRet = ProcessPermissionEntry(&object);
+    EXPECT_TRUE(pRet == nullptr);
+}
+
+/*
+ * @tc.name: CompareStringTest001
+ * @tc.desc: Verify CompareString returns SOFTBUS_INVALID_PARAM for invalid parameter
+ *           Compare string test, use the wrong or normal parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, CompareStringTest001, TestSize.Level0)
+{
+    int32_t ret;
+
+    ret = CompareString(nullptr, nullptr, true);
+    EXPECT_EQ(SOFTBUS_INVALID_PARAM, ret);
+
+    ret = CompareString(g_pkgName, g_pkgName, true);
+    EXPECT_EQ(SOFTBUS_OK, ret);
+}
+
+/*
+ * @tc.name: GetPermTypeTest001
+ * @tc.desc: Verify GetPermType returns SOFTBUS_INVALID_PARAM for invalid parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, GetPermTypeTest001, TestSize.Level0)
+{
+    int32_t ret;
+    ret = GetPermType(nullptr, nullptr);
+    EXPECT_EQ(SOFTBUS_INVALID_PARAM, ret);
+
+    SoftBusPermissionItem *pItem = (SoftBusPermissionItem *)SoftBusCalloc(sizeof(SoftBusPermissionItem));
+    ASSERT_TRUE(pItem != nullptr);
+    SoftBusAppInfo *appInfo = (SoftBusAppInfo *)SoftBusCalloc(sizeof(SoftBusAppInfo));
+    ASSERT_TRUE(appInfo != nullptr);
+    ListInit(&appInfo->node);
+    appInfo->type = NATIVE_APP;
+    appInfo->uid = UNKNOWN_VALUE;
+    appInfo->pid = UNKNOWN_VALUE;
+    appInfo->actions = 0;
+
+    pItem->permType = SYSTEM_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(SYSTEM_APP, ret);
+
+    pItem->permType = NATIVE_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(NATIVE_APP, ret);
+
+    appInfo->type = SYSTEM_APP;
+    pItem->permType = SYSTEM_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(SYSTEM_APP, ret);
+
+    pItem->permType = NATIVE_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(NATIVE_APP, ret);
+
+    appInfo->type = GRANTED_APP;
+    pItem->actions = ACTION_CREATE;
+    pItem->permType = SYSTEM_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(SYSTEM_APP, ret);
+
+    pItem->permType = NATIVE_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(NATIVE_APP, ret);
+
+    pItem->permType = NORMAL_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(NORMAL_APP, ret);
+}
+
+/*
+ * @tc.name: GetPermTypeTest002
+ * @tc.desc: Verify GetPermType returns SOFTBUS_INVALID_PARAM for invalid parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, GetPermTypeTest002, TestSize.Level0)
+{
+    int32_t ret;
+    ret = GetPermType(nullptr, nullptr);
+    EXPECT_EQ(SOFTBUS_INVALID_PARAM, ret);
+
+    SoftBusPermissionItem *pItem = (SoftBusPermissionItem *)SoftBusCalloc(sizeof(SoftBusPermissionItem));
+    ASSERT_TRUE(pItem != nullptr);
+    SoftBusAppInfo *appInfo = (SoftBusAppInfo *)SoftBusCalloc(sizeof(SoftBusAppInfo));
+    ASSERT_TRUE(appInfo != nullptr);
+    ListInit(&appInfo->node);
+    appInfo->type = GRANTED_APP;
+    appInfo->uid = UNKNOWN_VALUE;
+    appInfo->pid = UNKNOWN_VALUE;
+    appInfo->actions = 0;
+
+    pItem->actions = ACTION_OPEN;
+    pItem->permType = GRANTED_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(GRANTED_APP, ret);
+
+    appInfo->type = NORMAL_APP;
+    pItem->permType = SYSTEM_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(SYSTEM_APP, ret);
+
+    pItem->permType = NATIVE_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(NATIVE_APP, ret);
+
+    pItem->permType = NORMAL_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(NORMAL_APP, ret);
+
+    appInfo->type = SELF_APP;
+    pItem->permType = SELF_APP;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(SELF_APP, ret);
+
+    appInfo->type = NUM;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(SOFTBUS_INVALID_PARAM, ret);
+
+    appInfo->type = NUM;
+    pItem->permType = NUM;
+    ret = GetPermType(appInfo, pItem);
+    EXPECT_EQ(SOFTBUS_INVALID_PARAM, ret);
+}
+
+/*
+ * @tc.name: CheckPermissionAppInfoTest001
+ * @tc.desc: Verify CheckPermissionAppInfo returns SOFTBUS_INVALID_PARAM for invalid parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, CheckPermissionAppInfoTest001, TestSize.Level0)
+{
+    int32_t ret;
+    SoftBusPermissionEntry *pe = nullptr;
+
+    SoftBusPermissionItem *pItem = (SoftBusPermissionItem *)SoftBusCalloc(sizeof(SoftBusPermissionItem));
+    ASSERT_TRUE(pItem != nullptr);
+
+    ret = CheckPermissionAppInfo(nullptr, nullptr);
+    EXPECT_EQ(SOFTBUS_INVALID_PARAM, ret);
+
+    pItem->actions = 0;
+    ret = CheckPermissionAppInfo(pe, pItem);
+    EXPECT_EQ(SOFTBUS_INVALID_PARAM, ret);
+
+    SoftBusPermissionEntry *permissionEntry = (SoftBusPermissionEntry *)SoftBusCalloc(sizeof(SoftBusPermissionEntry));
+    ASSERT_TRUE(permissionEntry != nullptr);
+    ListInit(&permissionEntry->node);
+    ListInit(&permissionEntry->appInfo);
+    permissionEntry->regexp = false;
+    permissionEntry->devId = UNKNOWN_VALUE;
+    permissionEntry->secLevel = UNKNOWN_VALUE;
+
+    ret = CheckPermissionAppInfo(pe, pItem);
+    EXPECT_EQ(SOFTBUS_INVALID_PARAM, ret);
+}
+
+/*
+ * @tc.name: CheckDBinderTest001
+ * @tc.desc: Verify CheckDBinder returns false for invalid parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, CheckDBinderTest001, TestSize.Level0)
+{
+    bool ret;
+    char sessionName[NUM] = "";
+    char sessionNameWrong[NUM] = "abc";
+
+    ret = CheckDBinder(sessionName);
+    EXPECT_TRUE(ret == false);
+
+    ret = CheckDBinder(DBINDER_SERVICE_NAME);
+    EXPECT_TRUE(ret == true);
+
+    ret = CheckDBinder(DBINDER_BUS_NAME_PREFIX);
+    EXPECT_TRUE(ret == true);
+
+    ret = CheckDBinder(sessionNameWrong);
+    EXPECT_TRUE(ret == false);
+}
+
+/*
+ * @tc.name: HaveGrantedPermissionTest001
+ * @tc.desc: Verify HaveGrantedPermission returns false for invalid parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, HaveGrantedPermissionTest001, TestSize.Level0)
+{
+    bool ret;
+
+    ret = HaveGrantedPermission(nullptr);
+    EXPECT_TRUE(ret == false);
+
+    ret = HaveGrantedPermission(DBINDER_SERVICE_NAME);
+    EXPECT_TRUE(ret == false);
+
+    ret = HaveGrantedPermission(DBINDER_BUS_NAME_PREFIX);
+    EXPECT_TRUE(ret == false);
+}
+
+/*
+ * @tc.name: NewDynamicPermissionEntryTest001
+ * @tc.desc: Verify NewDynamicPermissionEntry returns true for valid parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, NewDynamicPermissionEntryTest001, TestSize.Level0)
+{
+    bool ret;
+    char sessionName[NUM] = "";
+    char sessionNameWrong[SESSION_NAME_SIZE_MAX * 2] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                                                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                                                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                                                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                                                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    int32_t callingUid = 0;
+    int32_t callingPid = 0;
+    SoftBusPermissionEntry *permissionEntry = (SoftBusPermissionEntry *)SoftBusCalloc(sizeof(SoftBusPermissionEntry));
+    ASSERT_TRUE(permissionEntry != nullptr);
+
+    ret = NewDynamicPermissionEntry(nullptr, sessionName, callingUid, callingPid);
+    EXPECT_TRUE(ret == true);
+
+    ret = NewDynamicPermissionEntry(permissionEntry, nullptr, callingUid, callingPid);
+    EXPECT_TRUE(ret == true);
+
+    ret = NewDynamicPermissionEntry(permissionEntry, sessionNameWrong, callingUid, callingPid);
+    EXPECT_TRUE(ret == true);
+
+    ret = NewDynamicPermissionEntry(permissionEntry, DBINDER_SERVICE_NAME, callingUid, callingPid);
+    EXPECT_TRUE(ret == false);
+}
+
+/*
+ * @tc.name: DynamicPermissionTest001
+ * @tc.desc: Verify AddDynamicPermission returns SOFTBUS_INVALID_PARAM for null sessionName or invalid UID/PID
+ *           DeleteDynamicPermission returns SOFTBUS_INVALID_PARAM for null sessionName or invalid sessionName
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, DynamicPermissionTest001, TestSize.Level1)
+{
+    int32_t callingUid = 0;
+    int32_t callingPid = 0;
+    char sessionName[] = "testSessionName";
+
+    int32_t ret = AddDynamicPermission(callingUid, callingPid, nullptr);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+    ret = AddDynamicPermission(callingUid, callingPid, sessionName);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+
+    ret = DeleteDynamicPermission(nullptr);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+    ret = DeleteDynamicPermission(sessionName);
+    EXPECT_EQ(ret, SOFTBUS_INVALID_PARAM);
+}
+
+/*
+ * @tc.name: ProcessRpcSaPermissionEntry001
+ * @tc.desc: Return NULL when ProcessRpcSaPermissionEntry is called with null cJSON object parameter
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, ProcessRpcSaPermissionEntry001, TestSize.Level0)
+{
+    RpcSaPermissionEntry * ret = ProcessRpcSaPermissionEntry(nullptr);
+    EXPECT_TRUE(ret == nullptr);
+}
+
+/*
+ * @tc.name: ProcessRpcSaPermissionEntry002
+ * @tc.desc: Return non-NULL RpcSaPermissionEntry when ProcessRpcSaPermissionEntry is called with valid cJSON object
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, ProcessRpcSaPermissionEntry002, TestSize.Level0)
+{
+    const char *permConfig = R"([{
+        "PROCESS_NAME": "testProcessName",
+        "SA_ID": "1234",
+        "SA_UID": "4321"
+    }])";
+    cJSON *msg = cJSON_Parse(permConfig);
+    cJSON *object = cJSON_GetArrayItem(msg, 0);
+    RpcSaPermissionEntry * ret = ProcessRpcSaPermissionEntry(object);
+    EXPECT_FALSE(ret == nullptr);
+    cJSON_Delete(msg);
+}
+
+/*
+ * @tc.name: ProcessRpcSaPermissionEntry003
+ * @tc.desc: Return NULL when ProcessRpcSaPermissionEntry is called with cJSON object without PROCESS_NAME field
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, ProcessRpcSaPermissionEntry003, TestSize.Level0)
+{
+    const char *permConfig = R"([{
+        "SA_ID": "1234",
+        "SA_UID": "4312"
+    }])";
+    cJSON *msg = cJSON_Parse(permConfig);
+    cJSON *object = cJSON_GetArrayItem(msg, 0);
+    RpcSaPermissionEntry * ret = ProcessRpcSaPermissionEntry(object);
+    EXPECT_TRUE(ret == nullptr);
+    cJSON_Delete(msg);
+}
+
+/*
+ * @tc.name: ProcessRpcSaPermissionEntry004
+ * @tc.desc: Return NULL when ProcessRpcSaPermissionEntry is called with cJSON object without SA_ID field
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, ProcessRpcSaPermissionEntry004, TestSize.Level0)
+{
+    const char *permConfig = R"([{
+        "PROCESS_NAME": "testProcessName",
+        "SA_UID": "4312"
+    }])";
+    cJSON *msg = cJSON_Parse(permConfig);
+    cJSON *object = cJSON_GetArrayItem(msg, 0);
+    RpcSaPermissionEntry * ret = ProcessRpcSaPermissionEntry(object);
+    EXPECT_TRUE(ret == nullptr);
+    cJSON_Delete(msg);
+}
+
+/*
+ * @tc.name: ProcessRpcSaPermissionEntry005
+ * @tc.desc: Return NULL when ProcessRpcSaPermissionEntry is called with cJSON object without SA_UID field
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(PermissionEntrystaticTest, ProcessRpcSaPermissionEntry005, TestSize.Level0)
+{
+    const char *permConfig = R"([{
+        "PROCESS_NAME": "testProcessName",
+        "SA_ID": "1234"
+    }])";
+    cJSON *msg = cJSON_Parse(permConfig);
+    cJSON *object = cJSON_GetArrayItem(msg, 0);
+    RpcSaPermissionEntry * ret = ProcessRpcSaPermissionEntry(object);
+    EXPECT_TRUE(ret == nullptr);
+    cJSON_Delete(msg);
+}
+} // namespace OHOS

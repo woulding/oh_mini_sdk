@@ -1,0 +1,71 @@
+# Copyright (c) 2020 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//build/lite/config/component/lite_component.gni")
+import(
+    "//foundation/bundlemanager/bundle_framework_lite/bundle_framework_lite.gni")
+
+generate_notice_file("bm_notice_file") {
+  module_name = "bm"
+  module_source_dir_list = [ "//third_party/cJSON" ]
+}
+
+executable("bm") {
+  sources = [
+    "src/command_parser.cpp",
+    "src/main.cpp",
+  ]
+
+  cflags = [
+    "-Wall",
+    "-Wno-format",
+  ]
+  cflags_cc = cflags
+
+  ldflags = [
+    "-lstdc++",
+    "-lpthread",
+    "-Wl,-Map=bm_tool.map",
+  ]
+
+  deps = [
+    "${appexecfwk_lite_path}/frameworks/bundle_lite:bundle",
+    "${communication_path}/ipc/interfaces/innerkits/c/ipc:ipc_single",
+    "${hilog_lite_path}/frameworks/featured:hilog_shared",
+    "${permission_lite_path}/services/pms_client:pms_client",
+    "${samgr_lite_path}/samgr:samgr",
+    "${startup_path}/init/interfaces/innerkits:libbegetutil",
+    "//build/lite/config/component/cJSON:cjson_shared",
+  ]
+
+  include_dirs = [
+    "include",
+    "${permission_lite_path}/services/pms_client/include",
+    "${permission_lite_path}/interfaces/innerkits",
+    "${startup_path}/init/interfaces/innerkits/include/syspara",
+    "${aafwk_lite_path}/interfaces/inner_api/abilitymgr_lite",
+    "${aafwk_lite_path}/interfaces/kits/want_lite",
+    "${aafwk_lite_path}/services/abilitymgr_lite/include",
+    "${appexecfwk_lite_path}/interfaces/inner_api/bundlemgr_lite/",
+    "${appexecfwk_lite_path}/frameworks/bundle_lite/include",
+    "${appexecfwk_lite_path}/utils/bundle_lite",
+    "${appexecfwk_lite_path}/interfaces/kits/bundle_lite",
+    "${samgr_lite_path}/interfaces/kits/samgr",
+    "${samgr_lite_path}/interfaces/kits/registry",
+    "//third_party/cJSON",
+    "${utils_lite_path}/include",
+    "${communication_path}/ipc/interfaces/innerkits/c/ipc/include",
+  ]
+
+  defines = [ "OHOS_APPEXECFWK_BMS_BUNDLEMANAGER" ]
+  output_dir = "$root_out_dir/dev_tools"
+}

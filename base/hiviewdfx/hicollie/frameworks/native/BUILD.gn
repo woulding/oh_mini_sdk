@@ -1,0 +1,108 @@
+# Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hicollie/hicollie.gni")
+import("//build/ohos.gni")
+config("hicollie_include") {
+  include_dirs = [
+    ".",
+    "${hicollie_part_path}/interfaces/native/innerkits/include/xcollie",
+    "${hicollie_part_path}/interfaces/ndk/include",
+  ]
+  if (is_ohos) {
+    cflags_cc = [ "-D__XCOLLIE_OHOS__" ]
+  }
+}
+
+ohos_source_set("libhicollie_source") {
+  branch_protector_ret = "pac_ret"
+  cflags_cc = [
+    "-Oz",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-omit-frame-pointer",
+  ]
+  if (target_cpu == "arm64") {
+    cflags_cc += [
+      "-fno-unwind-tables",
+      "-fno-asynchronous-unwind-tables",
+    ]
+  }
+  sources = [
+    "handler_checker.cpp",
+    "ipc_full.cpp",
+    "process_kill_reason.cpp",
+    "sample_stack_map.cpp",
+    "watchdog.cpp",
+    "watchdog_inner.cpp",
+    "watchdog_task.cpp",
+    "xcollie.cpp",
+    "xcollie_ffrt_task.cpp",
+    "xcollie_utils.cpp",
+    "xcollie_mgr.cpp",
+  ]
+  configs = [ ":hicollie_include" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "c_utils:utils",
+    "faultloggerd:libbacktrace_local",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hiview:libucollection_client",
+    "init:libbegetutil",
+    "ipc:ipc_core",
+    "storage_service:storage_manager_acl",
+  ]
+
+  defines = []
+  if (use_musl && !is_asan) {
+    defines += [ "HOOK_ENABLE" ]
+  }
+
+  if (hicollie_suspend_check_enable) {
+    defines += [ "SUSPEND_CHECK_ENABLE" ]
+  }
+
+  if (hicollie_low_memory_freeze_strategy_enable) {
+    defines += [ "LOW_MEMORY_FREEZE_STRATEGY_ENABLE" ]
+  }
+
+  if (hicollie_jank_detection_enable) {
+    defines += [ "HICOLLIE_JANK_ENABLE" ]
+  }
+
+  if (hicollie_kick_watchdog_enable) {
+    defines += [ "KICK_WATCHDOG_ENABLE" ]
+  }
+
+  if (hicollie_asyncbinderspacefull_enable) {
+    defines += [ "ASYNC_BINDER_SPACE_FULL" ]
+  }
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.notification_eventhandler)) {
+    external_deps += [ "eventhandler:libeventhandler" ]
+  }
+
+  if (defined(global_parts_info.hiviewdfx_hisysevent)) {
+    external_deps += [ "hisysevent:libhisysevent" ]
+    defines += [ "HISYSEVENT_ENABLE" ]
+  }
+  part_name = "hicollie"
+  subsystem_name = "hiviewdfx"
+}
+
+group("libhicollie") {
+  deps = [ ":libhicollie_source" ]
+}

@@ -1,0 +1,151 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"Kode koneksi",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"%1$s yang ada di %2$s ingin mengakses perangkat ini. Percayai aplikasi ini?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Batal",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Masukkan kode koneksi",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Ini diperlukan untuk sinkronisasi data dan kolaborasi lintas perangkat.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Percayai kali ini",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Selalu percayai",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"Percayai kali ini saja",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_connect_code",
+            "value":"Masukkan kode koneksi yang ditampilkan di perangkat lainnya.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_cast",
+            "value":"%s ingin mencerminkan layarnya di perangkat Anda. Percayai perangkat ini?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_is_trust_device",
+            "value":"%s Percayai perangkat ini?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_password_error",
+            "value":"Kata sandi salah. Koneksi gagal.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_bluetooth_dialog_close",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_authenticating",
+            "value":"Mengautentikasi�",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_connect_device",
+            "value":"%s ingin terhubung ke perangkat Anda.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_bluetooth_dialog_content",
+            "value":"Bluetooth perlu diaktifkan untuk terhubung ke perangkat lain. Aktifkan dan coba lagi.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_connect",
+            "value":"Hubungkan ke %s",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_proxy",
+            "value":"\"%s\" ingin terhubung ke perangkat ini. Pilih layanan apa saja yang dapat diakses olehnya:",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s ingin mengakses layanan %2$s di perangkat Anda. Percayai perangkat ini?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"Aplikasi %2$s di %1$s ingin mengakses layanan %3$s di perangkat Anda. Percayai aplikasi ini?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s ingin terhubung ke layanan yang ada di perangkat Anda. Pilih layanan yang akan diotorisasi:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

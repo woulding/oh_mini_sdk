@@ -1,0 +1,83 @@
+# Copyright (c) 2023 Shenzhen Kaihong Digital Industry Development Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/CastEngine/castengine_wifi_display/config.gni")
+
+ohos_source_set("sharing_media_channel_srcs") {
+  cflags = [
+    "-Wno-invalid-noreturn",
+    "-Wno-deprecated-builtins",
+  ]
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    boundary_sanitize = true
+    ubsan = true
+    integer_overflow = true
+  }
+
+  sources = [
+    "base_consumer.cpp",
+    "base_producer.cpp",
+    "buffer_dispatcher.cpp",
+    "channel_manager.cpp",
+    "media_channel.cpp",
+  ]
+
+  configs = [
+    "$SHARING_ROOT_DIR/tests:coverage_flags",
+    "$SHARING_ROOT_DIR:wifi_display_default_config",
+    "$SHARING_ROOT_DIR:wifi_display_feature_flags",
+  ]
+
+  include_dirs = [
+    "$SHARING_ROOT_DIR/services",
+    "$SHARING_ROOT_DIR/services/mediachannel",
+    "$SHARING_ROOT_DIR/services/utils",
+    "$SHARING_ROOT_DIR/services/common",
+    "$SHARING_ROOT_DIR/services/codec/include",
+    "$SHARING_ROOT_DIR/services/protocol",
+    "$SHARING_ROOT_DIR/services/protocol/frame",
+    "$SHARING_ROOT_DIR/services/protocol/rtp",
+    "$SHARING_ROOT_DIR/services/protocol/rtp/interfaces",
+    "$SHARING_ROOT_DIR/services/extend/magic_enum",
+  ]
+
+  if (wifi_display_support_sink) {
+    include_dirs += [
+      "$SHARING_ROOT_DIR/services/sink/mediaplayer/include",
+      "$SHARING_ROOT_DIR/services/sink/codec/include",
+    ]
+  }
+
+  external_deps = [
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "audio_framework:audio_client",
+    "audio_framework:audio_renderer",
+    "av_codec:av_codec_client",
+    "camera_framework:camera_framework",
+    "drivers_interface_camera:metadata",
+    "graphic_surface:surface",
+    "ipc:ipc_single",
+    "hilog:libhilog",
+    "media_foundation:media_foundation",
+  ]
+
+  subsystem_name = "castplus"
+  part_name = "sharing_framework"
+}

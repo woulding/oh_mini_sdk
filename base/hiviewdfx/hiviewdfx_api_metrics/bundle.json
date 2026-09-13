@@ -1,0 +1,50 @@
+{
+    "name": "@ohos/api_metrics",
+    "description": "Open-source histogram api metrics module.",
+    "version": "5.0",
+    "license": "Apache License 2.0",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "base/hiviewdfx/hiviewdfx_api_metrics"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "api_metrics",
+        "subsystem": "hiviewdfx",
+        "syscap": [],
+        "features": [],
+        "adapted_system_type": [
+            "standard"
+        ],
+        "rom": "256KB",
+        "ram": "2048KB",
+        "deps": {
+            "components": [
+                "hilog",
+                "c_utils",
+                "relational_store",
+                "storage_service",
+                "ffrt"
+            ],
+            "third_party": []
+        },
+        "build": {
+            "sub_component": [
+                "//base/hiviewdfx/hiviewdfx_api_metrics:histogrammanager"
+            ],
+            "inner_kits": [
+                {
+                    "header": {
+                        "header_base": "//base/hiviewdfx/hiviewdfx_api_metrics/manager/innerkits/include",
+                        "header_files": [
+                            "histogram_plugin_macros.h"
+                        ]
+                    },
+                    "name": "//base/hiviewdfx/hiviewdfx_api_metrics:histogrammanager"
+                }
+            ],
+            "test": []
+        }
+    }
+}

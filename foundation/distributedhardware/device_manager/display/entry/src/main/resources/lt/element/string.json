@@ -1,0 +1,81 @@
+{
+    "string":[
+        {
+            "name":"dm_connect_code",
+            "value":"Prisijungimo kodas",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"Šį įrenginį nori pasiekti %1$s (įrenginiu „%2$s“). Pasitikėti šia programėle?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_cancel",
+            "value":"Atšaukti",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"Įveskite prisijungimo kodą",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"Tai yra reikalinga duomenų sinchronizavimui ir bendradarbiavimui tarp įrenginių.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"Pasitikėti šį kartą",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"Visada pasitikėti",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"Pasitikėti tik šį kartą",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"%1$s nori pasiekti %2$s paslaugą jūsų įrenginyje. Pasitikėti šiuo įrenginiu?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"Programėlė %2$s įrenginyje %1$s norėtų gauti prieigą prie paslaugos %3$s jūsų įrenginyje. Pasitikėti šia programėle?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"%s norėtų prisijungti prie jūsų įrenginio paslaugų. Pasirinkite autorizuojamas paslaugas:",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

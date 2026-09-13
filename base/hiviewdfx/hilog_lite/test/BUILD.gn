@@ -1,0 +1,62 @@
+# Copyright (C) 2022-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import("//build/lite/config/subsystem/aafwk/path.gni")
+import("//build/lite/config/test.gni")
+
+declare_args() {
+  hilog_lite_disable_test = false
+}
+
+group("hilog_lite_test") {
+  if (ohos_build_type == "debug" && ohos_kernel_type != "liteos_m" &&
+      !hilog_lite_disable_test) {
+    deps = [ ":lite_hilog_unittest" ]
+  }
+}
+
+if (ohos_build_type == "debug" && ohos_kernel_type != "liteos_m" &&
+    !hilog_lite_disable_test) {
+  unittest("lite_hilog_unittest") {
+    output_extension = "bin"
+    output_dir = "$root_out_dir/test/unittest/hilog_lite"
+    sources = [ "unittest/hilog_lite_test.cpp" ]
+    include_dirs = [
+      "include",
+      "//third_party/bounds_checking_function/include",
+      "//foundation/arkui/ace_engine_lite/interfaces/inner_api/builtin",
+      "//foundation/arkui/ace_engine_lite/interfaces/inner_api/builtin/base",
+      "//foundation/arkui/ace_engine_lite/interfaces/inner_api/builtin/async",
+      "${aafwk_lite_path}/interfaces/kits/ability_lite",
+      "//base/powermgr/battery_lite/interfaces/kits",
+      "//base/powermgr/battery_lite/frameworks/native/include",
+      "//base/hiviewdfx/hilog_lite/frameworks/js/builtin/include",
+    ]
+    deps = [
+      "//base/hiviewdfx/hilog_lite/frameworks/featured:hilog_shared",
+      "//base/hiviewdfx/hilog_lite/frameworks/js/builtin:ace_kit_hilog",
+      "//base/powermgr/battery_lite/frameworks:batterymgr",
+      "//foundation/arkui/ace_engine_lite/frameworks/native_engine:ace_native_engine",
+      "//third_party/bounds_checking_function:libsec_shared",
+      "//third_party/jerryscript/jerry-port/default:jerry-port-default_shared",
+    ]
+    if (ohos_kernel_type == "liteos_m") {
+      deps += [
+        "//foundation/arkui/ui_lite:ui",
+        "//third_party/jerryscript:jerry_engine",
+      ]
+    } else {
+      deps += [ "//third_party/jerryscript/jerry-core:jerry-core_shared" ]
+    }
+  }
+}

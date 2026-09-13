@@ -1,0 +1,94 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_HDI_USB_V2_1_USB_DEVICE_IMPL_H
+#define OHOS_HDI_USB_V2_1_USB_DEVICE_IMPL_H
+
+#include <iostream>
+#include <filesystem>
+
+#include "hdf_slist.h"
+#include "hdf_usb_pnp_manage.h"
+#include "iproxy_broker.h"
+#include "iremote_object.h"
+#include "osal_mutex.h"
+#include "usb_host_data.h"
+#include "usbd_function.h"
+#include "usbd_load_usb_service.h"
+#include "usbd_port.h"
+#include "v2_1/iusb_device_interface.h"
+
+#ifndef SYSFS_DEVICES_DIR
+#define SYSFS_DEVICES_DIR "/sys/bus/usb/devices/"
+#endif // SYSFS_DEVICES_DIR
+
+#define HISUITE_IOCTL_EXTRA_DATA                0xC4
+#define HISUITE_GET_EXTRA_DATA                  _IOW('M', HISUITE_IOCTL_EXTRA_DATA, char[256])
+
+#define BASE_CLASS_HUB 0x09
+constexpr uint8_t MAX_INTERFACEID = 0xFF;
+namespace OHOS {
+namespace HDI {
+namespace Usb {
+namespace V2_1 {
+using namespace OHOS;
+class UsbDeviceImpl : public IUsbDeviceInterface {
+public:
+
+    UsbDeviceImpl();
+    ~UsbDeviceImpl() override;
+    int32_t GetCurrentFunctions(int32_t &funcs) override;
+    int32_t SetCurrentFunctions(int32_t funcs) override;
+    int32_t BindUsbdDeviceSubscriber(const sptr<IUsbdSubscriber> &subscriber) override;
+    int32_t UnbindUsbdDeviceSubscriber(const sptr<IUsbdSubscriber> &subscriber) override;
+    int32_t GetAccessoryInfo(std::vector<std::string> &accessoryInfo) override;
+    int32_t OpenAccessory(int32_t &fd) override;
+    int32_t CloseAccessory(int32_t fd) override;
+    int32_t UsbDeviceAuthorize(uint8_t devNum, uint8_t devAddr, bool authorized) override;
+    int32_t UsbInterfaceAuthorize(
+        const UsbDev &dev, uint8_t configId, uint8_t interfaceId, bool authorized) override;
+    int32_t GetControlTransferData(int32_t eventId, std::vector<uint8_t> &data) override;
+    static int32_t UsbdEventHandle(void);
+    static int32_t UsbdEventHandleRelease(void);
+    class UsbDeathRecipient : public IRemoteObject::DeathRecipient {
+    public:
+        explicit UsbDeathRecipient(const sptr<IUsbdSubscriber> &deathSubscriber) : deathSubscriber_(deathSubscriber) {};
+        ~UsbDeathRecipient() override {};
+        void OnRemoteDied(const wptr<IRemoteObject> &object) override;
+    private:
+        sptr<IUsbdSubscriber> deathSubscriber_;
+    };
+private:
+    static int32_t UsbdLoadServiceCallback(void *priv, uint32_t id, HdfSBuf *data);
+    static int32_t UsbdPnpLoaderEventReceived(void *priv, uint32_t id, HdfSBuf *data);
+    static void UpdateFunctionStatus(void);
+    std::string UsbGetAttribute(const std::string &devDir, const std::string &attrName);
+    std::string GetDeviceDirName(uint8_t devNum, uint8_t devAddr);
+    std::string GetInterfaceDirName(uint8_t devNum, uint8_t devAddr, uint8_t configId, uint8_t interfaceId);
+    int32_t SetAuthorize(const std::string &filePath, bool authorized);
+    int32_t SetDefaultAuthorize(bool authorized);
+    int32_t SetGlobalDefaultAuthorize(bool authorized);
+    static UsbdSubscriber subscribers_[MAX_SUBSCRIBER];
+    static bool isGadgetConnected_;
+    static bool isEdmExist_;
+    static HdfDevEventlistener listenerForLoadService_;
+    static V1_2::UsbdLoadService loadUsbService_;
+    static V1_2::UsbdLoadService loadHdfEdm_;
+};
+} // namespace v2_1
+} // namespace Usb
+} // namespace HDI
+} // namespace OHOS
+#endif // OHOS_HDI_USB_V2_1_USB_DEVICE_IMPL_H

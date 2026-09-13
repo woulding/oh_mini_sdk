@@ -1,0 +1,10 @@
+{
+  "parts": {
+    "product_fbb_bs21e": {
+      "module_list": [
+        "//vendor/hisilicon/fbb_bs21e:fbb_bs21e"
+      ]
+    }
+  },
+  "subsystem": "product_fbb_bs21e"
+}

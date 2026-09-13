@@ -1,0 +1,199 @@
+{
+    "name": "@ohos/ipc",
+    "version": "3.0",
+    "description": "ipc",
+    "publishAs": "code-segment",
+    "scripts": {
+      "install": "DEST_PATH=${DEP_BUNDLE_BASE}/foundation/communication/ipc && mkdir -p $DEST_PATH && cp -r ./* $DEST_PATH"
+    },
+    "author": {},
+    "repository": "",
+    "license": "Apache License 2.0",
+    "segment": {
+      "destPath": "foundation/communication/ipc"
+    },
+    "component": {
+      "name": "ipc",
+      "subsystem": "communication",
+      "adapted_system_type": [
+        "standard",
+        "small",
+        "mini"
+      ],
+      "features": [
+        "ipc_feature_rpc_enabled",
+        "ipc_feature_test_enabled",
+        "ipc_feature_trace_enabled",
+        "ipc_feature_freeze_enabled",
+        "ipc_feature_memory_usage_enabled",
+        "ipc_feature_calling_user_info_enabled"
+      ],
+      "syscap":[
+        "SystemCapability.Communication.IPC.Core"
+      ],
+      "rom": "500KB",
+      "ram": "100KB",
+      "deps": {
+        "components": [
+          "samgr",
+          "hitrace",
+          "hilog",
+          "c_utils",
+          "access_token",
+          "napi",
+          "ylong_runtime",
+          "ffrt",
+          "libuv",
+          "bounds_checking_function",
+          "hisysevent",
+          "json",
+          "selinux",
+          "rust",
+          "faultloggerd",
+          "runtime_core",
+          "rust_cxx"
+        ],
+        "third_party": [
+        ]
+      },
+      "build": {
+        "sub_component": [
+          "//foundation/communication/ipc:ipc_components",
+          "//foundation/communication/ipc/ipc/native/src/ani:rpc_ani_packages",
+          "//foundation/communication/ipc/ipc/native/src/taihe/:rpc_taihe_components"
+        ],
+        "inner_kits": [
+          {
+            "name": "//foundation/communication/ipc/ipc/native/src/taihe:rpc_taihe_idl"
+          },
+          {
+            "name": "//foundation/communication/ipc/ipc/native/src/taihe:rpc_taihe",
+            "header": {
+              "header_files": [
+                "remote_object_taihe_ani.h"
+              ],
+              "header_base": "//foundation/communication/ipc/ipc/native/src/taihe/inc"
+            }
+          },
+          {
+              "name": "//foundation/communication/ipc/interfaces/innerkits/ipc_core:ipc_core",
+              "header": {
+                "header_files": [
+                  "ipc_payload_statistics.h",
+                  "ipc_types.h",
+                  "ipc_skeleton.h",
+                  "iremote_object.h",
+                  "iremote_proxy.h",
+                  "iremote_stub.h",
+                  "message_parcel.h",
+                  "message_option.h",
+                  "iremote_broker.h",
+                  "ipc_object_proxy.h",
+                  "ipc_object_stub.h",
+                  "peer_holder.h",
+                  "ipc_file_descriptor.h"
+                ],
+                "header_base": "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include"
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/ipc/native/src/ani/rpc:rpc_ani",
+              "header": {
+                "header_files": [
+                  "ani_remote_object.h",
+                  "ani_utils.h"
+                ],
+                "header_base": "//foundation/communication/ipc/ipc/native/src/ani/rpc/include"
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/interfaces/innerkits/ipc_single:ipc_single",
+              "header": {
+                "header_files": [
+                  "ipc_payload_statistics.h",
+                  "ipc_types.h",
+                  "ipc_skeleton.h",
+                  "iremote_object.h",
+                  "iremote_proxy.h",
+                  "iremote_stub.h",
+                  "message_parcel.h",
+                  "message_option.h",
+                  "iremote_broker.h",
+                  "ipc_object_proxy.h",
+                  "ipc_object_stub.h",
+                  "peer_holder.h",
+                  "ipc_file_descriptor.h"
+                ],
+                "header_base": "//foundation/communication/ipc/interfaces/innerkits/ipc_core/include"
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/interfaces/innerkits/libdbinder:libdbinder",
+              "header": {
+                "header_files": [
+                  "dbinder_service.h",
+                  "dbinder_service_stub.h"
+                ],
+                "header_base": "//foundation/communication/ipc/interfaces/innerkits/libdbinder/include"
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/interfaces/innerkits/ipc_napi_common:ipc_napi",
+              "header": {
+                "header_files": [
+                  "napi_remote_object.h"
+                ],
+                "header_base": "//foundation/communication/ipc/interfaces/innerkits/ipc_napi_common/include"
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/interfaces/innerkits/rust:ipc_rust",
+              "header": {
+                "header_files": [],
+                "header_base": []
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/interfaces/innerkits/cj:cj_ipc_ffi",
+              "header": {
+                "header_files": [],
+                "header_base": "//foundation/communication/ipc/interfaces/innerkits/cj/include"
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/interfaces/kits/js/napi:rpc",
+              "header": {
+                "header_files": [
+                  "napi_remote_object.h"
+                ],
+                "header_base": "//foundation/communication/ipc/interfaces/innerkits/ipc_napi_common/include"
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/interfaces/innerkits/c_api:ipc_capi",
+              "header": {
+                "header_files": [
+                  "ipc_cparcel.h",
+                  "ipc_cremote_object.h",
+                  "ipc_cskeleton.h",
+                  "ipc_error_code.h",
+                  "ipc_inner_object.h",
+                  "ipc_kit.h"
+                ],
+                "header_base": "//foundation/communication/ipc/interfaces/innerkits/c_api/include"
+              }
+            },
+            {
+              "name": "//foundation/communication/ipc/interfaces/innerkits/rust:ipc_rust_cxx",
+              "header": {
+                "header_files": [],
+                "header_base": []
+              }
+            }
+        ],
+        "test": [
+          "//foundation/communication/ipc/test:ipc_test"
+        ]
+      }
+    }
+  }

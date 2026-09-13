@@ -1,0 +1,28 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Socket应用"
+    },
+    {
+      "name": "Socket_test",
+      "value": "蓝牙Socket测试"
+    },
+    {
+      "name": "Socket_client",
+      "value": "Socket客户端"
+    },
+    {
+      "name": "Socket_server",
+      "value": "Socket服务端"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+sdk/output/
+sdk/interim_binary/ws53/libs/
+sdk/temp/
+__pycache__/
+*.pyc

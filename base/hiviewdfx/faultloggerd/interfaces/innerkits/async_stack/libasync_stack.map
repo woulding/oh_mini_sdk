@@ -1,0 +1,25 @@
+{
+  global:
+    extern "C++" {
+      OHOS::HiviewDFX::UniqueStackTable*;
+    };
+    extern "C" {
+      DfxInitAsyncStack;
+      DfxGetSubmitterStackLocal;
+      DfxGetSubmitterStackId;
+      DfxSetSubmitterStackId;
+      DfxInitProfilerAsyncStack;
+      DfxSetAsyncStackType;
+      DfxCollectStackWithDepth;
+      DfxCollectAsyncStack;
+      SetAsyncStackMode;
+      GetCurrentChainedAsyncContext;
+      ReleaseAsyncContext;
+      DfxSetHiDebugAsyncStackCallback;
+      GetAsyncStackMode;
+      DfxPopSubmitterStackId;
+      SetChainedAsyncStackConfig;
+    };
+  local:
+    *;
+};

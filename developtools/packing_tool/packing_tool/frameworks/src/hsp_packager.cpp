@@ -1,0 +1,797 @@
+/*
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "hsp_packager.h"
+
+#include <string>
+
+#include "constants.h"
+#include "json/json_utils.h"
+#include "log.h"
+#include "skill_pack_helper.h"
+#include "utils.h"
+#include "incremental_pack.h"
+#include "error/packing_tool_err_msg.h"
+
+using packing_tool::error::PackingToolErrMsg;
+
+namespace OHOS {
+namespace AppPackingTool {
+namespace {
+const std::string NAME = "name";
+const std::string EXTENSION_ABILITIES = "extensionAbilities";
+const std::string REQUEST_PERMISSIONS = "requestPermissions";
+const std::string PERMISSION_SUPPORT_PLUGIN = "ohos.permission.kernel.SUPPORT_PLUGIN";
+const std::string EXTENSION_ABILITY_TYPE_FIELD = "type";
+const std::string EMBEDDED_UI_TYPE = "embeddedUI";
+const std::string COMPRESS_NATIVE_LIBS = "compressNativeLibs";
+const bool DEFAULT_COMPRESS_NATIVE_LIBS = false;
+const bool DEFAULT_EXTRACT_NATIVE_LIBS = true;
+
+}
+HspPackager::HspPackager(const std::map<std::string, std::string> &parameterMap, std::string &resultReceiver)
+    : Packager(parameterMap, resultReceiver)
+{}
+
+int32_t HspPackager::InitAllowedParam()
+{
+    return ERR_OK;
+}
+int32_t HspPackager::PreProcess()
+{
+    if (!CheckForceFlag()) {
+        return ERR_INVALID_VALUE;
+    }
+
+    bool ret = IsVerifyValidInHspCommonMode() && IsVerifyValidInHspMode();
+    if (!ret) {
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
+}
+int32_t HspPackager::Process()
+{
+    if (!CompressHsp()) {
+        std::string outPath;
+        if (parameterMap_.find(Constants::PARAM_OUT_PATH) != parameterMap_.end()) {
+            outPath = parameterMap_.at(Constants::PARAM_OUT_PATH);
+        }
+        if (fs::exists(outPath)) {
+            fs::remove_all(outPath);
+        }
+        LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs("Compress hsp failed.").c_str());
+        return ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
+}
+int32_t HspPackager::PostProcess()
+{
+    if (generateBuildHash_) {
+        if (!CompressHsp()) {
+            std::string outPath;
+            if (parameterMap_.find(Constants::PARAM_OUT_PATH) != parameterMap_.end()) {
+                outPath = parameterMap_.at(Constants::PARAM_OUT_PATH);
+            }
+            if (fs::exists(outPath)) {
+                fs::remove_all(outPath);
+            }
+            LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs("Compress hsp failed.").c_str());
+            return ERR_INVALID_VALUE;
+        }
+    }
+    return ERR_OK;
+}
+
+bool HspPackager::IsVerifyValidInHspCommonMode()
+{
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_JSON_PATH);
+    bool isValid = (it != parameterMap_.end() && !it->second.empty());
+    if (!isValid) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs("--json-path is empty.").c_str());
+        return false;
+    }
+    jsonPath_ = it->second;
+    if (!IsPathValid(it->second, true, Constants::MODULE_JSON)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--json-path must be the module.json file.").c_str());
+        return false;
+    }
+    if (!Compatible(Constants::PARAM_JAR_PATH, formattedJarPathList_, Constants::JAR_SUFFIX) ||
+        !Compatible(Constants::PARAM_TXT_PATH, formattedTxtPathList_, Constants::TXT_SUFFIX)) {
+        return false;
+    }
+    if (!IsHspPathValid()) {
+        return false;
+    }
+    it = parameterMap_.find(Constants::PARAM_DIR_LIST);
+    if (it != parameterMap_.end() && !it->second.empty() &&
+        !SplitDirList(it->second, formatedDirList_)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs("--dir-list is invalid.").c_str());
+        return false;
+    }
+    it = parameterMap_.find(Constants::PARAM_PROFILE_PATH);
+    if (it != parameterMap_.end()) {
+        const std::string filePath = it->second;
+        if (!fs::is_regular_file(filePath) ||
+            fs::path(filePath).filename().string() != Constants::PROFILE_NAME) {
+            LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+                "--profile-path must be the CAPABILITY.profile file.").c_str());
+            return false;
+        }
+    }
+    if (!IsPathParamValid(Constants::PARAM_EXIST_SRC_PATH, true, Constants::HSP_SUFFIX)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "The value of --exist-src-path must be a file with the .hsp suffix.").c_str());
+        return false;
+    }
+    if (!CheckLibPathRetainParam()) {
+        return false;
+    }
+    if (!IsCompressLevelValid()) {
+        return false;
+    }
+    it = parameterMap_.find(Constants::PARAM_PKG_CONTEXT_PATH);
+    if (it != parameterMap_.end() && !it ->second.empty()) {
+        const std::string filePath = it->second;
+        if (!fs::is_regular_file(filePath) ||
+            fs::path(filePath).filename().string() != Constants::PKG_CONTEXT_JSON) {
+            LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+                "--pkg-context-path file must be the pkgContextInfo.json file.").c_str());
+            return false;
+        }
+    }
+
+    if (!CheckPkgSdkInfoParam()) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--pkg-sdk-info-path value is invalid.").c_str());
+        return false;
+    }
+    return true;
+}
+
+bool HspPackager::IsVerifyValidInHspMode()
+{
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_ETS_PATH);
+    if (it != parameterMap_.end()) {
+        const std::string filePath = it->second;
+        if (!filePath.empty() && !fs::exists(filePath)) {
+            LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+                "--ets-path is invalid.").c_str());
+            return false;
+        }
+    }
+
+    std::string outPath = "";
+    std::string forceRewrite = "";
+    it = parameterMap_.find(Constants::PARAM_OUT_PATH);
+    if (it != parameterMap_.end()) {
+        outPath = it->second;
+    }
+
+    it = parameterMap_.find(Constants::PARAM_FORCE);
+    if (it != parameterMap_.end()) {
+        forceRewrite = it->second;
+    }
+
+    return IsOutPathValid(outPath, forceRewrite, Constants::HSP_SUFFIX);
+}
+
+bool HspPackager::Compatible(const std::string &paramPath, std::list<std::string> &fileList,
+    const std::string &suffix)
+{
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(paramPath);
+    if (it != parameterMap_.end() && !it->second.empty() && !CompatibleProcess(it->second,
+        fileList, suffix)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            (paramPath + " is invalid.").c_str()).c_str());
+        return false;
+    }
+    return true;
+}
+
+bool HspPackager::IsHspPathValid()
+{
+    if (IsHspPathValid(Constants::PARAM_LIB_PATH)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--lib-path is invalid.").c_str());
+        return false;
+    }
+    if (IsHspPathValid(Constants::PARAM_RES_PATH)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--res-path is invalid.").c_str());
+        return false;
+    }
+    if (IsHspPathValid(Constants::PARAM_RESOURCES_PATH)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--resources-path is invalid.").c_str());
+        return false;
+    }
+    if (IsHspPathValid(Constants::PARAM_ASSETS_PATH)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--assets-path is invalid.").c_str());
+        return false;
+    }
+    if (IsHspPathValid(Constants::PARAM_AP_PATH)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--ap-path is invalid.").c_str());
+        return false;
+    }
+    if (IsHspPathValid(Constants::PARAM_AN_PATH)) {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--an-path is invalid.").c_str());
+        return false;
+    }
+    return true;
+}
+
+bool HspPackager::IsHspPathValid(const std::string &parameterMapKey)
+{
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(parameterMapKey);
+    if (it == parameterMap_.end()) {
+        return false;
+    }
+    const std::string path = it->second;
+    return (!path.empty() && !IsPathValid(path, false));
+}
+
+bool HspPackager::CompressHsp()
+{
+    if (!SetGenerateBuildHash(jsonPath_, generateBuildHash_, buildHashFinish_)) {
+        return false;
+    }
+    if (!moduleJson_.ParseFromFile(jsonPath_)) {
+        LOGE("%s", PackingToolErrMsg::PARSE_JSON_FAILED.toStringWithArgs(
+            "Failed to parse --json-path.").c_str());
+        return false;
+    }
+    if (JsonUtils::IsModuleJson(jsonPath_)) {
+        if (!moduleJson_.CheckStageAsanTsanEnabledValid()) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs(
+                "Check the asanTsanEnabled parameter in the Stage module failed.").c_str());
+            return false;
+        }
+        if (!moduleJson_.CheckStageAtomicService()) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs(
+                "Check the atomicService parameter in the Stage module failed.").c_str());
+            return false;
+        }
+        if (!moduleJson_.CheckStageOverlayCfg()) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs(
+                "Check the overlay config in the Stage module failed.").c_str());
+            return false;
+        }
+        std::string moduleType;
+        if (!moduleJson_.GetStageModuleType(moduleType)) {
+            LOGW("GetStageModuleType failed.");
+        }
+        if (moduleType != Constants::TYPE_SHARED && moduleType != Constants::TYPE_SKILL) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs(
+                "Module type must be shared or skill.").c_str());
+            return false;
+        }
+        if (!moduleJson_.CheckDeduplicateHar()) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs(
+                "Check deduplicateHar in Stage module failed.").c_str());
+            return false;
+        }
+        moduleJson_.GetStageCompressNativeLibs(compressNativeLibs_);
+        
+        // Check kernel permission compression validation
+        if (!CheckKernelPermissionCompression()) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs(
+                "Check kernel permission compression validation failed.").c_str());
+            return false;
+        }
+    }
+    if (!CompressHspMode(jsonPath_) || !BuildHash(buildHashFinish_, generateBuildHash_, parameterMap_, jsonPath_)) {
+        return false;
+    }
+    return true;
+}
+
+bool HspPackager::CompressHspMode(const std::string &jsonPath)
+{
+    IncrementalPack::CopyExistSrcFile(parameterMap_);
+
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_OUT_PATH);
+    std::string outPath;
+    if (it != parameterMap_.end()) {
+        outPath = it->second;
+    }
+    zipWrapper_.Open(outPath);
+    if (!zipWrapper_.IsOpen()) {
+        LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs(
+            "HspPackager::Process: zipWrapper Open failed!").c_str());
+        return false;
+    }
+    std::string jsonString = moduleJson_.ToString();
+    if (!jsonString.empty()) {
+        std::string jsonType;
+        if (JsonUtils::IsModuleJson(jsonPath)) {
+            jsonType = Constants::MODULE_JSON;
+            if (!moduleJson_.GetStageModuleName(moduleName_) || moduleJson_.GetStageDeviceTypes(deviceTypes_)) {
+                LOGW("GetStageModuleName or GetStageDeviceTypes failed!");
+            }
+        } else {
+            jsonType = Constants::CONFIG_JSON;
+            if (!moduleJson_.GetFaModuleName(moduleName_) || moduleJson_.GetFaDeviceTypes(deviceTypes_)) {
+                LOGW("GetStageModuleName or GetStageDeviceTypes failed!");
+            }
+        }
+        if (zipWrapper_.WriteStringToZip(jsonString, jsonType) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper WriteStringToZip failed!").c_str());
+            return false;
+        }
+    }
+
+    if (!AddCommonFileOrDirectoryToZip(Constants::PARAM_PROFILE_PATH, Constants::PROFILE_NAME)) {
+        return false;
+    }
+    it = parameterMap_.find(Constants::PARAM_INDEX_PATH);
+    if (it != parameterMap_.end() && !it->second.empty() && JsonUtils::IsModuleJson(jsonPath)) {
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, Constants::RESOURCES_INDEX) !=
+            ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+    if (!CheckAppPlugin()) {
+        LOGE("%s", PackingToolErrMsg::COMPRESS_HSP_FAILED.toStringWithArgs(
+            "plugin package packaging failed.").c_str());
+        return false;
+    }
+    return CompressHspModePartSecond(jsonPath);
+}
+
+bool HspPackager::CheckAppPlugin()
+{
+    std::string bundleType;
+    if (!moduleJson_.GetStageBundleType(bundleType)) {
+        LOGW("GetStageBundleType failed");
+        return true;
+    }
+    if (Constants::TYPE_APP_PLUGIN != bundleType) {
+        if (IsPluginHost()) {
+            return true;
+        }
+        if (!CheckPkgContext()) {
+            LOGE("%s", PackingToolErrMsg::CHECK_PKG_CONTEXT_FAILED.toStringWithArgs(
+                "CheckPkgContext failed.").c_str());
+            return false;
+        }
+        return true;
+    }
+    std::unique_ptr<PtJson> moduleObj;
+    if (!moduleJson_.GetModuleObject(moduleObj)) {
+        LOGE("%s", PackingToolErrMsg::CHECK_APP_PLUGIN_FAILED.toStringWithArgs("GetModuleObject failed!").c_str());
+        return false;
+    }
+    if (moduleObj->Contains(EXTENSION_ABILITIES.c_str())) {
+        std::unique_ptr<PtJson> extensionAbilitiesObj;
+        if (moduleObj->GetArray(EXTENSION_ABILITIES.c_str(), &extensionAbilitiesObj) != Result::SUCCESS) {
+            LOGW("Module node get %s array node failed!", EXTENSION_ABILITIES.c_str());
+        }
+        if (extensionAbilitiesObj) {
+            if (!IsExtensionAbility(extensionAbilitiesObj)) {
+                LOGE("%s", PackingToolErrMsg::CHECK_APP_PLUGIN_FAILED.toStringWithArgs(
+                    "IsExtensionAbility failed: only EmbeddedUIExtensionAbility is allowed.").c_str());
+                return false;
+            }
+        }
+    }
+    if (!CheckPkgContext()) {
+        LOGE("%s", PackingToolErrMsg::CHECK_PKG_CONTEXT_FAILED.toStringWithArgs("CheckPkgContext failed.").c_str());
+        return false;
+    }
+    if (moduleObj->Contains(REQUEST_PERMISSIONS.c_str())) {
+        std::unique_ptr<PtJson> requestPermissionsObj;
+        if (moduleObj->GetArray(REQUEST_PERMISSIONS.c_str(), &requestPermissionsObj) != Result::SUCCESS) {
+            LOGW("Module node get %s array node failed!", REQUEST_PERMISSIONS.c_str());
+            return true;
+        }
+        if (IsPermissionSupportPlugin(requestPermissionsObj)) {
+            LOGE("%s", PackingToolErrMsg::CHECK_APP_PLUGIN_FAILED.toStringWithArgs(
+                "plugin package cannot be PERMISSION_SUPPORT_PLUGIN").c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HspPackager::IsPluginHost()
+{
+    std::unique_ptr<PtJson> moduleObj;
+    if (!moduleJson_.GetModuleObject(moduleObj)) {
+        LOGE("%s", PackingToolErrMsg::IS_PLUGIN_HOST_FAILED.toStringWithArgs("GetModuleObject failed!").c_str());
+        return false;
+    }
+    if (moduleObj->Contains(REQUEST_PERMISSIONS.c_str())) {
+        std::unique_ptr<PtJson> requestPermissionsObj;
+        if (moduleObj->GetArray(REQUEST_PERMISSIONS.c_str(), &requestPermissionsObj) != Result::SUCCESS) {
+            LOGW("Module node get %s array node failed!", REQUEST_PERMISSIONS.c_str());
+            return true;
+        }
+        if (IsPermissionSupportPlugin(requestPermissionsObj)) {
+            LOGW("requestPermission is PERMISSION_SUPPORT_PLUGIN");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HspPackager::IsExtensionAbility(std::unique_ptr<PtJson>& extensionAbilitiesObj)
+{
+    for (int32_t i = 0; i < extensionAbilitiesObj->GetSize(); i++) {
+        std::unique_ptr<PtJson> extensionAbilityObj = extensionAbilitiesObj->Get(i);
+
+        std::string type;
+        if (extensionAbilityObj->GetString(EXTENSION_ABILITY_TYPE_FIELD.c_str(), &type) != Result::SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::CHECK_APP_PLUGIN_FAILED.toStringWithArgs("ExtensionAbility failed").c_str());
+            return false;
+        }
+        if (type != EMBEDDED_UI_TYPE.c_str()) {
+            LOGE("%s", PackingToolErrMsg::CHECK_APP_PLUGIN_FAILED.toStringWithArgs(
+                ("Plugin package only allows EmbeddedUIExtensionAbility, but found: " + type).c_str()).c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HspPackager::IsPermissionSupportPlugin(std::unique_ptr<PtJson>& requestPermissionsObj)
+{
+    if (requestPermissionsObj == nullptr) {
+        LOGE("%s", PackingToolErrMsg::IS_PERMISSION_SUPPORT_PLUGIN_FAILED.toStringWithArgs(
+            "requestPermissionsObj nullptr!").c_str());
+        return false;
+    }
+    for (int32_t i = 0; i < requestPermissionsObj->GetSize(); i++) {
+        std::unique_ptr<PtJson> requestPermissionObj = requestPermissionsObj->Get(i);
+        if (requestPermissionObj->Contains(NAME.c_str())) {
+            std::string requestPermissionName;
+            if (requestPermissionObj->GetString(NAME.c_str(), &requestPermissionName) != Result::SUCCESS) {
+                LOGW("get %s failed!", NAME.c_str());
+                continue;
+            }
+            if (requestPermissionName == PERMISSION_SUPPORT_PLUGIN) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool HspPackager::CheckPkgContext()
+{
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_PKG_CONTEXT_PATH);
+    if (it != parameterMap_.end()) {
+        const std::string filePath = it->second;
+        if (!fs::is_regular_file(filePath) ||
+            fs::path(filePath).filename().string() != Constants::PKG_CONTEXT_JSON) {
+            LOGE("%s", PackingToolErrMsg::CHECK_PKG_CONTEXT_FAILED.toStringWithArgs(
+                "host must include pkgContextInfo.json").c_str());
+            return false;
+        }
+        return true;
+    }
+    LOGE("%s", PackingToolErrMsg::CHECK_PKG_CONTEXT_FAILED.toStringWithArgs(
+        "host must include pkgContextInfo.json").c_str());
+    return false;
+}
+
+bool HspPackager::CompressHspModePartSecond(const std::string &jsonPath)
+{
+    std::map<std::string, std::string> paramFileMap = {
+        {Constants::PARAM_LIB_PATH, Constants::LIB_PATH},
+        {Constants::PARAM_AN_PATH, Constants::AN_PATH},
+        {Constants::PARAM_AP_PATH, Constants::AP_PATH},
+        {Constants::PARAM_RPCID_PATH, Constants::RPCID_SC},
+        {Constants::PARAM_ASSETS_PATH, Constants::ASSETS_PATH},
+        {Constants::PARAM_PKG_SDK_INFO_PATH, Constants::PKG_SDK_INFO_JSON}
+    };
+    for (auto& item : paramFileMap) {
+        if (!AddCommonFileOrDirectoryToZip(item.first, item.second)) {
+            return false;
+        }
+    }
+    IncrementalPack::DeleteExistSrcTempDir();
+
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_FILE_PATH);
+    if (it != parameterMap_.end() && !it->second.empty()) {
+        fs::path filePath = fs::path(it->second);
+        std::string zipPath = Constants::NULL_DIR_NAME;
+        if (!fs::is_directory(filePath)) {
+            zipPath = (filePath).filename().string();
+        }
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, zipPath) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+
+    it = parameterMap_.find(Constants::PARAM_RESOURCES_PATH);
+    if (it != parameterMap_.end() && !it->second.empty() && JsonUtils::IsModuleJson(jsonPath)) {
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, Constants::RESOURCES_PATH) !=
+                ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+    return CompressHspModePartThird(jsonPath);
+}
+
+bool HspPackager::CompressHspModePartThird(const std::string &jsonPath)
+{
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_RES_PATH);
+    if (it != parameterMap_.end() && !it->second.empty() && !moduleName_.empty()) {
+        std::string resPath = Constants::ASSETS_PATH + Constants::LINUX_FILE_SEPARATOR + moduleName_ +
+            Constants::LINUX_FILE_SEPARATOR + Constants::RESOURCES_PATH;
+        std::string deviceType;
+        if (!deviceTypes_.empty()) {
+            deviceType = deviceTypes_.front();
+        }
+        if (Constants::DEVICE_TYPE_FITNESSWATCH == deviceType ||
+            Constants::DEVICE_TYPE_FITNESSWATCH_NEW == deviceType) {
+            resPath = Constants::RES_PATH;
+        }
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, resPath) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+    it = parameterMap_.find(Constants::PARAM_JS_PATH);
+    if (it != parameterMap_.end() && !it->second.empty() && JsonUtils::IsModuleJson(jsonPath)) {
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, Constants::JS_PATH) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+    it = parameterMap_.find(Constants::PARAM_ETS_PATH);
+    if (it != parameterMap_.end() && !it->second.empty() && JsonUtils::IsModuleJson(jsonPath)) {
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, Constants::ETS_PATH) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+    if (!CompressSkillsDirectory()) {
+        return false;
+    }
+    return CompressHspModePartFourth();
+}
+
+bool HspPackager::CompressHspModePartFourth()
+{
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_BIN_PATH);
+    if (it != parameterMap_.end() && !it->second.empty()) {
+        fs::path filePath = fs::path(it->second);
+        std::string zipPath = Constants::NULL_DIR_NAME;
+        if (!fs::is_directory(filePath)) {
+            zipPath = (filePath).filename().string();
+        }
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, zipPath) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+    if (!AddCommonFileOrDirectoryToZip(Constants::PARAM_PACK_INFO_PATH, Constants::PACK_INFO)) {
+        return false;
+    }
+    if (!formatedDirList_.empty()) {
+        for (const auto& dirPath : formatedDirList_) {
+            std::string baseDir = fs::path(dirPath).filename().string();
+            if (zipWrapper_.AddFileOrDirectoryToZip(dirPath, baseDir) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+        }
+    }
+    it = parameterMap_.find(Constants::PARAM_PKG_CONTEXT_PATH);
+    if (it != parameterMap_.end() && !it->second.empty()) {
+        ModuleJson moduleJson;
+        if (!moduleJson.ParseFromFile(it->second)) {
+            LOGE("%s", PackingToolErrMsg::PARSE_JSON_FAILED.toStringWithArgs(
+                "HspPackager::Process: moduleJson Read failed!").c_str());
+            return false;
+        }
+        std::string jsonString = moduleJson.ToString();
+        if (!jsonString.empty()) {
+            if (zipWrapper_.WriteStringToZip(jsonString, Constants::PKG_CONTEXT_JSON) != ZipErrCode::ZIP_ERR_SUCCESS) {
+                LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                    "HspPackager::Process: zipWrapper WriteStringToZip failed!").c_str());
+                return false;
+            }
+        } else {
+            LOGE("%s", PackingToolErrMsg::PARSE_JSON_FAILED.toStringWithArgs(
+                "HspPackager::Process: jsonFile error!").c_str());
+            return false;
+        }
+    }
+    return CompressHspModeMultiple();
+}
+
+bool HspPackager::CompressHspModeMultiple()
+{
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_MAPLE_SO_DIR);
+    if (it != parameterMap_.end() && formattedSoPathList_.size() == 0 && !it->second.empty()) {
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, Constants::SO_DIR) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+
+    for (auto jarPathItem : formattedJarPathList_) {
+        std::string zipPath = fs::path(jarPathItem).filename().string();
+        if (zipWrapper_.AddFileOrDirectoryToZip(jarPathItem, zipPath) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+
+    for (auto txtPathItem : formattedTxtPathList_) {
+        std::string zipPath = fs::path(txtPathItem).filename().string();
+        if (zipWrapper_.AddFileOrDirectoryToZip(txtPathItem, zipPath) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+
+    it = parameterMap_.find(Constants::PARAM_SHAREDLIBS_PATH);
+    if (it != parameterMap_.end() && !it->second.empty()) {
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second, Constants::SHARED_LIBS_DIR) !=
+            ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+    zipWrapper_.Close();
+    return true;
+}
+
+bool HspPackager::AddCommonFileOrDirectoryToZip(const std::string &paramPath, const std::string &targetPath)
+{
+    bool isCompress = (paramPath == Constants::PARAM_LIB_PATH && compressNativeLibs_);
+    ZipLevel zipLevel = ZipLevel::ZIP_LEVEL_DEFAULT;
+    if (isCompress) {
+        zipLevel = ZipLevel::ZIP_LEVEL_1;
+        auto it = parameterMap_.find(Constants::PARAM_COMPRESS_LEVEL);
+        if (it != parameterMap_.end() && !it->second.empty()) {
+            zipLevel = zipWrapper_.StringToZipLevel(it->second);
+        }
+    }
+
+    if (paramPath == Constants::PARAM_LIB_PATH &&
+        IncrementalPack::IsIncrementalMode(parameterMap_)) {
+        return IncrementalPack::IncrementalPackProcess(paramPath, zipWrapper_);
+    }
+
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(paramPath);
+    if (it != parameterMap_.end() && !it->second.empty()) {
+        if (zipWrapper_.AddFileOrDirectoryToZip(it->second,
+                                                targetPath,
+                                                isCompress,
+                                                zipLevel) != ZipErrCode::ZIP_ERR_SUCCESS) {
+            LOGE("%s", PackingToolErrMsg::COMPRESS_FILE_EXCEPTION.toStringWithArgs(
+                "HspPackager::Process: zipWrapper AddFileOrDirectoryToZip failed!").c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HspPackager::CheckLibPathRetainParam()
+{
+    auto it = parameterMap_.find(Constants::PARAM_LIB_PATH_RETAIN);
+    if (it != parameterMap_.end() && it->second != "false" && it->second != "true") {
+        LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+            "--lib-path-retain parameter value must be either 'true' or 'false'.").c_str());
+        return false;
+    }
+    return true;
+}
+
+bool HspPackager::CheckPkgSdkInfoParam()
+{
+    auto it = parameterMap_.find(Constants::PARAM_PKG_SDK_INFO_PATH);
+    if (it != parameterMap_.end() && !it->second.empty()) {
+        if (!IsFileMatch(it->second, Constants::PKG_SDK_INFO_JSON)) {
+            LOGE("%s", PackingToolErrMsg::HSP_MODE_ARGS_INVALID.toStringWithArgs(
+                "--pkg-sdk-info-path value is invalid.").c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HspPackager::CheckKernelPermissionCompression()
+{
+    // Only check for module.json files
+    std::map<std::string, std::string>::const_iterator it = parameterMap_.find(Constants::PARAM_JSON_PATH);
+    if (it == parameterMap_.end() || it->second.empty()) {
+        return true;  // No json path, skip validation
+    }
+
+    std::string jsonPath = it->second;
+    if (!IsPathValid(jsonPath, true, Constants::MODULE_JSON)) {
+        return true;  // Not a module.json file, skip validation
+    }
+
+    // Parse module.json to check for kernel permission
+    if (!moduleJson_.ParseFromFile(jsonPath)) {
+        LOGE("%s", PackingToolErrMsg::PARSE_JSON_FAILED.toStringWithArgs(
+            ("Failed to parse module.json: " + jsonPath).c_str()).c_str());
+        return false;
+    }
+
+    // Check if executableBinaries exists (has kernel permission)
+    bool hasKernelPermission = moduleJson_.HasExecutableBinaries();
+    if (!hasKernelPermission) {
+        return true;  // No kernel permission, no need to check
+    }
+
+    // Get compressNativeLibs and extractNativeLibs values
+    bool compressNativeLibs = DEFAULT_COMPRESS_NATIVE_LIBS;
+    bool extractNativeLibs = DEFAULT_EXTRACT_NATIVE_LIBS;
+
+    if (!moduleJson_.GetStageCompressNativeLibs(compressNativeLibs)) {
+        LOGW("Failed to get compressNativeLibs, using default value: false");
+        compressNativeLibs = DEFAULT_COMPRESS_NATIVE_LIBS;
+    }
+
+    if (!moduleJson_.GetStageExtractNativeLibs(extractNativeLibs)) {
+        LOGW("Failed to get extractNativeLibs, using default value: true");
+        extractNativeLibs = DEFAULT_EXTRACT_NATIVE_LIBS;
+    }
+
+    // Validate: if has kernel permission, at least one of compress/extract must be true
+    if (!compressNativeLibs && !extractNativeLibs) {
+        LOGE("%s", PackingToolErrMsg::CHECK_KERNEL_PERMISSION_COMPRESSION_FAILED.toStringWithArgs(
+            "When executableBinaryPaths is configured in module.json, "
+            "at least one of compressNativeLibs or extractNativeLibs must be true.").c_str());
+        return false;
+    }
+
+    return true;
+}
+
+bool HspPackager::CompressSkillsDirectory()
+{
+    std::list<std::map<std::string, std::string>> skillProfiles;
+    if (!moduleJson_.GetSkillProfiles(skillProfiles)) {
+        LOGE("%s", PackingToolErrMsg::PARSE_JSON_FAILED.toStringWithArgs(
+            "Failed to get skillProfiles from module.json.").c_str());
+        return false;
+    }
+    std::string bundleType;
+    moduleJson_.GetStageBundleType(bundleType);
+    return SkillPackHelper::CompressSkillFiles(skillProfiles, parameterMap_, bundleType, jsonPath_,
+        [this](const std::string &sourcePath, const std::string &zipPath) {
+            return zipWrapper_.AddFileOrDirectoryToZip(sourcePath, zipPath) == ZipErrCode::ZIP_ERR_SUCCESS;
+        });
+}
+} // namespace AppPackingTool
+} // namespace OHOS

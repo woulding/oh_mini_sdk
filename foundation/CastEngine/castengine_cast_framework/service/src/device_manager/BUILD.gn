@@ -1,0 +1,67 @@
+# Copyright (C) 2023-2023 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+import("//foundation/CastEngine/castengine_cast_framework/cast_engine.gni")
+
+config("cast_discovery_config") {
+  include_dirs = [ "include" ]
+}
+
+ohos_static_library("cast_discovery") {
+  sources = [
+    "src/cast_device_data_manager.cpp",
+    "src/connection_manager.cpp",
+    "src/discovery_manager.cpp",
+  ]
+
+  configs = [
+    ":cast_discovery_config",
+    "${cast_engine_root}:cast_engine_default_config",
+  ]
+
+  include_dirs = [
+    "${cast_engine_interfaces}/inner_api/include",
+    "${cast_engine_service}/src/session/src/utils/include",
+  ]
+
+  public_configs = [ ":cast_discovery_config" ]
+
+  deps = [
+    "${cast_engine_common}:cast_engine_common_sources",
+    "${cast_engine_service}/src/session/src/utils:cast_session_utils",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:extension_manager",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "device_manager:devicemanagersdk",
+    "dsoftbus:softbus_client",
+    "eventhandler:libeventhandler",
+    "graphic_surface:surface",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "init:libbegetutil",
+    "json:nlohmann_json_static",
+    "openssl:libcrypto_shared",
+    "power_manager:powermgr_client",
+    "screenlock_mgr:screenlock_client",
+    "sharing_framework:sharingwfd_client",
+    "wifi:wifi_sdk",
+    "image_framework:image_native",
+  ]
+
+  subsystem_name = "castplus"
+  part_name = "cast_engine"
+}

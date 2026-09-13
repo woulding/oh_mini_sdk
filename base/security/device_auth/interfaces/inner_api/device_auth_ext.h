@@ -1,0 +1,247 @@
+/*
+ * Copyright (C) 2023 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef DEVICE_AUTH_EXT
+#define DEVICE_AUTH_EXT
+
+#include "device_auth.h"
+#include "cJSON.h"
+
+/** The Type of account auth plugin. */
+#define EXT_PLUGIN_ACCT_AUTH 1000
+/** The Type of account lifecycle plugin. */
+#define EXT_PLUGIN_ACCT_LIFECYCLE 1001
+/** The type of trust relation database plugin. */
+#define EXT_PLUGIN_TRUST_RELATION_DATABASE 1002
+
+/**
+ * @brief This structure describes the ext plugin context.
+ */
+typedef struct ExtPluginCtx {
+    /** The context of ext, the user can inject the method into the plugin. */
+    void *instance;
+} ExtPluginCtx;
+
+/**
+ * @brief This structure describes the base ext plugin.
+ */
+typedef struct ExtPlugin {
+    /** The tyep of plugin, the caller can convert the plugin to object based on the type. */
+    int32_t pluginType;
+    /** The init function. */
+    int32_t (*init)(struct ExtPlugin *extPlugin, const cJSON *params, const struct ExtPluginCtx *context);
+    /** The destroy function. */
+    void (*destroy)(struct ExtPlugin *extPlugin);
+} ExtPlugin;
+
+/**
+ * @brief This structure describes the ext list.
+ */
+typedef struct ExtPluginNode {
+    /** The element of list, denote the plugin. */
+    ExtPlugin *plugin;
+    /** The next node of list. */
+    struct ExtPluginNode *next;
+} ExtPluginNode, *ExtPluginList;
+
+/**
+ * @brief This structure describes the ext plugin.
+ */
+typedef struct ExtPart {
+    /** The instance of plugin. */
+    void *instance;
+} ExtPart;
+
+/**
+ * @brief This structure describes task function.
+ */
+typedef struct ExtWorkerTask {
+    /** The function of task, this can execute time-consuming function. */
+    void (*execute)(struct ExtWorkerTask *task);
+
+    /** The deinit of task, this can destroy the task. */
+    void (*destroy)(struct ExtWorkerTask *task);
+} ExtWorkerTask;
+
+/**
+ * @brief This structure describes account auth plugin.
+ */
+typedef struct {
+    /** The base object contains init func and destroy func. */
+    ExtPlugin base;
+    /** Call it when account cred needs to update, query, delete or add. */
+    int32_t (*excuteCredMgrCmd)(int32_t osAccount, int32_t cmdId, const cJSON *in, cJSON *out);
+    /** This function is used to initiate authentication between devices.. */
+    int32_t (*createSession)(int32_t *sessionId, const cJSON *in, cJSON *out);
+    /** This function is used to process authentication dat. */
+    int32_t (*processSession)(int32_t *sessionId, const cJSON *in, cJSON *out, int32_t *status);
+    /** This function is used to destroy authentication dat. */
+    int32_t (*destroySession)(int32_t sessionId);
+} AccountAuthExtPlug;
+
+/**
+ * @brief Broadcast type for account switch event callback.
+ */
+typedef enum {
+    ACCOUNT_SWITCH_BROADCAST_DEVICE_INACTIVE = 0,
+    ACCOUNT_SWITCH_BROADCAST_DEVICE_ACTIVE,
+    ACCOUNT_SWITCH_BROADCAST_GROUP_INACTIVE,
+    ACCOUNT_SWITCH_BROADCAST_GROUP_ACTIVE,
+    ACCOUNT_SWITCH_BROADCAST_CREDENTIAL_INACTIVE,
+    ACCOUNT_SWITCH_BROADCAST_CREDENTIAL_ACTIVE
+} AccountSwitchBroadcastType;
+
+/** Callback for account switch group related broadcast. */
+typedef void (*AccountSwitchGroupCallback)(AccountSwitchBroadcastType type, int32_t osAccountId, const char *userId,
+    const char *groupId, const char *udid);
+
+/** Callback for account switch credential related broadcast. */
+typedef void (*AccountSwitchCredCallback)(AccountSwitchBroadcastType type, int32_t osAccountId, const char *userId,
+    const char *credId);
+
+/**
+ * @brief This structure describes trust database plugin.
+ */
+typedef struct {
+    /** The base object contains init func and destroy func. */
+    ExtPlugin base;
+    /** Insert group related trust relation. */
+    int32_t (*insertGroupTrustRelation)(int32_t osAccountId, const char *userId, const char *groupId,
+        const char *udid);
+    /** Delete group related trust relation. */
+    int32_t (*deleteGroupTrustRelation)(int32_t osAccountId, const char *userId, const char *groupId,
+        const char *udid);
+    /** Check whether the group related trust relation is referenced by the corresponding user. */
+    int32_t (*isGroupRelationReferencedByUser)(int32_t osAccountId, const char *userId, const char *groupId,
+        const char *udid, bool *isReferenced);
+    /** Check whether the group related trust relation is referenced. */
+    int32_t (*isGroupRelationReferenced)(int32_t osAccountId, const char *groupId, const char *udid,
+        bool *isReferenced);
+    /** Insert credential trust relation. */
+    int32_t (*insertCredTrustRelation)(int32_t osAccountId, const char *userId, const char *credId);
+    /** Delete credential trust relation. */
+    int32_t (*deleteCredTrustRelation)(int32_t osAccountId, const char *userId, const char *credId);
+    /** Check whether the credential trust relation is referenced by the corresponding user. */
+    int32_t (*isCredRelationReferencedByUser)(int32_t osAccountId, const char *userId, const char *credId,
+        bool *isReferenced);
+    /** Check whether the credential trust relation is referenced. */
+    int32_t (*isCredRelationReferenced)(int32_t osAccountId, const char *credId, bool *isReferenced);
+    /** Check whether the device trust relation is referenced by the corresponding user. */
+    int32_t (*isDeviceRelationReferencedByUser)(int32_t osAccountId, const char *userId, const char *udid,
+        bool *isReferenced);
+    /** Handle account switch event. */
+    int32_t (*onAccountSwitched)(int32_t osAccountId, const char *fromUserId, const char *toUserId,
+        AccountSwitchGroupCallback groupCallback, AccountSwitchCredCallback credCallback);
+} TrustDatabaseExtPlug;
+
+/**
+ * @brief This structure describes the account auth plugin context.
+ */
+typedef struct {
+    /** The base context. */
+    ExtPluginCtx base;
+    /** The function will return storage path. */
+    const char *(*getStoragePath)(void);
+} AccountAuthExtPlugCtx;
+
+/**
+ * @brief This structure describes the account lifecycle plugin.
+ */
+typedef struct {
+    /** The base account lifecycle plugin. */
+    ExtPlugin base;
+} AccountLifecyleExtPlug;
+
+/**
+ * @brief This structure describes the account lifecycle plugin context.
+ */
+typedef struct {
+    /** The base account lifecycle context. */
+    ExtPluginCtx base;
+    /** This interface is used to create a trusted group. */
+    int32_t (*createGroup)(int32_t osAccountId, int64_t requestId, const char *appId, const char *createParams);
+    /** This interface is used to delete a trusted group. */
+    int32_t (*deleteGroup)(int32_t osAccountId, int64_t requestId, const char *appId, const char *disbandParams);
+    /** This interface is used to obtain the group information of groups that meet the query parameters. */
+    int32_t (*getGroupInfo)(int32_t osAccountId, const char *appId, const char *queryParams,
+        char **returnGroupVec, uint32_t *groupNum);
+    /** This interface is used to obtain the registration information of the local device. */
+    int32_t (*getRegisterInfo)(const char *reqJsonStr, char **returnRegisterInfo);
+    /** This interface is used to register business callbacks. */
+    int32_t (*regCallback)(const char *appId, const DeviceAuthCallback *callback);
+    /** This interface is used to unregister business callbacks. */
+    int32_t (*unRegCallback)(const char *appId);
+    /** This interface is used to execute business function. */
+    int32_t (*executeWorkerTask)(struct ExtWorkerTask *task);
+    /** This interface is used to notify the account async task is started. */
+    void (*notifyAsyncTaskStart)(void);
+    /** This interface is used to notify the account async task is stopped. */
+    void (*notifyAsyncTaskStop)(void);
+    /** This interface is used to import credential data. */
+    int32_t (*addCredential)(int32_t osAccountId, const char *requestParams, char **returnData);
+    /** This interface is used to export credential data. */
+    int32_t (*exportCredential)(int32_t osAccountId, const char *credId, char **returnData);
+    /** This interface is used to delete credential data. */
+    int32_t (*deleteCredential)(int32_t osAccountId, const char *credId);
+    /** This interface is used to update cred info. */
+    int32_t (*updateCredInfo)(int32_t osAccountId, const char *credId, const char *requestParams);
+    /** This interface is used to query credential data by cred id. */
+    int32_t (*queryCredInfoByCredId)(int32_t osAccountId, int32_t uid, const char *credId, char **returnData);
+    /** This interface is used to query credential data by cred param. */
+    int32_t (*queryCredentialByParams)(int32_t osAccountId, const char *requestParams, char **returnData);
+    /** This interface is used to destroy the information returned by the internal allocated memory. */
+    void (*destroyInfo)(char **returnInfo);
+} AccountLifecyleExtPlugCtx;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief Initialize ext part.
+ *
+ * This API is used to initialize ext part.
+ *
+ * @param params The plugin needs params.
+ * @param extPart The interface of ext part.
+ * @return When the service initialization is successful, it returns HC_SUCCESS.
+ * Otherwise, it returns other values.
+ */
+int32_t InitExtPart(const cJSON *params, ExtPart *extPart);
+
+/**
+ * @brief Get plugin list.
+ *
+ * This API is used to get all plugins.
+ *
+ * @param extPart The interface of ext part.
+ * @return The list of plugin.
+ */
+ExtPluginList GetExtPlugins(ExtPart *extPart);
+
+/**
+ * @brief Destroy ext part.
+ *
+ * This API is used to destroy ext part.
+ *
+ * @param extPart The interface of ext part.
+ */
+void DestroyExtPart(ExtPart *extPart);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

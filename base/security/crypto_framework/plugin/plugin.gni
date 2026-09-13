@@ -1,0 +1,130 @@
+# Copyright (C) 2022-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+base_path = "//base/security/crypto_framework"
+
+plugin_path = "//base/security/crypto_framework/plugin"
+
+plugin_inc_path = [
+  "${base_path}/interfaces/inner_api/common",
+  "${plugin_path}/openssl_plugin/common/inc",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/inc",
+  "${plugin_path}/openssl_plugin/key/sym_key_generator/inc",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/inc",
+  "${plugin_path}/openssl_plugin/crypto_operation/hmac/inc",
+  "${plugin_path}/openssl_plugin/crypto_operation/kdf/inc",
+  "${plugin_path}/openssl_plugin/crypto_operation/key_agreement/inc",
+  "${plugin_path}/openssl_plugin/crypto_operation/kem/inc",
+  "${plugin_path}/openssl_plugin/crypto_operation/signature/inc",
+  "${plugin_path}/openssl_plugin/crypto_operation/md/inc",
+  "${plugin_path}/openssl_plugin/crypto_operation/rand/inc",
+  "//base/security/crypto_framework/frameworks/spi",
+  "//base/security/crypto_framework/common/inc",
+]
+
+plugin_signature_files = [
+  "${plugin_path}/openssl_plugin/crypto_operation/signature/src/dsa_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/signature/src/ecdsa_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/signature/src/signature_rsa_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/signature/src/sm2_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/signature/src/ed25519_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/signature/src/ml_dsa_openssl.c",
+]
+
+plugin_common_files = [
+  "${plugin_path}/openssl_plugin/common/src/openssl_adapter.c",
+  "${plugin_path}/openssl_plugin/common/src/openssl_common.c",
+  "${plugin_path}/openssl_plugin/common/src/dh_openssl_common.c",
+  "${plugin_path}/openssl_plugin/common/src/ecc_openssl_common.c",
+  "${plugin_path}/openssl_plugin/common/src/rsa_openssl_common.c",
+  "${plugin_path}/openssl_plugin/common/src/plugin_operation_err.c",
+]
+
+plugin_asy_key_generator_files = [
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/dsa_asy_key_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/ecc_asy_key_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/ecc_common_asy_key_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/dh_asy_key_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/dh_common_param_spec_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/ecc_common_param_spec_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/rsa_asy_key_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/sm2_asy_key_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/alg_25519_asy_key_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/ml_kem_asy_key_generator_openssl.c",
+  "${plugin_path}/openssl_plugin/key/asy_key_generator/src/ml_dsa_asy_key_generator_openssl.c",
+]
+
+plugin_key_agreement_files = [
+  "${plugin_path}/openssl_plugin/crypto_operation/key_agreement/src/dh_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/key_agreement/src/ecdh_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/key_agreement/src/x25519_openssl.c",
+]
+
+plugin_kem_files = [
+  "${plugin_path}/openssl_plugin/crypto_operation/kem/src/kem_openssl.c",
+]
+
+plugin_sym_key_files = [
+  "${plugin_path}/openssl_plugin/key/sym_key_generator/src/sym_key_openssl.c",
+]
+
+plugin_cipher_files = [
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_rsa_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_des_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_aes_common.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_aes_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_sm4_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_sm2_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_sm2_crypto_util_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_sm2_ecdsa_signature_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_chacha20_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/cipher/src/cipher_openssl.c"
+]
+
+plugin_hmac_files =
+    [ "${plugin_path}/openssl_plugin/crypto_operation/hmac/src/mac_openssl.c" ]
+
+plugin_rand_files = [
+  "${plugin_path}/openssl_plugin/crypto_operation/rand/src/rand_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/rand/src/rand_hks_provider.c",
+]
+
+plugin_md_files =
+    [ "${plugin_path}/openssl_plugin/crypto_operation/md/src/md_openssl.c" ]
+
+plugin_kdf_files = [
+  "${plugin_path}/openssl_plugin/crypto_operation/kdf/src/pbkdf2_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/kdf/src/hkdf_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/kdf/src/scrypt_openssl.c",
+  "${plugin_path}/openssl_plugin/crypto_operation/kdf/src/x963kdf_openssl.c",
+]
+
+plugin_files = plugin_asy_key_generator_files + plugin_key_agreement_files +
+               plugin_kem_files +
+               plugin_sym_key_files + plugin_cipher_files + plugin_hmac_files +
+               plugin_rand_files + plugin_md_files + plugin_signature_files +
+               plugin_common_files + plugin_kdf_files
+
+mbedtls_plugin_inc_path = [
+  "${base_path}/interfaces/inner_api/common",
+  "${plugin_path}/mbedtls_plugin/common",
+  "${plugin_path}/mbedtls_plugin/md/inc",
+  "${plugin_path}/mbedtls_plugin/rand/inc",
+  "//base/security/crypto_framework/frameworks/spi",
+  "//base/security/crypto_framework/common/inc",
+]
+
+mbedtls_plugin_files = [
+  "${plugin_path}/mbedtls_plugin/md/src/mbedtls_md.c",
+  "${plugin_path}/mbedtls_plugin/rand/src/mbedtls_rand.c",
+]

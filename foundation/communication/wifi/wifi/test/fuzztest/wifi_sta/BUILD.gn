@@ -1,0 +1,52 @@
+# Copyright (C) 2022 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+group("fuzztest") {
+  testonly = true
+  deps = []
+
+  deps += [
+    "../frameworks/native/c_adapter/wificdevice_fuzzer:WifiCDeviceFuzzTest",
+    "../frameworks/native/c_adapter/wifichid2d_fuzzer:WifiCHid2dFuzzTest",
+    "../frameworks/native/c_adapter/wifichotspot_fuzzer:WifiCHotSpotFuzzTest",
+    "../frameworks/native/c_adapter/wificp2p_fuzzer:WifiCP2PFuzzTest",
+    "../frameworks/native/c_adapter/wifidevicecbkstub_fuzzer:WifiDeviceCbkStubFuzzTest",
+    "../frameworks/native/c_adapter/wifihotspotcbkstub_fuzzer:WifiHotSpotCbkStubFuzzTest",
+    "../frameworks/native/c_adapter/wifip2pcbkstub_fuzzer:WifiP2pCbkStubFuzzTest",
+    "../frameworks/native/c_adapter/wifiscancbkstub_fuzzer:WifiScanCbkStubFuzzTest",
+    "../frameworks/native/src/wifip2pimpl_fuzzer:WifiP2pImplFuzzTest",
+    "../wifi_p2p/wifip2p_fuzzer:WifiP2pFuzzTest",
+    "../wifi_p2p/wifip2phid2d_fuzzer:WifiP2pHid2dFuzzTest",
+    "adddeviceconfig_fuzzer:AddDeviceConfigFuzzTest",
+    "connecttodevice_fuzzer:ConnectToDeviceFuzzTest",
+    "disablewifi_fuzzer:DisableWifiFuzzTest",
+    "disconnect_fuzzer:DisconnectFuzzTest",
+    "enablep2p_fuzzer:EnableP2pFuzzTest",
+    "enablewifi_fuzzer:EnableWifiFuzzTest",
+    "isconnected_fuzzer:IsConnectedFuzzTest",
+    "reassociate_fuzzer:ReAssociateFuzzTest",
+    "reconnect_fuzzer:ReConnectFuzzTest",
+    "wifiap_fuzzer:WifiApFuzzTest",
+    "wifidevicestub_fuzzer:WifiDeviceStubFuzzTest",
+    "wifihotspotimpl_fuzzer:WifiHotspotImplFuzzTest",
+    "wifihotspotstub_fuzzer:WifiHotSpotStubFuzzTest",
+    "wifip2pserver_fuzzer:WifiP2pServerFuzzTest",
+    "wifip2pstub_fuzzer:WifiP2pStubFuzzTest",
+    "wifiscansa_fuzzer:WifiScansaFuzzTest",
+    "wifiscanserver_fuzzer:WifiScanServerFuzzTest",
+    "wifiscanstub_fuzzer:WifiScanStubFuzzTest",
+    "wifistaserver_fuzzer:WifiStaServerFuzzTest",
+    "wifitoolkit_fuzzer:WifiToolkitFuzzTest",
+  ]
+}

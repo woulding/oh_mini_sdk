@@ -1,0 +1,25 @@
+{
+    "forms": [
+        {
+            "colorMode": "auto",
+            "defaultDimension": "2*2",
+            "description": "$string:16777219",
+            "formConfigAbility": "ability://xxxxx",
+            "formVisibleNotify": false,
+            "isDefault": true,
+            "src": "./ets/pages/index/index.ets",
+            "name": "Form_Js",
+            "scheduledUpdateTime": "10:30",
+            "supportDimensions": [
+                "2*2"
+            ],
+            "uiSyntax": "arkts",
+            "updateDuration": 1,
+            "updateEnabled": true,
+            "window": {
+                "autoDesignWidth": true,
+                "designWidth": 720
+            }
+        }
+    ]
+}

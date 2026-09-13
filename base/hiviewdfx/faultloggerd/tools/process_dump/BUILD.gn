@@ -1,0 +1,318 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/faultloggerd/faultloggerd.gni")
+
+processdump_sources = [
+  "dfx_buffer_writer.cpp",
+  "dfx_process.cpp",
+  "dfx_thread.cpp",
+  "dump_info_header.cpp",
+  "dump_info_json_formatter.cpp",
+  "extra_crash_info.cpp",
+  "fault_stack.cpp",
+  "key_thread_dump_info.cpp",
+  "maps.cpp",
+  "memory_near_register.cpp",
+  "open_files.cpp",
+  "other_thread_dump_info.cpp",
+  "process_dump_config.cpp",
+  "process_dumper.cpp",
+  "registers.cpp",
+  "lite_process_dumper.cpp",
+  "minidump_dumper.cpp",
+  "submitter_stack.cpp",
+  "utils/dump_utils.cpp",
+  "utils/thread_pool.cpp",
+]
+
+if (defined(ohos_lite)) {
+  config("processdump_config") {
+    visibility = [ "*:*" ]
+    cflags = []
+
+    defines = [
+      "HAVE_CONFIG_H",
+      "HAVE_ELF_H",
+      "HAVE_LINK_H",
+      "HISYSEVENT_DISABLE",
+      "is_ohos_lite",
+    ]
+
+    include_dirs = [
+      ".",
+      "utils",
+      "$c_utils_include_path",
+      "$faultloggerd_common_path/dfxlog",
+      "$faultloggerd_common_path/cutil",
+      "$faultloggerd_common_path/dfxutil",
+      "$faultloggerd_common_path/cppcrash_formatter",
+      "$faultloggerd_interfaces_path/common",
+      "$faultloggerd_interfaces_path/innerkits/async_stack/include",
+      "$faultloggerd_interfaces_path/innerkits/backtrace/include",
+      "$faultloggerd_interfaces_path/innerkits/crash_exception",
+      "$faultloggerd_interfaces_path/innerkits/faultloggerd_client/include",
+      "$faultloggerd_interfaces_path/innerkits/procinfo/include",
+      "$faultloggerd_interfaces_path/innerkits/unwinder/include",
+      "$faultloggerd_frameworks_path/limited/include",
+      "$hilog_lite_include_path",
+    ]
+  }
+
+  source_set("process_info_src") {
+    sources = processdump_sources
+    public_configs = [ ":processdump_config" ]
+
+    deps = [
+      "$faultloggerd_common_path/cutil:dfx_cutil",
+      "$faultloggerd_common_path/dfxlog:dfx_hilog",
+      "$faultloggerd_common_path/cppcrash_formatter:cppcrash_formatter_src",
+      "$faultloggerd_common_path/dfxutil:dfx_util",
+      "$faultloggerd_common_path/trace:dfx_trace",
+      "$faultloggerd_interfaces_path/innerkits/backtrace:libbacktrace_local",
+      "$faultloggerd_interfaces_path/innerkits/crash_exception",
+      "$faultloggerd_interfaces_path/innerkits/faultloggerd_client:libfaultloggerd",
+      "$faultloggerd_interfaces_path/innerkits/procinfo:libdfx_procinfo",
+      "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder",
+    ]
+    external_deps = [ "hilog_lite:hilog_shared" ]
+  }
+
+  executable("processdump") {
+    sources = processdump_sources
+    sources += [
+      "main.cpp",
+      "reporter.cpp",
+    ]
+    public_configs = [ ":processdump_config" ]
+
+    deps = [
+      "$faultloggerd_common_path/cutil:dfx_cutil",
+      "$faultloggerd_common_path/dfxlog:dfx_hilog",
+      "$faultloggerd_common_path/cppcrash_formatter:cppcrash_formatter_src",
+      "$faultloggerd_common_path/dfxutil:dfx_util",
+      "$faultloggerd_common_path/trace:dfx_trace",
+      "$faultloggerd_interfaces_path/innerkits/backtrace:libbacktrace_local",
+      "$faultloggerd_interfaces_path/innerkits/crash_exception",
+      "$faultloggerd_interfaces_path/innerkits/faultloggerd_client:libfaultloggerd",
+      "$faultloggerd_interfaces_path/innerkits/procinfo:libdfx_procinfo",
+      "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder",
+    ]
+
+    external_deps = [ "hilog_lite:hilog_shared" ]
+    if (build_selinux) {
+      external_deps += [ "selinux:libselinux" ]
+      cflags_cc += [ "-DHAS_LIB_SELINUX" ]
+    }
+  }
+} else {
+  config("processdump_config") {
+    visibility = [ ":*" ]
+
+    include_dirs = [
+      ".",
+      "coredump",
+      "utils",
+      "$faultloggerd_interfaces_path/common",
+      "$faultloggerd_common_path/cutil",
+      "$faultloggerd_common_path/cppcrash_formatter",
+      "$faultloggerd_interfaces_path/innerkits/backtrace/include",
+      "$faultloggerd_interfaces_path/innerkits/crash_exception",
+      "$faultloggerd_interfaces_path/innerkits/procinfo/include",
+      "$faultloggerd_interfaces_path/innerkits/signal_handler",
+      "$faultloggerd_interfaces_path/innerkits/unwinder/include",
+      "$faultloggerd_frameworks_path/limited/include",
+      "$faultloggerd_path/common",
+    ]
+
+    cflags_cc = [ "-DRUSTC_DEMANGLE" ]
+
+    if (processdump_minidebuginfo_enable) {
+      defines = [ "PROCESSDUMP_MINIDEBUGINFO" ]
+    }
+
+    if (processdump_parse_lock_owner_enable) {
+      defines += [ "PARSE_LOCK_OWNER" ]
+    }
+
+    if (use_hwasan) {
+      defines += [ "ENABLE_HWASAN" ]
+    }
+  }
+
+  if (target_cpu == "arm64") {
+    coredump_sources = [
+      "coredump/coredump_buffer_writer.cpp",
+      "coredump/coredump_config_manager.cpp",
+      "coredump/coredump_controller.cpp",
+      "coredump/coredump_dump_generator.cpp",
+      "coredump/coredump_file_manager.cpp",
+      "coredump/coredump_generator_factory.cpp",
+      "coredump/coredump_header_writer.cpp",
+      "coredump/coredump_load_segment_writer.cpp",
+      "coredump/coredump_manager.cpp",
+      "coredump/coredump_mapping_manager.cpp",
+      "coredump/coredump_note_segment_writer.cpp",
+    ]
+  }
+
+  ohos_source_set("process_info_src") {
+    sources = processdump_sources
+    branch_protector_ret = "pac_ret"
+    if (target_cpu == "arm64") {
+      sources += coredump_sources
+    }
+    configs = [
+      ":processdump_config",
+      "$faultloggerd_common_path/build:coverage_flags",
+    ]
+
+    deps = [
+      "$faultloggerd_common_path/dfxlog:dfx_hilog",
+      "$faultloggerd_common_path/cppcrash_formatter:cppcrash_formatter_src",
+      "$faultloggerd_common_path/dfxutil:dfx_util",
+      "$faultloggerd_common_path/trace:dfx_trace",
+      "$faultloggerd_interfaces_path/innerkits/async_stack:libasync_stack",
+      "$faultloggerd_interfaces_path/innerkits/backtrace:libbacktrace_local",
+      "$faultloggerd_interfaces_path/innerkits/crash_exception",
+      "$faultloggerd_interfaces_path/innerkits/faultloggerd_client:libfaultloggerd",
+      "$faultloggerd_interfaces_path/innerkits/procinfo:libdfx_procinfo",
+      "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder",
+      "$faultloggerd_frameworks_path/limited:dfx_limited_src",
+      "minidump_parser:minidump_parser",
+    ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "bundle_framework:appexecfwk_base",
+      "bundle_framework:appexecfwk_core",
+      "cJSON:cjson",
+      "c_utils:utils",
+      "hilog:libhilog",
+      "hisysevent:libhisysevent",
+      "hitrace:libhitracechain",
+      "hitrace:hitrace_meter",
+      "init:libbegetutil",
+      "jsoncpp:jsoncpp",
+      "ipc:ipc_core",
+      "samgr:samgr_proxy",
+    ]
+
+    part_name = "faultloggerd"
+    subsystem_name = "hiviewdfx"
+  }
+
+  ohos_executable("processdump") {
+    install_enable = true
+    branch_protector_ret = "pac_ret"
+    configs = [
+      ":processdump_config",
+      "$faultloggerd_path/common/build:coverage_flags",
+    ]
+    include_dirs = [ "lperf" ]
+    sources = processdump_sources
+    sources += [
+      "lite_perf_dumper.cpp",
+      "lperf/lperf_event_record.cpp",
+      "lperf/lperf_events.cpp",
+      "lperf/lperf_record.cpp",
+    ]
+    if (target_cpu == "arm64") {
+      sources += coredump_sources
+    }
+    sources += [
+      "main.cpp",
+      "reporter.cpp",
+    ]
+
+    cflags = [
+      "-DDEBUG_CRASH_LOCAL_HANDLER",
+      "-Os",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-fno-asynchronous-unwind-tables",
+      "-fno-unwind-tables",
+      "-fno-omit-frame-pointer",
+      "-fno-rtti",
+      "-fno-exceptions",
+    ]
+    cflags_cc = [
+      "-DDEBUG_CRASH_LOCAL_HANDLER",
+      "-Os",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-fno-asynchronous-unwind-tables",
+      "-fno-unwind-tables",
+      "-fno-omit-frame-pointer",
+      "-fno-rtti",
+      "-fno-exceptions",
+    ]
+
+    defines = [ "DFX_ENABLE_TRACE" ]
+    if (is_asan) {
+      defines += [ "DFX_ALLOCATE_ASAN" ]
+    }
+    if (faultloggerd_liteperf_enable) {
+      defines += [ "DFX_ENABLE_LPERF" ]
+    }
+    if (use_clang_coverage) {
+      defines += [ "CLANG_COVERAGE" ]
+    }
+
+    deps = [
+      "$faultloggerd_common_path/cutil:dfx_cutil",
+      "$faultloggerd_common_path/dfxlog:dfx_hilog",
+      "$faultloggerd_common_path/dfxutil:dfx_util",
+      "$faultloggerd_common_path/trace:dfx_trace",
+      "$faultloggerd_common_path/cppcrash_formatter:cppcrash_formatter_src",
+      "$faultloggerd_frameworks_path/localhandler:dfx_local_handler_src",
+      "$faultloggerd_interfaces_path/innerkits/async_stack:libasync_stack",
+      "$faultloggerd_interfaces_path/innerkits/backtrace:libbacktrace_local",
+      "$faultloggerd_interfaces_path/innerkits/crash_exception",
+      "$faultloggerd_interfaces_path/innerkits/faultloggerd_client:libfaultloggerd",
+      "$faultloggerd_interfaces_path/innerkits/procinfo:libdfx_procinfo",
+      "$faultloggerd_interfaces_path/innerkits/stack_printer:libstack_printer",
+      "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder",
+      "minidump_parser:minidump_parser",
+      "$faultloggerd_frameworks_path/limited:dfx_limited_src",
+    ]
+
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "bundle_framework:appexecfwk_base",
+      "bundle_framework:appexecfwk_core",
+      "cJSON:cjson",
+      "c_utils:utils",
+      "hilog:libhilog",
+      "hisysevent:libhisysevent",
+      "hitrace:hitrace_meter",
+      "hitrace:libhitracechain",
+      "init:libbegetutil",
+      "jsoncpp:jsoncpp",
+      "ipc:ipc_core",
+      "samgr:samgr_proxy",
+    ]
+    if (build_selinux) {
+      external_deps += [ "selinux:libselinux" ]
+      cflags_cc += [ "-DHAS_LIB_SELINUX" ]
+    }
+    version_script = "processdump.map"
+    install_images = [
+      "system",
+      "updater",
+    ]
+
+    part_name = "faultloggerd"
+    subsystem_name = "hiviewdfx"
+  }
+}

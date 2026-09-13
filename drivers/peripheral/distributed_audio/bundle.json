@@ -1,0 +1,48 @@
+{
+    "name": "@ohos/drivers_peripheral_distributed_audio",
+    "description": "distributed audo device driver",
+    "version": "4.0",
+    "license": "Apache License 2.0",
+    "segment": {
+      "destPath":"drivers/peripheral/distributed_audio"
+    },
+    "component": {
+      "name": "drivers_peripheral_distributed_audio",
+      "subsystem": "hdf",
+      "features": [
+        "drivers_peripheral_distributed_audio_extension"
+      ],
+      "adapted_system_type": [
+        "standard"
+      ],
+      "rom": "1000KB",
+      "ram": "8000KB",
+      "deps": {
+        "components": [
+          "ipc",
+          "init",
+          "hdf_core",
+          "hilog",
+          "hicollie",
+          "drivers_interface_distributed_audio",
+          "c_utils",
+          "cJSON",
+          "samgr"
+        ]
+      },
+      "build": {
+        "sub_component": [
+          "//drivers/peripheral/distributed_audio:distributed_audio_entry",
+          "//drivers/peripheral/distributed_audio/hdi_service/common:libdaudio_hdf_utils"
+        ],
+        "test": [
+          "//drivers/peripheral/distributed_audio/hdi_service/audio/v1_0/test/unittest:hdi_service_audio_test",
+          "//drivers/peripheral/distributed_audio/hdi_service/audio_ext/v1_0/test/unittest:hdi_service_audio_ext_test",
+          "//drivers/peripheral/distributed_audio/hdi_service/audio/v1_0/test/fuzztest:fuzztest"
+        ],
+        "inner_kits": [
+          
+        ]
+      }
+    }
+}

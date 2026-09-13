@@ -1,0 +1,101 @@
+# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("../../core/transmission/trans_channel/trans_channel.gni")
+import("../../dsoftbus.gni")
+import("$dsoftbus_root_path/br_proxy/br_proxy.gni")
+
+native_source_path = rebase_path("$dsoftbus_root_path")
+
+trans_session_src = trans_channel_src
+trans_session_inc = trans_channel_inc
+trans_session_deps = trans_channel_deps
+trans_session_deps += [ "$dsoftbus_dfx_path:softbus_dfx" ]
+trans_session_external_deps = []
+trans_session_inc += br_proxy_include_dirs
+
+trans_session_src += [
+  "$dsoftbus_root_path/core/transmission/session/src/trans_session_manager.c",
+  "$dsoftbus_root_path/core/transmission/session/src/trans_session_service.c",
+]
+trans_session_inc += [
+  "$dsoftbus_root_path/core/transmission/ipc/include",
+  "$dsoftbus_root_path/core/transmission/session/include",
+  "$dsoftbus_root_path/core/transmission/interface",
+  "$dsoftbus_root_path/core/transmission/session/cpp/include",
+]
+
+if (softbus_os_account) {
+  trans_session_src += [ "$dsoftbus_root_path/core/transmission/session/cpp/src/trans_session_account_adapter.cpp" ]
+  trans_session_external_deps += [ "os_account:os_account_innerkits" ]
+} else {
+  trans_session_src += [ "$dsoftbus_root_path/core/transmission/session/cpp/src/trans_session_account_adapter_virtual.c" ]
+}
+
+if (defined(ohos_lite)) {
+  if (ohos_kernel_type == "liteos_m") {
+    trans_session_src += [
+      "$dsoftbus_root_path/core/transmission/ipc/mini/trans_client_proxy.c",
+      "$dsoftbus_root_path/core/transmission/session/cpp/src/trans_session_ipc_adapter_virtual.c",
+    ]
+    trans_session_inc +=
+        [ "$dsoftbus_root_path/sdk/transmission/trans_channel/manager/include" ]
+    trans_session_deps += [ "//build/lite/config/component/cJSON:cjson_static" ]
+  } else {
+    trans_session_src += [
+      "$dsoftbus_root_path/core/transmission/ipc/small/trans_client_proxy.c",
+      "$dsoftbus_root_path/core/transmission/session/cpp/src/trans_session_ipc_adapter_virtual.c",
+    ]
+    trans_session_deps += [
+      "//build/lite/config/component/cJSON:cjson_shared",
+      "//foundation/communication/ipc/interfaces/innerkits/c/ipc:ipc_single",
+    ]
+  }
+} else {
+  trans_session_inc += [
+    "$dsoftbus_root_path/core/transmission/ipc/$os_type/include",
+    "$dsoftbus_root_path/sdk/frame/$os_type/include",
+    "$dsoftbus_root_path/sdk/transmission/trans_channel/tcp_direct",
+  ]
+  trans_session_src += [
+    "$dsoftbus_root_path/core/transmission/ipc/$os_type/src/trans_client_proxy.cpp",
+    "$dsoftbus_root_path/core/transmission/ipc/$os_type/src/trans_client_proxy_standard.cpp",
+    "$dsoftbus_root_path/core/transmission/session/cpp/src/trans_session_ipc_adapter.cpp",
+  ]
+
+  trans_session_src += br_proxy_sa_sources
+  if (support_jsapi) {
+    trans_session_external_deps += br_proxy_external_deps
+  }
+  trans_session_inc +=
+  [
+    "$dsoftbus_root_path/core/transmission/broadcast/include",
+    "$dsoftbus_root_path/interfaces/kits/broadcast/enhance",
+    "$dsoftbus_root_path/interfaces/kits/transport",
+  ]
+  trans_session_src += [ "$dsoftbus_root_path/core/transmission/broadcast/src/trans_spec_object_stub.cpp" ]
+
+  trans_session_external_deps += [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+  ]
+}
+
+if (dsoftbus_feature_wifi_notify == true &&
+    softbus_communication_wifi_feature == true && !defined(ohos_lite)) {
+  trans_session_src += [ "$dsoftbus_root_path/core/transmission/session/src/softbus_scenario_manager.c" ]
+  trans_session_external_deps += [ "wifi:wifi_sdk" ]
+} else {
+  trans_session_src += [ "$dsoftbus_root_path/core/transmission/session/src/softbus_scenario_manager_virtual.c" ]
+}

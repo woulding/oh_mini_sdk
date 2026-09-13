@@ -1,0 +1,108 @@
+/*
+ * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "wifi_scan_callback_stub.h"
+#include "define.h"
+#include "wifi_manager_service_ipc_interface_code.h"
+#include "wifi_errcode.h"
+#include "wifi_logger.h"
+#include "wifi_msg.h"
+
+DEFINE_WIFILOG_SCAN_LABEL("WifiScanCallbackStubLite");
+namespace OHOS {
+namespace Wifi {
+WifiScanCallbackStub::WifiScanCallbackStub() : userCallback_(nullptr), mRemoteDied_(false)
+{}
+
+WifiScanCallbackStub::~WifiScanCallbackStub()
+{}
+
+int WifiScanCallbackStub::OnRemoteRequest(uint32_t code, IpcIo *data)
+{
+    int ret = WIFI_OPT_FAILED;
+    WIFI_LOGD("OnRemoteRequest code:%{public}u!", code);
+    if (mRemoteDied_.load() || data == nullptr) {
+        WIFI_LOGD("Failed to %{public}s,mRemoteDied_:%{public}d data:%{public}d!",
+            __func__, mRemoteDied_.load(), data == nullptr);
+        return ret;
+    }
+
+    size_t length;
+    uint16_t* interfaceRead = nullptr;
+    interfaceRead = ReadInterfaceToken(data, &length);
+    for (size_t i = 0; i < length; i++) {
+        if (i >= DECLARE_INTERFACE_DESCRIPTOR_L1_LENGTH || interfaceRead[i] != DECLARE_INTERFACE_DESCRIPTOR_L1[i]) {
+            WIFI_LOGE("Scan stub token verification error: %{public}d", code);
+            return WIFI_OPT_FAILED;
+        }
+    }
+
+    int exception = WIFI_OPT_FAILED;
+    (void)ReadInt32(data, &exception);
+    if (exception) {
+        WIFI_LOGD("OnRemoteRequest exception! %{public}d!", exception);
+        return ret;
+    }
+    switch (code) {
+        case static_cast<uint32_t>(ScanInterfaceCode::WIFI_CBK_CMD_SCAN_STATE_CHANGE): {
+            WIFI_LOGD("OnRemoteRequest code:%{public}u", code);
+            ret = RemoteOnWifiScanStateChanged(code, data);
+            break;
+        }
+        default: {
+            ret = WIFI_OPT_FAILED;
+        }
+    }
+    return ret;
+}
+
+void WifiScanCallbackStub::RegisterCallBack(const std::shared_ptr<IWifiScanCallback> &userCallback)
+{
+    if (userCallback_ != nullptr) {
+        WIFI_LOGD("Callback has registered!");
+        return;
+    }
+    userCallback_ = userCallback;
+}
+
+bool WifiScanCallbackStub::IsRemoteDied() const
+{
+    return mRemoteDied_.load();
+}
+
+void WifiScanCallbackStub::SetRemoteDied(bool val)
+{
+    mRemoteDied_.store(val);
+}
+
+void WifiScanCallbackStub::OnWifiScanStateChanged(int state)
+{
+    WIFI_LOGD("OnWifiScanStateChanged,state:%{public}d", state);
+
+    if (userCallback_) {
+        userCallback_->OnWifiScanStateChanged(state);
+    }
+}
+
+int WifiScanCallbackStub::RemoteOnWifiScanStateChanged(uint32_t code, IpcIo *data)
+{
+    WIFI_LOGD("run %{public}s code %{public}u", __func__, code);
+    int stateCode = 0;
+    (void)ReadInt32(data, &stateCode);
+    OnWifiScanStateChanged(stateCode);
+    return 0;
+}
+}  // namespace Wifi
+}  // namespace OHOS

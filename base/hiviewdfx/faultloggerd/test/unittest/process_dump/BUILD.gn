@@ -1,0 +1,191 @@
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/faultloggerd/faultloggerd.gni")
+
+if (defined(ohos_lite)) {
+  import("//build/lite/config/component/lite_component.gni")
+  import("//build/lite/config/test.gni")
+
+   config("unittest_private_config") {
+    cflags_cc = [ "-Dprivate=public" ]
+  }
+
+  if (ohos_build_type == "debug") {
+    unittest("test_processdump") {
+      output_extension = "bin"
+      output_dir = "$root_out_dir/test/unittest/faultloggerd"
+
+      include_dirs = [
+        "$c_utils_include_path",
+        "$faultloggerd_common_path/cutil",
+        "$faultloggerd_common_path/dfxutil",
+        "$faultloggerd_interfaces_path/common",
+        "$faultloggerd_interfaces_path/innerkits/procinfo/include",
+        "$faultloggerd_interfaces_path/innerkits/unwinder/include",
+        "$faultloggerd_path/example",
+        "$faultloggerd_path/test/utils",
+        "$faultloggerd_path/tools/process_dump",
+        "$faultloggerd_path/tools/process_dump/coredump",
+        "$faultloggerd_path/tools/process_dump/utils",
+        "$hilog_lite_include_path",
+      ]
+
+      sources = [
+        "multithread_constructor.c",
+        "process_dump_test.cpp",
+      ]
+      sources += [ "$c_utils_src_path/directory_ex.cpp" ]
+
+      deps = [
+        "$faultloggerd_interfaces_path/innerkits/procinfo:libdfx_procinfo",
+        "$faultloggerd_interfaces_path/innerkits/unwinder:libunwinder",
+        "$faultloggerd_path/test/utils:dfx_test_util",
+        "$faultloggerd_path/tools/process_dump:process_info_src",
+        "$faultloggerd_path/common/cutil:dfx_cutil",
+      ]
+      configs = [ ":unittest_private_config" ]
+      external_deps = [ "hilog_lite:hilog_shared" ]
+    }
+  }
+
+  group("unittest") {
+    if (ohos_build_type == "debug") {
+      deps = [ ":test_processdump" ]
+    }
+  }
+} else {
+  import("//build/config/features.gni")
+  import("//build/test.gni")
+
+  config("module_private_config") {
+    visibility = [ ":*" ]
+
+    include_dirs = [
+      "$faultloggerd_common_path/dfxutil",
+      "$faultloggerd_common_path/cutil",
+      "$faultloggerd_common_path/cppcrash_formatter",
+      "$faultloggerd_interfaces_path/common",
+      "$faultloggerd_interfaces_path/innerkits/unwinder/include",
+      "$faultloggerd_interfaces_path/innerkits/faultloggerd_client/include",
+      "$faultloggerd_path/example",
+      "$faultloggerd_path/test/utils",
+      "$faultloggerd_path/tools/process_dump",
+      "$faultloggerd_path/tools/process_dump/coredump",
+      "$faultloggerd_path/tools/process_dump/utils",
+      "$faultloggerd_path/tools/process_dump/lperf",
+      "$faultloggerd_path/tools/process_dump/minidump_parser/include",
+    ]
+  }
+
+  module_output_path = "faultloggerd/faultloggerd/process_dump"
+
+  ohos_unittest("test_processdump") {
+    module_out_path = module_output_path
+    sources = [
+      "$faultloggerd_path/tools/process_dump/lperf/lperf_event_record.cpp",
+      "$faultloggerd_path/tools/process_dump/lperf/lperf_events.cpp",
+      "$faultloggerd_path/tools/process_dump/lperf/lperf_record.cpp",
+      "$faultloggerd_path/tools/process_dump/lite_perf_dumper.cpp",
+      "$faultloggerd_path/tools/process_dump/reporter.cpp",
+      "buffer_writer_test.cpp",
+      "dfx_buffer_writer_extend_test.cpp",
+      "dfx_processdump_test.cpp",
+      "dfx_process_test.cpp",
+      "dfx_thread_test.cpp",
+      "dump_info_factory_test.cpp",
+      "dump_info_header_test.cpp",
+      "dump_info_json_formatter_test.cpp",
+      "fault_stack_test.cpp",
+      "lperf_event_record_test.cpp",
+      "lperf_events_test.cpp",
+      "maps_test.cpp",
+      "memory_near_register_test.cpp",
+      "minidump_dumper_test.cpp",
+      "minidump_infrastructure_test.cpp",
+      "minidump_parser_test.cpp",
+      "minidump_memory_reader_test.cpp",
+      "minidump_context_exception_test.cpp",
+      "minidump_stream_data_test.cpp",
+      "minidump_memory_data_test.cpp",
+      "minidump_thread_module_test.cpp",
+      "multithread_constructor.c",
+      "open_files_test.cpp",
+      "process_dump_config_test.cpp",
+      "process_dump_test.cpp",
+      "registers_test.cpp",
+      "reporter_test.cpp",
+      "thread_dump_info_test.cpp",
+      "thread_pool_test.cpp",
+    ]
+    if (processdump_parse_lock_owner_enable) {
+      sources += [ "dump_utils_test.cpp" ]
+    }
+
+    if (target_cpu == "arm64") {
+      sources += [
+        "coredump_buffer_writer_test.cpp",
+        "coredump_config_manager_test.cpp",
+        "extra_crash_info_test.cpp",
+        "lite_perf_dumper_test.cpp",
+        "submitter_stack_test.cpp",
+      ]
+    }
+
+    cflags_cc = [ "-Dprivate=public" ]
+
+    configs = [
+      ":module_private_config",
+      "$faultloggerd_path/common/build:coverage_flags",
+    ]
+
+    defines = [ "UNITTEST" ]
+
+    deps = [
+      "$faultloggerd_path/common/cutil:dfx_cutil",
+      "$faultloggerd_path/common/trace:dfx_trace",
+      "$faultloggerd_path/interfaces/innerkits/async_stack:libasync_stack",
+      "$faultloggerd_path/interfaces/innerkits/procinfo:dfx_procinfo_static",
+      "$faultloggerd_path/interfaces/innerkits/unwinder:libunwinder_static",
+      "$faultloggerd_path/interfaces/innerkits/crash_exception:crash_exception",
+      "$faultloggerd_path/interfaces/innerkits/stack_printer:libstack_printer",
+      "$faultloggerd_path/test/utils:dfx_test_util",
+      "$faultloggerd_path/tools/process_dump:process_info_src",
+    ]
+    external_deps = [
+      "bounds_checking_function:libsec_shared",
+      "bundle_framework:appexecfwk_base",
+      "bundle_framework:appexecfwk_core",
+      "c_utils:utils",
+      "googletest:gmock_main",
+      "googletest:gtest_main",
+      "hilog:libhilog",
+      "hisysevent:libhisysevent",
+      "hitrace:libhitracechain",
+      "init:libbegetutil",
+      "ipc:ipc_core",
+      "jsoncpp:jsoncpp",
+      "cJSON:cjson",
+      "samgr:samgr_proxy",
+      "libuv:uv",
+    ]
+    if (support_jsapi) {
+      deps += [ "$faultloggerd_path/test/resource:FaultloggerdJsTest" ]
+    }
+    resource_config_file = "$faultloggerd_path/test/resource/ohos_test.xml"
+  }
+  group("unittest") {
+    testonly = true
+    deps = [ ":test_processdump" ]
+  }
+}

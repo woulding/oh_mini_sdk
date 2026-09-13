@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#ifndef DFX_HAP_H
+#define DFX_HAP_H
+
+#include <cstdint>
+#include <memory>
+#include <unistd.h>
+#if !is_mingw
+#include <sys/mman.h>
+#else
+#include "dfx_nonlinux_define.h"
+#endif
+#include "dfx_ark.h"
+#include "dfx_extractor_utils.h"
+
+namespace OHOS {
+namespace HiviewDFX {
+class DfxMap;
+
+class DfxHap {
+public:
+    DfxHap() = default;
+    ~DfxHap();
+    DfxHap(const DfxHap&) = delete;
+    DfxHap& operator= (const DfxHap&) = delete;
+    bool ParseHapInfo(pid_t pid, uint64_t pc, std::shared_ptr<DfxMap> map, JsFunction *jsFunction,
+        bool isOffline = false);
+private:
+    bool ParseHapFileInfo(uint64_t pc, std::shared_ptr<DfxMap> map, JsFunction *jsFunction);
+    bool ParseHapMemInfo(pid_t pid, uint64_t pc, std::shared_ptr<DfxMap> map,
+        JsFunction *jsFunction);
+
+    bool ParseHapFileData(const std::string& name);
+    bool ParseHapMemData(const pid_t pid, std::shared_ptr<DfxMap> map);
+    bool ParseHapMemInfoForOffline(const std::string& mapName, uint64_t relPc, JsFunction *jsFunction);
+    bool MmapForHap(const std::string& mapName);
+
+private:
+    MAYBE_UNUSED uintptr_t arkSymbolExtractorPtr_ = 0;
+    MAYBE_UNUSED std::unique_ptr<uint8_t[]> abcDataPtr_ = nullptr;
+    MAYBE_UNUSED size_t abcDataSize_ = 0;
+    MAYBE_UNUSED uintptr_t abcLoadOffset_ = 0;
+    MAYBE_UNUSED std::unique_ptr<uint8_t[]> srcMapDataPtr_ = nullptr;
+    MAYBE_UNUSED size_t srcMapDataSize_ = 0;
+    MAYBE_UNUSED uintptr_t srcMapLoadOffset_ = 0;
+    MAYBE_UNUSED std::unique_ptr<DfxExtractor> extractor_ = nullptr;
+    MAYBE_UNUSED void *mmap_ = MAP_FAILED;
+    MAYBE_UNUSED off_t hapSize_ = 0;
+};
+} // namespace HiviewDFX
+} // namespace OHOS
+#endif

@@ -1,0 +1,62 @@
+[
+    {
+        "name": "access_token:accesstoken_common_cxx",
+        "so_file_name": "libaccesstoken_common_cxx.z.so",
+        "path": "//base/security/access_token/frameworks/common:accesstoken_common_cxx",
+        "headers": []
+    },
+    {
+        "name": "ability_base:extractortool",
+        "so_file_name": "libextractortool.z.so",
+        "path": "//foundation/ability/ability_base:extractortool",
+        "headers": []
+    },
+    {
+        "name": "nghttp2:libnghttp2_shared",
+        "so_file_name": "libnghttp2_shared.z.so",
+        "path": "//third_party/nghttp2/lib:libnghttp2_shared",
+        "headers": []
+    },
+    {
+        "name": "hiview:libfaultlogger",
+        "so_file_name": "libfaultlogger.z.so",
+        "path": "//base/hiviewdfx/hiview/plugins/faultlogger:libfaultlogger",
+        "headers": []
+    },
+    {
+        "name": "access_token:accesstoken_communication_adapter_cxx",
+        "so_file_name": "libaccesstoken_communication_adapter_cxx.z.so",
+        "path": "//base/security/access_token/frameworks/accesstoken:accesstoken_communication_adapter_cxx",
+        "headers": []
+    },
+    {
+        "name": "drivers_interface_display:libdisplay_buffer_proxy_1.3",
+        "so_file_name": "libdisplay_buffer_proxy_1.3.z.so",
+        "path": "//drivers/interface/display/buffer/v1_3:libdisplay_buffer_proxy_1.3",
+        "headers": []
+    },
+    {
+        "name": "brotli:brotli_shared",
+        "so_file_name": "libbrotli_shared.z.so",
+        "path": "//third_party/brotli:brotli_shared",
+        "headers": []
+    },
+    {
+        "name": "faultloggerd:crash_exception",
+        "so_file_name": "libcrash_exception.z.so",
+        "path": "//base/hiviewdfx/faultloggerd/interfaces/innerkits/crash_exception:crash_exception",
+        "headers": []
+    },
+    {
+        "name": "ability_base:string_utils",
+        "so_file_name": "libstring_utils.z.so",
+        "path": "//foundation/ability/ability_base:string_utils",
+        "headers": []
+    },
+    {
+        "name": "drivers_interface_camera:libcamera_vendor_tag_proxy_1.0",
+        "so_file_name": "libcamera_vendor_tag_proxy_1.0.z.so",
+        "path": "//drivers/interface/camera/metadata/v1_0:libcamera_vendor_tag_proxy_1.0",
+        "headers": []
+    }
+]

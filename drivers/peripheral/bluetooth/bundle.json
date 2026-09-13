@@ -1,0 +1,45 @@
+{
+  "name": "@ohos/drivers_peripheral_bluetooth",
+  "description": "bluetooth device driver",
+  "version": "3.1",
+  "license": "Apache License 2.0",
+  "publishAs": "code-segment",
+  "segment": {
+    "destPath": "drivers/peripheral/bluetooth"
+  },
+  "dirs": {},
+  "scripts": {},
+  "component": {
+    "name": "drivers_peripheral_bluetooth",
+    "subsystem": "hdf",
+    "features": [
+      "drivers_peripheral_bluetooth_a2dp_hdi",
+      "drivers_peripheral_bluetooth_mac_update"
+    ],
+    "adapted_system_type": ["standard"],
+    "rom": "615KB",
+    "ram": "7400KB",
+    "deps": {
+      "components": [
+        "c_utils",
+        "drivers_peripheral_bluetooth",
+        "hdf_core",
+        "hilog",
+        "ipc",
+        "samgr",
+        "drivers_interface_bluetooth",
+        "hitrace",
+        "cJSON",
+        "bluetooth",
+        "init",
+        "bounds_checking_function"
+      ]
+    },
+    "build": {
+      "sub_component": [
+        "//drivers/peripheral/bluetooth/hci:bluetooth_hci_entry",
+        "//drivers/peripheral/bluetooth/audio:hdi_audio_bluetooth"
+      ]
+    }
+  }
+}

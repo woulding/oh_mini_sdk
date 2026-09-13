@@ -1,0 +1,244 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "reporter.h"
+
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <string>
+#include "dfx_define.h"
+
+#include "dfx_log.h"
+#include "dfx_process.h"
+#include "dfx_signal.h"
+#include "dfx_thread.h"
+#include "faultlogger_client_msg.h"
+#include "procinfo.h"
+#include "dfx_maps.h"
+#ifndef HISYSEVENT_DISABLE
+#include "hisysevent.h"
+#endif
+#include "dfx_buffer_writer.h"
+#include "process_dumper.h"
+#include "cppcrash_info_collector.h"
+
+const char* const HIVIEW_PROCESS_NAME = "/system/bin/hiview";
+const char* const REGS_KEY_WORD = "Registers:\n";
+
+using RecordAppWithReason = int (*)(int pid, int uid, int exitReason, int killId, const char *exitMsg);
+
+namespace OHOS {
+namespace HiviewDFX {
+SysEventReporter::SysEventReporter(const ProcessDumpType& processDumpType)
+{
+    if (processDumpType == ProcessDumpType::DUMP_TYPE_CPP_CRASH) {
+        reporter_ = std::make_shared<CppCrashReporter>();
+    } else if ((processDumpType >=  ProcessDumpType::DUMP_TYPE_FDSAN
+        && processDumpType <=  ProcessDumpType::DUMP_TYPE_BADFD)
+        || processDumpType == ProcessDumpType::DUMP_TYPE_ARKTS_ENVSAN) {
+        reporter_ = std::make_shared<AddrSanitizerReporter>();
+    }
+}
+void SysEventReporter::Report(DfxProcess& process, const ProcessDumpRequest &request)
+{
+    if (reporter_ != nullptr) {
+        reporter_->Report(process, request);
+    }
+}
+
+void CppCrashReporter::Report(DfxProcess& process, const ProcessDumpRequest &request)
+{
+    if (process.GetProcessInfo().processName.find(HIVIEW_PROCESS_NAME) == std::string::npos) {
+        ReportToHiview(process, request);
+    } else {
+        DFXLOGW("Do not to report to hiview, because hiview is crashed.");
+    }
+}
+
+void CppCrashReporter::ReportToHiview(DfxProcess& process, const ProcessDumpRequest &request)
+{
+    std::shared_ptr<void> handle(dlopen("libfaultlogger.z.so", RTLD_LAZY | RTLD_NODELETE), [] (void* handle) {
+        if (handle != nullptr) {
+            dlclose(handle);
+        }
+    });
+    if (handle == nullptr) {
+        DFXLOGW("Failed to dlopen libfaultlogger, %{public}s\n", dlerror());
+        dlerror();
+        return;
+    }
+    auto addFaultLog = reinterpret_cast<void (*)(void*)>(dlsym(handle.get(), "AddFaultLog"));
+    if (addFaultLog == nullptr) {
+        DFXLOGW("Failed to dlsym AddFaultLog, %{public}s\n", dlerror());
+        dlerror();
+        return;
+    }
+    FaultDFXLOGIInner info;
+    info.time = request.timeStamp;
+    info.id = process.GetProcessInfo().uid;
+    info.pid = process.GetProcessInfo().pid;
+    ReportCppcrashNoLog(process, request);
+    info.fileFd = DfxBufferWriter::GetInstance().GetBufFd();
+    info.faultLogType = 2; // 2 : CPP_CRASH_TYPE
+    info.logFileCutoffSizeBytes = process.GetCrashLogConfig().logFileCutoffSizeBytes;
+    info.module = process.GetProcessInfo().processName;
+    info.reason = process.GetReason();
+    info.registers = GetRegsString(process.GetFaultThreadRegisters());
+    info.summary = GetSummary(process);
+    info.sectionMaps["APP_RUNNING_UNIQUE_ID"] = request.appRunningUniqueId;
+    info.sectionMaps["PROCESS_RSS_MEMINFO"] = std::to_string(process.GetRss());
+    info.sectionMaps["PROCESS_LIFETIME"] = std::to_string(process.GetLifeTime());
+    info.sectionMaps["IS_ARKWEB_CORE"] = DfxMaps::IsArkWebProc() ? "true" : "false";
+    info.sectionMaps["IS_SIG_ACTION"] = request.isSigAction ? "Yes" : "No";
+    info.sectionMaps["LOG_SOURCE"] = process.GetLogSource();
+    info.sectionMaps["ENABLE_MINIDUMP"] = process.GetCrashLogConfig().minidumpLog ? "true" : "false";
+    info.sectionMaps["THREAD_COUNT"] = std::to_string(process.GetThreadCount());
+    if (info.reason.find("SIGABRT") != std::string::npos) {
+        DFXLOGI("Current abort crash(pid=%{public}d) info has lastfatalmessage: %{public}s", info.pid,
+            info.summary.find("LastFatalMessage:") != std::string::npos ? "true" : "false");
+    }
+
+    std::string mergeLog = OHOS::HiviewDFX::ProcessDumper::GetInstance().GetMergeLog();
+    if (!mergeLog.empty()) {
+        DFXLOGI("APPMergeLog loaded, size: %{public}zu", mergeLog.size());
+        info.sectionMaps["MERGE_LOG"] = mergeLog;
+    }
+    addFaultLog(&info);
+    DFXLOGI("Finish report fault to FaultLogger %{public}s(%{public}d,%{public}d)",
+        info.module.c_str(), info.pid, info.id);
+}
+
+std::string CppCrashReporter::GetSummary(DfxProcess& process)
+{
+    std::string summary;
+    auto msg = process.GetFatalMessage();
+    if (!msg.empty()) {
+        summary += ("LastFatalMessage:" + msg + "\n");
+    }
+    if (process.GetKeyThread() == nullptr) {
+        DFXLOGE("Failed to get key thread!");
+        return summary;
+    }
+    bool needPrintTid = false;
+    std::string threadInfo = process.GetKeyThread()->ToString(needPrintTid);
+    auto iterator = threadInfo.begin();
+    while (iterator != threadInfo.end() && *iterator != '\n') {
+        if (isdigit(*iterator)) {
+            iterator = threadInfo.erase(iterator);
+        } else {
+            iterator++;
+        }
+    }
+    summary += threadInfo;
+    return summary;
+}
+
+void CppCrashReporter::ReportCppcrashNoLog(DfxProcess& process, const ProcessDumpRequest &request)
+{
+#ifndef HISYSEVENT_DISABLE
+    size_t crashInfoSize = CppCrashInfoCollector::Instance().GetCrashInfoSize();
+    DFXLOGI("Crash info json size: %{public}zu", crashInfoSize);
+    constexpr uint32_t jsonLimitSize = 2 * 1024 * 1024;
+    if (crashInfoSize > jsonLimitSize) {
+        std::string summary = "crashjson: stack greate 2m, ";
+        summary += "real size is: " + std::to_string(crashInfoSize / 1024) + "kb, "; // 1024 : kb
+        summary += "thread count: " + std::to_string(process.GetOtherThreads().size());
+        HiSysEventParam params[] = {
+            {.name = "UID", .t = HISYSEVENT_UINT32, .v = { .ui32 = request.uid}, .arraySize = 0},
+            {.name = "PID", .t = HISYSEVENT_UINT32, .v = { .ui32 = request.pid}, .arraySize = 0},
+            {.name = "PROCESS_NAME", .t = HISYSEVENT_STRING,
+                .v = {.s = const_cast<char*>(request.processName)}, .arraySize = 0},
+            {.name = "HAPPEN_TIME", .t = HISYSEVENT_UINT64, .v = {.ui64 = request.timeStamp}, .arraySize = 0},
+            {.name = "SUMMARY", .t = HISYSEVENT_STRING,
+                .v = {.s = const_cast<char*>(summary.c_str())}, .arraySize = 0},
+        };
+        int ret = OH_HiSysEvent_Write("RELIABILITY", "CPP_CRASH_NO_LOG",
+            HISYSEVENT_FAULT, params, sizeof(params) / sizeof(params[0]));
+        DFXLOGI("Report pid %{public}d event ret %{public}d %{public}s", request.pid, ret, summary.c_str());
+    }
+#endif
+}
+
+void ReportToAbilityManagerService(const DfxProcess& process, const ProcessDumpRequest &request)
+{
+    if (request.uid < MIN_HAP_UID) {
+        DFXLOGW("Native process no need report kill reason to AbilityManagerService");
+        return;
+    }
+    std::shared_ptr<void> handle(dlopen("libability_manager_c.z.so", RTLD_LAZY | RTLD_NODELETE), [] (void* handle) {
+        if (handle != nullptr) {
+            dlclose(handle);
+        }
+    });
+    if (handle == nullptr) {
+        DFXLOGW("Failed to dlopen libabilityms, %{public}s\n", dlerror());
+        return;
+    }
+
+    RecordAppWithReason recordAppWithReason = reinterpret_cast<RecordAppWithReason>(dlsym(handle.get(),
+        "RecordAppWithReason"));
+    if (recordAppWithReason == nullptr) {
+        DFXLOGW("Failed to dlsym RecordAppWithReason, %{public}s\n", dlerror());
+        return;
+    }
+
+    // defined in interfaces/inner_api/ability_manager/include/ability_state.h
+    const int cppCrashExitReason = 2;
+    // defined in interfaces/native/innerkits/include/xcollie/process_kill_reason.h
+    const int killId = 2004;
+    recordAppWithReason(request.pid, request.uid, cppCrashExitReason, killId, process.GetReason().c_str());
+}
+
+std::string CppCrashReporter::GetRegsString(std::shared_ptr<DfxRegs> regs)
+{
+    std::string regsString = "";
+    if (regs == nullptr) {
+        return regsString;
+    }
+    regsString = regs->PrintRegs();
+    // if start with 'Registers:\n', need remove
+    if (regsString.find(REGS_KEY_WORD) == 0) {
+        regsString = regsString.substr(strlen(REGS_KEY_WORD));
+    }
+    return regsString;
+}
+
+void AddrSanitizerReporter::Report(DfxProcess& process, const ProcessDumpRequest &request)
+{
+#ifndef HISYSEVENT_DISABLE
+    std::string reason = process.GetReason().empty() ? "DEBUG SIGNAL" : process.GetReason();
+    std::string summary;
+    if (process.GetKeyThread() != nullptr) {
+        bool needPrintTid = false;
+        summary = process.GetKeyThread()->ToString(needPrintTid);
+    }
+    std::string eventName = (reason.find("BADFD") != std::string::npos ||
+                             reason.find("JEMALLOC") != std::string::npos) ?
+                             "ADDR_SANITIZER_WARNING" : "ADDR_SANITIZER";
+    HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::RELIABILITY, eventName,
+                    OHOS::HiviewDFX::HiSysEvent::EventType::FAULT,
+                    "MODULE", request.processName,
+                    "PID", request.pid,
+                    "UID", request.uid,
+                    "HAPPEN_TIME", request.timeStamp,
+                    "REASON", reason,
+                    "SUMMARY", summary);
+    DFXLOGI("%{public}s", "Report ADDR_SANITIZER event done.");
+#else
+    DFXLOGW("%{public}s", "Not supported for ADDR_SANITIZER reporting.");
+#endif
+}
+} // namespace HiviewDFX
+} // namespace OHOS

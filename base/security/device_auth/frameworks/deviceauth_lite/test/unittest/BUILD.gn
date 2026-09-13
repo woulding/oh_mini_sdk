@@ -1,0 +1,199 @@
+#
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+import("//build/ohos.gni")
+import("//build/test.gni")
+
+if (!defined(global_parts_info) ||
+    defined(global_parts_info.account_os_account)) {
+  has_os_account_part = true
+} else {
+  has_os_account_part = false
+}
+
+module_output_path = "security/device_auth"
+
+hichain_sources = [
+  "../../source/auth_info/auth_info.c",
+  "../../source/auth_info/exchange_auth_info_client.c",
+  "../../source/auth_info/remove_auth_info.c",
+  "../../source/auth_info/remove_auth_info_client.c",
+  "../../source/hichain.c",
+  "../../source/huks_adapter/huks_adapter.c",
+  "../../source/json/commonutil.c",
+  "../../source/json/jsonutil.c",
+  "../../source/key_agreement/key_agreement.c",
+  "../../source/key_agreement/key_agreement_client.c",
+  "../../source/key_agreement/key_agreement_server.c",
+  "../../source/key_agreement/pake_client.c",
+  "../../source/key_agreement/pake_server.c",
+  "../../source/key_agreement/sec_clone_server.c",
+  "../../source/key_agreement/sts_client.c",
+  "../../source/key_agreement/sts_server.c",
+  "../../source/log/log.c",
+  "../../source/os_account_adapter/os_account_adapter.cpp",
+  "../../source/schedule/build_object.c",
+  "../../source/schedule/distribution.c",
+  "../../source/struct/add_auth_info_data.c",
+  "../../source/struct/auth_ack_request.c",
+  "../../source/struct/auth_ack_response.c",
+  "../../source/struct/auth_start_request.c",
+  "../../source/struct/auth_start_response.c",
+  "../../source/struct/exchange_auth_data.c",
+  "../../source/struct/exchange_request.c",
+  "../../source/struct/exchange_response.c",
+  "../../source/struct/inform_message.c",
+  "../../source/struct/key_agreement_version.c",
+  "../../source/struct/pake_client_confirm.c",
+  "../../source/struct/pake_request.c",
+  "../../source/struct/pake_response.c",
+  "../../source/struct/pake_server_confirm.c",
+  "../../source/struct/parsedata.c",
+  "../../source/struct/rmv_auth_info_data.c",
+  "../../source/struct/rmv_auth_info_request.c",
+  "../../source/struct/rmv_auth_info_response.c",
+  "../../source/struct/sec_clone_data.c",
+]
+
+config("standard_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    "//base/security/device_auth/interfaces/inner_api/deviceauth_lite",
+    "../unittest",
+    "../../inc/base",
+    "../../inc/huks_adapter",
+    "../../inc/json",
+    "../../inc/key_agreement",
+    "../../inc/log",
+    "../../inc/os_account_adapter",
+    "../../inc/schedule",
+    "../../inc/struct",
+    "../../inc/auth_info",
+  ]
+
+  defines = [ "_CUT_REMOVE_" ]
+  if (has_os_account_part) {
+    defines += [ "HAS_OS_ACCOUNT_PART" ]
+  }
+}
+
+ohos_unittest("DeviceAuthTest") {
+  module_out_path = module_output_path
+  testonly = true
+  configs = [ ":standard_config" ]
+  sources = hichain_sources
+  sources -= [ "../../source/huks_adapter/huks_adapter.c" ]
+  sources += [
+    "./unittest_mock/huks_adapter_mock.c",
+    "deviceauth_test.cpp",
+    "hichain_receivedata_test.cpp",
+    "commonutil_test.cpp",
+  ]
+
+  cflags = [
+    "--coverage",
+    "-Wall",
+    "-fvisibility=hidden",
+  ]
+
+  ldflags = [ "--coverage" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "huks:libhukssdk",
+  ]
+  if (has_os_account_part) {
+    external_deps += [
+      "ipc:ipc_single",
+      "os_account:os_account_innerkits",
+    ]
+  }
+}
+
+ohos_unittest("HuksAdapterTest") {
+  module_out_path = module_output_path
+  testonly = true
+  configs = [ ":standard_config" ]
+  sources = hichain_sources
+  sources += [ "huks_adapter_test.cpp" ]
+
+  deps = []
+
+  cflags = [
+    "--coverage",
+    "-fvisibility=hidden",
+  ]
+
+  ldflags = [ "--coverage" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "huks:libhukssdk",
+  ]
+  if (has_os_account_part) {
+    external_deps += [
+      "ipc:ipc_single",
+      "os_account:os_account_innerkits",
+    ]
+  }
+}
+
+ohos_unittest("PakeTest") {
+  module_out_path = module_output_path
+  testonly = true
+  configs = [ ":standard_config" ]
+  sources = hichain_sources
+  sources -= [ "../../source/huks_adapter/huks_adapter.c" ]
+  sources += [
+    "./unittest_mock/huks_adapter_mock_for_pake.c",
+    "hichain_pake_test.cpp",
+  ]
+
+  deps = []
+
+  cflags = [
+    "--coverage",
+    "-fvisibility=hidden",
+  ]
+
+  ldflags = [ "--coverage" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "huks:libhukssdk",
+  ]
+
+  if (has_os_account_part) {
+    external_deps += [
+      "ipc:ipc_single",
+      "os_account:os_account_innerkits",
+    ]
+  }
+}

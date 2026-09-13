@@ -1,0 +1,1128 @@
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "UTTest_device_manager_service_impl_first.h"
+#include "softbus_error_code.h"
+#include "common_event_support.h"
+#include "deviceprofile_connector.h"
+#include "distributed_device_profile_client.h"
+
+using namespace testing;
+using namespace testing::ext;
+using namespace OHOS::DistributedDeviceProfile;
+namespace OHOS {
+namespace DistributedHardware {
+constexpr const char* BIND_CALLER_USERID = "bindCallerUserId";
+void DeviceManagerServiceImplFirstTest::SetUp()
+{
+    if (deviceManagerServiceImpl_ == nullptr) {
+        deviceManagerServiceImpl_ = std::make_shared<DeviceManagerServiceImpl>();
+    }
+    deviceManagerServiceImpl_->Initialize(listener_);
+}
+
+void DeviceManagerServiceImplFirstTest::TearDown()
+{
+}
+
+void DeviceManagerServiceImplFirstTest::SetUpTestCase()
+{
+    DmDeviceProfileConnector::dmDeviceProfileConnector = deviceProfileConnectorMock_;
+    DmMultipleUserConnector::dmMultipleUserConnector = multipleUserConnectorMock_;
+    DmSoftbusConnector::dmSoftbusConnector = softbusConnectorMock_;
+    DmDmDeviceStateManager::dmDeviceStateManager = dmDeviceStateManagerMock_;
+    DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl = deviceManagerServiceImplMock_;
+    DmHiChainConnector::dmHiChainConnector = hiChainConnectorMock_;
+}
+
+void DeviceManagerServiceImplFirstTest::TearDownTestCase()
+{
+    DmDeviceProfileConnector::dmDeviceProfileConnector = nullptr;
+    DmMultipleUserConnector::dmMultipleUserConnector = nullptr;
+    DmSoftbusConnector::dmSoftbusConnector = nullptr;
+    DmDmDeviceStateManager::dmDeviceStateManager = nullptr;
+    DmDeviceManagerServiceImpl::dmDeviceManagerServiceImpl = nullptr;
+    DmHiChainConnector::dmHiChainConnector = nullptr;
+}
+
+namespace {
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleCredentialDeleted_001, testing::ext::TestSize.Level1)
+{
+    const char *credId = "123456";
+    const char *credInfo = "invalid_json";
+    std::string localUdid = "localUdid";
+    std::string remoteUdid;
+    bool isSendBroadCast = false;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_))
+        .Times(0);
+    
+    deviceManagerServiceImpl_->HandleCredentialDeleted(credId, credInfo, localUdid, remoteUdid, isSendBroadCast);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleCredentialDeleted_002, testing::ext::TestSize.Level1)
+{
+    const char *credId = "123456";
+    const char *credInfo = R"({"deviceId": "remoteUdid", "userId": 1})";
+    std::string localUdid = "localUdid";
+    std::string remoteUdid;
+    bool isSendBroadCast = false;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_POINT_TO_POINT);
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_)).Times(0);
+
+    deviceManagerServiceImpl_->HandleCredentialDeleted(credId, credInfo, localUdid, remoteUdid, isSendBroadCast);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleCredentialDeleted_003, testing::ext::TestSize.Level1)
+{
+    const char *credId = "123456";
+    const char *credInfo = R"({"deviceId": "remoteUdid", "userId": 1})";
+    std::string localUdid = "localUdid";
+    std::string remoteUdid;
+    bool isSendBroadCast = false;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_SHARE);
+
+    profile.GetAccesser().SetAccesserCredentialId(atoi(credId));
+    profile.GetAccesser().SetAccesserDeviceId(localUdid);
+    profile.GetAccessee().SetAccesseeDeviceId("remoteUdid");
+    profile.GetAccessee().SetAccesseeUserId(1);
+
+    profiles.push_back(profile);
+    
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_))
+        .Times(1);
+
+    deviceManagerServiceImpl_->HandleCredentialDeleted(credId, credInfo, localUdid, remoteUdid, isSendBroadCast);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleCredentialDeleted_004, testing::ext::TestSize.Level1)
+{
+    const char *credId = "123456";
+    const char *credInfo = R"({"deviceId": "remoteUdid", "userId": 1})";
+    std::string localUdid = "localUdid";
+    std::string remoteUdid;
+    bool isSendBroadCast = false;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_SHARE);
+
+    profile.GetAccessee().SetAccesseeCredentialId(atoi(credId));
+    profile.GetAccessee().SetAccesseeDeviceId(localUdid);
+    profile.GetAccesser().SetAccesserDeviceId("remoteUdid");
+    profile.GetAccesser().SetAccesserUserId(1);
+
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_))
+        .Times(1);
+    
+    deviceManagerServiceImpl_->HandleCredentialDeleted(credId, credInfo, localUdid, remoteUdid, isSendBroadCast);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleCredentialDeleted_005, testing::ext::TestSize.Level1)
+{
+    const char *credId = "testCredId";
+    const char *credInfo = R"({"deviceId": "remoteUdid", "osAccountId": 1})";
+    std::string localUdid = "localUdid";
+    std::string remoteUdid = "remoteUdid";
+    bool isSendBroadCast = false;
+
+    EXPECT_CALL(*multipleUserConnectorMock_, GetCurrentAccountUserID()).Times(::testing::AtLeast(1))
+        .WillOnce(Return(1));
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_SHARE);
+    Accesser accesser;
+    accesser.SetAccesserCredentialIdStr(credId);
+    accesser.SetAccesserDeviceId(localUdid);
+    accesser.SetAccesserUserId(1);
+    Accessee accessee;
+    accessee.SetAccesseeUserId(1);
+    accessee.SetAccesseeDeviceId(remoteUdid);
+    profile.SetAccesser(accesser);
+    profile.SetAccessee(accessee);
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile()).WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_)).Times(1);
+
+    deviceManagerServiceImpl_->HandleCredentialDeleted(credId, credInfo, localUdid, remoteUdid, isSendBroadCast);
+    EXPECT_TRUE(isSendBroadCast);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleShareUnbindBroadCast_001, testing::ext::TestSize.Level1)
+{
+    std::string credId = "12345";
+    std::string localUdid = "localId";
+    int32_t userId = 123456;
+    
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_))
+        .Times(0);
+    
+    deviceManagerServiceImpl_->HandleShareUnbindBroadCast(credId, userId, localUdid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleShareUnbindBroadCast_002, testing::ext::TestSize.Level1)
+{
+    std::string credId = "12345";
+    std::string localUdid = "localId";
+    int32_t userId = 123456;
+    
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_IDENTICAL_ACCOUNT);
+    profiles.push_back(profile);
+    
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_))
+        .Times(0);
+    
+    deviceManagerServiceImpl_->HandleShareUnbindBroadCast(credId, userId, localUdid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleShareUnbindBroadCast_003, testing::ext::TestSize.Level1)
+{
+    std::string credId = "12345";
+    std::string localUdid = "localId";
+    int32_t userId = 123456;
+    
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_SHARE);
+    
+    Accesser accesser;
+    accesser.SetAccesserCredentialId(atoi(credId.c_str()));
+    accesser.SetAccesserUserId(userId);
+    profile.SetAccesser(accesser);
+    Accessee accessee;
+    accessee.SetAccesseeDeviceId(localUdid);
+    profile.SetAccessee(accessee);
+    
+    profiles.push_back(profile);
+    
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_))
+        .Times(1);
+    
+    deviceManagerServiceImpl_->HandleShareUnbindBroadCast(credId, userId, localUdid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleShareUnbindBroadCast_004, testing::ext::TestSize.Level1)
+{
+    std::string credId = "12345";
+    std::string localUdid = "localUdid";
+    int32_t userId = 123456;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_SHARE);
+    
+    Accesser accesser;
+    accesser.SetAccesserDeviceId(localUdid);
+    profile.SetAccesser(accesser);
+    Accessee accessee;
+    accessee.SetAccesseeCredentialId(atoi(credId.c_str()));
+    accessee.SetAccesseeUserId(userId);
+    profile.SetAccessee(accessee);
+    
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_))
+        .Times(1);
+
+    deviceManagerServiceImpl_->HandleShareUnbindBroadCast(credId, userId, localUdid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, HandleShareUnbindBroadCast_005, testing::ext::TestSize.Level1)
+{
+    std::string credId = "12345";
+    std::string localUdid = "localUdid";
+    int32_t userId = 123456;
+    
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_SHARE);
+    
+    Accesser accesser;
+    accesser.SetAccesserCredentialId(9999);
+    accesser.SetAccesserDeviceId("peer123");
+    accesser.SetAccesserUserId(1002);
+    profile.SetAccesser(accesser);
+    
+    Accessee accessee;
+    accessee.SetAccesseeDeviceId("peer456");
+    accessee.SetAccesseeUserId(1003);
+    profile.SetAccessee(accessee);
+    
+    profiles.push_back(profile);
+    
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, DeleteAccessControlById(_))
+        .Times(0);
+    
+    deviceManagerServiceImpl_->HandleShareUnbindBroadCast(credId, userId, localUdid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetDeviceIdByUserIdAndTokenId_001, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t tokenId = 1234;
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetDeviceIdAndUdidListByTokenId(_, _, _))
+        .WillOnce(Return(std::vector<std::string>()));
+
+    auto result = deviceManagerServiceImpl_->GetDeviceIdByUserIdAndTokenId(userId, tokenId);
+    EXPECT_TRUE(result.empty());
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetDeviceIdByUserIdAndTokenId_002, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t tokenId = 1234;
+
+    std::vector<std::string> expectedDeviceIds = {"deviceId1"};
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetDeviceIdAndUdidListByTokenId(_, _, _))
+        .WillOnce(Return(expectedDeviceIds));
+
+    auto result = deviceManagerServiceImpl_->GetDeviceIdByUserIdAndTokenId(userId, tokenId);
+    EXPECT_EQ(result.size(), 1);
+    EXPECT_EQ(result[0], "deviceId1");
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetDeviceIdByUserIdAndTokenId_003, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t tokenId = 1234;
+
+    std::vector<std::string> expectedDeviceIds = {"deviceId1", "deviceId2"};
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetDeviceIdAndUdidListByTokenId(_, _, _))
+        .WillOnce(Return(expectedDeviceIds));
+
+    auto result = deviceManagerServiceImpl_->GetDeviceIdByUserIdAndTokenId(userId, tokenId);
+    EXPECT_EQ(result.size(), 2);
+    EXPECT_NE(std::find(result.begin(), result.end(), "deviceId1"), result.end());
+    EXPECT_NE(std::find(result.begin(), result.end(), "deviceId2"), result.end());
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessAppUninstall_001, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1001;
+    int32_t accessTokenId = 2001;
+    
+    deviceManagerServiceImpl_->listener_ = nullptr;
+    
+    auto result = deviceManagerServiceImpl_->ProcessAppUninstall(userId, accessTokenId);
+    EXPECT_EQ(result, ERR_DM_POINT_NULL);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessAppUninstall_002, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAllAclIncludeLnnAcl())
+        .WillOnce(Return(std::vector<DistributedDeviceProfile::AccessControlProfile>()));
+
+    int32_t result = deviceManagerServiceImpl_->ProcessAppUninstall(userId, accessTokenId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessAppUninstall_003, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.GetAccesser().SetAccesserTokenId(5678);
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAllAclIncludeLnnAcl())
+        .WillOnce(Return(profiles));
+
+    int32_t result = deviceManagerServiceImpl_->ProcessAppUninstall(userId, accessTokenId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessAppUninstall_004, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.GetAccesser().SetAccesserTokenId(accessTokenId);
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAllAclIncludeLnnAcl())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*hiChainConnectorMock_, DeleteGroupByACL(_, _)).Times(1);
+
+    int32_t result = deviceManagerServiceImpl_->ProcessAppUninstall(userId, accessTokenId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessAppUninstall_005, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.GetAccesser().SetAccesserTokenId(accessTokenId);
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAllAclIncludeLnnAcl())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, IsLnnAcl(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*deviceProfileConnectorMock_, CacheAcerAclId(_, _)).Times(0);
+    EXPECT_CALL(*hiChainConnectorMock_, DeleteGroupByACL(_, _)).Times(1);
+
+    int32_t result = deviceManagerServiceImpl_->ProcessAppUninstall(userId, accessTokenId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessAppUninstall_006, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.GetAccesser().SetAccesserTokenId(accessTokenId);
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAllAclIncludeLnnAcl())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*hiChainConnectorMock_, DeleteGroupByACL(_, _)).Times(0);
+
+    int32_t result = deviceManagerServiceImpl_->ProcessAppUninstall(userId, accessTokenId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessAppUninstall_007, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.GetAccesser().SetAccesserTokenId(accessTokenId);
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAllAclIncludeLnnAcl()).Times(AnyNumber())
+        .WillOnce(Return(profiles));
+    EXPECT_CALL(*deviceProfileConnectorMock_, IsLnnAcl(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(*hiChainConnectorMock_, DeleteGroupByACL(_, _)).Times(1);
+
+    int32_t result = deviceManagerServiceImpl_->ProcessAppUninstall(userId, accessTokenId);
+    EXPECT_EQ(result, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessUnBindApp_001, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+    std::string extra = "invalid_json";
+    std::string udid = "remoteUdid";
+
+    EXPECT_CALL(*deviceManagerServiceImplMock_, HandleAppUnBindEvent(userId, udid, accessTokenId)).Times(1);
+
+    deviceManagerServiceImpl_->ProcessUnBindApp(userId, accessTokenId, extra, udid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessUnBindApp_002, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+    std::string extra = R"({"key": "value"})";
+    std::string udid = "remoteUdid";
+
+    EXPECT_CALL(*deviceManagerServiceImplMock_, HandleAppUnBindEvent(userId, udid, accessTokenId)).Times(1);
+
+    deviceManagerServiceImpl_->ProcessUnBindApp(userId, accessTokenId, extra, udid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessUnBindApp_003, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+    int32_t peerTokenId = 5678;
+    std::string extra = R"({"peerTokenId": 5678})";
+    std::string udid = "remoteUdid";
+
+    EXPECT_CALL(*deviceManagerServiceImplMock_,
+        HandleAppUnBindEvent(userId, udid, accessTokenId, peerTokenId)).Times(1);
+
+    deviceManagerServiceImpl_->ProcessUnBindApp(userId, accessTokenId, extra, udid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessUnBindApp_004, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+    std::string extra = R"({"peerTokenId": "invalid"})";
+    std::string udid = "remoteUdid";
+
+    EXPECT_CALL(*deviceManagerServiceImplMock_, HandleAppUnBindEvent(userId, udid, accessTokenId)).Times(1);
+
+    deviceManagerServiceImpl_->ProcessUnBindApp(userId, accessTokenId, extra, udid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ProcessUnBindApp_005, testing::ext::TestSize.Level1)
+{
+    int32_t userId = 1;
+    int32_t accessTokenId = 1234;
+    std::string extra = "";
+    std::string udid = "remoteUdid";
+
+    EXPECT_CALL(*deviceManagerServiceImplMock_, HandleAppUnBindEvent(userId, udid, accessTokenId)).Times(1);
+
+    deviceManagerServiceImpl_->ProcessUnBindApp(userId, accessTokenId, extra, udid);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, DeleteAclByTokenId_001, testing::ext::TestSize.Level1)
+{
+    int32_t accessTokenId = 1234;
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.GetAccesser().SetAccesserTokenId(5678);
+    profiles.push_back(profile);
+
+    std::map<int64_t, DistributedDeviceProfile::AccessControlProfile> delProfileMap;
+    std::vector<std::pair<int32_t, std::string>> delACLInfoVec;
+    std::vector<int32_t> userIdVec;
+
+    deviceManagerServiceImpl_->DeleteAclByTokenId(accessTokenId, profiles, delProfileMap, delACLInfoVec, userIdVec);
+
+    EXPECT_TRUE(delProfileMap.empty());
+    EXPECT_TRUE(delACLInfoVec.empty());
+    EXPECT_TRUE(userIdVec.empty());
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, DeleteAclByTokenId_002, testing::ext::TestSize.Level1)
+{
+    int32_t accessTokenId = 1234;
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+
+    std::map<int64_t, DistributedDeviceProfile::AccessControlProfile> delProfileMap;
+    std::vector<std::pair<int32_t, std::string>> delACLInfoVec;
+    std::vector<int32_t> userIdVec;
+
+    deviceManagerServiceImpl_->DeleteAclByTokenId(accessTokenId, profiles, delProfileMap, delACLInfoVec, userIdVec);
+
+    EXPECT_TRUE(profiles.empty());
+    EXPECT_TRUE(delProfileMap.empty());
+    EXPECT_TRUE(delACLInfoVec.empty());
+    EXPECT_TRUE(userIdVec.empty());
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, BindServiceTarget_InvalidInput_101, testing::ext::TestSize.Level0)
+{
+    PeerTargetId targetId;
+    std::map<std::string, std::string> bindParam;
+    int32_t ret = deviceManagerServiceImpl_->BindServiceTarget("", targetId, bindParam);
+    ASSERT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, DeleteAclExtDataServiceId_ExtDataEmpty_01, testing::ext::TestSize.Level1)
+{
+    int64_t serviceId = 123456;
+    int64_t tokenIdCaller = 123;
+    std::string udid = "test";
+    int32_t bindLevel = 1;
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData("");
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAllAclIncludeLnnAcl()).Times(AnyNumber())
+        .WillOnce(Return(profiles));
+
+    int32_t ret = deviceManagerServiceImpl_->DeleteAclExtraDataServiceId(serviceId, tokenIdCaller, udid, bindLevel);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, DeleteAclExtraDataServiceId_InvalidJson_101, testing::ext::TestSize.Level1)
+{
+    int64_t serviceId = 123456;
+    int64_t tokenIdCaller = 123;
+    std::string udid = "test";
+    int32_t bindLevel = 1;
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData("invalid_json");
+    profiles.push_back(profile);
+
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAllAclIncludeLnnAcl()).Times(AnyNumber())
+        .WillOnce(Return(profiles));
+
+    int32_t ret = deviceManagerServiceImpl_->DeleteAclExtraDataServiceId(serviceId, tokenIdCaller, udid, bindLevel);
+    EXPECT_EQ(ret, ERR_DM_INPUT_PARA_INVALID);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportAuthInfo_001, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetLocalServiceInfoByBundleNameAndPinExchangeType(_, _, _))
+        .WillOnce(Return(ERR_DM_FAILED));
+    EXPECT_CALL(*deviceProfileConnectorMock_, PutLocalServiceInfo(_))
+        .WillOnce(Return(ERR_DM_FAILED));
+    int32_t ret = deviceManagerServiceImpl_->ImportAuthInfo(dmAuthInfo);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportAuthInfo_002, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetLocalServiceInfoByBundleNameAndPinExchangeType(_, _, _))
+        .WillOnce(Return(ERR_DM_FAILED));
+    EXPECT_CALL(*deviceProfileConnectorMock_, PutLocalServiceInfo(_))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = deviceManagerServiceImpl_->ImportAuthInfo(dmAuthInfo);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportAuthInfo_003, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetLocalServiceInfoByBundleNameAndPinExchangeType(_, _, _))
+        .WillOnce(Return(DM_OK));
+    EXPECT_CALL(*deviceProfileConnectorMock_, UpdateLocalServiceInfo(_))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = deviceManagerServiceImpl_->ImportAuthInfo(dmAuthInfo);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportAuthInfo_004, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetLocalServiceInfoByBundleNameAndPinExchangeType(_, _, _))
+        .WillOnce(Return(DM_OK));
+    EXPECT_CALL(*deviceProfileConnectorMock_, UpdateLocalServiceInfo(_))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = deviceManagerServiceImpl_->ImportAuthInfo(dmAuthInfo);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportAuthInfo_005, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    DistributedDeviceProfile::LocalServiceInfo oldSrvInfo;
+    oldSrvInfo.SetPinCode("654321");
+    oldSrvInfo.SetExtraInfo(R"({"pinErrorCount":3})");
+    dmAuthInfo.pinExchangeType = DMLocalServiceInfoPinExchangeType::FROMDP;
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetLocalServiceInfoByBundleNameAndPinExchangeType(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<2>(oldSrvInfo), Return(DM_OK)));
+    EXPECT_CALL(*deviceProfileConnectorMock_, UpdateLocalServiceInfo(_))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = deviceManagerServiceImpl_->ImportAuthInfo(dmAuthInfo);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportAuthInfo_006, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    DistributedDeviceProfile::LocalServiceInfo oldSrvInfo;
+    oldSrvInfo.SetPinCode("654321");
+    oldSrvInfo.SetExtraInfo(R"({})");
+    string pinCodeTest = "654321";
+    strncpy_s(dmAuthInfo.pinCode, DM_MAX_PIN_CODE_LEN, pinCodeTest.c_str(), pinCodeTest.length());
+    dmAuthInfo.pinExchangeType = DMLocalServiceInfoPinExchangeType::FROMDP;
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetLocalServiceInfoByBundleNameAndPinExchangeType(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<2>(oldSrvInfo), Return(DM_OK)));
+    EXPECT_CALL(*deviceProfileConnectorMock_, UpdateLocalServiceInfo(_))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = deviceManagerServiceImpl_->ImportAuthInfo(dmAuthInfo);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportAuthInfo_007, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    DistributedDeviceProfile::LocalServiceInfo oldSrvInfo;
+    oldSrvInfo.SetPinCode("654321");
+    oldSrvInfo.SetExtraInfo(R"({"pinErrorCount":3})");
+    string pinCodeTest = "654321";
+    JsonObject object;
+    strncpy_s(dmAuthInfo.pinCode, DM_MAX_PIN_CODE_LEN, pinCodeTest.c_str(), pinCodeTest.length());
+    dmAuthInfo.pinExchangeType = DMLocalServiceInfoPinExchangeType::FROMDP;
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetLocalServiceInfoByBundleNameAndPinExchangeType(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<2>(oldSrvInfo), Return(DM_OK)));
+    EXPECT_CALL(*deviceProfileConnectorMock_, UpdateLocalServiceInfo(_))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = deviceManagerServiceImpl_->ImportAuthInfo(dmAuthInfo);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportAuthInfo_008, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    DistributedDeviceProfile::LocalServiceInfo oldSrvInfo;
+    oldSrvInfo.SetPinCode("654321");
+    oldSrvInfo.SetExtraInfo(R"({"pinErrorCount":3})");
+    string pinCodeTest = "654321";
+    std::string strJson = oldSrvInfo.GetExtraInfo();
+    JsonObject object(strJson);
+    strncpy_s(dmAuthInfo.pinCode, DM_MAX_PIN_CODE_LEN, pinCodeTest.c_str(), pinCodeTest.length());
+    dmAuthInfo.pinExchangeType = DMLocalServiceInfoPinExchangeType::FROMDP;
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetLocalServiceInfoByBundleNameAndPinExchangeType(_, _, _))
+        .WillOnce(DoAll(SetArgReferee<2>(oldSrvInfo), Return(DM_OK)));
+    EXPECT_CALL(*deviceProfileConnectorMock_, UpdateLocalServiceInfo(_))
+        .WillOnce(Return(DM_OK));
+    int32_t ret = deviceManagerServiceImpl_->ImportAuthInfo(dmAuthInfo);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ExportAuthInfo_001, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    dmAuthInfo.userId = 100;
+    dmAuthInfo.pinConsumerPkgName = "com.ohos.test.pin";
+    dmAuthInfo.bizSrcPkgName = "com.ohos.test.biz";
+    uint32_t pinlength = 6;
+    int32_t ret = deviceManagerServiceImpl_->ExportAuthInfo(dmAuthInfo, pinlength);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, StopAuthInfoTimerAndDeleteDp_001, testing::ext::TestSize.Level1)
+{
+    deviceManagerServiceImpl_->timer_ = std::make_shared<DmTimer>();
+    std::string pkName = "test_pk";
+    int32_t pinExchangeType = static_cast<int>(DMLocalServiceInfoPinExchangeType::PINBOX);
+    uint64_t tokenId = 12345;
+    deviceManagerServiceImpl_->StopAuthInfoTimerAndDeleteDP(pkName, pinExchangeType, tokenId);
+    std::string key = std::to_string(tokenId) + "_" + pkName + "_" + std::to_string(pinExchangeType);
+    EXPECT_EQ(deviceManagerServiceImpl_->tokenIdPinCodeMap_.count(key), 0);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetPinMatchFlag_001, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    uint64_t tokenId = 12345;
+    std::string key = std::to_string(tokenId) + "_" + "test.pkg" + "_" + std::to_string(1);
+    deviceManagerServiceImpl_->tokenIdPinCodeMap_[key] = dmAuthInfo;
+    string metaTokenTest = "valid_meta";
+    strncpy_s(dmAuthInfo.metaToken, DM_MAX_META_TOKEN_LEN, metaTokenTest.c_str(), metaTokenTest.length());
+    auto ret = deviceManagerServiceImpl_->GetPinMatchFlag(tokenId, dmAuthInfo);
+    EXPECT_EQ(ret, false);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetPinMatchFlag_002, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    uint64_t tokenId = 12345;
+    string pinCodeTest = "123456";
+    strncpy_s(dmAuthInfo.pinCode, DM_MAX_PIN_CODE_LEN, pinCodeTest.c_str(), pinCodeTest.length());
+    std::string key = std::to_string(tokenId) + "_" + "test.pkg" + "_" + std::to_string(1);
+    deviceManagerServiceImpl_->tokenIdPinCodeMap_[key] = dmAuthInfo;
+    auto ret = deviceManagerServiceImpl_->GetPinMatchFlag(tokenId, dmAuthInfo);
+    EXPECT_EQ(ret, false);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetPinMatchFlag_003, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    uint64_t tokenId = 12345;
+    string pinCodeTest = "12345612345625";
+    strncpy_s(dmAuthInfo.pinCode, DM_MAX_PIN_CODE_LEN, pinCodeTest.c_str(), pinCodeTest.length());
+    std::string key = std::to_string(tokenId) + "_" + "test.pkg" + "_" + std::to_string(1);
+    deviceManagerServiceImpl_->tokenIdPinCodeMap_[key] = dmAuthInfo;
+    auto ret = deviceManagerServiceImpl_->GetPinMatchFlag(tokenId, dmAuthInfo);
+    EXPECT_EQ(ret, false);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, InitDpServiceInfo_001, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    DistributedDeviceProfile::LocalServiceInfo dpServiceInfo;
+    bool pinMatchFlag = true;
+    uint64_t tokenId  = 123;
+    int32_t errortCount = 0;
+    dmAuthInfo.extraInfo = "invalid json string";
+    deviceManagerServiceImpl_->InitDpServiceInfo(dmAuthInfo, dpServiceInfo, pinMatchFlag, tokenId, errortCount);
+    EXPECT_TRUE(dpServiceInfo.GetExtraInfo().empty());
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, InitDpServiceInfo_002, testing::ext::TestSize.Level1)
+{
+    DmAuthInfo dmAuthInfo;
+    DistributedDeviceProfile::LocalServiceInfo dpServiceInfo;
+    bool pinMatchFlag = true;
+    uint64_t tokenId  = 123;
+    int32_t errortCount = 0;
+    dmAuthInfo.extraInfo = R"({"key": "value"})";
+    deviceManagerServiceImpl_->InitDpServiceInfo(dmAuthInfo, dpServiceInfo, pinMatchFlag, tokenId, errortCount);
+    EXPECT_FALSE(dpServiceInfo.GetExtraInfo().empty());
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, ImportConfig_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<AuthManagerBase> authMgr = std::make_shared<AuthSrcManager>(
+        deviceManagerServiceImpl_->softbusConnector_, deviceManagerServiceImpl_->hiChainConnector_,
+        deviceManagerServiceImpl_->listener_, deviceManagerServiceImpl_->hiChainAuthConnector_);
+    uint64_t tokenId  = 123;
+    std::string pkgName = "ImportConfig";
+    deviceManagerServiceImpl_->configsMap_[tokenId] = std::make_shared<Config>();
+    deviceManagerServiceImpl_->ImportConfig(authMgr, tokenId, pkgName);
+    EXPECT_TRUE(deviceManagerServiceImpl_->configsMap_.find(tokenId) == deviceManagerServiceImpl_->configsMap_.end());
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, InitAndRegisterAuthMgr_001, testing::ext::TestSize.Level1)
+{
+    uint64_t tokenId  = 123;
+    auto ret = deviceManagerServiceImpl_->InitAndRegisterAuthMgr(true, tokenId, nullptr, 0, "com.test");
+    EXPECT_EQ(ret, ERR_DM_AUTH_OPEN_SESSION_FAILED);
+
+    auto session = std::make_shared<Session>(0, "");
+    session->flag_ = true;
+    ret = deviceManagerServiceImpl_->InitAndRegisterAuthMgr(true, tokenId, session, 0, "com.test");
+    EXPECT_EQ(ret, ERR_DM_AUTH_BUSINESS_BUSY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, Release_001, testing::ext::TestSize.Level1)
+{
+    std::shared_ptr<HiChainConnector> hiChainConnector = deviceManagerServiceImpl_->hiChainConnector_;
+    std::shared_ptr<HiChainAuthConnector> hiChainAuthConnector = deviceManagerServiceImpl_->hiChainAuthConnector_;
+    std::shared_ptr<SoftbusConnector> softbusConnector = deviceManagerServiceImpl_->softbusConnector_;
+    
+    deviceManagerServiceImpl_->softbusConnector_ = nullptr;
+    deviceManagerServiceImpl_->hiChainAuthConnector_ = nullptr;
+    deviceManagerServiceImpl_->hiChainConnector_ = nullptr;
+    deviceManagerServiceImpl_->Release();
+    EXPECT_EQ(deviceManagerServiceImpl_->hiChainConnector_, nullptr);
+
+    deviceManagerServiceImpl_->softbusConnector_ = softbusConnector;
+    deviceManagerServiceImpl_->Release();
+    EXPECT_EQ(deviceManagerServiceImpl_->hiChainConnector_, nullptr);
+
+    deviceManagerServiceImpl_->softbusConnector_ = softbusConnector;
+    deviceManagerServiceImpl_->hiChainConnector_ = hiChainConnector;
+    deviceManagerServiceImpl_->Release();
+    EXPECT_EQ(deviceManagerServiceImpl_->hiChainConnector_, nullptr);
+
+    deviceManagerServiceImpl_->softbusConnector_ = softbusConnector;
+    deviceManagerServiceImpl_->hiChainConnector_ = hiChainConnector;
+    deviceManagerServiceImpl_->hiChainAuthConnector_ = hiChainAuthConnector;
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, UnBindDevice_01, testing::ext::TestSize.Level1)
+{
+    std::string pkgName = "UnBindDevice";
+    std::string udid = "123";
+    int32_t bindLevel = 0;
+    std::string extra = "extra";
+    int32_t ret = deviceManagerServiceImpl_->UnBindDevice(pkgName, udid, bindLevel, extra);
+    deviceManagerServiceImpl_->HandleDeviceNotTrust(udid);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, UnBindDevice_02, testing::ext::TestSize.Level1)
+{
+    std::string pkgName = "UnBindDevice";
+    std::string udid = "123";
+    int32_t bindLevel = 0;
+    int32_t ret = deviceManagerServiceImpl_->UnBindDevice(pkgName, udid, bindLevel);
+    deviceManagerServiceImpl_->HandleDeviceNotTrust(udid);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, CheckSharePeerSrc_006, testing::ext::TestSize.Level1)
+{
+    std::string peerUdid = "peerUdid";
+    std::string localUdid = "localUdid";
+    
+    std::vector<DistributedDeviceProfile::AccessControlProfile> profiles;
+    AccessControlProfile profile;
+    profile.SetBindType(DM_SHARE);
+    profile.SetTrustDeviceId(peerUdid);
+    Accesser accesser;
+    accesser.SetAccesserDeviceId(peerUdid);
+    profile.SetAccesser(accesser);
+    Accessee accessee;
+    accessee.SetAccesseeDeviceId(localUdid);
+    profile.SetAccessee(accessee);
+    profiles.push_back(profile);
+    
+    EXPECT_CALL(*deviceProfileConnectorMock_, GetAccessControlProfile())
+        .WillOnce(Return(profiles));
+    
+    bool result = deviceManagerServiceImpl_->CheckSharePeerSrc(peerUdid, localUdid);
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetLogicalIdAndTokenIdBySessionId_001, testing::ext::TestSize.Level1)
+{
+    int32_t sessionId = 10001;
+    uint64_t tokenId = 1000023;
+    uint64_t logicalSessionId = 45678910;
+
+    deviceManagerServiceImpl_->logicalSessionId2SessionIdMap_[logicalSessionId] = sessionId;
+    auto ret = deviceManagerServiceImpl_->GetLogicalIdAndTokenIdBySessionId(logicalSessionId,
+        tokenId, logicalSessionId);
+    EXPECT_EQ(ret, DM_OK);
+    deviceManagerServiceImpl_->logicalSessionId2SessionIdMap_.clear();
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, TransferSinkOldAuthMgr_001, testing::ext::TestSize.Level1)
+{
+    JsonObject jsonObject;
+    std::shared_ptr<Session> curSession = std::make_shared<Session>(1, "deviceId");
+    int32_t ret = deviceManagerServiceImpl_->TransferSinkOldAuthMgr(jsonObject, curSession);
+    EXPECT_EQ(ret, ERR_DM_AUTH_FAILED);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, TransferSinkOldAuthMgr_002, testing::ext::TestSize.Level1)
+{
+    JsonObject jsonObject;
+    jsonObject[TAG_BUNDLE_NAME] = "com.test.bundle";
+    std::shared_ptr<Session> curSession = std::make_shared<Session>(1, "deviceId");
+    std::shared_ptr<SoftbusConnector> softbusConnector = deviceManagerServiceImpl_->softbusConnector_;
+    deviceManagerServiceImpl_->softbusConnector_ = nullptr;
+    int32_t ret = deviceManagerServiceImpl_->TransferSinkOldAuthMgr(jsonObject, curSession);
+    EXPECT_EQ(ret, ERR_DM_AUTH_FAILED);
+    deviceManagerServiceImpl_->softbusConnector_ = softbusConnector;
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, RegisterCredentialCallback_001, testing::ext::TestSize.Level1)
+{
+    const std::string pkgName = "pkgNametest";
+    int32_t ret = deviceManagerServiceImpl_->RegisterCredentialCallback(pkgName);
+    EXPECT_EQ(ret, DM_OK);
+    deviceManagerServiceImpl_->UnRegisterCredentialCallback(pkgName);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, UnRegisterCredentialCallback_001, testing::ext::TestSize.Level1)
+{
+    const std::string pkgName = "pkgNametest";
+    int32_t ret = deviceManagerServiceImpl_->UnRegisterCredentialCallback(pkgName);
+    EXPECT_EQ(ret, DM_OK);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetConfigByTokenId_001, testing::ext::TestSize.Level1)
+{
+    deviceManagerServiceImpl_->configsMap_.clear();
+    auto config = deviceManagerServiceImpl_->GetConfigByTokenId();
+    EXPECT_NE(config, nullptr);
+    EXPECT_FALSE(deviceManagerServiceImpl_->configsMap_.empty());
+    deviceManagerServiceImpl_->configsMap_.clear();
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetConfigByTokenId_002, testing::ext::TestSize.Level1)
+{
+    deviceManagerServiceImpl_->configsMap_.clear();
+    uint64_t tokenId = IPCSkeleton::GetCallingTokenID();
+    auto config1 = deviceManagerServiceImpl_->GetConfigByTokenId();
+    config1->pkgName = "test.bundle";
+    config1->authCode = "test_auth_code";
+    
+    auto config2 = deviceManagerServiceImpl_->GetConfigByTokenId();
+    EXPECT_EQ(config2->pkgName, "test.bundle");
+    EXPECT_EQ(config2->authCode, "test_auth_code");
+    EXPECT_EQ(deviceManagerServiceImpl_->configsMap_.size(), 1);
+    deviceManagerServiceImpl_->configsMap_.clear();
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, OpenAuthSession_001, testing::ext::TestSize.Level1)
+{
+    std::string deviceId = "123456";
+    std::map<std::string, std::string> bindParam;
+    bindParam[PARAM_KEY_IS_SERVICE_BIND] = DM_VAL_TRUE;
+    int32_t ret = deviceManagerServiceImpl_->OpenAuthSession(deviceId, bindParam);
+    EXPECT_NE(ret, 0);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, OpenAuthSession_002, testing::ext::TestSize.Level1)
+{
+    std::string deviceId = "not_a_number";
+    std::map<std::string, std::string> bindParam;
+    bindParam[PARAM_KEY_IS_SERVICE_BIND] = DM_VAL_TRUE;
+    int32_t ret = deviceManagerServiceImpl_->OpenAuthSession(deviceId, bindParam);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, OpenAuthSession_003, testing::ext::TestSize.Level1)
+{
+    std::string deviceId = "123456";
+    std::map<std::string, std::string> bindParam;
+    bindParam[PARAM_KEY_IS_SERVICE_BIND] = DM_VAL_TRUE;
+    std::shared_ptr<IDeviceManagerServiceListener> listener = deviceManagerServiceImpl_->listener_;
+    deviceManagerServiceImpl_->listener_ = nullptr;
+    int32_t ret = deviceManagerServiceImpl_->OpenAuthSession(deviceId, bindParam);
+    EXPECT_EQ(ret, ERR_DM_FAILED);
+    deviceManagerServiceImpl_->listener_ = listener;
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, OpenAuthSession_004, testing::ext::TestSize.Level1)
+{
+    std::string deviceId = "deviceId";
+    std::map<std::string, std::string> bindParam;
+    bindParam[PARAM_KEY_BIND_EXTRA_DATA] = "invalid_json";
+    int32_t ret = deviceManagerServiceImpl_->OpenAuthSession(deviceId, bindParam);
+    EXPECT_EQ(ret, -1);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, OpenAuthSession_005, testing::ext::TestSize.Level1)
+{
+    std::string deviceId = "deviceId";
+    std::map<std::string, std::string> bindParam;
+    std::shared_ptr<SoftbusConnector> softbusConnector = deviceManagerServiceImpl_->softbusConnector_;
+    deviceManagerServiceImpl_->softbusConnector_ = nullptr;
+    int32_t ret = deviceManagerServiceImpl_->OpenAuthSession(deviceId, bindParam);
+    EXPECT_EQ(ret, -1);
+    deviceManagerServiceImpl_->softbusConnector_ = softbusConnector;
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, OpenAuthSession_007, testing::ext::TestSize.Level1)
+{
+    std::string deviceId = "deviceId";
+    std::map<std::string, std::string> bindParam;
+    std::string extra = R"({"connSessionType": "normal"})";
+    bindParam[PARAM_KEY_BIND_EXTRA_DATA] = extra;
+    std::shared_ptr<SoftbusSessionMock> softbusSessionMock = std::make_shared<SoftbusSessionMock>();
+    EXPECT_CALL(*softbusSessionMock, OpenAuthSession(testing::_)).WillOnce(Return(100));
+    DmSoftbusSession::dmSoftbusSession = softbusSessionMock;
+    int32_t ret = deviceManagerServiceImpl_->OpenAuthSession(deviceId, bindParam);
+    EXPECT_EQ(ret, 100);
+    DmSoftbusSession::dmSoftbusSession = nullptr;
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_Empty_ReturnsDefault, testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData("");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 365LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_NoKey_ReturnsDefault, testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData(R"({"foo":"bar"})");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 365LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_ValidDays_ReturnsScaled, testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData(R"({"ACL_LIFE_CYCLE_DAYS":730})");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 730LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_OutOfRange_ReturnsDefault, testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData(R"({"ACL_LIFE_CYCLE_DAYS":99999})");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 365LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_WrongType_ReturnsDefault, testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData(R"({"ACL_LIFE_CYCLE_DAYS":"730"})");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 365LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_Malformed_ReturnsDefault, testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData("not-json{{{");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 365LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_NegativeNonSentinel_ReturnsDefault,
+    testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData(R"({"ACL_LIFE_CYCLE_DAYS":-2})");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 365LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_MinDays_ReturnsScaled, testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData(R"({"ACL_LIFE_CYCLE_DAYS":1})");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 1LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_MaxDays_ReturnsScaled, testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData(R"({"ACL_LIFE_CYCLE_DAYS":3650})");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 3650LL * SECONDS_PER_DAY);
+}
+
+HWTEST_F(DeviceManagerServiceImplFirstTest, GetAclAllowSeconds_SentinelValue_ReturnsDefault,
+    testing::ext::TestSize.Level1)
+{
+    DistributedDeviceProfile::AccessControlProfile profile;
+    profile.SetExtraData(R"({"ACL_LIFE_CYCLE_DAYS":-1})");
+    EXPECT_EQ(deviceManagerServiceImpl_->GetAclAllowSeconds(profile), 365LL * SECONDS_PER_DAY);
+}
+} // namespace
+} // namespace DistributedHardware
+} // namespace OHOS

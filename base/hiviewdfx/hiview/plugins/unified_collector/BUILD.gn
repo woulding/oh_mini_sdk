@@ -1,0 +1,128 @@
+# Copyright (c) 2023-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("unified_collector_config") {
+  visibility = [ "*:*" ]
+  include_dirs = [
+    "include",
+    "observer/include",
+    "storage/include",
+    "task/include",
+    "$hiview_framework/native/unified_collection/collector/config",
+    "$hiview_framework/native/unified_collection/collector/inner_include",
+    "$hiview_framework/native/unified_collection/process/include",
+    "$hiview_framework/native/unified_collection/decorator/include",
+  ]
+
+  if (power_manager_enable) {
+    include_dirs += [ "power/include" ]
+  }
+}
+
+ohos_source_set("unified_collector") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    cfi_vcall_icall_only = true
+    debug = false
+  }
+  configs = [ ":unified_collector_config" ]
+
+  sources = [
+    "observer/uc_app_state_observer.cpp",
+    "observer/uc_observer_mgr.cpp",
+    "observer/uc_render_state_observer.cpp",
+    "observer/uc_system_ability_listener.cpp",
+    "storage/cpu_storage.cpp",
+    "task/cpu_collection_task.cpp",
+    "unified_collector.cpp",
+  ]
+
+  deps = [
+    "$hiview_base:hiviewbase",
+    "$hiview_interfaces/inner_api/unified_collection/utility:libucollection_utility",
+    "config:UnifiedCollector_event",
+  ]
+
+  defines = [ "PC_APP_STATE_COLLECT_ENABLE = $hiview_unified_collector_PC_app_state_collect_enable" ]
+
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_runtime:app_manager",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+  if (hiview_unified_collector_trace_enable) {
+    sources += [
+      "observer/uc_telemetry_listener.cpp",
+      "observer/uc_telemetry_callback.cpp"
+    ]
+    deps += [ "$hiview_framework/native/unified_collection/trace_manager:libtrace_manager" ]
+    defines += [ "UNIFIED_COLLECTOR_TRACE_ENABLE" ]
+    if (hiview_unified_collector_low_mem_threshold != 0) {
+      sources += [ "task/trace_cache_monitor.cpp" ]
+      defines += [ "HIVIEW_LOW_MEM_THRESHOLD=${hiview_unified_collector_low_mem_threshold}" ]
+    }
+    external_deps += [
+      "hitrace:hitrace_dump",
+    ]
+  }
+
+  if (has_hiperf && hiview_unified_collector_perf_enable) {
+    cflags = [ "-DHAS_HIPERF" ]
+  }
+
+  if (power_manager_enable) {
+    external_deps += [
+      "ability_base:want",
+      "common_event_service:cesfwk_innerkits",
+      "power_manager:powermgr_client",
+    ]
+    sources += [ "power/power_status_manager.cpp" ]
+    defines += [ "POWER_MANAGER_ENABLE" ]
+  }
+
+  if (hiview_unified_collector_trace_for_cpu_high_load) {
+    sources += [ "task/dump_trace_controller.cpp" ]
+    defines += [ "CATCH_TRACE_FOR_CPU_HIGH_LOAD" ]
+  }
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+group("unittest") {
+  testonly = true
+  deps = [
+    "test/unittest/common:CpuStorageTest",
+    "test/unittest/common:UCStateObserverTest",
+  ]
+}
+
+group("moduletest") {
+  testonly = true
+  deps = []
+}

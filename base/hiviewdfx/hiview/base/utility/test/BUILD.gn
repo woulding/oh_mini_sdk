@@ -1,0 +1,120 @@
+# Copyright (c) 2022-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/test.gni")
+
+module_output_path = hiview_module + "/utility"
+
+group("unittest") {
+  testonly = true
+  deps = [
+    ":AdapterUtilityOhosTest",
+    ":BaseUtilityUnitTest",
+    ":BundleUtilTest",
+    ":SystemServiceOhosUnitTest",
+  ]
+}
+
+config("base_utility_config_test") {
+  visibility = [ ":*" ]
+
+  include_dirs = [
+    "unittest/common",
+    "$hiview_base/utility/include",
+  ]
+
+  cflags = []
+}
+
+ohos_unittest("BaseUtilityUnitTest") {
+  module_out_path = module_output_path
+
+  configs = [ ":base_utility_config_test" ]
+
+  sources = [ "unittest/common/base_utility_unit_test.cpp" ]
+
+  deps = [ "$hiview_base/utility:hiview_utility" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "relational_store:native_rdb",
+  ]
+}
+
+ohos_unittest("SystemServiceOhosUnitTest") {
+  module_out_path = module_output_path
+
+  configs = [ ":base_utility_config_test" ]
+
+  sources = [ "unittest/common/system_service_ohos_test.cpp" ]
+
+  cflags_cc = [ "-DTEST_LOCAL_SRC" ]
+
+  deps = [ "$hiview_base/utility:hiview_utility" ]
+
+  external_deps = [
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+  ]
+}
+
+ohos_unittest("AdapterUtilityOhosTest") {
+  module_out_path = module_output_path
+
+  configs = [ ":base_utility_config_test" ]
+
+  sources = [ "unittest/common/adapter_utility_ohos_test.cpp" ]
+
+  cflags_cc = [ "-DTEST_LOCAL_SRC" ]
+
+  deps = [ "$hiview_base/utility:hiview_utility" ]
+
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbeget_proxy",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "zlib:shared_libz",
+  ]
+
+  resource_config_file = "$hiview_base/utility/test/resource/ohos_test.xml"
+}
+
+ohos_unittest("BundleUtilTest") {
+  module_out_path = module_output_path
+
+  configs = [ ":base_utility_config_test" ]
+
+  sources = [ "unittest/common/bundle_util_test.cpp" ]
+
+  deps = [ "$hiview_base/utility:hiview_utility" ]
+
+  external_deps = [
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_core",
+  ]
+}

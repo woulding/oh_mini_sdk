@@ -1,0 +1,196 @@
+/*
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_COMMON_EVENT_MGR_H
+#define FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_COMMON_EVENT_MGR_H
+
+#include <atomic>
+#include <functional>
+#include <mutex>
+#include <queue>
+#include <unordered_map>
+
+#include "appexecfwk_errors.h"
+#include "bundle_data_mgr.h"
+#include "bundle_constants.h"
+#include "disposed_rule.h"
+#include "inner_bundle_info.h"
+
+namespace OHOS {
+namespace AppExecFwk {
+static constexpr size_t MAX_METADATA_CONFIG_SIZE = 1024;
+enum class NotifyType : uint8_t {
+    INSTALL = 1,
+    UPDATE,
+    UNINSTALL_BUNDLE,
+    UNINSTALL_MODULE,
+    ABILITY_ENABLE,
+    APPLICATION_ENABLE,
+    BUNDLE_DATA_CLEARED,
+    BUNDLE_CACHE_CLEARED,
+    OVERLAY_INSTALL,
+    OVERLAY_UPDATE,
+    OVERLAY_STATE_CHANGED,
+    DISPOSED_RULE_ADDED,
+    DISPOSED_RULE_DELETED,
+    START_INSTALL,
+    UNINSTALL_STATE,
+};
+
+enum class SandboxInstallType : uint8_t {
+    INSTALL = 0,
+    UNINSTALL,
+};
+
+enum class DynamicIconType : uint8_t {
+    DYNAMIC_ICON = 0,
+    ALTERNATE_ICON = 1,
+};
+
+enum class ChangeType : int32_t {
+    UNKNOWN = 0,
+    SET_APPLICATION_ENABLE = 1,
+    SET_APPLICATION_DISABLE = 2,
+};
+
+struct NotifyBundleEvents {
+    bool isAgingUninstall = false;
+    bool isBmsExtensionUninstalled = false;
+    bool isModuleUpdate = false;
+    bool isAppUpdate = false;
+    NotifyType type = NotifyType::INSTALL;
+    ChangeType changeType = ChangeType::UNKNOWN;
+    ErrCode resultCode = ERR_OK;
+    uint32_t accessTokenId = 0;
+    int32_t uid = 0;
+    int32_t bundleType = 0;
+    int32_t atomicServiceModuleUpgrade = 0;
+    int32_t appIndex = 0;
+    int32_t userId = Constants::INVALID_USERID;
+    std::string bundleName = "";
+    std::string modulePackage = "";
+    std::string abilityName = "";
+    std::string appId;
+    std::string appIdentifier;
+    std::string appDistributionType;
+    std::string sandboxCreatorBundleName;
+    std::string developerId;
+    std::string assetAccessGroups;
+    bool keepData = false;
+    bool isBundleExist = false;
+    bool crossAppSharedConfig = false;
+    bool isRecover = false;
+    bool isInstallByBundleName = false;
+    std::map<std::string, std::string> metadataConfigInfos;
+    std::vector<std::string> allowListenBundles;
+
+    void SetMetadataConfigInfos(const std::map<std::string, std::string>& configs)
+    {
+        if (configs.size() <= MAX_METADATA_CONFIG_SIZE) {
+            metadataConfigInfos = configs;
+            return;
+        }
+        metadataConfigInfos.clear();
+        size_t count = 0;
+        for (const auto& [key, value] : configs) {
+            if (count >= MAX_METADATA_CONFIG_SIZE) {
+                APP_LOGE("Config count exceeds limit: %zu/%zu", configs.size(), MAX_METADATA_CONFIG_SIZE);
+                return;
+            }
+            metadataConfigInfos[key] = value;
+            ++count;
+        }
+    }
+};
+
+class BundleCommonEventMgr : public std::enable_shared_from_this<BundleCommonEventMgr> {
+public:
+    BundleCommonEventMgr();
+    virtual ~BundleCommonEventMgr() = default;
+    void NotifyBundleStatus(const NotifyBundleEvents &installResult,
+        const std::shared_ptr<BundleDataMgr> &dataMgr);
+    ErrCode NotifySandboxAppStatus(const InnerBundleInfo &info, int32_t uid, int32_t userId,
+        const SandboxInstallType &type);
+    ErrCode NotifyCliSandboxAppStatus(const NotifyBundleEvents &event, const std::string &action);
+    void NotifyOverlayModuleStateStatus(const std::string &bundleName, const std::string &moduleName, bool isEnabled,
+        int32_t userId, int32_t uid);
+    void NotifySetDisposedRule(const std::string &appId, int32_t userId, const std::string &data, int32_t appIndex);
+    void NotifyDeleteDisposedRule(const std::string &appId, int32_t userId, int32_t appIndex);
+    void NotifyDynamicIconEvent(
+        const std::string &bundleName, bool isEnableDynamicIcon, int32_t userId, int32_t appIndex,
+        const DynamicIconType type);
+    void NotifyUninstalledBundleCleared(const NotifyBundleEvents &installResult);
+    void NotifyBundleResourcesChanged(const int32_t userId, const uint32_t type);
+    void NotifyDefaultAppChanged(const int32_t userId, std::vector<std::string> &utdIdVec);
+    void NotifyPluginEvents(const NotifyBundleEvents &event,
+        const std::shared_ptr<BundleDataMgr> &dataMgr, bool isHsp = false);
+    void NotifyShortcutVisibleChanged(
+        const std::string &bundlename, const std::string &id, int32_t userId, int32_t appIndex, bool visible);
+    void NotifyDynamicShortcutChanged(const std::string &bundlename,
+        const std::vector<std::string> &ids, int32_t userId, int32_t appIndex, const std::string &operationType);
+    void NotifyShortcutsEnabledChanged(const std::vector<ShortcutInfo> &shortcutInfos, bool isEnabled);
+    void NotifyPluginCommonEvents(const std::string &hostBundleName, const std::string &pluginBundleName,
+        const NotifyType &type);
+    void NotifySkillEvents(const std::string &bundleName, int32_t userId,
+        const std::vector<std::string> &addedSkills, const std::vector<std::string> &changedSkills,
+        const std::vector<std::string> &removedSkills);
+
+    // Async version of NotifySetDisposedRule
+    void NotifySetDisposedRuleAsync(const std::string &appId, int32_t userId,
+        const std::string &data, int32_t appIndex);
+
+    // Async version of NotifyDeleteDisposedRule
+    void NotifyDeleteDisposedRuleAsync(const std::string &appId, int32_t userId, int32_t appIndex);
+
+private:
+    // Async notification with rate limiting (15 events per 5ms max)
+    using EventPublishFunc = std::function<void()>;
+
+    // Generic async event submission - internal use only
+    void SubmitEventAsync(const EventPublishFunc &publishFunc);
+    std::string GetCommonEventData(const NotifyType &type);
+    void SetNotifyWant(OHOS::AAFwk::Want& want, const NotifyBundleEvents &installResult);
+    bool PublishCommonEvent(const std::string &bundleName, const std::string &action,
+        const int32_t publishUserId, const EventFwk::CommonEventData &commonData,
+        const std::vector<std::string> &allowListenBundles);
+    bool PublishCommonEventForEnterprise(const std::string &bundleName, const int32_t publishUserId,
+        const EventFwk::CommonEventData &commonData);
+    // Async version of PublishCommonEventForEnterPrise
+    void PublishCommonEventForEnterpriseAsync(const std::string &bundleName, const int32_t publishUserId,
+        const EventFwk::CommonEventData &commonData);
+    bool ProcessBundleChangedEventForOtherUsers(const std::shared_ptr<BundleDataMgr> &dataMgr,
+        const NotifyBundleEvents &event, const int32_t publishUserId,
+        const EventFwk::CommonEventData &commonData);
+    void Init();
+
+    // Async event processing
+    void ProcessEventQueue();
+    void StartAsyncProcessingIfNeeded();
+
+    std::unordered_map<NotifyType, std::string> commonEventMap_;
+    std::set<std::string> eventSet_;
+
+    // Async event queue members
+    std::queue<EventPublishFunc> eventQueue_;
+    std::mutex eventQueueMutex_;
+    std::atomic<bool> isProcessingQueue_{false};
+
+    // Rate limiting configuration
+    static constexpr int32_t MAX_EVENTS_PER_BATCH = 15;
+    static constexpr int32_t BATCH_INTERVAL_MS = 5;
+};
+} // AppExecFwk
+} // OHOS
+#endif // FOUNDATION_APPEXECFWK_SERVICES_BUNDLEMGR_COMMON_EVENT_MGR_H

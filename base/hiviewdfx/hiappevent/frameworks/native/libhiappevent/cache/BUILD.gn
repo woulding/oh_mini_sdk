@@ -1,0 +1,49 @@
+# Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+
+config("hiappevent_cache_config") {
+  visibility = [ "*:*" ]
+  include_dirs = [
+    "include",
+    "../include",
+  ]
+}
+
+ohos_source_set("hiappevent_cache") {
+  branch_protector_ret = "pac_ret"
+  public_configs = [ ":hiappevent_cache_config" ]
+
+  sources = [
+    "api_stats_dao.cpp",
+    "app_event_dao.cpp",
+    "app_event_mapping_dao.cpp",
+    "app_event_observer_dao.cpp",
+    "app_event_store.cpp",
+    "custom_event_param_dao.cpp",
+    "user_id_dao.cpp",
+    "user_property_dao.cpp",
+  ]
+
+  deps = [ "../utility:hiappevent_utility" ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+    "relational_store:native_rdb",
+  ]
+
+  part_name = "hiappevent"
+  subsystem_name = "hiviewdfx"
+}

@@ -1,0 +1,9565 @@
+/*
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "bundle_test_tool.h"
+
+#include <chrono>
+#include <cstdlib>
+#include <cstring>
+#include <fcntl.h>
+#include <fstream>
+#include <future>
+#include <getopt.h>
+#include <iostream>
+#include <set>
+#include <sstream>
+#include <sys/ioctl.h>
+#include <thread>
+#include <unistd.h>
+#include <vector>
+
+#include "accesstoken_kit.h"
+#include "app_log_wrapper.h"
+#include "appexecfwk_errors.h"
+#include "bundle_command_common.h"
+#include "bundle_death_recipient.h"
+#include "bundle_dir.h"
+#include "bundle_mgr_client.h"
+#include "bundle_mgr_ext_client.h"
+#include "bundle_mgr_proxy.h"
+#include "bundle_tool_callback_stub.h"
+#include "common_event_manager.h"
+#include "common_event_support.h"
+#include "permission_define.h"
+#include "iservice_registry.h"
+#include "data_group_info.h"
+#include "directory_ex.h"
+#include "get_largest_items_callback_host.h"
+#include "module_info.h"
+#include "parameter.h"
+#include "parameters.h"
+#include "process_cache_callback_host.h"
+#include "nativetoken_kit.h"
+#include "token_setproc.h"
+#include "spm_module_parser.h"
+#include "system_ability_definition.h"
+#ifdef BUNDLE_FRAMEWORK_QUICK_FIX
+#include "quick_fix_status_callback_host_impl.h"
+#endif
+#include "status_receiver_impl.h"
+#include "string_ex.h"
+#include "json_util.h"
+#ifdef DISTRIBUTED_BUNDLE_FRAMEWORK
+#include "distributed_bundle_mgr_client.h"
+#endif
+
+#define CODE_SIGN_PATH "/dev/code_sign\0"
+#define HM_CODESIGN_IOCTL_BASE 'k'
+#define HM_CODESIGN_SET_ENP_DEVICE_FLAG_ID 0X20
+#define CODESIGN_SET_ENP_DEVICE_FLAG \
+    _IOW(HM_CODESIGN_IOCTL_BASE, HM_CODESIGN_SET_ENP_DEVICE_FLAG_ID, uint8_t)
+
+namespace OHOS {
+namespace AppExecFwk {
+namespace {
+using OptionHandler = std::function<void(const std::string&)>;
+
+const std::string LINE_BREAK = "\n";
+constexpr int32_t SLEEP_SECONDS = 20;
+// param
+const int32_t INDEX_OFFSET = 2;
+// quick fix error code
+const int32_t ERR_BUNDLEMANAGER_FEATURE_IS_NOT_SUPPORTED = 801;
+const int32_t INITIAL_SANDBOX_APP_INDEX = 3000;
+const int32_t CODE_PROTECT_UID = 7666;
+const int32_t MAX_WAITING_TIME = 600;
+const int32_t MAX_PARAMS_FOR_UNINSTALL = 4;
+constexpr size_t BUNDLE_STATS_CACHE_INDEX = 4;
+constexpr size_t BUNDLE_STATS_MIN_SIZE = 5;
+// system param
+constexpr const char* IS_ENTERPRISE_DEVICE = "const.edm.is_enterprise_device";
+// test param
+constexpr const char* ENABLE_DEBUG_MODE_PARMA = "param.bms.test.enable_debug_mode";
+// quick fix error message
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR = "error: quick fix internal error.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PARAM_ERROR = "error: param error.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PROFILE_PARSE_FAILED = "error: profile parse failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_BUNDLE_NAME_NOT_SAME = "error: not same bundle name.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_CODE_NOT_SAME = "error: not same version code.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_NAME_NOT_SAME = "error: not same version name.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_VERSION_CODE_NOT_SAME =
+    "error: not same patch version code.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_VERSION_NAME_NOT_SAME =
+    "error: not same patch version name.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_TYPE_NOT_SAME = "error: not same patch type.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_UNKNOWN_QUICK_FIX_TYPE = "error: unknown quick fix type.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_SO_INCOMPATIBLE = "error: patch so incompatible.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_MODULE_NAME_SAME = "error: same moduleName.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_BUNDLE_NAME_NOT_EXIST = "error: bundle name is not existed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_MODULE_NAME_NOT_EXIST = "error: module name is not existed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_SIGNATURE_INFO_NOT_SAME = "error: signature is not existed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_ADD_HQF_FAILED = "error: quick fix add hqf failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_SAVE_APP_QUICK_FIX_FAILED =
+    "error: quick fix save innerAppQuickFix failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_CODE_ERROR =
+    "error: quick fix version code require greater than original hqf.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_NO_PATCH_IN_DATABASE = "error: no this quick fix info in database.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_INVALID_PATCH_STATUS = "error: wrong quick fix status.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_NOT_EXISTED_BUNDLE_INFO =
+    "error: cannot obtain the bundleInfo from data mgr.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_REMOVE_PATCH_PATH_FAILED = "error: quick fix remove path failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_EXTRACT_DIFF_FILES_FAILED = "error: extract diff files failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_APPLY_DIFF_PATCH_FAILED = "error: apply diff patch failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_UNKOWN = "error: unknown.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_FEATURE_IS_NOT_SUPPORTED = "feature is not supported.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_OPERATION_TIME_OUT = "error: quick fix operation time out.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_FAILED_SERVICE_DIED = "error: bundleMgr service is dead.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_HOT_RELOAD_NOT_SUPPORT_RELEASE_BUNDLE =
+    "error: hotreload not support release bundle.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_ALREADY_EXISTED = "error: patch type already existed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_HOT_RELOAD_ALREADY_EXISTED =
+    "error: hotreload type already existed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_NO_PATCH_INFO_IN_BUNDLE_INFO =
+    "error: no patch info in bundleInfo.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_MOVE_PATCH_FILE_FAILED = "error: quick fix move hqf file failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_CREATE_PATCH_PATH_FAILED = "error: quick fix create path failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_OLD_PATCH_OR_HOT_RELOAD_IN_DB =
+    "error: old patch or hot reload in db.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_SEND_REQUEST_FAILED = "error: send request failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_REAL_PATH_FAILED = "error: obtain realpath failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_INVALID_PATH = "error: input invalid path.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_OPEN_SOURCE_FILE_FAILED = "error: open source file failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_CREATE_FD_FAILED = "error: create file descriptor failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_INVALID_TARGET_DIR = "error: invalid designated target dir\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_CREATE_TARGET_DIR_FAILED = "error: create target dir failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PERMISSION_DENIED = "error: quick fix permission denied.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_WRITE_FILE_FAILED = "error: write file to target dir failed.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_QUICK_FIX_RELEASE_HAP_HAS_RESOURCES_FILE_FAILED =
+    "error: the hqf of release hap cannot contains resources/rawfile.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_INVALID_PARAM =
+    "error: invalid param for setting debug mode.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_INTERNAL_ERROR =
+    "error: internal error for setting debug mode.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_PARCEL_ERROR = "error: parcel error for setting debug mode.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_SEND_REQUEST_ERROR = "error: send request error.\n";
+const std::string MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_UID_CHECK_FAILED = "error: uid check failed.\n";
+
+static const std::string TOOL_NAME = "bundle_test_tool";
+static const std::string HELP_MSG =
+    "usage: bundle_test_tool <command> <options>\n"
+    "These are common bundle_test_tool commands list:\n"
+    "  help                             list available commands\n"
+    "  setrm                            set module isRemovable by given bundle name and module name\n"
+    "  getrm                            obtain the value of isRemovable by given bundle name and module name\n"
+    "  installSandbox                   indicates install sandbox\n"
+    "  uninstallSandbox                 indicates uninstall sandbox\n"
+    "  uninstallPreInstallBundle        indicates uninstall preinstall bundle\n"
+    "  dumpSandbox                      indicates dump sandbox info\n"
+    "  getStr                           obtain the value of label by given bundle name, module name and label id\n"
+    "  getIcon                          obtain the value of icon by given bundle name, module name, "
+    "density and icon id\n"
+    "  addAppInstallRule                obtain the value of install controlRule by given some app id "
+    "control rule type, user id and euid\n"
+    "  getAppInstallRule                obtain the value of install controlRule by given some app id "
+    "rule type, user id and euid\n"
+    "  deleteAppInstallRule             obtain the value of install controlRule by given some app id "
+    "user id and euid\n"
+    "  cleanAppInstallRule              obtain the value of install controlRule by given rule type "
+    "user id and euid\n"
+    "  addAppRunningRule                obtain the value of app running control rule "
+    "by given controlRule user id and euidn\n"
+    "  deleteAppRunningRule             obtain the value of app running control rule "
+    "by given controlRule user id and euid\n"
+    "  cleanAppRunningRule              obtain the value of app running control "
+    "rule by given user id and euid\n"
+    "  getAppRunningControlRule         obtain the value of app running control rule "
+    "by given user id and euid and some app id\n"
+    "  getAppRunningControlRuleResult   obtain the value of app running control rule "
+    "by given bundleName user id, euid and controlRuleResult\n"
+    "  deployQuickFix                   deploy a quick fix patch of an already installed bundle\n"
+    "  switchQuickFix                   switch a quick fix patch of an already installed bundle\n"
+    "  deleteQuickFix                   delete a quick fix patch of an already installed bundle\n"
+    "  setDebugMode                     enable signature debug mode\n"
+    "  getBundleStats                   get bundle stats\n"
+    "  getBundleInodeCount              get bundle inode count\n"
+    "  batchGetBundleStats              batch get bundle stats\n"
+    "  getAllBundleStats                get all bundle stats\n"
+    "  getAppProvisionInfo              get appProvisionInfo\n"
+    "  getDistributedBundleName         get distributedBundleName\n"
+    "  eventCB                          register then unregister bundle event callback\n"
+    "  pluginCallback                   register then unregister plugin event callback\n"
+    "  resetAOTCompileStatus            reset AOTCompileStatus\n"
+    "  sendCommonEvent                  send common event\n"
+    "  queryDataGroupInfos              obtain the data group infos of the application\n"
+    "  getGroupDir                      obtain the data group dir path by data group id\n"
+    "  getJsonProfile                   obtain the json string of the specified module\n"
+    "  getOdid                          obtain the odid of the application\n"
+    "  getOdidResetCount                obtain the odid reset count of the application\n"
+    "  setBundleFirstLaunch             set bundle first launch status\n"
+    "  getUidByBundleName               obtain the uid string of the specified bundle\n"
+    "  implicitQuerySkillUriInfo        obtain the skill uri info of the implicit query ability\n"
+    "  implicitQueryInfos               implicitly query ability and extension infos\n"
+    "  getCloneBundleInfoExt            get clone bundle info by bundle name and app index\n"
+    "  addResourceInfoByBundleName      add resource info by bundle name\n"
+    "  addResourceInfoByAbility         add resource info by ability\n"
+    "  deleteResourceInfo               delete resource info by key\n"
+    "  queryAbilityInfo                 get ability info by bundle, module and ability name\n"
+    "  batchQueryAbilityInfos           batch get ability infos by repeated want specs\n"
+    "  queryAbilityInfoByContinueType   get ability info by continue type\n"
+    "  cleanBundleCacheFilesAutomatic   clear cache data of a specified size\n"
+    "  cleanBundlePartialCacheAutomatic clear partial or all cache data of a specified bundle\n"
+    "  getContinueBundleName            get continue bundle name list\n"
+    "  updateAppEncryptedStatus         update app encrypted status\n"
+    "  getDirByBundleNameAndAppIndex    obtain the dir by bundleName and appIndex\n"
+    "  getAllBundleDirs                 obtain all bundle dirs \n"
+    "  getAllJsonProfile                obtain all json profile\n"
+    "  setApplicationDisableForbidden   set whether a specified application is forbidden to be disabled\n"
+    "  setDefaultApplicationForCustom   set default application for enterprise customization\n"
+    "  getAllBundleCacheStat            obtain all bundle cache size \n"
+    "  getEachBundleCacheStat           obtain each bundle cache size \n"
+    "  cleanAllBundleCache              clean all bundle cache \n"
+    "  deleteDisposedRules              delete disposed rules \n"
+    "  isBundleInstalled                determine whether the bundle is installed based on bundleName user "
+    "and appIndex\n"
+    "  getCompatibleDeviceType          obtain the compatible device type based on bundleName\n"
+    "  batchGetCompatibleDeviceType     batch obtain the compatible device types based on bundleNames\n"
+    "  getSimpleAppInfoForUid           get bundlename list and appIndex list by uid list\n"
+    "  getBundleNameByAppId             get bundlename by appid or appIdentifier\n"
+    "  getAssetAccessGroups             get asset access groups by bundlename\n"
+    "  getDisposedRules                 get disposed rules\n"
+    "  getAppIdentifierAndAppIndex      get appIdentifier and appIndex\n"
+    "  getAssetGroupsInfo               get asset groups info by uid\n"
+    "  setAppDistributionTypes          set white list of appDistributionType\n"
+    "  setEnpDevice                     set ENP device\n"
+    "  installEnterpriseResignCert      install an enterprise resign cert\n"
+    "  uninstallEnterpriseReSignatureCert    uninstall enterprise re sign cert\n"
+    "  getEnterpriseReSignatureCert          get enterprise re sign cert\n"
+    "  getApiTargetVersionByUid          get api target version by uid\n"
+    "  getTopNLargestItemsInAppDataDir  get top N largest items in app data dir\n"
+    "  parseSpmModule                   parse spm module\n"
+    "  getMainAndCloneBundleInfo        get main and clone bundle info\n"
+    "  querySandboxCloneAbilityInfo     query sandbox clone ability info\n";
+
+
+const std::string HELP_MSG_GET_REMOVABLE =
+    "usage: bundle_test_tool getrm <options>\n"
+    "eg:bundle_test_tool getrm -m <module-name> -n <bundle-name> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       get isRemovable by moduleNmae and bundleName\n"
+    "  -m, --module-name <module-name>        get isRemovable by moduleNmae and bundleName\n";
+
+const std::string HELP_MSG_NO_REMOVABLE_OPTION =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a module name with '-m' or '--module-name' \n";
+
+const std::string HELP_MSG_SET =
+    "usage: bundle_test_tool setrm <options>\n"
+    "eg:bundle_test_tool setrm -m <module-name> -n <bundle-name> -i 1\n"
+    "options list:\n"
+    "  -h, --help                               list available commands\n"
+    "  -n, --bundle-name  <bundle-name>         set isRemovable by moduleNmae and bundleName\n"
+    "  -i, --is-removable <is-removable>        set isRemovable  0 or 1\n"
+    "  -m, --module-name <module-name>          set isRemovable by moduleNmae and bundleName\n";
+
+const std::string HELP_MSG_INSTALL_SANDBOX =
+    "usage: bundle_test_tool installSandbox <options>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -n, --bundle-name <bundle-name>        install a sandbox of a bundle\n"
+    "  -d, --dlp-type <dlp-type>              specify type of the sandbox application\n";
+
+const std::string HELP_MSG_UNINSTALL_SANDBOX =
+    "usage: bundle_test_tool uninstallSandbox <options>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -a, --app-index <app-index>            specify a app index\n"
+    "  -n, --bundle-name <bundle-name>        install a sandbox of a bundle\n";
+
+const std::string HELP_MSG_DUMP_SANDBOX =
+    "usage: bundle_test_tool dumpSandbox <options>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -a, --app-index <app-index>            specify a app index\n"
+    "  -n, --bundle-name <bundle-name>        install a sandbox of a bundle\n";
+
+const std::string HELP_MSG_GET_STRING =
+    "usage: bundle_test_tool getStr <options>\n"
+    "eg:bundle_test_tool getStr -m <module-name> -n <bundle-name> -u <user-id> -i --id <id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -m, --module-name <module-name>        specify module name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -i, --id <id>                          specify a label id of the application\n";
+
+const std::string HELP_MSG_GET_ICON =
+    "usage: bundle_test_tool getIcon <options>\n"
+    "eg:bundle_test_tool getIcon -m <module-name> -n <bundle-name> -u <user-id> -d --density <density> -i --id <id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -m, --module-name <module-name>        specify module name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -d, --density <density>                specify a density\n"
+    "  -i, --id <id>                          specify a icon id of the application\n";
+
+const std::string HELP_MSG_NO_GETSTRING_OPTION =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a module name with '-m' or '--module-name' \n"
+    "and a userid with '-u' or '--user-id' \n"
+    "and a labelid with '-i' or '--id' \n";
+
+const std::string HELP_MSG_NO_GETICON_OPTION =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a module name with '-m' or '--module-name' \n"
+    "and a userid with '-u' or '--user-id' \n"
+    "and a density with '-d' or '--density' \n"
+    "and a iconid with '-i' or '--id' \n";
+
+const std::string HELP_MSG_ADD_INSTALL_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool addAppInstallRule -a <app-id> -t <control-rule-type> -u <user-id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -a, --app-id <app-id>                  specify app id of the application\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -t, --control-rule-type                specify control type of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_INSTALL_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool getAppInstallRule -t <control-rule-type> -u <user-id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -t, --control-rule-type                specify control type of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_DELETE_INSTALL_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool deleteAppInstallRule -a <app-id> -t <control-rule-type> -u <user-id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -a, --app-id <app-id>                  specify app id of the application\n"
+    "  -t, --control-rule-type                specify control type of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_CLEAN_INSTALL_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool cleanAppInstallRule -t <control-rule-type> -u <user-id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -t, --control-rule-type                specify control type of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_ADD_APP_RUNNING_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool addAppRunningRule -c <control-rule> -u <user-id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -c, --control-rule                     specify control rule of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_DELETE_APP_RUNNING_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool deleteAppRunningRule -c <control-rule> -u <user-id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -c, --control-rule                     specify control rule of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_CLEAN_APP_RUNNING_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool cleanAppRunningRule -u <user-id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_APP_RUNNING_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool getAppRunningControlRule -u <user-id> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_APP_RUNNING_RESULT_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool getAppRunningControlRuleResult -n <bundle-name> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --euid <eu-id>                     default euid value is 3057\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_AUTO_CLEAN_CACHE_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool cleanBundleCacheFilesAutomatic -s <cache-size> -t <clean-type> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -s, --cache-size <cache-size>          specify the cache size that needs to be cleaned\n"
+    "  -t, --clean-type <clean-type>          specify the cleanup type (0=cache-space, 1=inode-count)\n";
+
+const std::string HELP_MSG_AUTO_CLEAN_PARTIAL_CACHE_RULE =
+    "usage: bundle_test_tool <options>\n"
+    "eg:bundle_test_tool cleanBundlePartialCacheAutomatic"
+    " -n <bundle-name> -u <user-id> -a <app-index> -s <cache-size> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify the bundle name for which to clean cache\n"
+    "  -u, --user-id <user-id>                specify the user id for which to clean cache\n"
+    "  -a, --app-index <app-index>            specify the app index for which to clean cache\n"
+    "  -s, --cache-size <cache-size>          specify the cache size that needs to be reserved\n";
+
+const std::string HELP_MSG_NO_ADD_INSTALL_RULE_OPTION =
+    "error: you must specify a app id with '-a' or '--app-id' \n"
+    "and a control type with '-t' or '--control-rule-type' \n"
+    "and a userid with '-u' or '--user-id' \n";
+
+const std::string HELP_MSG_DELETE_RULES_OPTION =
+    "error: you must specify a app id with '-a' or '--app-id' \n"
+    "and a app index with '-i' or '--app-index' \n"
+    "and a userid with '-u' or '--user-id' \n"
+    "and a uid with '-u' or '--uid' \n";
+
+const std::string HELP_MSG_NO_GET_INSTALL_RULE_OPTION =
+    "error: you must specify a control type with '-t' or '--control-rule-type' \n"
+    "and a userid with '-u' or '--user-id' \n";
+
+const std::string HELP_MSG_NO_DELETE_INSTALL_RULE_OPTION =
+    "error: you must specify a control type with '-a' or '--app-id' \n"
+    "and a userid with '-u' or '--user-id' \n";
+
+const std::string HELP_MSG_NO_CLEAN_INSTALL_RULE_OPTION =
+    "error: you must specify a control type with '-t' or '--control-rule-type' \n"
+    "and a userid with '-u' or '--user-id' \n";
+
+const std::string HELP_MSG_NO_APP_RUNNING_RULE_OPTION =
+    "error: you must specify a app running type with '-c' or '--control-rule' \n"
+    "and a userid with '-u' or '--user-id' \n";
+
+const std::string HELP_MSG_NO_CLEAN_APP_RUNNING_RULE_OPTION =
+    "error: you must specify a app running type with a userid '-u' or '--user-id \n";
+
+const std::string HELP_MSG_NO_GET_ALL_APP_RUNNING_RULE_OPTION =
+    "error: you must specify a app running type with '-a' or '--app-id' \n"
+    "and a userid with '-u' or '--user-id' \n";
+
+const std::string HELP_MSG_NO_GET_APP_RUNNING_RULE_OPTION =
+    "error: you must specify a app running type with '-n' or '--bundle-name' \n"
+    "and a userid with '-u' or '--user-id' \n";
+
+const std::string HELP_MSG_NO_AUTO_CLEAN_CACHE_OPTION =
+    "error: you must specify a cache size with '-s' or '--cache-size' \n";
+
+const std::string HELP_MSG_NO_AUTO_CLEAN_PARTIAL_CACHE_OPTION =
+    "error: you must specify a bundleName with '-n' or '--bundle-name' \n"
+    "and a user id with '-u' or '--user-id' \n"
+    "and a app index with '-a' or '--app-index' \n"
+    "and a cache size with '-s' or '--cache-size' \n";
+
+const std::string HELP_MSG_DEPLOY_QUICK_FIX =
+    "usage: bundle_test_tool deploy quick fix <options>\n"
+    "eg:bundle_test_tool deployQuickFix -p <quickFixPath> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -p, --patch-path  <patch-path>         specify patch path of the patch\n"
+    "  -d, --debug  <debug>                   specify deploy mode, 0 represents release, 1 represents debug\n";
+
+const std::string HELP_MSG_SWITCH_QUICK_FIX =
+    "usage: bundle_test_tool switch quick fix <options>\n"
+    "eg:bundle_test_tool switchQuickFix -n <bundle-name> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundleName of the patch\n"
+    "  -e, --enbale  <enable>                 enable a deployed patch of disable an under using patch,\n"
+    "                                         1 represents enable and 0 represents disable\n";
+
+const std::string HELP_MSG_DELETE_QUICK_FIX =
+    "usage: bundle_test_tool delete quick fix <options>\n"
+    "eg:bundle_test_tool deleteQuickFix -n <bundle-name> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundleName of the patch\n";
+
+const std::string HELP_MSG_SET_DEBUG_MODE =
+    "usage: bundle_test_tool setDebugMode <options>\n"
+    "eg:bundle_test_tool setDebugMode -e <0/1>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -e, --enable  <enable>                 enable signature debug mode, 1 represents enable debug mode and 0\n"
+    "                                         represents disable debug mode\n";
+
+const std::string HELP_MSG_SET_BUNDLE_FIRST_LAUNCH =
+    "usage: bundle_test_tool setBundleFirstLaunch <options>\n"
+    "eg:bundle_test_tool setBundleFirstLaunch -n <bundle-name> -u <user-id> -a <app-index> -i <0/1>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -a, --app-index <app-index>            specify a app index, 0 for normal app, > 0 for clone app\n"
+    "  -i, --is-first-launch <0/1>            set isBundleFirstLaunch, 1 for first launch, 0 for not first launch\n";
+
+const std::string HELP_MSG_BATCH_GET_BUNDLE_INFO =
+    "usage: bundle_test_tool batchGetBundleInfo <options>\n"
+    "eg:bundle_test_tool batchGetBundleInfo -n <bundle-name>,<bundle-name> -f <flags> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle names separated by commas\n"
+    "  -f, --flags <flags>                    specify bundle info flags (default: 1)\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_PARSE_SPM_MODULE =
+    "usage: bundle_test_tool parseSpmModule <options>\n"
+    "eg:bundle_test_tool parseSpmModule -p <module-json-path>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -p, --module-json-path <path>          specify module.json file path\n";
+
+const std::string HELP_MSG_QUERY_ABILITY_INFO =
+    "usage: bundle_test_tool queryAbilityInfo <options>\n"
+    "eg:bundle_test_tool queryAbilityInfo -n <bundle-name> -m <module-name> -a <ability-name> "
+    "-f <flags> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the ability\n"
+    "  -m, --module-name <module-name>        specify module name of the ability\n"
+    "  -a, --ability-name <ability-name>      specify ability name\n"
+    "  -f, --flags <flags>                    specify ability info flags (default: 0)\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_BATCH_QUERY_ABILITY_INFOS =
+    "usage: bundle_test_tool batchQueryAbilityInfos <options>\n"
+    "eg:bundle_test_tool batchQueryAbilityInfos -w <bundle-name>:<module-name>:<ability-name> "
+    "-w <bundle-name>::<ability-name> -w <bundle-name>:<module-name>: -w <bundle-name>:: -f <flags> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -w, --want <bundle:module:ability>     specify a want item, bundle is required and module/ability can be "
+    "empty\n"
+    "  -f, --flags <flags>                    specify ability info flags (default: 0)\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_IMPLICIT_QUERY_INFOS =
+    "usage: bundle_test_tool implicitQueryInfos <options>\n"
+    "eg:bundle_test_tool implicitQueryInfos -n <bundle-name> -a <action> -e <entity> -r <uri> "
+    "-t <type> -f <flags> -u <user-id> -d <with-default>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name\n"
+    "  -a, --action <action>                  specify action\n"
+    "  -e, --entity <entity>                  specify entity\n"
+    "  -r, --uri <uri>                        specify uri\n"
+    "  -t, --type <type>                      specify type\n"
+    "  -f, --flags <flags>                    specify query flags (default: 0)\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -d, --with-default <0|1>               specify whether to query with default app (default: 0)\n";
+
+const std::string HELP_MSG_GET_CLONE_BUNDLE_INFO_EXT =
+    "usage: bundle_test_tool getCloneBundleInfoExt <options>\n"
+    "eg:bundle_test_tool getCloneBundleInfoExt -n <bundle-name> -f <flags> -a <app-index> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name\n"
+    "  -f, --flags <flags>                    specify bundle info flags (default: 0)\n"
+    "  -a, --app-index <app-index>            specify clone app index (default: 0)\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_ADD_RESOURCE_INFO_BY_BUNDLE_NAME =
+    "usage: bundle_test_tool addResourceInfoByBundleName <options>\n"
+    "eg:bundle_test_tool addResourceInfoByBundleName -n <bundle-name> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_ADD_RESOURCE_INFO_BY_ABILITY =
+    "usage: bundle_test_tool addResourceInfoByAbility <options>\n"
+    "eg:bundle_test_tool addResourceInfoByAbility -n <bundle-name> -m <module-name> "
+    "-a <ability-name> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name\n"
+    "  -m, --module-name <module-name>        specify module name\n"
+    "  -a, --ability-name <ability-name>      specify ability name\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_DELETE_RESOURCE_INFO =
+    "usage: bundle_test_tool deleteResourceInfo <options>\n"
+    "eg:bundle_test_tool deleteResourceInfo -k <key>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -k, --key <key>                        specify resource key\n";
+
+const std::string HELP_MSG_GET_MAIN_AND_CLONE_BUNDLE_INFO =
+    "usage: bundle_test_tool getMainAndCloneBundleInfo <options>\n"
+    "eg:bundle_test_tool getMainAndCloneBundleInfo -n <bundle-name> -f <flags> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -f, --flags <flags>                    specify bundle info flags (default: 1)\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_QUERY_SANDBOX_CLONE_ABILITY_INFO =
+    "usage: bundle_test_tool querySandboxCloneAbilityInfo <options>\n"
+    "eg:bundle_test_tool querySandboxCloneAbilityInfo -c <creator-bundle-name> "
+    "-n <bundle-name> -m <module-name> -a <ability-name> -f <flags> -i <app-index> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -c, --creator-bundle-name <creator-bundle-name> specify creator bundle name\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name in the element\n"
+    "  -m, --module-name <module-name>        specify module name of the ability\n"
+    "  -a, --ability-name <ability-name>      specify ability name\n"
+    "  -f, --flags <flags>                    specify ability info flags (default: 0)\n"
+    "  -i, --app-index <app-index>            specify app index (default: 0)\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_BUNDLE_STATS =
+    "usage: bundle_test_tool getBundleStats <options>\n"
+    "eg:bundle_test_tool getBundleStats -n <bundle-name>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -a, --app-index <app-index>            specify a app index\n";
+
+const std::string HELP_MSG_GET_BUNDLE_INODE_COUNT =
+    "usage: bundle_test_tool getBundleInodeCount <options>\n"
+    "eg:bundle_test_tool getBundleInodeCount -n <bundle-name> -a <app-index> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id (default: 100)\n"
+    "  -a, --app-index <app-index>            specify a app index (default: 0)\n";
+
+const std::string HELP_MSG_BATCH_GET_BUNDLE_STATS =
+    "usage: bundle_test_tool batchGetBundleStats <options>\n"
+    "eg:bundle_test_tool batchGetBundleStats -n <bundle-name>,<bundle-name> -u <user-id> -s <stat-flag>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_ALL_BUNDLE_STATS =
+    "usage: bundle_test_tool getAllBundleStats <options>\n"
+    "eg:bundle_test_tool getAllBundleStats -u <user-id>"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_APP_PROVISION_INFO =
+    "usage: bundle_test_tool getAppProvisionInfo <options>\n"
+    "eg:bundle_test_tool getAppProvisionInfo -n <bundle-name>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_TOP_N_LARGEST_ITEMS =
+    "usage: bundle_test_tool getTopNLargestItemsInAppDataDir <options>\n"
+    "eg:bundle_test_tool getTopNLargestItemsInAppDataDir -n <bundle-name> -u <user-id> -a <app-index>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -a, --app-index <app-index>            specify a app index\n";
+
+const std::string HELP_MSG_GET_DISTRIBUTED_BUNDLE_NAME =
+    "usage: bundle_test_tool getDistributedBundleName <options>\n"
+    "eg:bundle_test_tool getDistributedBundleName -n <network-id> -a <access-token-id>\n"
+    "options list:\n"
+    "  -h, --help                                   list available commands\n"
+    "  -n, --network-id  <network-id>               specify networkId of the application\n"
+    "  -a, --access-token-id <access-token-id>      specify a accessTokenId of the application \n";
+
+const std::string HELP_MSG_BUNDLE_EVENT_CALLBACK =
+    "usage: bundle_test_tool eventCB <options>\n"
+    "options list:\n"
+    "  -h, --help           list available commands\n"
+    "  -o, --onlyUnregister only call unregister, default will call register then unregister\n"
+    "  -u, --uid            specify a uid, default is foundation uid\n";
+
+const std::string HELP_MSG_PLUGIN_EVENT_CALLBACK =
+    "usage: bundle_test_tool pluginCallback <options>\n"
+    "options list:\n"
+    "  -h, --help           list available commands\n"
+    "  -o, --onlyUnregister only call unregister, default will call register then unregister\n"
+    "  -u, --uid            specify a uid, default is foundation uid\n";
+
+const std::string HELP_MSG_RESET_AOT_COMPILE_StATUS =
+    "usage: bundle_test_tool resetAOTCompileStatus <options>\n"
+    "options list:\n"
+    "  -h, --help           list available commands\n"
+    "  -b, --bundle-name    specify bundle name\n"
+    "  -m, --module-name    specify module name\n"
+    "  -t, --trigger-mode   specify trigger mode, default is 0\n"
+    "  -u, --uid            specify a uid, default is bundleName's uid\n";
+
+const std::string HELP_MSG_GET_PROXY_DATA =
+    "usage: bundle_test_tool getProxyDataInfos <options>\n"
+    "eg:bundle_test_tool getProxyDataInfos -m <module-name> -n <bundle-name> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -m, --module-name <module-name>        specify module name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_ALL_PROXY_DATA =
+    "usage: bundle_test_tool getAllProxyDataInfos <options>\n"
+    "eg:bundle_test_tool getProxyDataInfos -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_NO_BUNDLE_NAME_OPTION =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n";
+
+const std::string HELP_MSG_NO_NETWORK_ID_OPTION =
+    "error: you must specify a network id with '-n' or '--network-id' \n";
+
+const std::string HELP_MSG_NO_ACCESS_TOKEN_ID_OPTION =
+    "error: you must specify a access token id with '-n' or '--access-token-id' \n";
+
+const std::string HELP_MSG_SET_EXT_NAME_OR_MIME_TYPE =
+    "usage: bundle_test_tool setExtNameOrMimeTypeToApp <options>\n"
+    "eg:bundle_test_tool getProxyDataInfos -m <module-name> -n <bundle-name> -a <ability-name>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -m, --module-name <module-name>        specify module name of the application\n"
+    "  -a, --ability-name <ability-name>      specify ability name of the application\n"
+    "  -e, --ext-name <ext-name>              specify the ext-name\n"
+    "  -t, --mime-type <mime-type>            specify the mime-type\n";
+
+const std::string HELP_MSG_DEL_EXT_NAME_OR_MIME_TYPE =
+    "usage: bundle_test_tool setExtNameOrMimeTypeToApp <options>\n"
+    "eg:bundle_test_tool getProxyDataInfos -m <module-name> -n <bundle-name> -a <ability-name>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -m, --module-name <module-name>        specify module name of the application\n"
+    "  -a, --ability-name <ability-name>      specify ability name of the application\n"
+    "  -e, --ext-name <ext-name>              specify the ext-name\n"
+    "  -t, --mime-type <mime-type>            specify the mime-type\n";
+
+const std::string HELP_MSG_QUERY_DATA_GROUP_INFOS =
+    "usage: bundle_test_tool queryDataGroupInfos <options>\n"
+    "eg:bundle_test_tool queryDataGroupInfos -n <bundle-name> -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_GROUP_DIR =
+    "usage: bundle_test_tool getGroupDir <options>\n"
+    "eg:bundle_test_tool getGroupDir -d <data-group-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -d, --data-group-id  <data-group-id>       specify bundle name of the application\n";
+
+const std::string HELP_MSG_NO_GET_UID_BY_BUNDLENAME =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a userId with '-u' or '--user-id' \n"
+    "and a appIndex with '-a' or '--app-index' \n";
+
+const std::string HELP_MSG_GET_DIR_BY_BUNDLENAME_AND_APP_INDEX =
+    "usage: bundle_test_tool getDirByBundleNameAndAppIndex <options>\n"
+    "eg:bundle_test_tool getDirByBundleNameAndAppIndex -n <bundle-name> -a <app-index>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -a, --app-index <app-index>            specify a app index\n";
+
+const std::string HELP_MSG_GET_ALL_BUNDLE_DIRS =
+    "usage: bundle_test_tool getAllBundleDirs <options>\n"
+    "eg:bundle_test_tool getAllBundleDirs -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_GET_ALL_JSON_PROFILE =
+    "usage: bundle_test_tool getAllJsonProfile <options>\n"
+    "eg:bundle_test_tool getAllJsonProfile -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -p, --profile-type <profile-type>      specify a profile-type\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_SET_APPLICATION_DISABLE_FORBIDDEN =
+    "usage: bundle_test_tool setApplicationDisableForbidden <options>\n"
+    "eg:bundle_test_tool setApplicationDisableForbidden\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -a, --app-index <app-index>            specify an app index\n"
+    "  -f, --forbidden <forbidden>            specify whether the app is forbidden to be disabled\n"
+    "  -c, --caller-uid <caller-uid>          specify a caller uid\n";
+
+const std::string HELP_MSG_SET_DEFAULT_APPLICATION_FOR_CUSTOM =
+    "usage: bundle_test_tool setDefaultApplicationForCustom <options>\n"
+    "eg:bundle_test_tool setDefaultApplicationForCustom\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -t, --type <type>                      specify the default application type\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -m, --module-name <module-name>        specify module name of the application\n"
+    "  -a, --ability-name <ability-name>      specify ability name of the application\n" 
+    "  -c, --caller-uid <caller-uid>          specify a caller uid\n";
+
+const std::string HELP_MSG_GET_DISPOSED_RULES =
+    "usage: bundle_test_tool getDisposedRules <options>\n"
+    "eg:bundle_test_tool getDisposedRules -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -c, --caller-uid <caller-uid>          specify a caller uid\n";
+
+const std::string HELP_MSG_GET_ALL_BUNDLE_CACHE_STAT =
+    "usage: bundle_test_tool getAllBundleCacheStat <options>\n"
+    "eg:bundle_test_tool getAllBundleCacheStat\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --uid <uid>                specify a uid\n";
+
+const std::string HELP_MSG_GET_EACH_BUNDLE_CACHE_STAT =
+    "usage: bundle_test_tool getEachBundleCacheStat <options>\n"
+    "eg:bundle_test_tool getEachBundleCacheStat -u <user-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n";
+
+const std::string HELP_MSG_CLEAN_ALL_BUNDLE_CACHE =
+    "usage: bundle_test_tool cleanAllBundleCache <options>\n"
+    "eg:bundle_test_tool cleanAllBundleCache\n"
+    "options list:\n"
+    "  -h, --help                     list available commands\n"
+    "  -u, --uid <uid>                specify a uid\n";
+
+const std::string HELP_MSG_UPDATE_APP_EXCRYPTED_STATUS =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a isExisted with '-e' or '--existed' \n"
+    "and a appIndex with '-a' or '--app-index' \n";
+
+const std::string HELP_MSG_NO_GET_JSON_PROFILE_OPTION =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a module name with '-m' or '--module-name' \n"
+    "and a userId with '-u' or '--user-id' \n"
+    "and a json profile type with '-p' or '--profile-type' \n";
+
+const std::string HELP_MSG_NO_GET_UNINSTALLED_BUNDLE_INFO_OPTION =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n";
+
+const std::string HELP_MSG_NO_IMPLICIT_QUERY_SKILL_URI_INFO =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a action with '-a' or '--action' \n"
+    "and a entity with '-e' or '--entity' \n";
+
+const std::string HELP_MSG_GET_ODID =
+    "usage: bundle_test_tool getOdid <options>\n"
+    "eg:bundle_test_tool getOdid -u <uid>\n"
+    "options list:\n"
+    "  -h, --help               list available commands\n"
+    "  -u, --uid  <uid>         specify uid of the application\n";
+
+const std::string HELP_MSG_GET_ODID_RESET_COUNT =
+    "usage: bundle_test_tool getOdidResetCount <options>\n"
+    "eg:bundle_test_tool getOdidResetCount -n <bundle-name>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n"
+    "  -p, --with-permission                  indicates whether to call with permission\n";
+
+const std::string HELP_MSG_GET_COMPATIBLE_DEVICE_TYPE =
+    "usage: bundle_test_tool getCompatibleDeviceType <option>\n"
+    "eg: bundle_test_tool getCompatibleDeviceType -n <bundle-name>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n";
+
+const std::string HELP_MSG_BATCH_GET_COMPATIBLE_DEVICE_TYPE =
+    "usage: bundle_test_tool batchGetCompatibleDeviceType <option>\n"
+    "eg: bundle_test_tool batchGetCompatibleDeviceType -n <bundle-name>,<bundle-name>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n";
+
+const std::string HELP_MSG_NO_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a continueType with '-c' or '--continue-type' \n"
+    "and a userId with '-u' or '--user-id' \n";
+
+const std::string HELP_MSG_NO_QUERY_ABILITY_INFO =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a module name with '-m' or '--module-name' \n"
+    "and an ability name with '-a' or '--ability-name' \n";
+
+const std::string HELP_MSG_NO_BATCH_QUERY_ABILITY_INFOS =
+    "error: you must specify at least one want with '-w' or '--want' \n";
+
+const std::string HELP_MSG_NO_GET_CLONE_BUNDLE_INFO_EXT =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n";
+
+const std::string HELP_MSG_NO_QUERY_SANDBOX_CLONE_ABILITY_INFO =
+    "error: you must specify a creator bundle name with '-c' or '--creator-bundle-name' \n";
+
+const std::string HELP_MSG_NO_ADD_RESOURCE_INFO_BY_BUNDLE_NAME =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n";
+
+const std::string HELP_MSG_NO_ADD_RESOURCE_INFO_BY_ABILITY =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and a module name with '-m' or '--module-name' \n"
+    "and an ability name with '-a' or '--ability-name' \n";
+
+const std::string HELP_MSG_NO_DELETE_RESOURCE_INFO =
+    "error: you must specify a key with '-k' or '--key' \n";
+
+const std::string HELP_MSG_NO_IMPLICIT_QUERY_INFOS =
+    "error: you must specify a bundle name with '-n' or '--bundle-name' \n"
+    "and an action with '-a' or '--action' \n"
+    "and an entity with '-e' or '--entity' \n";
+
+const std::string HELP_MSG_IS_BUNDLE_INSTALLED =
+    "usage: bundle_test_tool getrm <options>\n"
+    "eg:bundle_test_tool getrm -m <module-name> -n <bundle-name> \n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name  <bundle-name>       specify bundle name of the application\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -a, --app-index <app-index>            specify a app index\n";
+
+const std::string HELP_MSG_GET_BUNDLENAME_BY_APPID =
+    "usage: bundle_test_tool getBundleNameByAppId <options>\n"
+    "eg:bundle_test_tool getBundleNameByAppId -a <app-id>\n"
+    "options list:\n"
+    "  -a, --app-id <app-id>            specify a app index or app identifier\n";
+
+const std::string HELP_MSG_GET_BUNDLENAMES_FOR_UID_EXT =
+    "usage: bundle_test_tool getBundleNamesForUidExt <options>\n"
+    "eg:bundle_test_tool getBundleNamesForUidExt -u <uid>\n"
+    "options list:\n"
+    "  -u, --uid <uid>            specify a app uid\n";
+
+const std::string HELP_MSG_GET_SIMPLE_APP_INFO_FOR_UID =
+    "usage: bundle_test_tool GetSimpleAppInfoForUid <options>\n"
+    "eg:bundle_test_tool getSimpleAppInfoForUid -u <uid>,<uid>,<uid>...\n"
+    "options list:\n"
+    "  -u, --uid  <uid>         specify uid of the application\n";
+
+const std::string HELP_MSG_UNINSTALL_PREINSTALL_BUNDLE =
+    "usage: bundle_test_tool uninstallPreInstallBundle <options>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -n, --bundle-name <bundle-name>        install a sandbox of a bundle\n"
+    "  -m, --module-name <module-name>        specify module name of the application\n"
+    "  -f, --forced <user-id>                 force uninstall\n";
+
+const std::string HELP_MSG_GET_ASSET_ACCESS_GROUPS =
+    "usage: bundle_test_tool getAssetAccessGroups <options>\n"
+    "eg:bundle_test_tool getAssetAccessGroups -n <bundle-name>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -n, --bundle-name <bundle-name>        specify bundle name of the application\n";
+
+const std::string HELP_MSG_GET_APPIDENTIFIER_AND_APPINDEX =
+    "usage: bundle_test_tool getAppIdentifierAndAppIndex <options>\n"
+    "eg:bundle_test_tool getAppIdentifierAndAppIndex -a <access-token-id>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -a, --access-token-id <access-token-id>        specify access token ID of the application\n";
+
+const std::string HELP_MSG_SET_APP_DISTRIBUTION_TYPES =
+    "usage: bundle_test_tool setAppDistributionTypes <options>\n"
+    "eg:bundle_test_tool setAppDistributionTypes -a <appDistributionTypes>\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -a, --app_distribution_types <appDistributionTypes>      specify app distribution type list\n";
+
+const std::string HELP_MSG_GET_ASSET_GROUPS_INFO =
+    "usage: bundle_test_tool getAssetGroupsInfo <options>\n"
+    "eg:bundle_test_tool getAssetGroupsInfo\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --uid <uid>                specify a uid\n";
+
+const std::string HELP_MSG_INSTALL_ENTERPRISE_RESIGN_CERT =
+    "usage: bundle_test_tool installEnterpriseResignCert <options>\n"
+    "eg:bundle_test_tool installEnterpriseResignCert -a <certAlias> -f <certFilePath> -u <userId>\n"
+    "options list:\n"
+    "  -a, --alias <certAlias>              indicates the cert alias\n"
+    "  -f, --file <certFilePath>            indicates the chert path\n"
+    "  -u, --user-id <userId>               indicates the target user\n"
+    "  -p, --with-permission                indicates whether to call with permission\n";
+
+const std::string HELP_MSG_UNINSTALL_ENTERPRISE_RE_SIGN_CERT =
+    "usage: bundle_test_tool uninstallEnterpriseReSignatureCert <options>\n"
+    "eg:bundle_test_tool uninstallEnterpriseReSignatureCert\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -c, --cert-alias <cert-alias>        re sign cert alias\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -p, --with-permission <with-permission> with permission\n";
+
+const std::string HELP_MSG_GET_ENTERPRISE_RE_SIGN_CERT =
+    "usage: bundle_test_tool getEnterpriseReSignatureCert <options>\n"
+    "eg:bundle_test_tool getEnterpriseReSignatureCert\n"
+    "options list:\n"
+    "  -h, --help                             list available commands\n"
+    "  -u, --user-id <user-id>                specify a user id\n"
+    "  -p, --with-permission <with-permission> with permission\n";
+
+
+const std::string STRING_UNINSTALL_ENTERPRISE_RE_SIGN_CERT_OK = "uninstallEnterpriseReSignCert successfully \n";
+const std::string STRING_UNINSTALL_ENTERPRISE_RE_SIGN_CERT_NG = "uninstallEnterpriseReSignCert failed \n";
+
+const std::string STRING_GET_ENTERPRISE_RE_SIGN_CERT_OK = "getEnterpriseReSignatureCert successfully \n";
+const std::string STRING_GET_ENTERPRISE_RE_SIGN_CERT_NG = "getEnterpriseReSignatureCert failed \n";
+
+const std::string STRING_GET_ASSET_GROUPS_INFO_OK = "getAssetGroupsInfo successfully \n";
+const std::string STRING_GET_ASSET_GROUPS_INFO_NG = "error: failed to getAssetGroupsInfo \n";
+
+const std::string STRING_IS_BUNDLE_INSTALLED_OK = "IsBundleInstalled is ok \n";
+const std::string STRING_IS_BUNDLE_INSTALLED_NG = "error: failed to IsBundleInstalled \n";
+
+const std::string STRING_GET_BUNDLENAME_BY_APPID_OK = "getBundleNameByAppId is ok \n";
+const std::string STRING_GET_BUNDLENAME_BY_APPID_NG =
+    "error: failed to getBundleNameByAppId \n";
+const std::string STRING_GET_BUNDLENAMES_FOR_UID_EXT_NG = "error: failed to getBundleNamesForUidExt \n";
+
+const std::string STRING_GET_SIMPLE_APP_INFO_FOR_UID_OK = "getSimpleAppInfoForUid is ok \n";
+const std::string STRING_GET_SIMPLE_APP_INFO_FOR_UID_NG =
+    "error: failed to getSimpleAppInfoForUid \n";
+
+const std::string STRING_SET_REMOVABLE_OK = "set removable is ok \n";
+const std::string STRING_SET_REMOVABLE_NG = "error: failed to set removable \n";
+const std::string STRING_GET_REMOVABLE_OK = "get removable is ok \n";
+const std::string STRING_GET_REMOVABLE_NG = "error: failed to get removable \n";
+const std::string STRING_REQUIRE_CORRECT_VALUE =
+    "error: option requires a correct value or note that\n"
+    "the difference in expressions between short option and long option. \n";
+
+const std::string STRING_INSTALL_SANDBOX_SUCCESSFULLY = "install sandbox app successfully \n";
+const std::string STRING_INSTALL_SANDBOX_FAILED = "install sandbox app failed \n";
+
+const std::string STRING_UPDATE_APP_EXCRYPTED_STATUS_SUCCESSFULLY = "update app encrypted status successfully \n";
+const std::string STRING_UPDATE_APP_EXCRYPTED_STATUS_FAILED = "update app encrypted status failed \n";
+
+const std::string STRING_UNINSTALL_SANDBOX_SUCCESSFULLY = "uninstall sandbox app successfully\n";
+const std::string STRING_UNINSTALL_SANDBOX_FAILED = "uninstall sandbox app failed\n";
+
+const std::string STRING_DUMP_SANDBOX_FAILED = "dump sandbox app info failed\n";
+
+const std::string STRING_GET_STRING_NG = "error: failed to get label \n";
+
+const std::string STRING_GET_ICON_NG = "error: failed to get icon \n";
+
+const std::string STRING_ADD_RULE_NG = "error: failed to add rule \n";
+const std::string STRING_GET_RULE_NG = "error: failed to get rule \n";
+const std::string STRING_DELETE_RULE_NG = "error: failed to delete rule \n";
+
+const std::string STRING_DEPLOY_QUICK_FIX_OK = "deploy quick fix successfully\n";
+const std::string STRING_DEPLOY_QUICK_FIX_NG = "deploy quick fix failed\n";
+const std::string HELP_MSG_NO_QUICK_FIX_PATH_OPTION = "need a quick fix patch path\n";
+const std::string STRING_SWITCH_QUICK_FIX_OK = "switch quick fix successfully\n";
+const std::string STRING_SWITCH_QUICK_FIX_NG = "switch quick fix failed\n";
+const std::string STRING_DELETE_QUICK_FIX_OK = "delete quick fix successfully\n";
+const std::string STRING_DELETE_QUICK_FIX_NG = "delete quick fix failed\n";
+
+const std::string STRING_SET_DEBUG_MODE_OK = "set debug mode successfully\n";
+const std::string STRING_SET_DEBUG_MODE_NG = "set debug mode failed\n";
+
+const std::string STRING_SET_BUNDLE_FIRST_LAUNCH_OK = "set bundle first launch successfully\n";
+const std::string STRING_SET_BUNDLE_FIRST_LAUNCH_NG = "set bundle first launch failed\n";
+
+const std::string STRING_GET_BUNDLE_STATS_OK = "get bundle stats successfully\n";
+const std::string STRING_GET_BUNDLE_STATS_NG = "get bundle stats failed\n";
+
+const std::string STRING_GET_BUNDLE_INODE_COUNT_OK = "get bundle inode count successfully\n";
+const std::string STRING_GET_BUNDLE_INODE_COUNT_NG = "get bundle inode count failed\n";
+
+const std::string STRING_BATCH_GET_BUNDLE_STATS_OK = "batch get bundle stats successfully\n";
+const std::string STRING_BATCH_GET_BUNDLE_STATS_NG = "batch get bundle stats failed\n";
+
+const std::string STRING_GET_ALL_BUNDLE_STATS_OK = "get all bundle stats successfully\n";
+const std::string STRING_GET_ALL_BUNDLE_STATS_NG = "get all bundle stats failed\n";
+
+const std::string STRING_GET_APP_PROVISION_INFO_OK = "get appProvisionInfo successfully\n";
+const std::string STRING_GET_APP_PROVISION_INFO_NG = "get appProvisionInfo failed\n";
+
+const std::string STRING_QUERY_DATA_GROUP_INFOS_OK = "queryDataGroupInfos successfully\n";
+const std::string STRING_QUERY_DATA_GROUP_INFOS_NG = "queryDataGroupInfos failed\n";
+
+const std::string STRING_GET_GROUP_DIR_OK = "getGroupDir successfully\n";
+const std::string STRING_GET_GROUP_DIR_NG = "getGroupDir failed\n";
+
+const std::string STRING_GET_JSON_PROFILE_NG = "getJsonProfile failed\n";
+
+const std::string STRING_GET_UNINSTALLED_BUNDLE_INFO_NG = "getUninstalledBundleInfo failed\n";
+
+const std::string STRING_GET_COMPATIBLE_DEVICE_TYPE_OK = "getCompatibleDeviceType successfully\n";
+const std::string STRING_GET_COMPATIBLE_DEVICE_TYPE_NG = "getCompatibleDeviceType failed\n";
+
+const std::string STRING_BATCH_GET_COMPATIBLE_DEVICE_TYPE_NG = "batchGetCompatibleDeviceType failed\n";
+
+const std::string STRING_BATCH_GET_BUNDLE_INFO_OK = "batchGetBundleInfo successfully\n";
+const std::string STRING_BATCH_GET_BUNDLE_INFO_NG = "batchGetBundleInfo failed\n";
+
+const std::string STRING_PARSE_SPM_MODULE_OK = "parseSpmModule successfully\n";
+const std::string STRING_PARSE_SPM_MODULE_NG = "parseSpmModule failed\n";
+
+const std::string STRING_GET_MAIN_AND_CLONE_BUNDLE_INFO_OK = "getMainAndCloneBundleInfo successfully\n";
+const std::string STRING_GET_MAIN_AND_CLONE_BUNDLE_INFO_NG = "getMainAndCloneBundleInfo failed\n";
+const std::string STRING_QUERY_SANDBOX_CLONE_ABILITY_INFO_OK = "querySandboxCloneAbilityInfo successfully\n";
+const std::string STRING_QUERY_SANDBOX_CLONE_ABILITY_INFO_NG = "querySandboxCloneAbilityInfo failed\n";
+
+const std::string STRING_GET_ODID_OK = "getOdid successfully\n";
+const std::string STRING_GET_ODID_NG = "getOdid failed\n";
+const std::string STRING_GET_ODID_RESET_COUNT_OK = "getOdidResetCount successfully\n";
+const std::string STRING_GET_ODID_RESET_COUNT_NG = "getOdidResetCount failed\n";
+
+const std::string STRING_GET_DIR_OK = "getDirByBundleNameAndAppIndex successfully\n";
+const std::string STRING_GET_DIR_NG = "getDirByBundleNameAndAppIndex failed\n";
+
+const std::string STRING_GET_ALL_BUNDLE_DIRS_OK = "getAllBundleDirs successfully\n";
+const std::string STRING_GET_ALL_BUNDLE_DIRS_NG = "getAllBundleDirs failed\n";
+
+const std::string STRING_GET_ALL_JSON_PROFILE_OK = "getAllJsonProfile successfully\n";
+const std::string STRING_GET_ALL_JSON_PROFILE_NG = "getAllJsonProfile failed\n";
+
+const std::string STRING_SET_APPLICATION_DISABLE_FORBIDDEN_OK = "setApplicationDisableForbidden successfully\n";
+const std::string STRING_SET_APPLICATION_DISABLE_FORBIDDEN_NG = "setApplicationDisableForbidden failed\n";
+
+const std::string STRING_SET_DEFAULT_APPLICATION_FOR_CUSTOM_OK = "setDefaultApplicationForCustom successfully\n";
+const std::string STRING_SET_DEFAULT_APPLICATION_FOR_CUSTOM_NG = "setDefaultApplicationForCustom failed\n";
+
+const std::string STRING_GET_DISPOSED_RULES_OK = "getDisposedRules successfully\n";
+const std::string STRING_GET_DISPOSED_RULES_NG = "getDisposedRules failed\n";
+
+const std::string STRING_GET_ALL_BUNDLE_CACHE_STAT_OK = "getAllBundleCacheStat successfully\n";
+const std::string STRING_GET_ALL_BUNDLE_CACHE_STAT_NG = "getAllBundleCacheStat failed\n";
+const std::string STRING_GET_EACH_BUNDLE_CACHE_STAT_OK = "getEachBundleCacheStat successfully\n";
+const std::string STRING_GET_EACH_BUNDLE_CACHE_STAT_NG = "getEachBundleCacheStat failed\n";
+
+const std::string STRING_CLEAN_ALL_BUNDLE_CACHE_OK = "cleanAllBundleCache successfully\n";
+const std::string STRING_CLEAN_ALL_BUNDLE_CACHE_NG = "cleanAllBundleCache failed\n";
+
+const std::string STRING_GET_UID_BY_BUNDLENAME_NG = "getUidByBundleName failed\n";
+
+const std::string HELP_MSG_NO_GET_API_TARGET_VERSION =
+    "error: you must specify a uid with '-u' or '--uid' \n";
+const std::string STRING_GET_API_TARGET_VERSION_NG =
+    "error: failed to get apiTargetVersion by uid.\n";
+
+const std::string STRING_IMPLICIT_QUERY_SKILL_URI_INFO_NG =
+    "implicitQuerySkillUriInfo failed\n";
+
+const std::string STRING_IMPLICIT_QUERY_INFOS_OK = "implicitQueryInfos successfully\n";
+const std::string STRING_IMPLICIT_QUERY_INFOS_NG = "implicitQueryInfos failed\n";
+
+const std::string STRING_GET_CLONE_BUNDLE_INFO_EXT_OK = "getCloneBundleInfoExt successfully\n";
+const std::string STRING_GET_CLONE_BUNDLE_INFO_EXT_NG = "getCloneBundleInfoExt failed\n";
+const std::string STRING_ADD_RESOURCE_INFO_BY_BUNDLE_NAME_OK = "addResourceInfoByBundleName successfully\n";
+const std::string STRING_ADD_RESOURCE_INFO_BY_BUNDLE_NAME_NG = "addResourceInfoByBundleName failed\n";
+const std::string STRING_ADD_RESOURCE_INFO_BY_ABILITY_OK = "addResourceInfoByAbility successfully\n";
+const std::string STRING_ADD_RESOURCE_INFO_BY_ABILITY_NG = "addResourceInfoByAbility failed\n";
+const std::string STRING_DELETE_RESOURCE_INFO_OK = "deleteResourceInfo successfully\n";
+const std::string STRING_DELETE_RESOURCE_INFO_NG = "deleteResourceInfo failed\n";
+
+const std::string STRING_QUERY_ABILITY_INFO_OK = "queryAbilityInfo successfully\n";
+const std::string STRING_QUERY_ABILITY_INFO_NG = "queryAbilityInfo failed\n";
+
+const std::string STRING_BATCH_QUERY_ABILITY_INFOS_OK = "batchQueryAbilityInfos successfully\n";
+const std::string STRING_BATCH_QUERY_ABILITY_INFOS_NG = "batchQueryAbilityInfos failed\n";
+
+const std::string STRING_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE_NG =
+    "queryAbilityInfoByContinueType failed\n";
+
+const std::string HELP_MSG_NO_GET_DISTRIBUTED_BUNDLE_NAME_OPTION =
+    "error: you must specify a control type with '-n' or '--network-id' \n"
+    "and a accessTokenId with '-a' or '--access-token-id' \n";
+
+const std::string GET_DISTRIBUTED_BUNDLE_NAME_COMMAND_NAME = "getDistributedBundleName";
+
+const std::string STRING_GET_DISTRIBUTED_BUNDLE_NAME_OK = "get distributedBundleName successfully\n";
+const std::string STRING_GET_DISTRIBUTED_BUNDLE_NAME_NG = "get distributedBundleName failed\n";
+
+const std::string STRING_GET_PROXY_DATA_NG = "get proxyData failed";
+
+const std::string STRING_UNINSTALL_PREINSTALL_BUNDLE_SUCCESSFULLY = "uninstall preinstall app successfully\n";
+const std::string STRING_UNINSTALL_PREINSTALL_BUNDLE_FAILED = "uninstall preinstall app failed\n";
+
+const std::string STRING_GET_ASSET_ACCESS_GROUPS_OK = "getAssetAccessGroups successfully\n";
+const std::string STRING_GET_ASSET_ACCESS_GROUPS_NG = "getAssetAccessGroups failed\n";
+
+const std::string STRING_GET_APPIDENTIFIER_AND_APPINDEX_OK = "getAppIdentifierAndAppIndex successfully\n";
+const std::string STRING_GET_APPIDENTIFIER_AND_APPINDEX_NG = "getAppIdentifierAndAppIndex failed\n";
+
+const std::string STRING_SET_APP_DISTRIBUTION_TYPES_OK = "setAppDistributionTypes successfully\n";
+const std::string STRING_SET_APP_DISTRIBUTION_TYPES_NG = "setAppDistributionTypes failed\n";
+
+const std::string GET_BUNDLE_STATS_ARRAY[] = {
+    "app data size: ",
+    "user data size: ",
+    "distributed data size: ",
+    "database size: ",
+    "cache size: "
+};
+
+const std::string GET_RM = "getrm";
+const std::string SET_RM = "setrm";
+const std::string INSTALL_SANDBOX = "installSandbox";
+const std::string UNINSTALL_SANDBOX = "uninstallSandbox";
+const std::string DUMP_SANDBOX = "dumpSandbox";
+const std::string UNINSTALL_PREINSTALL_BUNDLE = "uninstallPreInstallBundle";
+
+const std::string SHORT_OPTIONS = "hn:m:a:d:u:i:";
+const struct option LONG_OPTIONS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"ability-name", required_argument, nullptr, 'a'},
+    {"device-id", required_argument, nullptr, 'd'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"is-removable", required_argument, nullptr, 'i'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_IS_BUNDLE_INSTALLED = "hn:u:a:";
+const struct option LONG_OPTIONS_IS_BUNDLE_INSTALLED[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_BUNDLENAME_BY_APPID = "ha:";
+const struct option LONG_OPTIONS_GET_BUNDLENAME_BY_APPID[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"app-id", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_BUNDLENAMES_FOR_UID_EXT = "hu:";
+const struct option LONG_OPTIONS_GET_BUNDLENAMES_FOR_UID_EXT[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"uid", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_SIMPLE_APP_INFO_FOR_UID = "hu:";
+const struct option LONG_OPTIONS_GET_SIMPLE_APP_INFO_FOR_UID[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"uid", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_SANDBOX = "hn:d:u:a:";
+const struct option LONG_OPTIONS_SANDBOX[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"dlp-type", required_argument, nullptr, 'd'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_UNINSTALL_RE_SIGN_CERT = "hc:u:p:";
+const struct option LONG_OPTIONS_UNINSTALL_RE_SIGN_CERT[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"cert-alias", required_argument, nullptr, 'c'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"with-permission", required_argument, nullptr, 'p'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_RE_SIGN_CERT = "hu:p:";
+const struct option LONG_OPTIONS_GET_RE_SIGN_CERT[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"with-permission", required_argument, nullptr, 'p'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET = "hn:m:u:i:d:";
+const struct option LONG_OPTIONS_GET[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"id", required_argument, nullptr, 'i'},
+    {"density", required_argument, nullptr, 'd'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_RULE = "ha:c:n:e:r:t:u:";
+const struct option LONG_OPTIONS_RULE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"app-id", required_argument, nullptr, 'a'},
+    {"control-rule", required_argument, nullptr, 'c'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"euid", required_argument, nullptr, 'e'},
+    {"control-rule-type", required_argument, nullptr, 't'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_DELETE_RULES = "ha:i:u:c:";
+const struct option LONG_OPTIONS_DELETES_RULES[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"app-id", required_argument, nullptr, 'a'},
+    {"app-index", required_argument, nullptr, 'i'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"caller-uid", required_argument, nullptr, 'c'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_AUTO_CLEAN_CACHE = "hs:t:";
+const struct option LONG_OPTIONS_AUTO_CLEAN_CACHE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"cache-size", required_argument, nullptr, 's'},
+    {"clean-type", required_argument, nullptr, 't'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_AUTO_CLEAN_PARTIAL_CACHE = "hn:u:a:s:";
+const struct option LONG_OPTIONS_AUTO_CLEAN_PARTIAL_CACHE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {"cache-size", required_argument, nullptr, 's'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_UPDATE_APP_EXCRYPTED_STATUS = "hn:e:a:";
+const struct option LONG_OPTIONS_UPDATE_APP_EXCRYPTED_STATUS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"existed", required_argument, nullptr, 'e'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_QUICK_FIX = "hp:n:e:d:";
+const struct option LONG_OPTIONS_QUICK_FIX[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"patch-path", required_argument, nullptr, 'p'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"enable", required_argument, nullptr, 'e'},
+    {"debug", required_argument, nullptr, 'd'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_DEBUG_MODE = "he:";
+const struct option LONG_OPTIONS_DEBUG_MODE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"enable", required_argument, nullptr, 'e'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_SET_BUNDLE_FIRST_LAUNCH = "hn:u:a:i:";
+const struct option LONG_OPTIONS_SET_BUNDLE_FIRST_LAUNCH[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {"is-first-launch", required_argument, nullptr, 'i'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_BUNDLE_STATS = "hn:u:a:";
+const struct option LONG_OPTIONS_GET_BUNDLE_STATS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_BATCH_GET_BUNDLE_STATS = "hn:u:s:";
+const struct option LONG_OPTIONS_BATCH_GET_BUNDLE_STATS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_ALL_BUNDLE_STATS = "hu:";
+const struct option LONG_OPTIONS_GET_ALL_BUNDLE_STATS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_DISTRIBUTED_BUNDLE_NAME = "hn:a:";
+const struct option LONG_OPTIONS_GET_DISTRIBUTED_BUNDLE_NAME[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"network-id", required_argument, nullptr, 'n'},
+    {"access-token-id", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_BUNDLE_EVENT_CALLBACK = "hou:";
+const struct option LONG_OPTIONS_BUNDLE_EVENT_CALLBACK[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"onlyUnregister", no_argument, nullptr, 'o'},
+    {"uid", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_RESET_AOT_COMPILE_StATUS = "b:m:t:u:";
+const struct option LONG_OPTIONS_RESET_AOT_COMPILE_StATUS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'b'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"trigger-mode", required_argument, nullptr, 't'},
+    {"uid", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_PROXY_DATA = "hn:m:u:";
+const struct option LONG_OPTIONS_PROXY_DATA[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_ALL_PROXY_DATA = "hu:";
+const struct option LONG_OPTIONS_ALL_PROXY_DATA[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_UID_BY_BUNDLENAME = "hn:u:a:";
+const struct option LONG_OPTIONS_GET_UID_BY_BUNDLENAME[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_API_TARGET_VERSION = "hu:p:";
+const struct option LONG_OPTIONS_GET_API_TARGET_VERSION[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"uid", required_argument, nullptr, 'u'},
+    {"with-permission", required_argument, nullptr, 'p'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_MIME = "ha:e:m:n:t:";
+const struct option LONG_OPTIONS_MIME[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"ability-name", required_argument, nullptr, 'a'},
+    {"ext-name", required_argument, nullptr, 'e'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"mime-type", required_argument, nullptr, 't'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_GROUP_DIR = "hd:";
+const struct option LONG_OPTIONS_GET_GROUP_DIR[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"data-group-id", required_argument, nullptr, 'd'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_JSON_PROFILE = "hp:n:m:u:";
+const struct option LONG_OPTIONS_GET_JSON_PROFILE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"profile-type", required_argument, nullptr, 'p'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_UNINSTALLED_BUNDLE_INFO = "hn:";
+const struct option LONG_OPTIONS_UNINSTALLED_BUNDLE_INFO[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_ODID = "hu:";
+const struct option LONG_OPTIONS_GET_ODID[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"uid", required_argument, nullptr, 'u'},
+};
+
+const std::string SHORT_OPTIONS_GET_ODID_RESET_COUNT = "hn:p";
+const struct option LONG_OPTIONS_GET_ODID_RESET_COUNT[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"with-permission", no_argument, nullptr, 'p'},
+};
+
+const std::string SHORT_OPTIONS_IMPLICIT_QUERY_SKILL_URI_INFO = "hn:a:e:u:t:";
+const struct option LONG_OPTIONS_IMPLICIT_QUERY_SKILL_URI_INFO[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"action", required_argument, nullptr, 'a'},
+    {"entity", required_argument, nullptr, 'e'},
+    {"uri", required_argument, nullptr, 'u'},
+    {"type", required_argument, nullptr, 't'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_IMPLICIT_QUERY_INFOS = "hn:a:e:r:t:f:u:d:";
+const struct option LONG_OPTIONS_IMPLICIT_QUERY_INFOS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"action", no_argument, nullptr, 'a'},
+    {"entity", no_argument, nullptr, 'e'},
+    {"uri", no_argument, nullptr, 'r'},
+    {"type", no_argument, nullptr, 't'},
+    {"flags", no_argument, nullptr, 'f'},
+    {"user-id", no_argument, nullptr, 'u'},
+    {"with-default", no_argument, nullptr, 'd'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_CLONE_BUNDLE_INFO_EXT = "hn:f:a:u:";
+const struct option LONG_OPTIONS_GET_CLONE_BUNDLE_INFO_EXT[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"flags", no_argument, nullptr, 'f'},
+    {"app-index", no_argument, nullptr, 'a'},
+    {"user-id", no_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_ADD_RESOURCE_INFO_BY_BUNDLE_NAME = "hn:u:";
+const struct option LONG_OPTIONS_ADD_RESOURCE_INFO_BY_BUNDLE_NAME[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", no_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_ADD_RESOURCE_INFO_BY_ABILITY = "hn:m:a:u:";
+const struct option LONG_OPTIONS_ADD_RESOURCE_INFO_BY_ABILITY[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"ability-name", required_argument, nullptr, 'a'},
+    {"user-id", no_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_DELETE_RESOURCE_INFO = "hk:";
+const struct option LONG_OPTIONS_DELETE_RESOURCE_INFO[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"key", required_argument, nullptr, 'k'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_QUERY_ABILITY_INFO = "hn:m:a:f:u:";
+const struct option LONG_OPTIONS_QUERY_ABILITY_INFO[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", no_argument, nullptr, 'm'},
+    {"ability-name", no_argument, nullptr, 'a'},
+    {"flags", no_argument, nullptr, 'f'},
+    {"user-id", no_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_BATCH_QUERY_ABILITY_INFOS = "hw:f:u:";
+const struct option LONG_OPTIONS_BATCH_QUERY_ABILITY_INFOS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"want", required_argument, nullptr, 'w'},
+    {"flags", no_argument, nullptr, 'f'},
+    {"user-id", no_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE = "hn:c:u:";
+const struct option LONG_OPTIONS_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"continueType", required_argument, nullptr, 'c'},
+    {"userId", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_COMPATIBLE_DEVICE_TYPE = "hn:";
+const struct option LONG_OPTIONS_GET_COMPATIBLE_DEVICE_TYPE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_ALL_BUNDLE_DIRS = "hu:";
+const struct option LONG_OPTIONS_GET_ALL_BUNDLE_DIRS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"userId", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_ALL_JSON_PROFILE = "hp:u:";
+const struct option LONG_OPTIONS_GET_ALL_JSON_PROFILE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"profile-type", required_argument, nullptr, 'p'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_SET_APPLICATION_DISABLE_FORBIDDEN = "hn:u:a:f:c:";
+const struct option LONG_OPTIONS_SET_APPLICATION_DISABLE_FORBIDDEN[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {"forbidden", required_argument, nullptr, 'f'},
+    {"caller-uid", required_argument, nullptr, 'c'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_SET_DEFAULT_APPLICATION_FOR_CUSTOM = "hu:t:n:m:a:c:";
+const struct option LONG_OPTIONS_SET_DEFAULT_APPLICATION_FOR_CUSTOM[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"type", required_argument, nullptr, 't'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"ability-name", required_argument, nullptr, 'a'},
+    {"caller-uid", required_argument, nullptr, 'c'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_DISPOSED_RULES = "hu:c:";
+const struct option LONG_OPTIONS_GET_DISPOSED_RULES[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"caller-uid", required_argument, nullptr, 'c'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_ALL_BUNDLE_CACHE_STAT = "hu:";
+const struct option LONG_OPTIONS_GET_ALL_BUNDLE_CACHE_STAT[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"uid", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_CLEAN_ALL_BUNDLE_CACHE = "hu:";
+const struct option LONG_OPTIONS_CLEAN_ALL_BUNDLE_CACHE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"userId", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_BATCH_GET_COMPATIBLE_DEVICE_TYPE = "hn:";
+const struct option LONG_OPTIONS_BATCH_GET_COMPATIBLE_DEVICE_TYPE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_BATCH_GET_BUNDLE_INFO = "hn:f:u:";
+const struct option LONG_OPTIONS_BATCH_GET_BUNDLE_INFO[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"flags", required_argument, nullptr, 'f'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_PARSE_SPM_MODULE = "hp:";
+const struct option LONG_OPTIONS_PARSE_SPM_MODULE[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"module-json-path", required_argument, nullptr, 'p'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_MAIN_AND_CLONE_BUNDLE_INFO = "hn:f:u:";
+const struct option LONG_OPTIONS_GET_MAIN_AND_CLONE_BUNDLE_INFO[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"flags", required_argument, nullptr, 'f'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_QUERY_SANDBOX_CLONE_ABILITY_INFO = "hc:n:m:a:f:i:u:";
+const struct option LONG_OPTIONS_QUERY_SANDBOX_CLONE_ABILITY_INFO[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"creator-bundle-name", required_argument, nullptr, 'c'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"ability-name", required_argument, nullptr, 'a'},
+    {"flags", required_argument, nullptr, 'f'},
+    {"app-index", required_argument, nullptr, 'i'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_DIR = "hn:a:";
+const struct option LONG_OPTIONS_GET_DIR[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"app-index", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_PREINSTALL = "hn:m:u:f:";
+const struct option LONG_OPTIONS_PREINSTALL[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {"module-name", required_argument, nullptr, 'm'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"forced", required_argument, nullptr, 'i'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_ASSET_ACCESS_GROUPS = "hn:";
+const struct option LONG_OPTIONS_GET_ASSET_ACCESS_GROUPS[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"bundle-name", required_argument, nullptr, 'n'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_SET_APP_DISTRIBUTION_TYPES = "ha:";
+const struct option LONG_OPTIONS_SET_APP_DISTRIBUTION_TYPES[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"app-distribution-types", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_APPIDENTIFIER_AND_APPINDEX = "ha:";
+const struct option LONG_OPTIONS_GET_APPIDENTIFIER_AND_APPINDEX[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"access-token-id", required_argument, nullptr, 'a'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_GET_ASSET_GROUPS_INFO = "hu:";
+const struct option LONG_OPTIONS_GET_ASSET_GROUPS_INFO[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"uid", required_argument, nullptr, 'u'},
+    {nullptr, 0, nullptr, 0},
+};
+
+const std::string SHORT_OPTIONS_INSTALL_ENTERPRISE_RESIGN_CERT = "ha:f:u:p";
+const struct option LONG_OPTIONS_INSTALL_ENTERPRISE_RESIGN_CERT[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"alias", required_argument, nullptr, 'a'},
+    {"file", required_argument, nullptr, 'f'},
+    {"user-id", required_argument, nullptr, 'u'},
+    {"with-permission", no_argument, nullptr, 'p'},
+    {nullptr, 0, nullptr, 0},
+};
+
+}  // namespace
+
+class ProcessCacheCallbackImpl : public ProcessCacheCallbackHost {
+public:
+    ProcessCacheCallbackImpl() {}
+    ~ProcessCacheCallbackImpl() {}
+    bool WaitForCleanCompletion();
+    bool WaitForStatCompletion();
+    void OnGetAllBundleCacheFinished(uint64_t cacheStat) override;
+    void OnCleanAllBundleCacheFinished(int32_t result) override;
+    uint64_t GetCacheStat() override;
+    int32_t GetDelRet()
+    {
+        return cleanRet_;
+    }
+private:
+    std::mutex mutex_;
+    bool complete_ = false;
+    int32_t cleanRet_ = 0;
+    uint64_t cacheSize_ = 0;
+    std::promise<void> clean_;
+    std::future<void> cleanFuture_ = clean_.get_future();
+    std::promise<void> stat_;
+    std::future<void> statFuture_ = stat_.get_future();
+    DISALLOW_COPY_AND_MOVE(ProcessCacheCallbackImpl);
+};
+
+uint64_t ProcessCacheCallbackImpl::GetCacheStat()
+{
+    return cacheSize_;
+}
+ 
+void ProcessCacheCallbackImpl::OnGetAllBundleCacheFinished(uint64_t cacheStat)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!complete_) {
+        complete_ = true;
+        cacheSize_ = cacheStat;
+        stat_.set_value();
+    }
+}
+
+void ProcessCacheCallbackImpl::OnCleanAllBundleCacheFinished(int32_t result)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!complete_) {
+        complete_ = true;
+        cleanRet_ = result;
+        clean_.set_value();
+    }
+}
+
+bool ProcessCacheCallbackImpl::WaitForCleanCompletion()
+{
+    if (cleanFuture_.wait_for(std::chrono::seconds(MAX_WAITING_TIME)) == std::future_status::ready) {
+        return true;
+    }
+    return false;
+}
+
+bool ProcessCacheCallbackImpl::WaitForStatCompletion()
+{
+    if (statFuture_.wait_for(std::chrono::seconds(MAX_WAITING_TIME)) == std::future_status::ready) {
+        return true;
+    }
+    return false;
+}
+
+class GetLargestItemsCallbackImpl : public GetLargestItemsCallbackHost {
+public:
+    GetLargestItemsCallbackImpl() {}
+    ~GetLargestItemsCallbackImpl() {}
+    void OnGetLargestItemsFinished(ErrCode errCode, const std::string &largestItems) override;
+    ErrCode GetResultCode();
+    std::string GetResultMsg();
+    bool WaitForGetCompletion();
+
+private:
+    std::mutex mutex_;
+    bool complete_ = false;
+    ErrCode errCode_ = 0;
+    std::string result_;
+    std::promise<void> get_;
+    std::future<void> getFuture_ = get_.get_future();
+    DISALLOW_COPY_AND_MOVE(GetLargestItemsCallbackImpl);
+};
+
+void GetLargestItemsCallbackImpl::OnGetLargestItemsFinished(
+    ErrCode errCode, const std::string &largestItems)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!complete_) {
+        complete_ = true;
+        errCode_ = errCode;
+        result_ = largestItems;
+        get_.set_value();
+    }
+}
+
+ErrCode GetLargestItemsCallbackImpl::GetResultCode()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return errCode_;
+}
+
+std::string GetLargestItemsCallbackImpl::GetResultMsg()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return result_;
+}
+
+bool GetLargestItemsCallbackImpl::WaitForGetCompletion()
+{
+    if (getFuture_.wait_for(std::chrono::seconds(MAX_WAITING_TIME)) == std::future_status::ready) {
+        return true;
+    }
+    return false;
+}
+
+BundleEventCallbackImpl::BundleEventCallbackImpl()
+{
+    APP_LOGI("create BundleEventCallbackImpl");
+}
+
+BundleEventCallbackImpl::~BundleEventCallbackImpl()
+{
+    APP_LOGI("destroy BundleEventCallbackImpl");
+}
+
+void BundleEventCallbackImpl::OnReceiveEvent(const EventFwk::CommonEventData eventData)
+{
+    const Want &want = eventData.GetWant();
+    std::string bundleName = want.GetElement().GetBundleName();
+    std::string moduleName = want.GetElement().GetModuleName();
+    std::cout << "OnReceiveEvent " << bundleName << ", " << moduleName << std::endl;
+    APP_LOGI("OnReceiveEvent, bundleName:%{public}s, moduleName:%{public}s", bundleName.c_str(), moduleName.c_str());
+}
+
+BundleTestTool::BundleTestTool(int argc, char *argv[]) : ShellCommand(argc, argv, TOOL_NAME)
+{}
+
+BundleTestTool::~BundleTestTool()
+{}
+
+ErrCode BundleTestTool::CreateCommandMap()
+{
+    commandMap_ = {
+        {"help", std::bind(&BundleTestTool::RunAsHelpCommand, this)},
+        {"check", std::bind(&BundleTestTool::RunAsCheckCommand, this)},
+        {"setrm", std::bind(&BundleTestTool::RunAsSetRemovableCommand, this)},
+        {"getrm", std::bind(&BundleTestTool::RunAsGetRemovableCommand, this)},
+        {"installSandbox", std::bind(&BundleTestTool::RunAsInstallSandboxCommand, this)},
+        {"uninstallSandbox", std::bind(&BundleTestTool::RunAsUninstallSandboxCommand, this)},
+        {"dumpSandbox", std::bind(&BundleTestTool::RunAsDumpSandboxCommand, this)},
+        {"getStr", std::bind(&BundleTestTool::RunAsGetStringCommand, this)},
+        {"getIcon", std::bind(&BundleTestTool::RunAsGetIconCommand, this)},
+        {"deleteDisposedRules", std::bind(&BundleTestTool::RunAsDeleteDisposedRulesCommand, this)},
+        {"addAppInstallRule", std::bind(&BundleTestTool::RunAsAddInstallRuleCommand, this)},
+        {"getAppInstallRule", std::bind(&BundleTestTool::RunAsGetInstallRuleCommand, this)},
+        {"deleteAppInstallRule", std::bind(&BundleTestTool::RunAsDeleteInstallRuleCommand, this)},
+        {"cleanAppInstallRule", std::bind(&BundleTestTool::RunAsCleanInstallRuleCommand, this)},
+        {"addAppRunningRule", std::bind(&BundleTestTool::RunAsAddAppRunningRuleCommand, this)},
+        {"deleteAppRunningRule", std::bind(&BundleTestTool::RunAsDeleteAppRunningRuleCommand, this)},
+        {"cleanAppRunningRule", std::bind(&BundleTestTool::RunAsCleanAppRunningRuleCommand, this)},
+        {"getAppRunningControlRule", std::bind(&BundleTestTool::RunAsGetAppRunningControlRuleCommand, this)},
+        {"getAppRunningControlRuleResult",
+            std::bind(&BundleTestTool::RunAsGetAppRunningControlRuleResultCommand, this)},
+        {"deployQuickFix", std::bind(&BundleTestTool::RunAsDeployQuickFix, this)},
+        {"switchQuickFix", std::bind(&BundleTestTool::RunAsSwitchQuickFix, this)},
+        {"deleteQuickFix", std::bind(&BundleTestTool::RunAsDeleteQuickFix, this)},
+        {"setDebugMode", std::bind(&BundleTestTool::RunAsSetDebugMode, this)},
+        {"getBundleStats", std::bind(&BundleTestTool::RunAsGetBundleStats, this)},
+        {"getBundleInodeCount", std::bind(&BundleTestTool::RunAsGetBundleInodeCount, this)},
+        {"batchGetBundleStats", std::bind(&BundleTestTool::RunAsBatchGetBundleStats, this)},
+        {"getAllBundleStats", std::bind(&BundleTestTool::RunAsGetAllBundleStats, this)},
+        {"getAppProvisionInfo", std::bind(&BundleTestTool::RunAsGetAppProvisionInfo, this)},
+        {"getDistributedBundleName", std::bind(&BundleTestTool::RunAsGetDistributedBundleName, this)},
+        {"eventCB", std::bind(&BundleTestTool::HandleBundleEventCallback, this)},
+        {"pluginCallback", std::bind(&BundleTestTool::HandlePluginEventCallback, this)},
+        {"resetAOTCompileStatus", std::bind(&BundleTestTool::ResetAOTCompileStatus, this)},
+        {"sendCommonEvent", std::bind(&BundleTestTool::SendCommonEvent, this)},
+        {"getProxyDataInfos", std::bind(&BundleTestTool::RunAsGetProxyDataCommand, this)},
+        {"getAllProxyDataInfos", std::bind(&BundleTestTool::RunAsGetAllProxyDataCommand, this)},
+        {"setExtNameOrMimeToApp", std::bind(&BundleTestTool::RunAsSetExtNameOrMIMEToAppCommand, this)},
+        {"delExtNameOrMimeToApp", std::bind(&BundleTestTool::RunAsDelExtNameOrMIMEToAppCommand, this)},
+        {"queryDataGroupInfos", std::bind(&BundleTestTool::RunAsQueryDataGroupInfos, this)},
+        {"getGroupDir", std::bind(&BundleTestTool::RunAsGetGroupDir, this)},
+        {"getJsonProfile", std::bind(&BundleTestTool::RunAsGetJsonProfile, this)},
+        {"getUninstalledBundleInfo", std::bind(&BundleTestTool::RunAsGetUninstalledBundleInfo, this)},
+        {"getOdid", std::bind(&BundleTestTool::RunAsGetOdid, this)},
+        {"getUidByBundleName", std::bind(&BundleTestTool::RunGetUidByBundleName, this)},
+        {"getApiTargetVersionByUid", std::bind(&BundleTestTool::RunGetApiTargetVersionByUid, this)},
+        {"implicitQuerySkillUriInfo",
+            std::bind(&BundleTestTool::RunAsImplicitQuerySkillUriInfo, this)},
+        {"queryAbilityInfoByContinueType",
+            std::bind(&BundleTestTool::RunAsQueryAbilityInfoByContinueType, this)},
+        {"cleanBundleCacheFilesAutomatic",
+            std::bind(&BundleTestTool::RunAsCleanBundleCacheFilesAutomaticCommand, this)},
+        {"cleanBundlePartialCacheAutomatic",
+            std::bind(&BundleTestTool::RunAsCleanBundlePartialCacheAutomaticCommand, this)},
+        {"getContinueBundleName",
+            std::bind(&BundleTestTool::RunAsGetContinueBundleName, this)},
+        {"updateAppEncryptedStatus",
+            std::bind(&BundleTestTool::RunAsUpdateAppEncryptedStatus, this)},
+        {"getDirByBundleNameAndAppIndex",
+            std::bind(&BundleTestTool::RunAsGetDirByBundleNameAndAppIndex, this)},
+        {"getAllBundleDirs",
+            std::bind(&BundleTestTool::RunAsGetAllBundleDirs, this)},
+        {"getAllJsonProfile",
+            std::bind(&BundleTestTool::RunAsGetAllJsonProfile, this)},
+        {"setApplicationDisableForbidden",
+            std::bind(&BundleTestTool::RunAsSetApplicationDisableForbidden, this)},
+        {"setDefaultApplicationForCustom",
+            std::bind(&BundleTestTool::RunAsSetDefaultApplicationForCustom, this)},
+        {"getDisposedRules",
+            std::bind(&BundleTestTool::RunAsGetDisposedRules, this)},
+        {"getAllBundleCacheStat",
+            std::bind(&BundleTestTool::RunAsGetAllBundleCacheStat, this)},
+        {"getEachBundleCacheStat",
+            std::bind(&BundleTestTool::RunAsGetEachBundleCacheStat, this)},
+        {"cleanAllBundleCache",
+            std::bind(&BundleTestTool::RunAsCleanAllBundleCache, this)},
+        {"isBundleInstalled",
+            std::bind(&BundleTestTool::RunAsIsBundleInstalled, this)},
+        {"getCompatibleDeviceType",
+            std::bind(&BundleTestTool::RunAsGetCompatibleDeviceType, this)},
+        {"batchGetCompatibleDeviceType",
+            std::bind(&BundleTestTool::RunAsBatchGetCompatibleDeviceType, this)},
+        {"getSimpleAppInfoForUid",
+            std::bind(&BundleTestTool::RunAsGetSimpleAppInfoForUid, this)},
+        {"getBundleNameByAppId",
+            std::bind(&BundleTestTool::RunAsGetBundleNameByAppId, this)},
+        {"uninstallPreInstallBundle", std::bind(&BundleTestTool::RunAsUninstallPreInstallBundleCommand, this)},
+        {"getAssetAccessGroups",
+            std::bind(&BundleTestTool::RunAsGetAssetAccessGroups, this)},
+        {"getAppIdentifierAndAppIndex",
+            std::bind(&BundleTestTool::RunAsGetAppIdentifierAndAppIndex, this)},
+        {"setAppDistributionTypes",
+                std::bind(&BundleTestTool::RunAsSetAppDistributionTypes, this)},
+        {"getAssetGroupsInfo",
+                std::bind(&BundleTestTool::RunAsGetAssetGroupsInfo, this)},
+        {"getBundleNamesForUidExt", std::bind(&BundleTestTool::RunAsGetBundleNamesForUidExtCommand, this)},
+        {"setEnpDevice", std::bind(&BundleTestTool::RunAsSetEnpDeviceCommand, this)},
+        {"installEnterpriseResignCert", std::bind(&BundleTestTool::RunAsInstallEnterpriseResignCertCommand, this)},
+        {"uninstallEnterpriseReSignatureCert", std::bind(&BundleTestTool::RunAsUninstallEnterpriseReSignCert, this)},
+        {"getEnterpriseReSignatureCert", std::bind(&BundleTestTool::RunAsGetEnterpriseReSignCert, this)},
+        {"getOdidResetCount", std::bind(&BundleTestTool::RunAsGetOdidResetCount, this)},
+        {"setBundleFirstLaunch", std::bind(&BundleTestTool::RunAsSetBundleFirstLaunch, this)},
+        {"getTopNLargestItemsInAppDataDir", std::bind(&BundleTestTool::RunAsGetTopNLargestItemsInAppDataDir, this)},
+        {"batchGetBundleInfo", std::bind(&BundleTestTool::RunAsBatchGetBundleInfo, this)},
+        {"parseSpmModule", std::bind(&BundleTestTool::RunAsParseSpmModule, this)},
+        {"implicitQueryInfos", std::bind(&BundleTestTool::RunAsImplicitQueryInfos, this)},
+        {"queryAbilityInfo", std::bind(&BundleTestTool::RunAsQueryAbilityInfo, this)},
+        {"batchQueryAbilityInfos", std::bind(&BundleTestTool::RunAsBatchQueryAbilityInfos, this)},
+        {"getCloneBundleInfoExt", std::bind(&BundleTestTool::RunAsGetCloneBundleInfoExt, this)},
+        {"addResourceInfoByBundleName", std::bind(&BundleTestTool::RunAsAddResourceInfoByBundleName, this)},
+        {"addResourceInfoByAbility", std::bind(&BundleTestTool::RunAsAddResourceInfoByAbility, this)},
+        {"deleteResourceInfo", std::bind(&BundleTestTool::RunAsDeleteResourceInfo, this)},
+        {"getMainAndCloneBundleInfo", std::bind(&BundleTestTool::RunAsGetMainAndCloneBundleInfo, this)},
+        {"querySandboxCloneAbilityInfo",
+            std::bind(&BundleTestTool::RunAsQuerySandboxCloneAbilityInfo, this)}
+    };
+
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::CreateMessageMap()
+{
+    messageMap_ = BundleCommandCommon::bundleMessageMap_;
+
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::Init()
+{
+    APP_LOGI("BundleTestTool Init()");
+    ErrCode result = OHOS::ERR_OK;
+    if (bundleMgrProxy_ == nullptr) {
+        bundleMgrProxy_ = BundleCommandCommon::GetBundleMgrProxy();
+        if (bundleMgrProxy_ != nullptr) {
+            if (bundleInstallerProxy_ == nullptr) {
+                bundleInstallerProxy_ = bundleMgrProxy_->GetBundleInstaller();
+            }
+            if (bundleResourceProxy_ == nullptr) {
+                bundleResourceProxy_ = bundleMgrProxy_->GetBundleResourceProxy();
+            }
+        }
+    }
+
+    if ((bundleMgrProxy_ == nullptr) || (bundleInstallerProxy_ == nullptr) ||
+        (bundleInstallerProxy_->AsObject() == nullptr) || (bundleResourceProxy_ == nullptr) ||
+        (bundleResourceProxy_->AsObject() == nullptr)) {
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+
+    return result;
+}
+
+void BundleTestTool::CreateQuickFixMsgMap(std::unordered_map<int32_t, std::string> &quickFixMsgMap)
+{
+    quickFixMsgMap = {
+        { ERR_OK, Constants::EMPTY_STRING },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_PARAM_ERROR, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PARAM_ERROR },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_PROFILE_PARSE_FAILED, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PROFILE_PARSE_FAILED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_BUNDLE_NAME_NOT_SAME, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_BUNDLE_NAME_NOT_SAME },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_CODE_NOT_SAME, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_CODE_NOT_SAME },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_NAME_NOT_SAME, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_NAME_NOT_SAME },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_VERSION_CODE_NOT_SAME,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_VERSION_CODE_NOT_SAME },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_VERSION_NAME_NOT_SAME,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_VERSION_NAME_NOT_SAME },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_TYPE_NOT_SAME, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_TYPE_NOT_SAME },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_UNKNOWN_QUICK_FIX_TYPE, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_UNKNOWN_QUICK_FIX_TYPE },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_SO_INCOMPATIBLE, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_SO_INCOMPATIBLE },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_BUNDLE_NAME_NOT_EXIST, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_BUNDLE_NAME_NOT_EXIST },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_MODULE_NAME_NOT_EXIST, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_MODULE_NAME_NOT_EXIST },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_SIGNATURE_INFO_NOT_SAME,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_SIGNATURE_INFO_NOT_SAME },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_EXTRACT_DIFF_FILES_FAILED,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_EXTRACT_DIFF_FILES_FAILED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_APPLY_DIFF_PATCH_FAILED,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_APPLY_DIFF_PATCH_FAILED },
+        { ERR_BUNDLEMANAGER_FEATURE_IS_NOT_SUPPORTED, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_FEATURE_IS_NOT_SUPPORTED },
+        { ERR_APPEXECFWK_OPERATION_TIME_OUT, MSG_ERR_BUNDLEMANAGER_OPERATION_TIME_OUT },
+        { ERR_APPEXECFWK_FAILED_SERVICE_DIED, MSG_ERR_BUNDLEMANAGER_FAILED_SERVICE_DIED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_HOT_RELOAD_NOT_SUPPORT_RELEASE_BUNDLE,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_HOT_RELOAD_NOT_SUPPORT_RELEASE_BUNDLE },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_ALREADY_EXISTED, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_PATCH_ALREADY_EXISTED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_HOT_RELOAD_ALREADY_EXISTED,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_HOT_RELOAD_ALREADY_EXISTED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_MODULE_NAME_SAME, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_MODULE_NAME_SAME },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_NO_PATCH_INFO_IN_BUNDLE_INFO,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_NO_PATCH_INFO_IN_BUNDLE_INFO },
+        { ERR_BUNDLEMANAGER_SET_DEBUG_MODE_INVALID_PARAM, MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_INVALID_PARAM },
+        { ERR_BUNDLEMANAGER_SET_DEBUG_MODE_INTERNAL_ERROR, MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_INTERNAL_ERROR },
+        { ERR_BUNDLEMANAGER_SET_DEBUG_MODE_PARCEL_ERROR, MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_PARCEL_ERROR },
+        { ERR_BUNDLEMANAGER_SET_DEBUG_MODE_SEND_REQUEST_ERROR,
+            MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_SEND_REQUEST_ERROR },
+        { ERR_BUNDLEMANAGER_SET_DEBUG_MODE_UID_CHECK_FAILED, MSG_ERR_BUNDLEMANAGER_SET_DEBUG_MODE_UID_CHECK_FAILED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_ADD_HQF_FAILED, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_ADD_HQF_FAILED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_SAVE_APP_QUICK_FIX_FAILED,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_SAVE_APP_QUICK_FIX_FAILED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_CODE_ERROR, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_VERSION_CODE_ERROR },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_NO_PATCH_IN_DATABASE, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_NO_PATCH_IN_DATABASE },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_INVALID_PATCH_STATUS, MSG_ERR_BUNDLEMANAGER_QUICK_FIX_INVALID_PATCH_STATUS },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_NOT_EXISTED_BUNDLE_INFO,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_NOT_EXISTED_BUNDLE_INFO },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_REMOVE_PATCH_PATH_FAILED,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_REMOVE_PATCH_PATH_FAILED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_MOVE_PATCH_FILE_FAILED,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_MOVE_PATCH_FILE_FAILED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_CREATE_PATCH_PATH_FAILED,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_CREATE_PATCH_PATH_FAILED },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_OLD_PATCH_OR_HOT_RELOAD_IN_DB,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_OLD_PATCH_OR_HOT_RELOAD_IN_DB },
+        { ERR_BUNDLEMANAGER_QUICK_FIX_RELEASE_HAP_HAS_RESOURCES_FILE_FAILED,
+            MSG_ERR_BUNDLEMANAGER_QUICK_FIX_RELEASE_HAP_HAS_RESOURCES_FILE_FAILED }
+    };
+}
+
+ErrCode BundleTestTool::RunAsHelpCommand()
+{
+    resultReceiver_.append(HELP_MSG);
+
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::CheckOperation(int userId, std::string deviceId, std::string bundleName,
+    std::string moduleName, std::string abilityName)
+{
+    std::unique_lock<std::mutex> lock(mutex_);
+    sptr<BundleToolCallbackStub> bundleToolCallbackStub =
+        new(std::nothrow) BundleToolCallbackStub(cv_, mutex_, dataReady_);
+    if (bundleToolCallbackStub == nullptr) {
+        APP_LOGE("bundleToolCallbackStub is null");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    APP_LOGI("CheckAbilityEnableInstall param: userId:%{public}d, bundleName:%{public}s, moduleName:%{public}s," \
+        "abilityName:%{public}s", userId, bundleName.c_str(), moduleName.c_str(), abilityName.c_str());
+    AAFwk::Want want;
+    want.SetElementName(deviceId, bundleName, abilityName, moduleName);
+    bool ret = bundleMgrProxy_->CheckAbilityEnableInstall(want, 1, userId, bundleToolCallbackStub);
+    if (!ret) {
+        APP_LOGE("CheckAbilityEnableInstall failed");
+        return OHOS::ERR_OK;
+    }
+    APP_LOGI("CheckAbilityEnableInstall wait");
+    cv_.wait(lock, [this] { return dataReady_; });
+    dataReady_ = false;
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsCheckCommand()
+{
+    int counter = 0;
+    int userId = 100;
+    std::string deviceId = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    std::string abilityName = "";
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS.c_str(), LONG_OPTIONS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("'CheckAbilityEnableInstall' with no option.");
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        switch (option) {
+            case 'n': {
+                bundleName = optarg;
+                break;
+            }
+            case 'm': {
+                moduleName = optarg;
+                break;
+            }
+            case 'a': {
+                abilityName = optarg;
+                break;
+            }
+            case 'd': {
+                deviceId = optarg;
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId)) {
+                    APP_LOGD("userId strToInt failed");
+                }
+                break;
+            }
+            default: {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+        }
+    }
+    return CheckOperation(userId, deviceId, bundleName, moduleName, abilityName);
+}
+
+bool BundleTestTool::SetIsRemovableOperation(
+    const std::string &bundleName, const std::string &moduleName, int isRemovable) const
+{
+    bool enable = true;
+    if (isRemovable == 0) {
+        enable = false;
+    }
+    APP_LOGD("bundleName: %{public}s, moduleName:%{public}s, enable:%{public}d", bundleName.c_str(), moduleName.c_str(),
+        enable);
+    auto ret = bundleMgrProxy_->SetModuleRemovable(bundleName, moduleName, enable);
+    APP_LOGD("SetModuleRemovable end bundleName: %{public}d", ret);
+    if (!ret) {
+        APP_LOGE("SetIsRemovableOperation failed");
+        return false;
+    }
+    return ret;
+}
+
+bool BundleTestTool::GetIsRemovableOperation(
+    const std::string &bundleName, const std::string &moduleName, std::string &result) const
+{
+    APP_LOGD("bundleName: %{public}s, moduleName:%{public}s", bundleName.c_str(), moduleName.c_str());
+    bool isRemovable = false;
+    auto ret = bundleMgrProxy_->IsModuleRemovable(bundleName, moduleName, isRemovable);
+    APP_LOGD("IsModuleRemovable end bundleName: %{public}s, isRemovable:%{public}d", bundleName.c_str(), isRemovable);
+    result.append("isRemovable: " + std::to_string(isRemovable) + "\n");
+    if (ret != ERR_OK) {
+        APP_LOGE("IsModuleRemovable failed, ret: %{public}d", ret);
+        return false;
+    }
+    return true;
+}
+
+bool BundleTestTool::CheckRemovableErrorOption(int option, int counter, const std::string &commandName)
+{
+    if (option == -1) {
+        if (counter == 1) {
+            if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                // 'bundle_test_tool setrm/getrm' with no option: bundle_test_tool setrm/getrm
+                // 'bundle_test_tool setrm/getrm' with a wrong argument: bundle_test_tool setrm/getrm xxx
+                APP_LOGD("'bundle_test_tool %{public}s' with no option.", commandName.c_str());
+                resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                return false;
+            }
+        }
+        return true;
+    } else if (option == '?') {
+        switch (optopt) {
+            case 'i': {
+                if (commandName == GET_RM) {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    APP_LOGD("'bundle_test_tool %{public}s' with an unknown option.", commandName.c_str());
+                    resultReceiver_.append(unknownOptionMsg);
+                } else {
+                    APP_LOGD("'bundle_test_tool %{public}s -i' with no argument.", commandName.c_str());
+                    resultReceiver_.append("error: -i option requires a value.\n");
+                }
+                break;
+            }
+            case 'm': {
+                APP_LOGD("'bundle_test_tool %{public}s -m' with no argument.", commandName.c_str());
+                resultReceiver_.append("error: -m option requires a value.\n");
+                break;
+            }
+            case 'n': {
+                APP_LOGD("'bundle_test_tool %{public}s -n' with no argument.", commandName.c_str());
+                resultReceiver_.append("error: -n option requires a value.\n");
+                break;
+            }
+            default: {
+                std::string unknownOption = "";
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                APP_LOGD("'bundle_test_tool %{public}s' with an unknown option.", commandName.c_str());
+                resultReceiver_.append(unknownOptionMsg);
+                break;
+            }
+        }
+    }
+    return false;
+}
+
+bool BundleTestTool::CheckRemovableCorrectOption(
+    int option, const std::string &commandName, int &isRemovable, std::string &name)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'n': {
+            name = optarg;
+            APP_LOGD("'bundle_test_tool %{public}s -n %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'i': {
+            if (commandName == GET_RM) {
+                std::string unknownOption = "";
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                APP_LOGD("'bundle_test_tool %{public}s' with an unknown option.", commandName.c_str());
+                resultReceiver_.append(unknownOptionMsg);
+                ret = false;
+            } else if (OHOS::StrToInt(optarg, isRemovable)) {
+                APP_LOGD("'bundle_test_tool %{public}s -i isRemovable:%{public}d, %{public}s'",
+                    commandName.c_str(), isRemovable, argv_[optind - 1]);
+            } else {
+                APP_LOGE("bundle_test_tool setrm with error %{private}s", optarg);
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                ret = false;
+            }
+            break;
+        }
+        case 'm': {
+            name = optarg;
+            APP_LOGD("'bundle_test_tool %{public}s -m module-name:%{public}s, %{public}s'",
+                commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("'bundle_test_tool %{public}s' with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsSetRemovableCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    int isRemovable = 0;
+    std::string commandName = SET_RM;
+    std::string name = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    APP_LOGD("RunAsSetCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS.c_str(), LONG_OPTIONS, nullptr);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d, argv_[optind - 1]:%{public}s", option,
+            optopt, optind, argv_[optind - 1]);
+        if (option == -1 || option == '?') {
+            result = !CheckRemovableErrorOption(option, counter, commandName)? OHOS::ERR_INVALID_VALUE : result;
+            break;
+        }
+        result = !CheckRemovableCorrectOption(option, commandName, isRemovable, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        moduleName = option == 'm' ? name : moduleName;
+        bundleName = option == 'n' ? name : bundleName;
+    }
+    if (result == OHOS::ERR_OK) {
+        if (resultReceiver_ == "" && (bundleName.size() == 0 || moduleName.size() == 0)) {
+            APP_LOGD("'bundle_test_tool setrm' with not enough option.");
+            resultReceiver_.append(HELP_MSG_NO_REMOVABLE_OPTION);
+            result = OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_SET);
+    } else {
+        bool setResult = false;
+        setResult = SetIsRemovableOperation(bundleName, moduleName, isRemovable);
+        APP_LOGD("'bundle_test_tool setrm' isRemovable is %{public}d", isRemovable);
+        resultReceiver_ = setResult ? STRING_SET_REMOVABLE_OK : STRING_SET_REMOVABLE_NG;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetRemovableCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = GET_RM;
+    std::string name = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    APP_LOGD("RunAsGetRemovableCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS.c_str(), LONG_OPTIONS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1 || option == '?') {
+            result = !CheckRemovableErrorOption(option, counter, commandName) ? OHOS::ERR_INVALID_VALUE : result;
+            break;
+        }
+        int tempIsRem = 0;
+        result = !CheckRemovableCorrectOption(option, commandName, tempIsRem, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        moduleName = option == 'm' ? name : moduleName;
+        bundleName = option == 'n' ? name : bundleName;
+    }
+
+    if (result == OHOS::ERR_OK) {
+        if (resultReceiver_ == "" && (bundleName.size() == 0 || moduleName.size() == 0)) {
+            APP_LOGD("'bundle_test_tool getrm' with no option.");
+            resultReceiver_.append(HELP_MSG_NO_REMOVABLE_OPTION);
+            result = OHOS::ERR_INVALID_VALUE;
+        }
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_REMOVABLE);
+    } else {
+        std::string results = "";
+        GetIsRemovableOperation(bundleName, moduleName, results);
+        if (results.empty()) {
+            resultReceiver_.append(STRING_GET_REMOVABLE_NG);
+            return result;
+        }
+        resultReceiver_.append(results);
+    }
+    return result;
+}
+
+bool BundleTestTool::CheckSandboxErrorOption(int option, int counter, const std::string &commandName)
+{
+    if (option == -1) {
+        if (counter == 1) {
+            if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                APP_LOGD("'bundle_test_tool %{public}s' with no option.", commandName.c_str());
+                resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                return false;
+            }
+        }
+        return true;
+    } else if (option == '?') {
+        switch (optopt) {
+            case 'n':
+            case 'u':
+            case 'd':
+            case 'a': {
+                if ((commandName != INSTALL_SANDBOX && optopt == 'd') ||
+                    (commandName == INSTALL_SANDBOX && optopt == 'a')) {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    APP_LOGD("'bundle_test_tool %{public}s' with an unknown option.", commandName.c_str());
+                    resultReceiver_.append(unknownOptionMsg);
+                    break;
+                }
+                APP_LOGD("'bundle_test_tool %{public}s' -%{public}c with no argument.", commandName.c_str(), optopt);
+                resultReceiver_.append("error: option requires a value.\n");
+                break;
+            }
+            default: {
+                std::string unknownOption = "";
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                APP_LOGD("'bundle_test_tool %{public}s' with an unknown option.", commandName.c_str());
+                resultReceiver_.append(unknownOptionMsg);
+                break;
+            }
+        }
+    }
+    return false;
+}
+
+bool BundleTestTool::CheckSandboxCorrectOption(
+    int option, const std::string &commandName, int &data, std::string &bundleName)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'n': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            bundleName = optarg;
+            break;
+        }
+        case 'u':
+        case 'a':
+        case 'd': {
+            if ((commandName != INSTALL_SANDBOX && option == 'd') ||
+                (commandName == INSTALL_SANDBOX && option == 'a')) {
+                std::string unknownOption = "";
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                APP_LOGD("'bundle_test_tool %{public}s' with an unknown option.", commandName.c_str());
+                resultReceiver_.append(unknownOptionMsg);
+                ret = false;
+                break;
+            }
+
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s %{public}s'", commandName.c_str(),
+                argv_[optind - OFFSET_REQUIRED_ARGUMENT], optarg);
+
+            if (!OHOS::StrToInt(optarg, data)) {
+                if (option == 'u') {
+                    APP_LOGE("bundle_test_tool %{public}s with error -u %{private}s", commandName.c_str(), optarg);
+                } else if (option == 'a') {
+                    APP_LOGE("bundle_test_tool %{public}s with error -a %{private}s", commandName.c_str(), optarg);
+                } else {
+                    APP_LOGE("bundle_test_tool %{public}s with error -d %{private}s", commandName.c_str(), optarg);
+                }
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                ret = false;
+            }
+            break;
+        }
+        default: {
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::InstallSandboxOperation(
+    const std::string &bundleName, const int32_t userId, const int32_t dlpType, int32_t &appIndex) const
+{
+    APP_LOGD("InstallSandboxOperation of bundleName %{public}s, dipType is %{public}d", bundleName.c_str(), dlpType);
+    return bundleInstallerProxy_->InstallSandboxApp(bundleName, dlpType, userId, appIndex);
+}
+
+ErrCode BundleTestTool::RunAsInstallSandboxCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = INSTALL_SANDBOX;
+    std::string bundleName = "";
+    int32_t userId = 100;
+    int32_t dlpType = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_SANDBOX.c_str(), LONG_OPTIONS_SANDBOX, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1 || option == '?') {
+            result = !CheckSandboxErrorOption(option, counter, commandName) ? OHOS::ERR_INVALID_VALUE : result;
+            break;
+        } else if (option == 'u') {
+            result = !CheckSandboxCorrectOption(option, commandName, userId, bundleName) ?
+                OHOS::ERR_INVALID_VALUE : result;
+        } else {
+            result = !CheckSandboxCorrectOption(option, commandName, dlpType, bundleName) ?
+                OHOS::ERR_INVALID_VALUE : result;
+        }
+    }
+
+    if (result == OHOS::ERR_OK && bundleName == "") {
+        resultReceiver_.append(HELP_MSG_NO_BUNDLE_NAME_OPTION);
+        result = OHOS::ERR_INVALID_VALUE;
+    } else {
+        APP_LOGD("installSandbox app bundleName is %{public}s", bundleName.c_str());
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_INSTALL_SANDBOX);
+        return result;
+    }
+
+    int32_t appIndex = 0;
+    auto ret = InstallSandboxOperation(bundleName, userId, dlpType, appIndex);
+    if (ret == OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_INSTALL_SANDBOX_SUCCESSFULLY);
+    } else {
+        resultReceiver_.append(STRING_INSTALL_SANDBOX_FAILED + "errCode is "+ std::to_string(ret) + "\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::UninstallSandboxOperation(const std::string &bundleName,
+    const int32_t appIndex, const int32_t userId) const
+{
+    APP_LOGD("UninstallSandboxOperation of bundleName %{public}s_%{public}d", bundleName.c_str(), appIndex);
+    return bundleInstallerProxy_->UninstallSandboxApp(bundleName, appIndex, userId);
+}
+
+ErrCode BundleTestTool::RunAsUninstallSandboxCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string bundleName = "";
+    std::string commandName = UNINSTALL_SANDBOX;
+    int32_t userId = 100;
+    int32_t appIndex = -1;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_SANDBOX.c_str(), LONG_OPTIONS_SANDBOX, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+
+        if (option == -1 || option == '?') {
+            result = !CheckSandboxErrorOption(option, counter, commandName) ? OHOS::ERR_INVALID_VALUE : result;
+            break;
+        } else if (option == 'u') {
+            result = !CheckSandboxCorrectOption(option, commandName, userId, bundleName) ?
+                OHOS::ERR_INVALID_VALUE : result;
+        } else {
+            result = !CheckSandboxCorrectOption(option, commandName, appIndex, bundleName) ?
+                OHOS::ERR_INVALID_VALUE : result;
+        }
+    }
+
+    if (result == OHOS::ERR_OK && bundleName == "") {
+        resultReceiver_.append(HELP_MSG_NO_BUNDLE_NAME_OPTION);
+        result = OHOS::ERR_INVALID_VALUE;
+    } else {
+        APP_LOGD("uninstallSandbox app bundleName is %{private}s", bundleName.c_str());
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_UNINSTALL_SANDBOX);
+        return result;
+    }
+
+    auto ret = UninstallSandboxOperation(bundleName, appIndex, userId);
+    if (ret == ERR_OK) {
+        resultReceiver_.append(STRING_UNINSTALL_SANDBOX_SUCCESSFULLY);
+    } else {
+        resultReceiver_.append(STRING_UNINSTALL_SANDBOX_FAILED + "errCode is " + std::to_string(ret) + "\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::DumpSandboxBundleInfo(const std::string &bundleName, const int32_t appIndex,
+    const int32_t userId, std::string &dumpResults)
+{
+    APP_LOGD("DumpSandboxBundleInfo of bundleName %{public}s_%{public}d", bundleName.c_str(), appIndex);
+    BundleInfo bundleInfo;
+    BundleMgrClient client;
+    auto dumpRet = client.GetSandboxBundleInfo(bundleName, appIndex, userId, bundleInfo);
+    if (dumpRet == ERR_OK) {
+        nlohmann::json jsonObject = bundleInfo;
+        jsonObject["applicationInfo"] = bundleInfo.applicationInfo;
+        dumpResults= jsonObject.dump(Constants::DUMP_INDENT);
+    }
+    return dumpRet;
+}
+
+ErrCode BundleTestTool::RunAsDumpSandboxCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string bundleName = "";
+    std::string commandName = DUMP_SANDBOX;
+    int32_t userId = 100;
+    int32_t appIndex = -1;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_SANDBOX.c_str(), LONG_OPTIONS_SANDBOX, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1 || option == '?') {
+            result = !CheckSandboxErrorOption(option, counter, commandName) ? OHOS::ERR_INVALID_VALUE : result;
+            break;
+        } else if (option == 'u') {
+            result = !CheckSandboxCorrectOption(option, commandName, userId, bundleName) ?
+                OHOS::ERR_INVALID_VALUE : result;
+        } else {
+            result = !CheckSandboxCorrectOption(option, commandName, appIndex, bundleName) ?
+                OHOS::ERR_INVALID_VALUE : result;
+        }
+    }
+
+    if (result == OHOS::ERR_OK && bundleName == "") {
+        resultReceiver_.append(HELP_MSG_NO_BUNDLE_NAME_OPTION);
+        result = OHOS::ERR_INVALID_VALUE;
+    } else {
+        APP_LOGD("dumpSandbox app bundleName is %{public}s", bundleName.c_str());
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_DUMP_SANDBOX);
+        return result;
+    }
+
+    std::string dumpRes = "";
+    ErrCode ret = DumpSandboxBundleInfo(bundleName, appIndex, userId, dumpRes);
+    if (ret == ERR_OK) {
+        resultReceiver_.append(dumpRes + "\n");
+    } else {
+        resultReceiver_.append(STRING_DUMP_SANDBOX_FAILED + "errCode is "+ std::to_string(ret) + "\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsUninstallEnterpriseReSignCert()
+{
+    APP_LOGI("UninstallEnterpriseReSignCert begin");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "uninstallEnterpriseReSignCert";
+    std::string name = "";
+    std::string certificateAlias = "";
+    int32_t userId = 0;
+    bool withPermission = false;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_UNINSTALL_RE_SIGN_CERT.c_str(),
+            LONG_OPTIONS_UNINSTALL_RE_SIGN_CERT, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getStr with no option.");
+                resultReceiver_.append(HELP_MSG_UNINSTALL_ENTERPRISE_RE_SIGN_CERT);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        certificateAlias = option == 'c' ? name : certificateAlias;
+        userId = option == 'u' ? temp : userId;
+        withPermission = option == 'p' ? temp : withPermission;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_UNINSTALL_ENTERPRISE_RE_SIGN_CERT);
+    } else {
+        if (withPermission) {
+            ReloadNativeTokenInfo();
+        }
+        APP_LOGI("UninstallEnterpriseReSignatureCert -c:%{public}s -u:%{public}d", certificateAlias.c_str(), userId);
+        auto results = bundleInstallerProxy_->UninstallEnterpriseReSignatureCert(certificateAlias, userId);
+        if (results == ERR_OK) {
+            resultReceiver_.append(STRING_UNINSTALL_ENTERPRISE_RE_SIGN_CERT_OK);
+            return result;
+        }
+        resultReceiver_.append(STRING_UNINSTALL_ENTERPRISE_RE_SIGN_CERT_NG);
+        resultReceiver_.append("ErrCode is " + std::to_string(results) + ".\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetEnterpriseReSignCert()
+{
+    APP_LOGI("GetEnterpriseReSignCert begin");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getEnterpriseReSignCert";
+    std::string name = "";
+    int32_t userId = 0;
+    bool withPermission = false;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_RE_SIGN_CERT.c_str(),
+            LONG_OPTIONS_GET_RE_SIGN_CERT, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getStr with no option.");
+                resultReceiver_.append(HELP_MSG_GET_ENTERPRISE_RE_SIGN_CERT);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        userId = option == 'u' ? temp : userId;
+        withPermission = option == 'p' ? temp : withPermission;
+    }
+
+    std::vector<std::string> certificateAlias;
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ENTERPRISE_RE_SIGN_CERT);
+    } else {
+        APP_LOGI("GetEnterpriseReSignatureCert -u:%{public}d", userId);
+        if (withPermission) {
+            ReloadNativeTokenInfo();
+        }
+        auto results = bundleInstallerProxy_->GetEnterpriseReSignatureCert(userId, certificateAlias);
+        if (results == ERR_OK) {
+            resultReceiver_.append(STRING_GET_ENTERPRISE_RE_SIGN_CERT_OK);
+            std::string msg = "certificateAlias:{";
+            for (const auto &cert : certificateAlias) {
+                msg += cert;
+                msg += ",";
+            }
+            msg += "}\n";
+            resultReceiver_.append(msg);
+            return result;
+        }
+        resultReceiver_.append(STRING_GET_ENTERPRISE_RE_SIGN_CERT_NG);
+        resultReceiver_.append("ErrCode is " + std::to_string(results) + ".\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::StringToInt(
+    std::string optarg, const std::string &commandName, int &temp, bool &result)
+{
+    try {
+        temp = std::stoi(optarg);
+        if (optind > 0 && optind <= argc_) {
+            APP_LOGD("bundle_test_tool %{public}s -u user-id:%{public}d, %{public}s",
+                commandName.c_str(), temp, argv_[optind - 1]);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        result = false;
+    }
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::StringToUnsignedLongLong(
+    std::string optarg, const std::string &commandName, uint64_t &temp, bool &result)
+{
+    try {
+        APP_LOGI("StringToUnsignedLongLong start, optarg : %{public}s", optarg.c_str());
+        if ((optarg == "") || (optarg[0] == '0') || (!isdigit(optarg[0]))) {
+            resultReceiver_.append("error: parameter error, cache size must be greater than 0\n");
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        temp = std::stoull(optarg);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        result = false;
+    }
+    return OHOS::ERR_OK;
+}
+
+bool BundleTestTool::StringToUnsignedLongLong(
+    std::string optarg, const std::string &commandName, uint64_t &temp)
+{
+    try {
+        APP_LOGI("StringToUnsignedLongLong start, optarg : %{public}s", optarg.c_str());
+        if ((optarg == "") || (!isdigit(optarg[0]))) {
+            resultReceiver_.append("error: parameter error, cache size must be greater than or equal to 0\n");
+            return false;
+        }
+        temp = std::stoull(optarg);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool BundleTestTool::StrToUint32(const std::string &str, uint32_t &value)
+{
+    if (str.empty() || !isdigit(str.front())) {
+        APP_LOGE("str is empty!");
+        return false;
+    }
+    char* end = nullptr;
+    errno = 0;
+    auto addr = str.c_str();
+    auto result = strtoul(addr, &end, 10); /* 10 means decimal */
+    if ((end == addr) || (end[0] != '\0') || (errno == ERANGE) ||
+        (result > UINT32_MAX)) {
+        APP_LOGE("the result was incorrect!");
+        return false;
+    }
+    value = static_cast<uint32_t>(result);
+    return true;
+}
+
+bool BundleTestTool::HandleUnknownOption(const std::string &commandName, bool &ret)
+{
+    std::string unknownOption = "";
+    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+    APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+    resultReceiver_.append(unknownOptionMsg);
+    return ret = false;
+}
+
+bool BundleTestTool::CheckGetStringCorrectOption(
+    int option, const std::string &commandName, int &temp, std::string &name)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'n': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -n %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'm': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -m module-name:%{public}s, %{public}s",
+                commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'c': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -m continue-type:%{public}s, %{public}s",
+                commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        case 'a': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        case 'p': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        case 'i': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        default: {
+            HandleUnknownOption(commandName, ret);
+            break;
+        }
+    }
+    return ret;
+}
+
+bool BundleTestTool::CheckGetProxyDataCorrectOption(
+    int option, const std::string &commandName, int &temp, std::string &name)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'n': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -n %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'm': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -m module-name:%{public}s, %{public}s",
+                     commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+bool BundleTestTool::CheckGetAllProxyDataCorrectOption(
+    int option, const std::string &commandName, int &temp, std::string &name)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsGetProxyDataCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getProxyData";
+    std::string name = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    int userId = Constants::ALL_USERID;
+    APP_LOGD("RunAsGetProxyDataCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(
+            argc_, argv_, SHORT_OPTIONS_PROXY_DATA.c_str(), LONG_OPTIONS_PROXY_DATA, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getProxyData with no option.");
+                resultReceiver_.append(HELP_MSG_GET_PROXY_DATA);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetProxyDataCorrectOption(option, commandName, temp, name)
+                 ? OHOS::ERR_INVALID_VALUE : result;
+        moduleName = option == 'm' ? name : moduleName;
+        bundleName = option == 'n' ? name : bundleName;
+        userId = option == 'u' ? temp : userId;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_PROXY_DATA);
+    } else {
+        std::vector<ProxyData> proxyDatas;
+        result = bundleMgrProxy_->GetProxyDataInfos(bundleName, moduleName, proxyDatas, userId);
+        if (result == ERR_OK) {
+            nlohmann::json jsonObject = proxyDatas;
+            std::string results = jsonObject.dump(Constants::DUMP_INDENT);
+            resultReceiver_.append(results);
+        } else {
+            resultReceiver_.append(STRING_GET_PROXY_DATA_NG + " errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetAllProxyDataCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getProxyData";
+    std::string name = "";
+    int userId = Constants::ALL_USERID;
+    APP_LOGD("RunAsGetAllProxyDataCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(
+            argc_, argv_, SHORT_OPTIONS_ALL_PROXY_DATA.c_str(), LONG_OPTIONS_ALL_PROXY_DATA, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            break;
+        }
+
+        int temp = 0;
+        result = !CheckGetAllProxyDataCorrectOption(option, commandName, temp, name)
+                 ? OHOS::ERR_INVALID_VALUE : result;
+        userId = option == 'u' ? temp : userId;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ALL_PROXY_DATA);
+    } else {
+        std::vector<ProxyData> proxyDatas;
+        result = bundleMgrProxy_->GetAllProxyDataInfos(proxyDatas, userId);
+        if (result == ERR_OK) {
+            nlohmann::json jsonObject = proxyDatas;
+            std::string results = jsonObject.dump(Constants::DUMP_INDENT);
+            resultReceiver_.append(results);
+        } else {
+            resultReceiver_.append(STRING_GET_PROXY_DATA_NG + " errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetStringCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getStr";
+    std::string name = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    int userId = 100;
+    int labelId = 0;
+    APP_LOGD("RunAsGetStringCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET.c_str(), LONG_OPTIONS_GET, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                // 'GetStringById' with no option: GetStringById
+                // 'GetStringById' with a wrong argument: GetStringById
+                APP_LOGD("bundle_test_tool getStr with no option.");
+                resultReceiver_.append(HELP_MSG_NO_GETSTRING_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        moduleName = option == 'm' ? name : moduleName;
+        bundleName = option == 'n' ? name : bundleName;
+        userId = option == 'u' ? temp : userId;
+        labelId = option == 'i' ? temp : labelId;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_STRING);
+    } else {
+        std::string results = "";
+        results = bundleMgrProxy_->GetStringById(bundleName, moduleName, labelId, userId);
+        if (results.empty()) {
+            resultReceiver_.append(STRING_GET_STRING_NG);
+            return result;
+        }
+        resultReceiver_.append(results);
+    }
+    return result;
+}
+
+bool BundleTestTool::CheckExtOrMimeCorrectOption(
+    int option, const std::string &commandName, int &temp, std::string &name)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'n': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -n %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'm': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -m module-name:%{public}s, %{public}s",
+                     commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'a': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -m ability-name:%{public}s, %{public}s",
+                     commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'e': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -m ext-name:%{public}s, %{public}s",
+                     commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 't': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -m mime-type:%{public}s, %{public}s",
+                     commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsSetExtNameOrMIMEToAppCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "setExtNameOrMimeToApp";
+    std::string name = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    std::string abilityName = "";
+    std::string extName = "";
+    std::string mimeType = "";
+    APP_LOGD("RunAsSetExtNameOrMIMEToAppCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(
+            argc_, argv_, SHORT_OPTIONS_MIME.c_str(), LONG_OPTIONS_MIME, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool RunAsSetExtNameOrMIMEToAppCommand with no option.");
+                resultReceiver_.append(HELP_MSG_SET_EXT_NAME_OR_MIME_TYPE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckExtOrMimeCorrectOption(option, commandName, temp, name)
+                 ? OHOS::ERR_INVALID_VALUE : result;
+        moduleName = option == 'm' ? name : moduleName;
+        bundleName = option == 'n' ? name : bundleName;
+        abilityName = option == 'a' ? name : abilityName;
+        extName = option == 'e' ? name : extName;
+        mimeType = option == 't' ? name : mimeType;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_PROXY_DATA);
+    } else {
+        result = bundleMgrProxy_->SetExtNameOrMIMEToApp(bundleName, moduleName, abilityName, extName, mimeType);
+        if (result == ERR_OK) {
+            resultReceiver_.append("SetExtNameOrMIMEToApp succeeded,");
+        } else {
+            resultReceiver_.append("SetExtNameOrMIMEToApp failed, errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsDelExtNameOrMIMEToAppCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "delExtNameOrMimeToApp";
+    std::string name = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    std::string abilityName = "";
+    std::string extName = "";
+    std::string mimeType = "";
+    APP_LOGD("RunAsDelExtNameOrMIMEToAppCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(
+            argc_, argv_, SHORT_OPTIONS_MIME.c_str(), LONG_OPTIONS_MIME, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool RunAsDelExtNameOrMIMEToAppCommand with no option.");
+                resultReceiver_.append(HELP_MSG_SET_EXT_NAME_OR_MIME_TYPE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckExtOrMimeCorrectOption(option, commandName, temp, name)
+                 ? OHOS::ERR_INVALID_VALUE : result;
+        moduleName = option == 'm' ? name : moduleName;
+        bundleName = option == 'n' ? name : bundleName;
+        abilityName = option == 'a' ? name : abilityName;
+        extName = option == 'e' ? name : extName;
+        mimeType = option == 't' ? name : mimeType;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_PROXY_DATA);
+    } else {
+        result = bundleMgrProxy_->DelExtNameOrMIMEToApp(bundleName, moduleName, abilityName, extName, mimeType);
+        if (result == ERR_OK) {
+            resultReceiver_.append("DelExtNameOrMIMEToApp succeeded");
+        } else {
+            resultReceiver_.append("DelExtNameOrMIMEToApp failed, errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+bool BundleTestTool::CheckGetIconCorrectOption(
+    int option, const std::string &commandName, int &temp, std::string &name)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'n': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -n %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'm': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -m module-name:%{public}s, %{public}s",
+                commandName.c_str(), name.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        case 'i': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        case 'd': {
+            StringToInt(optarg, commandName, temp, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsGetIconCommand()
+{
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getIcon";
+    std::string name = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    int userId = 100;
+    int iconId = 0;
+    int density = 0;
+    APP_LOGD("RunAsGetIconCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET.c_str(), LONG_OPTIONS_GET, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                // 'GetIconById' with no option: GetStringById
+                // 'GetIconById' with a wrong argument: GetStringById
+                APP_LOGD("bundle_test_tool getIcon with no option.");
+                resultReceiver_.append(HELP_MSG_NO_GETICON_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetIconCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        moduleName = option == 'm' ? name : moduleName;
+        bundleName = option == 'n' ? name : bundleName;
+        userId = option == 'u' ? temp : userId;
+        iconId = option == 'i' ? temp : iconId;
+        density = option == 'd' ? temp : density;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ICON);
+    } else {
+        std::string results = "";
+        results = bundleMgrProxy_->GetIconById(bundleName, moduleName, iconId, density, userId);
+        if (results.empty()) {
+            resultReceiver_.append(STRING_GET_ICON_NG);
+            return result;
+        }
+        resultReceiver_.append(results);
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::CheckAddInstallRuleCorrectOption(int option, const std::string &commandName,
+    std::vector<std::string> &appIds, int &controlRuleType, int &userId, int &euid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'a': {
+            std::string arrayAppId = optarg;
+            std::stringstream array(arrayAppId);
+            std::string object;
+            while (getline(array, object, ',')) {
+                appIds.emplace_back(object);
+            }
+            APP_LOGD("bundle_test_tool %{public}s -a %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'e': {
+            StringToInt(optarg, commandName, euid, ret);
+            break;
+        }
+        case 't': {
+            StringToInt(optarg, commandName, controlRuleType, ret);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+
+ErrCode BundleTestTool::RunAsDeleteDisposedRulesCommand()
+{
+    ReloadNativeTokenInfo();
+    ErrCode result = OHOS::ERR_OK;
+    std::string commandName = "DisposedRulesCommand";
+    int counter = 0;
+    std::vector<std::string> appIds;
+    int uid = 0;
+    int userId = 100;
+    int appIndex = 0;
+    APP_LOGD("RunAsDeleteDisposedRulesCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_DELETE_RULES.c_str(), LONG_OPTIONS_DELETES_RULES, nullptr);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_DELETE_RULES_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckDeleteRulesCorrectOption(option, commandName, appIds, appIndex, userId, uid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_DELETE_RULES_OPTION);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    std::vector<DisposedRuleConfiguration> disposedRuleConfigurations;
+    std::string appIdParam = "";
+    for (auto param : appIds) {
+        appIdParam = appIdParam.append(param) + ";";
+        DisposedRuleConfiguration config;
+        config.appId = param;
+        config.appIndex = appIndex;
+        disposedRuleConfigurations.emplace_back(config);
+    }
+    APP_LOGI("appIds: %{public}s, appIndex: %{public}d, userId: %{public}d, uid: %{public}d",
+        appIdParam.c_str(), appIndex, userId, uid);
+    setuid(uid);
+    int32_t res = appControlProxy->DeleteDisposedRules(disposedRuleConfigurations, userId);
+    setuid(Constants::ROOT_UID);
+    APP_LOGI("DeleteDisposedRules return code: %{public}d", res);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append("error: failed to delete rules");
+        return res;
+    }
+    resultReceiver_.append(std::to_string(res) + "\n");
+    return result;
+}
+
+ErrCode BundleTestTool::CheckDeleteRulesCorrectOption(int option, const std::string &commandName,
+    std::vector<std::string> &appIds, int &appIndex, int &userId, int &uid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'a': {
+            std::string arrayAppId = optarg;
+            std::stringstream array(arrayAppId);
+            std::string object;
+            while (getline(array, object, ',')) {
+                appIds.emplace_back(object);
+            }
+            APP_LOGD("bundle_test_tool %{public}s -a %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'c': {
+            StringToInt(optarg, commandName, uid, ret);
+            break;
+        }
+        case 'i': {
+            StringToInt(optarg, commandName, appIndex, ret);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+// bundle_test_tool addAppInstallRule -a test1,test2 -t 1 -u 101 -e 3057
+ErrCode BundleTestTool::RunAsAddInstallRuleCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "addAppInstallRule";
+    std::vector<std::string> appIds;
+    int euid = 3057;
+    int userId = 100;
+    int ruleType = 0;
+    APP_LOGD("RunAsAddInstallRuleCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_NO_ADD_INSTALL_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckAddInstallRuleCorrectOption(option, commandName, appIds, ruleType, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_ADD_INSTALL_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto rule = static_cast<AppInstallControlRuleType>(ruleType);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    std::string appIdParam = "";
+    for (auto param : appIds) {
+        appIdParam = appIdParam.append(param) + ";";
+    }
+    APP_LOGI("appIds: %{public}s, controlRuleType: %{public}d, userId: %{public}d",
+        appIdParam.c_str(), ruleType, userId);
+    int32_t res = appControlProxy->AddAppInstallControlRule(appIds, rule, userId);
+    APP_LOGI("AddAppInstallControlRule return code: %{public}d", res);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_ADD_RULE_NG);
+        return res;
+    }
+    resultReceiver_.append(std::to_string(res) + "\n");
+    return result;
+}
+
+ErrCode BundleTestTool::CheckGetInstallRuleCorrectOption(int option, const std::string &commandName,
+    int &controlRuleType, int &userId, int &euid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'e': {
+            StringToInt(optarg, commandName, euid, ret);
+            break;
+        }
+        case 't': {
+            StringToInt(optarg, commandName, controlRuleType, ret);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+// bundle_test_tool getAppInstallRule -t 1 -u 101 -e 3057
+ErrCode BundleTestTool::RunAsGetInstallRuleCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getAppInstallRule";
+    int euid = 3057;
+    int userId = 100;
+    int ruleType = 0;
+    APP_LOGD("RunAsGetInstallRuleCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_NO_GET_INSTALL_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckGetInstallRuleCorrectOption(option, commandName, ruleType, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_GET_INSTALL_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    APP_LOGI("controlRuleType: %{public}d, userId: %{public}d", ruleType, userId);
+    auto rule = static_cast<AppInstallControlRuleType>(ruleType);
+    std::vector<std::string> appIds;
+    int32_t res = appControlProxy->GetAppInstallControlRule(rule, userId, appIds);
+    APP_LOGI("GetAppInstallControlRule return code: %{public}d", res);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_GET_RULE_NG);
+        return res;
+    }
+    std::string appIdParam = "";
+    for (auto param : appIds) {
+        appIdParam = appIdParam.append(param) + "; ";
+    }
+    resultReceiver_.append("appId : " + appIdParam + "\n");
+    return result;
+}
+
+ErrCode BundleTestTool::CheckDeleteInstallRuleCorrectOption(int option, const std::string &commandName,
+    int &controlRuleType, std::vector<std::string> &appIds, int &userId, int &euid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'a': {
+            std::string arrayAppId = optarg;
+            std::stringstream array(arrayAppId);
+            std::string object;
+            while (getline(array, object, ',')) {
+                appIds.emplace_back(object);
+            }
+            APP_LOGD("bundle_test_tool %{public}s -a %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'e': {
+            StringToInt(optarg, commandName, euid, ret);
+            break;
+        }
+        case 't': {
+            StringToInt(optarg, commandName, controlRuleType, ret);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+// bundle_test_tool deleteAppInstallRule -a test1 -t 1 -u 101 -e 3057
+ErrCode BundleTestTool::RunAsDeleteInstallRuleCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    int euid = 3057;
+    std::string commandName = "deleteAppInstallRule";
+    std::vector<std::string> appIds;
+    int ruleType = 0;
+    int userId = 100;
+    APP_LOGD("RunAsDeleteInstallRuleCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_NO_DELETE_INSTALL_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckDeleteInstallRuleCorrectOption(option, commandName, ruleType, appIds, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_DELETE_INSTALL_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    std::string appIdParam = "";
+    for (auto param : appIds) {
+        appIdParam = appIdParam.append(param) + ";";
+    }
+    APP_LOGI("appIds: %{public}s, userId: %{public}d", appIdParam.c_str(), userId);
+    auto rule = static_cast<AppInstallControlRuleType>(ruleType);
+    int32_t res = appControlProxy->DeleteAppInstallControlRule(rule, appIds, userId);
+    APP_LOGI("DeleteAppInstallControlRule return code: %{public}d", res);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_DELETE_RULE_NG);
+        return res;
+    }
+    resultReceiver_.append(std::to_string(res) + "\n");
+    return result;
+}
+
+ErrCode BundleTestTool::CheckCleanInstallRuleCorrectOption(
+    int option, const std::string &commandName, int &controlRuleType, int &userId, int &euid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'e': {
+            StringToInt(optarg, commandName, euid, ret);
+            break;
+        }
+        case 't': {
+            StringToInt(optarg, commandName, controlRuleType, ret);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+// bundle_test_tool cleanAppInstallRule -t 1 -u 101 -e 3057
+ErrCode BundleTestTool::RunAsCleanInstallRuleCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    int euid = 3057;
+    std::string commandName = "cleanAppInstallRule";
+    int userId = 100;
+    int ruleType = 0;
+    APP_LOGD("RunAsCleanInstallRuleCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getRule with no option.");
+                resultReceiver_.append(HELP_MSG_NO_CLEAN_INSTALL_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckCleanInstallRuleCorrectOption(option, commandName, ruleType, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_NO_CLEAN_INSTALL_RULE_OPTION);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto rule = static_cast<AppInstallControlRuleType>(ruleType);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    APP_LOGI("controlRuleType: %{public}d, userId: %{public}d", ruleType, userId);
+    int32_t res = appControlProxy->DeleteAppInstallControlRule(rule, userId);
+    APP_LOGI("DeleteAppInstallControlRule clean return code: %{public}d", res);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_DELETE_RULE_NG);
+        return res;
+    }
+    resultReceiver_.append(std::to_string(res) + "\n");
+    return result;
+}
+
+ErrCode BundleTestTool::CheckAppRunningRuleCorrectOption(int option, const std::string &commandName,
+    std::vector<AppRunningControlRule> &controlRule, int &userId, int &euid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'c': {
+            std::string arrayJsonRule = optarg;
+            std::stringstream array(arrayJsonRule);
+            std::string object;
+            while (getline(array, object, ';')) {
+                size_t pos1 = object.find("appId");
+                size_t pos2 = object.find("controlMessage");
+                size_t pos3 = object.find("allowRunning");
+                size_t pos4 = object.find(":", pos3);
+                if ((pos1 == std::string::npos) || (pos2 == std::string::npos) || (pos3 == std::string::npos)) {
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                std::string appId = object.substr(pos1+6, pos2-pos1-7);
+                std::string controlMessage = object.substr(pos2+15, pos3-pos2-16);
+                bool allowRunning = false;
+                std::string trustStr = object.substr(pos4+1);
+                if (trustStr == "true") {
+                    allowRunning = true;
+                } else if (trustStr == "false") {
+                    allowRunning = false;
+                } else {
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+
+                AppRunningControlRule rule;
+                rule.appId = appId;
+                rule.controlMessage = controlMessage;
+                rule.allowRunning = allowRunning;
+                controlRule.emplace_back(rule);
+            }
+            break;
+        }
+        case 'e': {
+            StringToInt(optarg, commandName, euid, ret);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+// bundle_test_tool addAppRunningRule -c "appId:id1,controlMessage:msg1,allowRunning:true;
+// appId:id2,controlMessage:msg2,allowRunning:false" -u 101 -e 3057
+ErrCode BundleTestTool::RunAsAddAppRunningRuleCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    int euid = 3057;
+    std::string commandName = "addAppRunningRule";
+    int userId = 100;
+    std::vector<AppRunningControlRule> controlRule;
+    APP_LOGD("RunAsAddAppRunningRuleCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getRule with no option.");
+                resultReceiver_.append(HELP_MSG_NO_APP_RUNNING_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckAppRunningRuleCorrectOption(option, commandName, controlRule, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_ADD_APP_RUNNING_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    std::string appIdParam = "";
+    for (auto param : controlRule) {
+        appIdParam = appIdParam.append("appId:"+ param.appId + "," + "message:" + param.controlMessage +
+            ",allowRunning:" + (param.allowRunning ? "true" : "false"));
+    }
+    APP_LOGI("appRunningControlRule: %{public}s, userId: %{public}d", appIdParam.c_str(), userId);
+    int32_t res = appControlProxy->AddAppRunningControlRule(controlRule, userId);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_ADD_RULE_NG);
+        return res;
+    }
+    resultReceiver_.append(std::to_string(res) + "\n");
+    return result;
+}
+
+// bundle_test_tool deleteAppRunningRule -c "appId:101,controlMessage:msg1,allowRunning:true" -u 101 -e 3057
+ErrCode BundleTestTool::RunAsDeleteAppRunningRuleCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    int euid = 3057;
+    std::string commandName = "addAppRunningRule";
+    int userId = 100;
+    std::vector<AppRunningControlRule> controlRule;
+    APP_LOGD("RunAsDeleteAppRunningRuleCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getRule with no option.");
+                resultReceiver_.append(HELP_MSG_NO_APP_RUNNING_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckAppRunningRuleCorrectOption(option, commandName, controlRule, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_DELETE_APP_RUNNING_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    std::string appIdParam = "";
+    for (auto param : controlRule) {
+        appIdParam = appIdParam.append("appId:"+ param.appId + ":" + "message" + param.controlMessage +
+            ":allowRunning:" + (param.allowRunning ? "true" : "false"));
+    }
+    APP_LOGI("appRunningControlRule: %{public}s, userId: %{public}d", appIdParam.c_str(), userId);
+    int32_t res = appControlProxy->DeleteAppRunningControlRule(controlRule, userId);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_DELETE_RULE_NG);
+        return res;
+    }
+    resultReceiver_.append(std::to_string(res) + "\n");
+    return result;
+}
+
+ErrCode BundleTestTool::CheckCleanAppRunningRuleCorrectOption(
+    int option, const std::string &commandName, int &userId, int &euid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'e': {
+            StringToInt(optarg, commandName, euid, ret);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+// bundle_test_tool cleanAppRunningRule -u 101 -e 3057
+ErrCode BundleTestTool::RunAsCleanAppRunningRuleCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    int euid = 3057;
+    std::string commandName = "addAppRunningRule";
+    int userId = 100;
+    APP_LOGD("RunAsCleanAppRunningRuleCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getRule with no option.");
+                resultReceiver_.append(HELP_MSG_NO_CLEAN_APP_RUNNING_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckCleanAppRunningRuleCorrectOption(option, commandName, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_CLEAN_APP_RUNNING_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    APP_LOGI("userId: %{public}d", userId);
+    int32_t res = appControlProxy->DeleteAppRunningControlRule(userId);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_DELETE_RULE_NG);
+        return res;
+    }
+    resultReceiver_.append(std::to_string(res) + "\n");
+    return result;
+}
+
+ErrCode BundleTestTool::CheckGetAppRunningRuleCorrectOption(int option, const std::string &commandName,
+    int32_t &userId, int &euid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'e': {
+            StringToInt(optarg, commandName, euid, ret);
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK ;
+}
+
+// bundle_test_tool getAppRunningControlRule -u 101 -e 3057
+ErrCode BundleTestTool::RunAsGetAppRunningControlRuleCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    int euid = 3057;
+    std::string commandName = "addAppRunningRule";
+    int userId = 100;
+    APP_LOGD("RunAsGetAppRunningControlRuleCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getRule with no option.");
+                resultReceiver_.append(HELP_MSG_NO_GET_ALL_APP_RUNNING_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckGetAppRunningRuleCorrectOption(option, commandName, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_GET_APP_RUNNING_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    APP_LOGI("userId: %{public}d", userId);
+    std::vector<std::string> appIds;
+    bool allowRunning;
+    int32_t res = appControlProxy->GetAppRunningControlRule(userId, appIds, allowRunning);
+    if (res != OHOS::ERR_OK) {
+        resultReceiver_.append(STRING_GET_RULE_NG);
+        return res;
+    }
+    std::string appIdParam = "";
+    for (auto param : appIds) {
+        appIdParam = appIdParam.append(param) + "; ";
+    }
+    resultReceiver_.append("appId : " + appIdParam + ",allowRunning:" + (allowRunning ? "true" : "false") + "\n");
+    return result;
+}
+
+ErrCode BundleTestTool::CheckGetAppRunningRuleResultCorrectOption(int option, const std::string &commandName,
+    std::string &bundleName, int32_t &userId, int &euid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'e': {
+            StringToInt(optarg, commandName, euid, ret);
+            break;
+        }
+        case 'n': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            bundleName = optarg;
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+// bundle_test_tool getAppRunningControlRuleResult -n com.ohos.example -e 3057
+ErrCode BundleTestTool::RunAsGetAppRunningControlRuleResultCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    int euid = 3057;
+    std::string commandName = "addAppRunningRule";
+    int userId = 100;
+    std::string bundleName;
+    APP_LOGD("RunAsGetAppRunningControlRuleResultCommand is start");
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_RULE.c_str(), LONG_OPTIONS_RULE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getRule with no option.");
+                resultReceiver_.append(HELP_MSG_NO_GET_APP_RUNNING_RULE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckGetAppRunningRuleResultCorrectOption(option, commandName, bundleName, userId, euid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_GET_APP_RUNNING_RESULT_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    seteuid(euid);
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (!appControlProxy) {
+        APP_LOGE("fail to get app control proxy.");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    AppRunningControlRuleResult ruleResult;
+    APP_LOGI("bundleName: %{public}s, userId: %{public}d", bundleName.c_str(), userId);
+    int32_t res = appControlProxy->GetAppRunningControlRule(bundleName, userId, ruleResult);
+    if (res != OHOS::ERR_OK) {
+        APP_LOGI("GetAppRunningControlRule result: %{public}d", res);
+        resultReceiver_.append("message:" + ruleResult.controlMessage + " bundle:notFind" + "\n");
+        return res;
+    }
+    resultReceiver_.append("message:" + ruleResult.controlMessage + "\n");
+    if (ruleResult.controlWant != nullptr) {
+        resultReceiver_.append("controlWant:" + ruleResult.controlWant->ToString() + "\n");
+    } else {
+        resultReceiver_.append("controlWant: nullptr \n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::CheckCleanBundleCacheFilesAutomaticOption(
+    int option, const std::string &commandName, uint64_t &cacheSize, int32_t &cleanType)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGI("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 's': {
+            APP_LOGI("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            StringToUnsignedLongLong(optarg, commandName, cacheSize, ret);
+            break;
+        }
+        case 't': {
+            APP_LOGI("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            if (optarg == nullptr) {
+                resultReceiver_.append("Error: -t option requires a value\n");
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            StringToInt(optarg, commandName, cleanType, ret);
+            if (!ret) {
+                resultReceiver_.append("Error: invalid clean type format\n");
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            if (cleanType != 0 && cleanType != 1) {
+                APP_LOGE("Invalid clean type: %{public}d, only support: 0 (cache-space) or 1 (inode-count)", cleanType);
+                resultReceiver_.append("Error: clean type must be 0 or 1\n");
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            APP_LOGI("cleanType set to: %d", cleanType);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGE("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsCleanBundleCacheFilesAutomaticCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "cleanBundleCacheFilesAutomatic";
+    uint64_t cacheSize = 0;
+    int32_t type = 0;
+    std::optional<uint64_t> cleanedSize;
+    APP_LOGI("RunAsCleanBundleCacheFilesAutomaticCommand is start");
+
+    bool hasTypeOption = false;
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_AUTO_CLEAN_CACHE.c_str(),
+            LONG_OPTIONS_AUTO_CLEAN_CACHE, nullptr);
+        APP_LOGI("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGE("bundle_test_tool getRule with no option.");
+                resultReceiver_.append(HELP_MSG_NO_AUTO_CLEAN_CACHE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == 't') {
+            hasTypeOption = true;
+        }
+        result = CheckCleanBundleCacheFilesAutomaticOption(option, commandName, cacheSize, type);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_AUTO_CLEAN_CACHE_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    CleanType cleanType = static_cast<CleanType>(type);
+    ErrCode res = bundleMgrProxy_->CleanBundleCacheFilesAutomatic(cacheSize, cleanType, cleanedSize);
+    if (res == ERR_OK) {
+        std::string cleanTypeStr = (cleanType == CleanType::INODE_COUNT) ? "1 (inode-count)" : "0 (cache-space)";
+        std::string unit = (cleanType == CleanType::INODE_COUNT) ? " files" : " bytes";
+        std::string resultMsg = "clean fixed size cache successfully\n";
+        resultMsg += "Clean type: " + cleanTypeStr;
+        if (!hasTypeOption) {
+            resultMsg += " (default)";
+        }
+        resultMsg += "\n";
+        resultMsg += "Requested cache size: " + std::to_string(cacheSize) + unit + "\n";
+        
+        if (cleanedSize.has_value()) {
+            resultMsg += "Actually cleaned size: " + std::to_string(cleanedSize.value()) + unit + "\n";
+        } else {
+            resultMsg += "Actually cleaned size: not available\n";
+        }
+        resultReceiver_.append(resultMsg);
+    } else {
+        resultReceiver_.append("clean fixed size cache failed, errCode is " + std::to_string(res) + "\n");
+        APP_LOGE("CleanBundleCacheFilesAutomatic failed, result: %{public}d", res);
+        return res;
+    }
+    return res;
+}
+
+ErrCode BundleTestTool::CheckCleanBundlePartialCacheAutomaticOption(
+    int32_t option, const std::string &commandName, CleanCacheInfo &cleanCacheInfo)
+{
+    switch (option) {
+        case 'h': {
+            APP_LOGI("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'n': {
+            cleanCacheInfo.bundleName = optarg;
+            break;
+        }
+        case 'u': {
+            if (!OHOS::StrToInt(optarg, cleanCacheInfo.userId) || cleanCacheInfo.userId < 0) {
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        case 'a': {
+            if (!OHOS::StrToInt(optarg, cleanCacheInfo.appIndex) ||
+                (cleanCacheInfo.appIndex < 0 || cleanCacheInfo.appIndex > INITIAL_SANDBOX_APP_INDEX)) {
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        case 's': {
+            if (!StringToUnsignedLongLong(optarg, commandName, cleanCacheInfo.cacheThreshold)) {
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGE("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsCleanBundlePartialCacheAutomaticCommand()
+{
+    ErrCode result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "cleanBundlePartialCacheAutomatic";
+    CleanCacheInfo cleanCacheInfo;
+    APP_LOGI("RunAsCleanBundlePartialCacheAutomaticCommand is start");
+
+    while (true) {
+        counter++;
+        int option = getopt_long(argc_, argv_, SHORT_OPTIONS_AUTO_CLEAN_PARTIAL_CACHE.c_str(),
+            LONG_OPTIONS_AUTO_CLEAN_PARTIAL_CACHE, nullptr);
+        APP_LOGI("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGE("bundle_test_tool getRule with no option.");
+                resultReceiver_.append(HELP_MSG_NO_AUTO_CLEAN_PARTIAL_CACHE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckCleanBundlePartialCacheAutomaticOption(option, commandName, cleanCacheInfo);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_AUTO_CLEAN_PARTIAL_CACHE_RULE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+
+    uint64_t beforeCleanedSize = 0;
+    uint64_t afterCleanedSize = 0;
+    result = bundleMgrProxy_->CleanBundlePartialCacheAutomatic(cleanCacheInfo, beforeCleanedSize, afterCleanedSize);
+    if (result == ERR_OK) {
+        std::string resultMsg = "clean partial cache successfully\n";
+        resultMsg += "Requested cache size: " + std::to_string(cleanCacheInfo.cacheThreshold) + "bytes\n";
+        resultMsg += "Before cleaned size: " + std::to_string(beforeCleanedSize) + "bytes\n";
+        resultMsg += "After cleaned size: " + std::to_string(afterCleanedSize) + "bytes\n";
+        resultReceiver_.append(resultMsg);
+    } else {
+        resultReceiver_.append("clean partial cache failed, errCode is " + std::to_string(result) + "\n");
+        APP_LOGE("CleanBundlePartialCacheAutomatic failed, result: %{public}d", result);
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetContinueBundleName()
+{
+    APP_LOGD("RunAsGetContinueBundleName start");
+    std::string bundleName;
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    int32_t appIndex;
+    int32_t result = BundleNameAndUserIdCommonFunc(bundleName, userId, appIndex);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append("RunAsGetContinueBundleName erro!!");
+    } else {
+        if (userId == Constants::UNSPECIFIED_USERID) {
+            int32_t mockUid = 20010099;
+            // Mock the current tool uid, the current default user must be executed under 100.
+            int setResult = setuid(mockUid);
+            APP_LOGD("Set uid result: %{public}d", setResult);
+        }
+
+        std::string msg;
+        result = GetContinueBundleName(bundleName, userId, msg);
+        APP_LOGD("Get continue bundle result %{public}d", result);
+        if (result == OHOS::ERR_OK) {
+            resultReceiver_.append(msg);
+            return ERR_OK;
+        } else {
+            APP_LOGE("Get continue bundle name error: %{public}d", result);
+            std::string err("Get continue bundle name error!");
+            resultReceiver_.append(err);
+        }
+    }
+    return OHOS::ERR_INVALID_VALUE;
+}
+
+ErrCode BundleTestTool::GetContinueBundleName(const std::string &bundleName, int32_t userId, std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("Bundle mgr proxy is nullptr");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    std::vector<std::string> continueBundleName;
+    auto ret = bundleMgrProxy_->GetContinueBundleNames(bundleName, continueBundleName, userId);
+    APP_LOGD("Get continue bundle names result: %{public}d", ret);
+    if (ret == OHOS::ERR_OK) {
+        msg = "continueBundleNameList:\n{\n";
+        for (const auto &name : continueBundleName) {
+            msg +="     ";
+            msg += name;
+            msg += "\n";
+        }
+        msg += "}\n";
+        return ERR_OK;
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsDeployQuickFix()
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    int32_t index = 0;
+    std::vector<std::string> quickFixPaths;
+    int32_t isDebug = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_QUICK_FIX.c_str(), LONG_OPTIONS_QUICK_FIX, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+
+        if (option == -1 || option == '?') {
+            if (counter == 1 && strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            if ((optopt == 'p') || (optopt == 'd')) {
+                // 'bm deployQuickFix --patch-path' with no argument
+                // 'bm deployQuickFix -d' with no argument
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            break;
+        }
+
+        if (option == 'p') {
+            APP_LOGD("'bm deployQuickFix -p %{public}s'", argv_[optind - 1]);
+            quickFixPaths.emplace_back(optarg);
+            index = optind;
+            continue;
+        }
+        if ((option == 'd') && OHOS::StrToInt(optarg, isDebug)) {
+            APP_LOGD("'bm deployQuickFix -d %{public}s'", argv_[optind - 1]);
+            continue;
+        }
+
+        result = OHOS::ERR_INVALID_VALUE;
+        break;
+    }
+
+    if (result != OHOS::ERR_OK || GetQuickFixPath(index, quickFixPaths) != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_DEPLOY_QUICK_FIX);
+        return result;
+    }
+
+    std::shared_ptr<QuickFixResult> deployRes = nullptr;
+    result = DeployQuickFix(quickFixPaths, deployRes, isDebug != 0);
+    resultReceiver_ = (result == OHOS::ERR_OK) ? STRING_DEPLOY_QUICK_FIX_OK : STRING_DEPLOY_QUICK_FIX_NG;
+    resultReceiver_ += GetResMsg(result, deployRes);
+
+    return result;
+}
+
+ErrCode BundleTestTool::GetQuickFixPath(int32_t index, std::vector<std::string>& quickFixPaths) const
+{
+    APP_LOGI("GetQuickFixPath start");
+    for (; index < argc_ && index >= INDEX_OFFSET; ++index) {
+        if (argList_[index - INDEX_OFFSET] == "-p" || argList_[index - INDEX_OFFSET] == "--patch-path") {
+            break;
+        }
+
+        std::string innerPath = argList_[index - INDEX_OFFSET];
+        if (innerPath.empty() || innerPath == "-p" || innerPath == "--patch-path") {
+            quickFixPaths.clear();
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        APP_LOGD("GetQuickFixPath is %{public}s'", innerPath.c_str());
+        quickFixPaths.emplace_back(innerPath);
+    }
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsSwitchQuickFix()
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    int32_t enable = -1;
+    std::string bundleName;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_QUICK_FIX.c_str(), LONG_OPTIONS_QUICK_FIX, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+
+        if (option == -1 || option == '?') {
+            if (counter == 1 && strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            if (optopt == 'n' || optopt == 'e') {
+                // 'bm switchQuickFix -n -e' with no argument
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            break;
+        }
+
+        if (option == 'n') {
+            APP_LOGD("'bm switchQuickFix -n %{public}s'", argv_[optind - 1]);
+            bundleName = optarg;
+            continue;
+        }
+        if (option == 'e' && OHOS::StrToInt(optarg, enable)) {
+            APP_LOGD("'bm switchQuickFix -e %{public}s'", argv_[optind - 1]);
+            continue;
+        }
+        result = OHOS::ERR_INVALID_VALUE;
+        break;
+    }
+
+    if ((result != OHOS::ERR_OK) || (enable < 0) || (enable > 1)) {
+        resultReceiver_.append(HELP_MSG_SWITCH_QUICK_FIX);
+        return result;
+    }
+    std::shared_ptr<QuickFixResult> switchRes = nullptr;
+    result = SwitchQuickFix(bundleName, enable, switchRes);
+    resultReceiver_ = (result == OHOS::ERR_OK) ? STRING_SWITCH_QUICK_FIX_OK : STRING_SWITCH_QUICK_FIX_NG;
+    resultReceiver_ += GetResMsg(result, switchRes);
+
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsDeleteQuickFix()
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string bundleName;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_QUICK_FIX.c_str(), LONG_OPTIONS_QUICK_FIX, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+
+        if (option == -1 || option == '?') {
+            if (counter == 1 && strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            if (optopt == 'n') {
+                // 'bm deleteQuickFix -n' with no argument
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            break;
+        }
+
+        if (option == 'n') {
+            APP_LOGD("'bm deleteQuickFix -n %{public}s'", argv_[optind - 1]);
+            bundleName = optarg;
+            continue;
+        }
+        result = OHOS::ERR_INVALID_VALUE;
+        break;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_DELETE_QUICK_FIX);
+        return result;
+    }
+    std::shared_ptr<QuickFixResult> deleteRes = nullptr;
+    result = DeleteQuickFix(bundleName, deleteRes);
+    resultReceiver_ = (result == OHOS::ERR_OK) ? STRING_DELETE_QUICK_FIX_OK : STRING_DELETE_QUICK_FIX_NG;
+    resultReceiver_ += GetResMsg(result, deleteRes);
+
+    return result;
+}
+
+ErrCode BundleTestTool::DeployQuickFix(const std::vector<std::string> &quickFixPaths,
+    std::shared_ptr<QuickFixResult> &quickFixRes, bool isDebug)
+{
+#ifdef BUNDLE_FRAMEWORK_QUICK_FIX
+    std::set<std::string> realPathSet;
+    for (const auto &quickFixPath : quickFixPaths) {
+        std::string realPath;
+        if (!PathToRealPath(quickFixPath, realPath)) {
+            APP_LOGW("quickFixPath %{public}s is invalid", quickFixPath.c_str());
+            continue;
+        }
+        APP_LOGD("realPath is %{public}s", realPath.c_str());
+        realPathSet.insert(realPath);
+    }
+    std::vector<std::string> pathVec(realPathSet.begin(), realPathSet.end());
+
+    sptr<QuickFixStatusCallbackHostlmpl> callback(new (std::nothrow) QuickFixStatusCallbackHostlmpl());
+    if (callback == nullptr || bundleMgrProxy_ == nullptr) {
+        APP_LOGE("callback or bundleMgrProxy is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    sptr<BundleDeathRecipient> recipient(new (std::nothrow) BundleDeathRecipient(nullptr, callback));
+    if (recipient == nullptr) {
+        APP_LOGE("recipient is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    bundleMgrProxy_->AsObject()->AddDeathRecipient(recipient);
+    auto quickFixProxy = bundleMgrProxy_->GetQuickFixManagerProxy();
+    if (quickFixProxy == nullptr) {
+        APP_LOGE("quickFixProxy is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    std::vector<std::string> destFiles;
+    auto res = quickFixProxy->CopyFiles(pathVec, destFiles);
+    if (res != ERR_OK) {
+        APP_LOGE("Copy files failed with %{public}d.", res);
+        return res;
+    }
+    res = quickFixProxy->DeployQuickFix(destFiles, callback, isDebug);
+    if (res != ERR_OK) {
+        APP_LOGE("DeployQuickFix failed");
+        return res;
+    }
+
+    return callback->GetResultCode(quickFixRes);
+#else
+    return ERR_BUNDLEMANAGER_FEATURE_IS_NOT_SUPPORTED;
+#endif
+}
+
+ErrCode BundleTestTool::SwitchQuickFix(const std::string &bundleName, int32_t enable,
+    std::shared_ptr<QuickFixResult> &quickFixRes)
+{
+    APP_LOGD("SwitchQuickFix bundleName: %{public}s, enable: %{public}d", bundleName.c_str(), enable);
+#ifdef BUNDLE_FRAMEWORK_QUICK_FIX
+    sptr<QuickFixStatusCallbackHostlmpl> callback(new (std::nothrow) QuickFixStatusCallbackHostlmpl());
+    if (callback == nullptr || bundleMgrProxy_ == nullptr) {
+        APP_LOGE("callback or bundleMgrProxy is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    sptr<BundleDeathRecipient> recipient(new (std::nothrow) BundleDeathRecipient(nullptr, callback));
+    if (recipient == nullptr) {
+        APP_LOGE("recipient is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    bundleMgrProxy_->AsObject()->AddDeathRecipient(recipient);
+    auto quickFixProxy = bundleMgrProxy_->GetQuickFixManagerProxy();
+    if (quickFixProxy == nullptr) {
+        APP_LOGE("quickFixProxy is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    bool enableFlag = (enable == 0) ? false : true;
+    auto res = quickFixProxy->SwitchQuickFix(bundleName, enableFlag, callback);
+    if (res != ERR_OK) {
+        APP_LOGE("SwitchQuickFix failed");
+        return res;
+    }
+    return callback->GetResultCode(quickFixRes);
+#else
+    return ERR_BUNDLEMANAGER_FEATURE_IS_NOT_SUPPORTED;
+#endif
+}
+
+ErrCode BundleTestTool::DeleteQuickFix(const std::string &bundleName,
+    std::shared_ptr<QuickFixResult> &quickFixRes)
+{
+    APP_LOGD("DeleteQuickFix bundleName: %{public}s", bundleName.c_str());
+#ifdef BUNDLE_FRAMEWORK_QUICK_FIX
+    sptr<QuickFixStatusCallbackHostlmpl> callback(new (std::nothrow) QuickFixStatusCallbackHostlmpl());
+    if (callback == nullptr || bundleMgrProxy_ == nullptr) {
+        APP_LOGE("callback or bundleMgrProxy is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    sptr<BundleDeathRecipient> recipient(new (std::nothrow) BundleDeathRecipient(nullptr, callback));
+    if (recipient == nullptr) {
+        APP_LOGE("recipient is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    bundleMgrProxy_->AsObject()->AddDeathRecipient(recipient);
+    auto quickFixProxy = bundleMgrProxy_->GetQuickFixManagerProxy();
+    if (quickFixProxy == nullptr) {
+        APP_LOGE("quickFixProxy is null");
+        return ERR_BUNDLEMANAGER_QUICK_FIX_INTERNAL_ERROR;
+    }
+    auto res = quickFixProxy->DeleteQuickFix(bundleName, callback);
+    if (res != ERR_OK) {
+        APP_LOGE("DeleteQuickFix failed");
+        return res;
+    }
+    return callback->GetResultCode(quickFixRes);
+#else
+    return ERR_BUNDLEMANAGER_FEATURE_IS_NOT_SUPPORTED;
+#endif
+}
+
+std::string BundleTestTool::GetResMsg(int32_t code)
+{
+    std::unordered_map<int32_t, std::string> quickFixMsgMap;
+    CreateQuickFixMsgMap(quickFixMsgMap);
+    if (quickFixMsgMap.find(code) != quickFixMsgMap.end()) {
+        return quickFixMsgMap.at(code);
+    }
+    return MSG_ERR_BUNDLEMANAGER_QUICK_FIX_UNKOWN;
+}
+
+std::string BundleTestTool::GetResMsg(int32_t code, const std::shared_ptr<QuickFixResult> &quickFixRes)
+{
+    std::string resMsg;
+    std::unordered_map<int32_t, std::string> quickFixMsgMap;
+    CreateQuickFixMsgMap(quickFixMsgMap);
+    if (quickFixMsgMap.find(code) != quickFixMsgMap.end()) {
+        resMsg += quickFixMsgMap.at(code);
+    } else {
+        resMsg += MSG_ERR_BUNDLEMANAGER_QUICK_FIX_UNKOWN;
+    }
+    if (quickFixRes != nullptr) {
+        resMsg += quickFixRes->ToString() + "\n";
+    }
+    return resMsg;
+}
+
+ErrCode BundleTestTool::RunAsSetDebugMode()
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    int32_t enable = -1;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_DEBUG_MODE.c_str(), LONG_OPTIONS_DEBUG_MODE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+
+        if (option == -1 || option == '?') {
+            if (counter == 1 && strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            if (optopt == 'e') {
+                // 'bundle_test_tool setDebugMode -e' with no argument
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            break;
+        }
+
+        if (option == 'e' && OHOS::StrToInt(optarg, enable)) {
+            APP_LOGD("'bundle_test_tool setDebugMode -e %{public}s'", argv_[optind - 1]);
+            continue;
+        }
+        result = OHOS::ERR_INVALID_VALUE;
+        break;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_SET_DEBUG_MODE);
+        return result;
+    }
+    ErrCode setResult = SetDebugMode(enable);
+    if (setResult == OHOS::ERR_OK) {
+        resultReceiver_ = STRING_SET_DEBUG_MODE_OK;
+    } else {
+        resultReceiver_ = STRING_SET_DEBUG_MODE_NG + GetResMsg(setResult);
+    }
+    return setResult;
+}
+
+ErrCode BundleTestTool::SetDebugMode(int32_t debugMode)
+{
+    if (debugMode != 0 && debugMode != 1) {
+        APP_LOGE("SetDebugMode param is invalid");
+        return ERR_BUNDLEMANAGER_SET_DEBUG_MODE_INVALID_PARAM;
+    }
+    bool enable = debugMode == 0 ? false : true;
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return ERR_BUNDLEMANAGER_SET_DEBUG_MODE_INTERNAL_ERROR;
+    }
+    auto ret = bundleMgrProxy_->SetDebugMode(enable);
+    if (ret == ERR_OK) {
+        if (enable) {
+            OHOS::system::SetParameter(ENABLE_DEBUG_MODE_PARMA, "true");
+        } else {
+            OHOS::system::SetParameter(ENABLE_DEBUG_MODE_PARMA, "false");
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::BundleNameAndUserIdCommonFunc(std::string &bundleName, int32_t &userId, int32_t &appIndex)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    userId = Constants::UNSPECIFIED_USERID;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_BUNDLE_STATS.c_str(),
+            LONG_OPTIONS_GET_BUNDLE_STATS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if (counter == 1) {
+                // When scanning the first argument
+                if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                    resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+            }
+            break;
+        }
+
+        if (option == '?') {
+            switch (optopt) {
+                case 'n': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                case 'u': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                case 'a': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                default: {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    resultReceiver_.append(unknownOptionMsg);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+            }
+            break;
+        }
+
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                bundleName = optarg;
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'a': {
+                if (!OHOS::StrToInt(optarg, appIndex) || (appIndex < 0 || appIndex > INITIAL_SANDBOX_APP_INDEX)) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+
+    if (result == OHOS::ERR_OK) {
+        if (resultReceiver_ == "" && bundleName.size() == 0) {
+            resultReceiver_.append(HELP_MSG_NO_BUNDLE_NAME_OPTION + "\n");
+            result = OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::BatchBundleNameAndUserIdCommonFunc(std::vector<std::string> &bundleNames, int32_t &userId)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    userId = Constants::UNSPECIFIED_USERID;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_BATCH_GET_BUNDLE_STATS.c_str(),
+            LONG_OPTIONS_BATCH_GET_BUNDLE_STATS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if (counter == 1) {
+                if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                    resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+            }
+            break;
+        }
+
+        if (option == '?') {
+            switch (optopt) {
+                case 'n': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                case 'u': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                default: {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    resultReceiver_.append(unknownOptionMsg);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+            }
+            break;
+        }
+
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                std::string names = optarg;
+                std::stringstream ss(names);
+                std::string name;
+                while (std::getline(ss, name, ',')) {
+                    if (!name.empty()) {
+                        APP_LOGD("bundleName: %{public}s", name.c_str());
+                        bundleNames.emplace_back(name);
+                    }
+                }
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK) {
+        if (bundleNames.empty()) {
+            resultReceiver_.append(HELP_MSG_NO_BUNDLE_NAME_OPTION + "\n");
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::BatchBundleNameCommonFunc(
+    std::string short_option, const struct option *long_options,
+    std::vector<std::string> &bundleNames)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, short_option.c_str(),
+            long_options, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if (counter == 1) {
+                if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                    resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+            }
+            break;
+        }
+        if (option == '?') {
+            switch (optopt) {
+                case 'n': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                default: {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    resultReceiver_.append(unknownOptionMsg);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+            }
+            break;
+        }
+
+        switch (option) {
+            case 'n': {
+                std::string names = optarg;
+                std::stringstream ss(names);
+                std::string name;
+                while (std::getline(ss, name, ',')) {
+                    if (!name.empty()) {
+                        APP_LOGD("bundleName: %{public}s", name.c_str());
+                        bundleNames.emplace_back(name);
+                    }
+                }
+                break;
+            }
+            default: {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK) {
+        if (bundleNames.empty()) {
+            resultReceiver_.append(HELP_MSG_NO_BUNDLE_NAME_OPTION + "\n");
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetBundleStats()
+{
+    std::string bundleName;
+    int32_t userId;
+    int32_t appIndex = 0;
+    int32_t result = BundleNameAndUserIdCommonFunc(bundleName, userId, appIndex);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_BUNDLE_STATS);
+    } else {
+        std::string msg;
+        bool ret = GetBundleStats(bundleName, userId, msg, appIndex);
+        if (ret) {
+            resultReceiver_ = STRING_GET_BUNDLE_STATS_OK + msg;
+        } else {
+            resultReceiver_ = STRING_GET_BUNDLE_STATS_NG + "\n";
+        }
+    }
+
+    return result;
+}
+
+bool BundleTestTool::GetBundleStats(const std::string &bundleName, int32_t userId,
+    std::string& msg, int32_t appIndex)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return false;
+    }
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    std::vector<std::int64_t> bundleStats;
+    bool ret = bundleMgrProxy_->GetBundleStats(bundleName, userId, bundleStats, appIndex);
+    if (ret) {
+        for (size_t index = 0; index < bundleStats.size(); ++index) {
+            msg += GET_BUNDLE_STATS_ARRAY[index] + std::to_string(bundleStats[index]) + "\n";
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsGetBundleInodeCount()
+{
+    std::string bundleName;
+    int32_t userId;
+    int32_t appIndex = 0;
+    int32_t result = BundleNameAndUserIdCommonFunc(bundleName, userId, appIndex);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_BUNDLE_INODE_COUNT);
+    } else {
+        std::string msg;
+        bool ret = GetBundleInodeCount(bundleName, appIndex, userId, msg);
+        if (ret) {
+            resultReceiver_ = STRING_GET_BUNDLE_INODE_COUNT_OK + msg;
+        } else {
+            resultReceiver_ = STRING_GET_BUNDLE_INODE_COUNT_NG + "\n";
+        }
+    }
+
+    return result;
+}
+
+bool BundleTestTool::GetBundleInodeCount(const std::string &bundleName, int32_t appIndex, int32_t userId,
+    std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return false;
+    }
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    uint64_t inodeCount = 0;
+    ErrCode ret = bundleMgrProxy_->GetBundleInodeCount(bundleName, appIndex, userId, inodeCount);
+    if (ret == ERR_OK) {
+        msg = "inode count: " + std::to_string(inodeCount) + "\n";
+        return true;
+    }
+    return false;
+}
+
+ErrCode BundleTestTool::RunAsBatchGetBundleStats()
+{
+    std::vector<std::string> bundleNames;
+    int32_t userId = 0;
+    int32_t result = BatchBundleNameAndUserIdCommonFunc(bundleNames, userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_BATCH_GET_BUNDLE_STATS);
+    } else {
+        std::string msg;
+        bool ret = BatchGetBundleStats(bundleNames, userId, msg);
+        if (ret) {
+            resultReceiver_ = STRING_BATCH_GET_BUNDLE_STATS_OK + msg;
+        } else {
+            resultReceiver_ = STRING_BATCH_GET_BUNDLE_STATS_NG + "\n";
+        }
+    }
+    return result;
+}
+
+bool BundleTestTool::BatchGetBundleStats(const std::vector<std::string> &bundleNames, int32_t userId, std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return false;
+    }
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    std::vector<BundleStorageStats> bundleStats;
+    ErrCode ret = bundleMgrProxy_->BatchGetBundleStats(bundleNames, userId, bundleStats);
+    if (ret == ERR_OK) {
+        nlohmann::json jsonResult = nlohmann::json::array();
+        for (const auto &stats : bundleStats) {
+            nlohmann::json rowData;
+            rowData["bundleName"] = stats.bundleName;
+            if (stats.errCode == ERR_OK) {
+                rowData["bundleStats"] = stats.bundleStats;
+            } else {
+                rowData["errCode"] = stats.errCode;
+            }
+            jsonResult.push_back(rowData);
+        }
+        msg = jsonResult.dump() + "\n";
+        return true;
+    }
+    return false;
+}
+
+ErrCode BundleTestTool::UserIdCommonFunc(int32_t &userId)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    userId = Constants::UNSPECIFIED_USERID;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_ALL_BUNDLE_STATS.c_str(),
+            LONG_OPTIONS_GET_ALL_BUNDLE_STATS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if (counter == 1) {
+                if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                    resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+            }
+            break;
+        }
+
+        if (option == '?') {
+            switch (optopt) {
+                case 'u': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                default: {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    resultReceiver_.append(unknownOptionMsg);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+            }
+            break;
+        }
+
+        switch (option) {
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+bool BundleTestTool::GetAllBundleStats(int32_t userId, std::string &msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return false;
+    }
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    std::vector<std::int64_t> bundleStats;
+    bool ret = bundleMgrProxy_->GetAllBundleStats(userId, bundleStats);
+    if (ret) {
+        for (size_t index = 0; index < bundleStats.size(); ++index) {
+            msg += GET_BUNDLE_STATS_ARRAY[index] + std::to_string(bundleStats[index]) + "\n";
+        }
+    }
+    return ret;
+}
+
+bool BundleTestTool::GetEachBundleCacheStat(int32_t userId, std::string &msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return false;
+    }
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    std::vector<BundleInfo> bundleInfos;
+    bool ret = bundleMgrProxy_->GetBundleInfos(
+        static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_DISABLE), bundleInfos, userId);
+    if (!ret) {
+        msg += "error: get bundle infos failed\n";
+        return false;
+    }
+
+    uint32_t statFlag = Constants::NoGetBundleStatsFlag::GET_BUNDLE_WITHOUT_INSTALL_SIZE |
+        Constants::NoGetBundleStatsFlag::GET_BUNDLE_WITHOUT_DATA_SIZE;
+    bool allSucceeded = true;
+    int64_t totalCacheSize = 0;
+    size_t successCount = 0;
+    size_t failCount = 0;
+    for (const auto &bundleInfo : bundleInfos) {
+        std::vector<int64_t> bundleStats;
+        bool statRet = bundleMgrProxy_->GetBundleStats(
+            bundleInfo.name, userId, bundleStats, bundleInfo.appIndex, statFlag);
+        if (!statRet || bundleStats.size() < BUNDLE_STATS_MIN_SIZE) {
+            allSucceeded = false;
+            ++failCount;
+            msg += "bundleName: " + bundleInfo.name + ", appIndex: " + std::to_string(bundleInfo.appIndex) +
+                ", error: get bundle stats failed\n";
+            APP_LOGW("get bundle cache stat failed, bundleName: %{public}s, appIndex: %{public}d",
+                bundleInfo.name.c_str(), bundleInfo.appIndex);
+            continue;
+        }
+        int64_t cacheSize = bundleStats[BUNDLE_STATS_CACHE_INDEX];
+        totalCacheSize += cacheSize;
+        ++successCount;
+        msg += "bundleName: " + bundleInfo.name + ", appIndex: " + std::to_string(bundleInfo.appIndex) +
+            ", cache size: " + std::to_string(cacheSize) + "\n";
+        APP_LOGD("bundle cache stat, bundleName: %{public}s, appIndex: %{public}d, cacheSize: %{public}lld",
+            bundleInfo.name.c_str(), bundleInfo.appIndex, static_cast<long long>(cacheSize));
+    }
+    msg += "success count: " + std::to_string(successCount) + "\n";
+    msg += "fail count: " + std::to_string(failCount) + "\n";
+    msg += "total cache size: " + std::to_string(totalCacheSize) + "\n";
+    return allSucceeded;
+}
+
+ErrCode BundleTestTool::RunAsGetAllBundleStats()
+{
+    int32_t userId = 0;
+    int32_t result = UserIdCommonFunc(userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ALL_BUNDLE_STATS);
+    } else {
+        std::string msg;
+        bool ret = GetAllBundleStats(userId, msg);
+        if (ret) {
+            resultReceiver_ = STRING_GET_ALL_BUNDLE_STATS_OK + msg;
+        } else {
+            resultReceiver_ = STRING_GET_ALL_BUNDLE_STATS_NG + "\n";
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetEachBundleCacheStat()
+{
+    int32_t userId = 0;
+    int32_t result = UserIdCommonFunc(userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_EACH_BUNDLE_CACHE_STAT);
+    } else {
+        std::string msg;
+        bool ret = GetEachBundleCacheStat(userId, msg);
+        if (ret) {
+            resultReceiver_ = STRING_GET_EACH_BUNDLE_CACHE_STAT_OK + msg;
+        } else {
+            resultReceiver_ = STRING_GET_EACH_BUNDLE_CACHE_STAT_NG + msg;
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetAppProvisionInfo()
+{
+    std::string bundleName;
+    int32_t userId;
+    int32_t appIndex = 0;
+    int32_t result = BundleNameAndUserIdCommonFunc(bundleName, userId, appIndex);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_APP_PROVISION_INFO);
+    } else {
+        std::string msg;
+        result = GetAppProvisionInfo(bundleName, userId, msg);
+        if (result == OHOS::ERR_OK) {
+            resultReceiver_ = STRING_GET_APP_PROVISION_INFO_OK + msg;
+        } else {
+            resultReceiver_ = STRING_GET_APP_PROVISION_INFO_NG + "\n";
+        }
+    }
+
+    return result;
+}
+
+ErrCode BundleTestTool::GetAppProvisionInfo(const std::string &bundleName,
+    int32_t userId, std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    AppProvisionInfo info;
+    auto ret = bundleMgrProxy_->GetAppProvisionInfo(bundleName, userId, info);
+    if (ret == ERR_OK) {
+        msg = "{\n";
+        msg += "    versionCode: " + std::to_string(info.versionCode) + "\n";
+        msg += "    versionName: " + info.versionName+ "\n";
+        msg += "    uuid: " + info.uuid + "\n";
+        msg += "    type: " + info.type + "\n";
+        msg += "    appDistributionType: " + info.appDistributionType + "\n";
+        msg += "    developerId: " + info.developerId + "\n";
+        msg += "    certificate: " + info.certificate + "\n";
+        msg += "    apl: " + info.apl + "\n";
+        msg += "    issuer: " + info.issuer + "\n";
+        msg += "    validity: {\n";
+        msg += "        notBefore: " + std::to_string(info.validity.notBefore) + "\n";
+        msg += "        notAfter: " + std::to_string(info.validity.notAfter) + "\n";
+        msg += "    }\n";
+        msg += "    appServiceCapabilities: " + info.appServiceCapabilities + "\n";
+        msg += "}\n";
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsGetDistributedBundleName()
+{
+    ErrCode result;
+    std::string networkId;
+    int32_t counter = 0;
+    int32_t accessTokenId = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_DISTRIBUTED_BUNDLE_NAME.c_str(),
+            LONG_OPTIONS_GET_DISTRIBUTED_BUNDLE_NAME, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_NO_GET_DISTRIBUTED_BUNDLE_NAME_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckGetDistributedBundleNameCorrectOption(option, GET_DISTRIBUTED_BUNDLE_NAME_COMMAND_NAME,
+            networkId, accessTokenId);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_GET_DISTRIBUTED_BUNDLE_NAME);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    if (accessTokenId == 0 || networkId.size() == 0) {
+        resultReceiver_.append(HELP_MSG_NO_GET_DISTRIBUTED_BUNDLE_NAME_OPTION);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    std::string msg;
+    result = GetDistributedBundleName(networkId, accessTokenId, msg);
+    if (result == OHOS::ERR_OK) {
+        resultReceiver_ = STRING_GET_DISTRIBUTED_BUNDLE_NAME_OK + msg;
+    } else {
+        resultReceiver_ = STRING_GET_DISTRIBUTED_BUNDLE_NAME_NG + "\n";
+        APP_LOGE("RunAsGetDistributedBundleName fail result %{public}d.", result);
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::CheckGetDistributedBundleNameCorrectOption(int32_t option, const std::string &commandName,
+    std::string &networkId, int32_t &accessTokenId)
+{
+    ErrCode result = OHOS::ERR_OK;
+    switch (option) {
+        case 'h': {
+            result = OHOS::ERR_INVALID_VALUE;
+            break;
+        }
+        case 'n': {
+            networkId = optarg;
+            if (networkId.size() == 0) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        case 'a': {
+            if (!OHOS::StrToInt(optarg, accessTokenId) || accessTokenId < 0) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        default: {
+            result = OHOS::ERR_INVALID_VALUE;
+            break;
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::GetDistributedBundleName(const std::string &networkId,
+    int32_t accessTokenId, std::string& msg)
+{
+#ifdef DISTRIBUTED_BUNDLE_FRAMEWORK
+    std::string bundleName;
+    auto ret = DistributedBundleMgrClient::GetInstance()->GetDistributedBundleName(
+        networkId, accessTokenId, bundleName);
+    if (ret == OHOS::NO_ERROR) {
+        msg = "\n";
+        if (bundleName.size() == 0) {
+            msg += "no match found \n";
+        } else {
+            msg += bundleName + "\n";
+        }
+        msg += "\n";
+    } else {
+        APP_LOGE("d-bms GetDistributedBundleName fail errcode %{public}d", ret);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    return OHOS::ERR_OK;
+#else
+    return OHOS::ERR_INVALID_VALUE;
+#endif
+}
+
+bool BundleTestTool::ParseEventCallbackOptions(bool &onlyUnregister, int32_t &uid)
+{
+    int32_t opt;
+    while ((opt = getopt_long(argc_, argv_, SHORT_OPTIONS_BUNDLE_EVENT_CALLBACK.c_str(),
+        LONG_OPTIONS_BUNDLE_EVENT_CALLBACK, nullptr)) != -1) {
+        switch (opt) {
+            case 'o': {
+                onlyUnregister = true;
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, uid)) {
+                    std::string msg = "invalid param, uid should be int";
+                    resultReceiver_.append(msg).append(LINE_BREAK);
+                    APP_LOGE("%{public}s", msg.c_str());
+                    return false;
+                }
+                break;
+            }
+            case 'h': {
+                resultReceiver_.append(HELP_MSG_BUNDLE_EVENT_CALLBACK);
+                return false;
+            }
+            default: {
+                std::string msg = "unsupported option";
+                resultReceiver_.append(msg).append(LINE_BREAK);
+                APP_LOGE("%{public}s", msg.c_str());
+                return false;
+            }
+        }
+    }
+    APP_LOGI("ParseEventCallbackOptions success");
+    return true;
+}
+
+bool BundleTestTool::ParsePluginEventCallbackOptions(bool &onlyUnregister, int32_t &uid)
+{
+    int32_t opt;
+    while ((opt = getopt_long(argc_, argv_, SHORT_OPTIONS_BUNDLE_EVENT_CALLBACK.c_str(),
+        LONG_OPTIONS_BUNDLE_EVENT_CALLBACK, nullptr)) != -1) {
+        switch (opt) {
+            case 'o': {
+                onlyUnregister = true;
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, uid)) {
+                    std::string msg = "invalid param, uid should be int";
+                    resultReceiver_.append(msg).append(LINE_BREAK);
+                    APP_LOGE("%{public}s", msg.c_str());
+                    return false;
+                }
+                break;
+            }
+            case 'h': {
+                resultReceiver_.append(HELP_MSG_PLUGIN_EVENT_CALLBACK);
+                return false;
+            }
+            default: {
+                std::string msg = "unsupported option";
+                resultReceiver_.append(msg).append(LINE_BREAK);
+                APP_LOGE("%{public}s", msg.c_str());
+                return false;
+            }
+        }
+    }
+    APP_LOGI("ParsePluginEventCallbackOptions success");
+    return true;
+}
+
+bool BundleTestTool::ParseResetAOTCompileStatusOptions(std::string &bundleName, std::string &moduleName,
+    int32_t &triggerMode, int32_t &uid)
+{
+    int32_t opt;
+    while ((opt = getopt_long(argc_, argv_, SHORT_OPTIONS_RESET_AOT_COMPILE_StATUS.c_str(),
+        LONG_OPTIONS_RESET_AOT_COMPILE_StATUS, nullptr)) != -1) {
+        switch (opt) {
+            case 'b': {
+                bundleName = optarg;
+                break;
+            }
+            case 'm': {
+                moduleName = optarg;
+                break;
+            }
+            case 't': {
+                if (!OHOS::StrToInt(optarg, triggerMode)) {
+                    std::string msg = "invalid param, triggerMode should be int";
+                    resultReceiver_.append(msg).append(LINE_BREAK);
+                    APP_LOGE("%{public}s", msg.c_str());
+                    return false;
+                }
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, uid)) {
+                    std::string msg = "invalid param, uid should be int";
+                    resultReceiver_.append(msg).append(LINE_BREAK);
+                    APP_LOGE("%{public}s", msg.c_str());
+                    return false;
+                }
+                break;
+            }
+            case 'h': {
+                resultReceiver_.append(HELP_MSG_RESET_AOT_COMPILE_StATUS);
+                return false;
+            }
+            default: {
+                std::string msg = "unsupported option";
+                resultReceiver_.append(msg).append(LINE_BREAK);
+                APP_LOGE("%{public}s", msg.c_str());
+                return false;
+            }
+        }
+    }
+    APP_LOGI("ParseResetAOTCompileStatusOptions success");
+    return true;
+}
+
+void BundleTestTool::Sleep(int32_t seconds)
+{
+    APP_LOGI("begin to sleep %{public}d seconds", seconds);
+    std::this_thread::sleep_for(std::chrono::seconds(seconds));
+    APP_LOGI("sleep done");
+}
+
+ErrCode BundleTestTool::CallRegisterBundleEventCallback(sptr<BundleEventCallbackImpl> bundleEventCallback)
+{
+    APP_LOGI("begin to call RegisterBundleEventCallback");
+    std::string msg;
+    bool ret = bundleMgrProxy_->RegisterBundleEventCallback(bundleEventCallback);
+    if (!ret) {
+        msg = "RegisterBundleEventCallback failed";
+        resultReceiver_.append(msg).append(LINE_BREAK);
+        APP_LOGE("%{public}s", msg.c_str());
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    msg = "RegisterBundleEventCallback success";
+    resultReceiver_.append(msg).append(LINE_BREAK);
+    APP_LOGI("%{public}s", msg.c_str());
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::CallUnRegisterBundleEventCallback(sptr<BundleEventCallbackImpl> bundleEventCallback)
+{
+    APP_LOGI("begin to call UnregisterBundleEventCallback");
+    std::string msg;
+    bool ret = bundleMgrProxy_->UnregisterBundleEventCallback(bundleEventCallback);
+    if (!ret) {
+        msg = "UnregisterBundleEventCallback failed";
+        resultReceiver_.append(msg).append(LINE_BREAK);
+        APP_LOGE("%{public}s", msg.c_str());
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    msg = "UnregisterBundleEventCallback success";
+    resultReceiver_.append(msg).append(LINE_BREAK);
+    APP_LOGI("%{public}s", msg.c_str());
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::HandleBundleEventCallback()
+{
+    APP_LOGI("begin to HandleBundleEventCallback");
+    bool onlyUnregister = false;
+    int32_t uid = Constants::FOUNDATION_UID;
+    if (!ParseEventCallbackOptions(onlyUnregister, uid)) {
+        APP_LOGE("ParseEventCallbackOptions failed");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    APP_LOGI("onlyUnregister : %{public}d, uid : %{public}d", onlyUnregister, uid);
+    if (bundleMgrProxy_ == nullptr) {
+        std::string msg = "bundleMgrProxy_ is nullptr";
+        resultReceiver_.append(msg).append(LINE_BREAK);
+        APP_LOGE("%{public}s", msg.c_str());
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    seteuid(uid);
+    ErrCode ret;
+    sptr<BundleEventCallbackImpl> bundleEventCallback = new (std::nothrow) BundleEventCallbackImpl();
+    if (onlyUnregister) {
+        // only call UnRegisterBundleEventCallback
+        return CallUnRegisterBundleEventCallback(bundleEventCallback);
+    }
+    // call RegisterBundleEventCallback then call UnRegisterBundleEventCallback
+    ret = CallRegisterBundleEventCallback(bundleEventCallback);
+    if (ret != OHOS::ERR_OK) {
+        return ret;
+    }
+    Sleep(SLEEP_SECONDS);
+    ret = CallUnRegisterBundleEventCallback(bundleEventCallback);
+    if (ret != OHOS::ERR_OK) {
+        return ret;
+    }
+    Sleep(SLEEP_SECONDS);
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::HandlePluginEventCallback()
+{
+    APP_LOGI("begin to HandlePluginEventCallback");
+    bool onlyUnregister = false;
+    int32_t uid = Constants::FOUNDATION_UID;
+    if (!ParsePluginEventCallbackOptions(onlyUnregister, uid)) {
+        APP_LOGE("ParsePluginEventCallbackOptions failed");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    APP_LOGI("onlyUnregister : %{public}d, uid : %{public}d", onlyUnregister, uid);
+    if (bundleMgrProxy_ == nullptr) {
+        std::string msg = "bundleMgrProxy_ is nullptr";
+        resultReceiver_.append(msg).append(LINE_BREAK);
+        APP_LOGE("%{public}s", msg.c_str());
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    seteuid(uid);
+    ErrCode ret;
+    sptr<BundleEventCallbackImpl> bundleEventCallback = new (std::nothrow) BundleEventCallbackImpl();
+    BundleMgrClient client;
+    if (onlyUnregister) {
+        // only call CallUnRegisterPluginEventCallback
+        return client.UnregisterPluginEventCallback(bundleEventCallback);
+    }
+    // call CallRegisterPluginEventCallback then call CallUnRegisterPluginEventCallback
+    ret = client.RegisterPluginEventCallback(bundleEventCallback);
+    std::string msg;
+    if (ret != OHOS::ERR_OK) {
+        msg = "RegisterPluginEventCallback failed";
+        resultReceiver_.append(msg).append(LINE_BREAK);
+        APP_LOGE("%{public}s", msg.c_str());
+        return ret;
+    }
+    msg = "RegisterPluginEventCallback success";
+    resultReceiver_.append(msg).append(LINE_BREAK);
+    APP_LOGI("%{public}s", msg.c_str());
+    Sleep(SLEEP_SECONDS);
+    ret = client.UnregisterPluginEventCallback(bundleEventCallback);
+    if (ret != OHOS::ERR_OK) {
+        msg = "UnregisterPluginEventCallback failed";
+        resultReceiver_.append(msg).append(LINE_BREAK);
+        APP_LOGE("%{public}s", msg.c_str());
+        return ret;
+    }
+    msg = "UnregisterPluginEventCallback success";
+    resultReceiver_.append(msg).append(LINE_BREAK);
+    APP_LOGI("%{public}s", msg.c_str());
+    Sleep(SLEEP_SECONDS);
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::ResetAOTCompileStatus()
+{
+    APP_LOGI("begin to ResetAOTCompileStatus");
+    std::string bundleName;
+    std::string moduleName;
+    int32_t triggerMode = 0;
+    int32_t uid = -1;
+    if (!ParseResetAOTCompileStatusOptions(bundleName, moduleName, triggerMode, uid)) {
+        APP_LOGE("ParseResetAOTCompileStatusOptions failed");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    APP_LOGI("bundleName : %{public}s, moduleName : %{public}s, triggerMode : %{public}d",
+        bundleName.c_str(), moduleName.c_str(), triggerMode);
+    if (bundleMgrProxy_ == nullptr) {
+        std::string msg = "bundleMgrProxy_ is nullptr";
+        resultReceiver_.append(msg).append(LINE_BREAK);
+        APP_LOGE("%{public}s", msg.c_str());
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    if (uid == -1) {
+        int32_t userId = 100;
+        uid = bundleMgrProxy_->GetUidByBundleName(bundleName, userId);
+    }
+    APP_LOGI("uid : %{public}d", uid);
+    seteuid(uid);
+    ErrCode ret = bundleMgrProxy_->ResetAOTCompileStatus(bundleName, moduleName, triggerMode);
+    APP_LOGI("ret : %{public}d", ret);
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::SendCommonEvent()
+{
+    APP_LOGI("begin to SendCommonEvent");
+    OHOS::AAFwk::Want want;
+    want.SetAction(EventFwk::CommonEventSupport::COMMON_EVENT_CHARGE_IDLE_MODE_CHANGED);
+    EventFwk::CommonEventData commonData { want };
+    EventFwk::CommonEventManager::PublishCommonEvent(commonData);
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsQueryDataGroupInfos()
+{
+    APP_LOGI("RunAsQueryDataGroupInfos start");
+    std::string bundleName;
+    int32_t userId;
+    int32_t appIndex;
+    int32_t result = BundleNameAndUserIdCommonFunc(bundleName, userId, appIndex);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_QUERY_DATA_GROUP_INFOS);
+    } else {
+        std::string msg;
+        result = QueryDataGroupInfos(bundleName, userId, msg);
+        if (result) {
+            resultReceiver_ = STRING_QUERY_DATA_GROUP_INFOS_OK + msg;
+            return ERR_OK;
+        } else {
+            resultReceiver_ = STRING_QUERY_DATA_GROUP_INFOS_NG + "\n";
+        }
+    }
+    return OHOS::ERR_INVALID_VALUE;
+}
+
+bool BundleTestTool::QueryDataGroupInfos(const std::string &bundleName,
+    int32_t userId, std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return false;
+    }
+    std::vector<DataGroupInfo> infos;
+    bool ret = bundleMgrProxy_->QueryDataGroupInfos(bundleName, userId, infos);
+    if (ret) {
+        msg = "dataGroupInfos:\n{\n";
+        for (const auto &dataGroupInfo : infos) {
+            msg +="     ";
+            msg += dataGroupInfo.ToString();
+            msg += "\n";
+        }
+        msg += "}\n";
+        return true;
+    }
+
+    return false;
+}
+
+ErrCode BundleTestTool::RunAsGetGroupDir()
+{
+    APP_LOGI("RunAsGetGroupDir start");
+    ErrCode result;
+    std::string dataGroupId;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_GROUP_DIR.c_str(),
+            LONG_OPTIONS_GET_GROUP_DIR, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_GET_GROUP_DIR);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckGetGroupIdCorrectOption(option, dataGroupId);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_GET_GROUP_DIR);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    std::string msg;
+    bool ret = GetGroupDir(dataGroupId, msg);
+    if (ret) {
+        resultReceiver_ = STRING_GET_GROUP_DIR_OK + msg;
+    } else {
+        resultReceiver_ = STRING_GET_GROUP_DIR_NG + "\n";
+        APP_LOGE("RunAsGetGroupDir fail");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::CheckGetGroupIdCorrectOption(int32_t option, std::string &dataGroupId)
+{
+    ErrCode result = OHOS::ERR_OK;
+    switch (option) {
+        case 'h': {
+            result = OHOS::ERR_INVALID_VALUE;
+            break;
+        }
+        case 'd': {
+            dataGroupId = optarg;
+            if (dataGroupId.size() == 0) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        default: {
+            result = OHOS::ERR_INVALID_VALUE;
+            break;
+        }
+    }
+    return result;
+}
+
+bool BundleTestTool::GetGroupDir(const std::string &dataGroupId, std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return false;
+    }
+    std::string dir;
+    bool ret = bundleMgrProxy_->GetGroupDir(dataGroupId, dir);
+    if (ret) {
+        msg = "group dir:\n";
+        msg += dir;
+        msg += "\n";
+        return true;
+    }
+
+    return false;
+}
+
+ErrCode BundleTestTool::CheckGetBundleNameOption(int32_t option, std::string &bundleName)
+{
+    ErrCode result = OHOS::ERR_OK;
+    switch (option) {
+        case 'h': {
+            result = OHOS::ERR_INVALID_VALUE;
+            break;
+        }
+        case 'n': {
+            bundleName = optarg;
+            if (bundleName.size() == 0) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        default: {
+            result = OHOS::ERR_INVALID_VALUE;
+            break;
+        }
+    }
+    return result;
+}
+
+bool BundleTestTool::CheckGetAssetAccessGroupsOption(int32_t option, const std::string &commandName,
+    std::string &bundleName)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'n': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            bundleName = optarg;
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsGetAssetAccessGroups()
+{
+    APP_LOGI("RunAsGetAssetAccessGroups start");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getAssetAccessGroups";
+    std::string bundleName = "";
+    auto baseFlag = static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION);
+    int32_t userId = BundleCommandCommon::GetCurrentUserId(Constants::UNSPECIFIED_USERID);
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_JSON_PROFILE.c_str(),
+            LONG_OPTIONS_GET_ASSET_ACCESS_GROUPS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_NO_GET_JSON_PROFILE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = !CheckGetAssetAccessGroupsOption(option, commandName, bundleName)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        APP_LOGE("bundleName = %{public}s", bundleName.c_str());
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ASSET_ACCESS_GROUPS);
+    } else {
+        std::string results = "";
+        BundleInfo bundleinfo;
+        auto res = bundleMgrProxy_->GetBundleInfoV9(bundleName, baseFlag, bundleinfo, userId);
+        if (res != OHOS::ERR_OK) {
+            resultReceiver_.append(STRING_GET_ASSET_ACCESS_GROUPS_NG);
+            return result;
+        } else {
+            resultReceiver_.append(STRING_GET_ASSET_ACCESS_GROUPS_OK);
+            for (auto group : bundleinfo.applicationInfo.assetAccessGroups) {
+                results = group;
+                resultReceiver_.append(results);
+                resultReceiver_.append("\n");
+            }
+        }
+    }
+    return result;
+}
+
+bool BundleTestTool::CheckSetAppDistributionTypesOption(int32_t option, const std::string &commandName,
+    std::string &appDistributionTypes)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'a': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            appDistributionTypes = optarg;
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+bool BundleTestTool::ProcessAppDistributionTypeEnums(std::vector<std::string> appDistributionTypeStrings,
+    std::set<AppDistributionTypeEnum> &appDistributionTypeEnums)
+{
+    for (const std::string& item : appDistributionTypeStrings) {
+        if (item ==
+            std::to_string(static_cast<int32_t>(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_APP_GALLERY))) {
+            appDistributionTypeEnums.insert(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_APP_GALLERY);
+            continue;
+        }
+        if (item ==
+            std::to_string(static_cast<int32_t>(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_ENTERPRISE))) {
+            appDistributionTypeEnums.insert(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_ENTERPRISE);
+            continue;
+        }
+        if (item ==
+            std::to_string(static_cast<int32_t>(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_ENTERPRISE_NORMAL))) {
+            appDistributionTypeEnums.insert(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_ENTERPRISE_NORMAL);
+            continue;
+        }
+        if (item ==
+            std::to_string(static_cast<int32_t>(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_ENTERPRISE_MDM))) {
+            appDistributionTypeEnums.insert(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_ENTERPRISE_MDM);
+            continue;
+        }
+        if (item ==
+            std::to_string(static_cast<int32_t>(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_INTERNALTESTING))) {
+            appDistributionTypeEnums.insert(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_INTERNALTESTING);
+            continue;
+        }
+        if (item ==
+            std::to_string(static_cast<int32_t>(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_CROWDTESTING))) {
+            appDistributionTypeEnums.insert(AppDistributionTypeEnum::APP_DISTRIBUTION_TYPE_CROWDTESTING);
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
+void BundleTestTool::ReloadNativeTokenInfo()
+{
+    const int32_t permsNum = 6;
+    uint64_t tokenId;
+    const char *perms[permsNum];
+    perms[0] = "ohos.permission.MANAGE_EDM_POLICY";
+    perms[1] = "ohos.permission.MANAGE_DISPOSED_APP_STATUS";
+    perms[2] = "ohos.permission.GET_BUNDLE_INFO_PRIVILEGED";
+    perms[3] = "ohos.permission.GET_INSTALLED_BUNDLE_LIST";
+    perms[4] = "ohos.permission.SET_DEFAULT_APPLICATION";
+    perms[5] = "ohos.permission.GET_BUNDLE_RESOURCES";
+    NativeTokenInfoParams infoInstance = {
+        .dcapsNum = 0,
+        .permsNum = permsNum,
+        .aclsNum = 0,
+        .dcaps = NULL,
+        .perms = perms,
+        .acls = NULL,
+        .processName = "bundleTestToolProcess",
+        .aplStr = "system_core",
+    };
+    tokenId = GetAccessTokenId(&infoInstance);
+    SetSelfTokenID(tokenId);
+    APP_LOGI("RunAsSetAppDistributionTypes ReloadNativeTokenInfo");
+    OHOS::Security::AccessToken::AccessTokenKit::ReloadNativeTokenInfo();
+}
+
+ErrCode BundleTestTool::RunAsSetAppDistributionTypes()
+{
+    APP_LOGI("RunAsSetAppDistributionTypes start");
+    ReloadNativeTokenInfo();
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "setAppDistributionTypes";
+    std::string appDistributionTypes = "";
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_SET_APP_DISTRIBUTION_TYPES.c_str(),
+            LONG_OPTIONS_SET_APP_DISTRIBUTION_TYPES, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_SET_APP_DISTRIBUTION_TYPES);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = !CheckSetAppDistributionTypesOption(option, commandName, appDistributionTypes)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        APP_LOGE("appDistributionTypes = %{public}s", appDistributionTypes.c_str());
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_SET_APP_DISTRIBUTION_TYPES);
+    } else {
+        std::string results = "";
+        std::vector<std::string> appDistributionTypeStrings;
+        OHOS::SplitStr(appDistributionTypes, ",", appDistributionTypeStrings);
+        std::set<AppDistributionTypeEnum> appDistributionTypeEnums;
+        if (!ProcessAppDistributionTypeEnums(appDistributionTypeStrings, appDistributionTypeEnums)) {
+            APP_LOGE("appDistributionTypes param %{public}s failed", appDistributionTypes.c_str());
+            resultReceiver_.append(STRING_SET_APP_DISTRIBUTION_TYPES_NG);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        auto res = bundleMgrProxy_->SetAppDistributionTypes(appDistributionTypeEnums);
+        if (res != OHOS::ERR_OK) {
+            resultReceiver_.append(STRING_SET_APP_DISTRIBUTION_TYPES_NG);
+            return result;
+        } else {
+            resultReceiver_.append(STRING_SET_APP_DISTRIBUTION_TYPES_OK);
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetJsonProfile()
+{
+    APP_LOGI("RunAsGetJsonProfile start");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getJsonProfile";
+    std::string name = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    int jsonProfileType = -1;
+    int userId = 100;
+    APP_LOGD("RunAsGetStringCommand is start");
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_JSON_PROFILE.c_str(),
+            LONG_OPTIONS_GET_JSON_PROFILE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                // 'GetStringById' with no option: GetStringById
+                // 'GetStringById' with a wrong argument: GetStringById
+                APP_LOGD("bundle_test_tool getStr with no option.");
+                resultReceiver_.append(HELP_MSG_NO_GET_JSON_PROFILE_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        moduleName = option == 'm' ? name : moduleName;
+        bundleName = option == 'n' ? name : bundleName;
+        userId = option == 'u' ? temp : userId;
+        jsonProfileType = option == 'p' ? temp : jsonProfileType;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_STRING);
+    } else {
+        std::string results = "";
+        auto res = bundleMgrProxy_->GetJsonProfile(static_cast<ProfileType>(jsonProfileType),
+            bundleName, moduleName, results, userId);
+        if (res != OHOS::ERR_OK || results.empty()) {
+            resultReceiver_.append(STRING_GET_JSON_PROFILE_NG);
+            return result;
+        }
+        resultReceiver_.append(results);
+        resultReceiver_.append("\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunGetUidByBundleName()
+{
+    APP_LOGI("RunGetUidByBundleName start");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string name = "";
+    std::string commandName = "getUidByBundleName";
+    std::string bundleName = "";
+    int userId = 100;
+    int appIndex = 0;
+    APP_LOGD("RunGetIntCommand is start");
+    bool flag = true;
+    while (flag) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_UID_BY_BUNDLENAME.c_str(),
+            LONG_OPTIONS_GET_UID_BY_BUNDLENAME, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getUidByBundleName with no option.");
+                resultReceiver_.append(HELP_MSG_NO_GET_UID_BY_BUNDLENAME);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        bundleName = option == 'n' ? name : bundleName;
+        userId = option == 'u' ? temp : userId;
+        appIndex = option == 'a' ? temp : appIndex;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_NO_GET_UID_BY_BUNDLENAME);
+    } else {
+        int32_t res = bundleMgrProxy_->GetUidByBundleName(bundleName, userId, appIndex);
+        if (res == -1) {
+            resultReceiver_.append(STRING_GET_UID_BY_BUNDLENAME_NG);
+            return result;
+        }
+        resultReceiver_.append(std::to_string(res));
+        resultReceiver_.append("\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunGetApiTargetVersionByUid()
+{
+    APP_LOGI("RunGetApiTargetVersionByUid start");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getApiTargetVersionByUid";
+    std::string name = "";
+    int32_t uid = -1;
+    bool withPermission = false;
+
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_API_TARGET_VERSION.c_str(),
+            LONG_OPTIONS_GET_API_TARGET_VERSION, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getApiTargetVersionByUid with no option.");
+                resultReceiver_.append(HELP_MSG_NO_GET_API_TARGET_VERSION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        uid = option == 'u' ? temp : uid;
+        withPermission = option == 'p' ? temp : withPermission;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_NO_GET_API_TARGET_VERSION);
+    } else {
+        if (withPermission) {
+            ReloadNativeTokenInfo();
+        }
+        int32_t apiTargetVersion = 0;
+        ErrCode ret = bundleMgrProxy_->GetApiTargetVersionByUid(uid, apiTargetVersion);
+        if (ret != ERR_OK) {
+            resultReceiver_.append(STRING_GET_API_TARGET_VERSION_NG + "errcode: " + std::to_string(ret) + "\n");
+            return result;
+        }
+        resultReceiver_.append("Api target version: " + std::to_string(apiTargetVersion) + "\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetUninstalledBundleInfo()
+{
+    APP_LOGI("RunAsGetUninstalledBundleInfo start");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string bundleName = "";
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_UNINSTALLED_BUNDLE_INFO.c_str(),
+            LONG_OPTIONS_UNINSTALLED_BUNDLE_INFO, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_NO_GET_UNINSTALLED_BUNDLE_INFO_OPTION);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckGetBundleNameOption(option, bundleName);
+        APP_LOGD("getUninstalledBundleInfo optind: %{public}s", bundleName.c_str());
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_NO_GET_UNINSTALLED_BUNDLE_INFO_OPTION);
+    } else {
+        BundleInfo bundleInfo;
+        auto res = bundleMgrProxy_->GetUninstalledBundleInfo(bundleName, bundleInfo);
+        if (res != OHOS::ERR_OK) {
+            resultReceiver_.append(STRING_GET_UNINSTALLED_BUNDLE_INFO_NG);
+            return result;
+        }
+        nlohmann::json jsonObject = bundleInfo;
+        jsonObject["applicationInfo"] = bundleInfo.applicationInfo;
+        std::string results = jsonObject.dump(Constants::DUMP_INDENT);
+        resultReceiver_.append(results);
+        resultReceiver_.append("\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetOdid()
+{
+    std::string commandName = "getOdid";
+    int uid = Constants::INVALID_UID;
+    int opt = 0;
+
+    const std::map<char, OptionHandler> getOdidOptionHandlers = {
+        {'u', [&uid, &commandName, this](const std::string& value) {
+            bool ret;
+            StringToInt(value, commandName, uid, ret); }}
+    };
+    while ((opt = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_ODID.c_str(), LONG_OPTIONS_GET_ODID, nullptr)) != -1) {
+        auto it = getOdidOptionHandlers.find(opt);
+        if (it != getOdidOptionHandlers.end()) {
+            it->second(optarg);
+        } else {
+            resultReceiver_.append(HELP_MSG_GET_ODID);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    std::string odid;
+    setuid(uid);
+    auto result = bundleMgrProxy_->GetOdid(odid);
+    setuid(Constants::ROOT_UID);
+    if (result == ERR_OK) {
+        resultReceiver_.append(STRING_GET_ODID_OK);
+        resultReceiver_.append(odid + "\n");
+    } else if (result == ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST) {
+        resultReceiver_.append(STRING_GET_ODID_NG + "Please enter a valid uid\n");
+    } else {
+        resultReceiver_.append(STRING_GET_ODID_NG + "errCode is "+ std::to_string(result) + "\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetOdidResetCount()
+{
+    std::string commandName = "getOdidResetCount";
+    std::string bundleName;
+    bool withPermission = false;
+    int opt = 0;
+
+    const std::map<char, OptionHandler> optionHandlers = {
+        {'n', [&bundleName, &commandName, this](const std::string& value) {
+            bundleName = value; }},
+        {'p', [&withPermission](const std::string&) {
+            withPermission = true; }}
+    };
+    while ((opt = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_ODID_RESET_COUNT.c_str(),
+        LONG_OPTIONS_GET_ODID_RESET_COUNT, nullptr)) != -1) {
+        auto it = optionHandlers.find(opt);
+        if (it != optionHandlers.end()) {
+            if (opt == 'p') {
+                it->second("");
+            } else {
+                it->second(optarg);
+            }
+        } else {
+            resultReceiver_.append(HELP_MSG_GET_ODID_RESET_COUNT);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+
+    if (bundleName.empty()) {
+        resultReceiver_.append(HELP_MSG_GET_ODID_RESET_COUNT);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    int32_t count = 0;
+    std::string odid;
+    if (withPermission) {
+        ReloadNativeTokenInfo();
+    }
+    auto result = bundleMgrProxy_->GetOdidResetCount(bundleName, odid, count);
+    if (result == ERR_OK) {
+        resultReceiver_.append(STRING_GET_ODID_RESET_COUNT_OK);
+        resultReceiver_.append("odidResetCount: " + std::to_string(count) + "\n");
+        resultReceiver_.append("current odid: " + odid + "\n");
+    } else if (result == ERR_BUNDLE_MANAGER_BUNDLE_NOT_EXIST) {
+        resultReceiver_.append(STRING_GET_ODID_RESET_COUNT_NG + "Bundle not found: " + bundleName + "\n");
+    } else {
+        resultReceiver_.append(STRING_GET_ODID_RESET_COUNT_NG + "errCode is " + std::to_string(result) + "\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsUpdateAppEncryptedStatus()
+{
+    std::string commandName = "updateAppEncryptedStatus";
+    int appIndex = 0;
+    int appEcrypted = 0;
+    std::string bundleName;
+    int opt = 0;
+
+    const std::map<char, OptionHandler> optionHandlers = {
+        {'a', [&appIndex, &commandName, this](const std::string& value) {
+            bool ret;
+            StringToInt(value, commandName, appIndex, ret); }},
+        {'e', [&appEcrypted, &commandName, this](const std::string& value) {
+            bool ret;
+            StringToInt(value, commandName, appEcrypted, ret); }},
+        {'n', [&bundleName, &commandName, this](const std::string& value) {
+            bundleName = value; }},
+
+    };
+    while ((opt = getopt_long(argc_, argv_, SHORT_OPTIONS_UPDATE_APP_EXCRYPTED_STATUS.c_str(),
+        LONG_OPTIONS_UPDATE_APP_EXCRYPTED_STATUS, nullptr)) != -1) {
+        auto it = optionHandlers.find(opt);
+        if (it != optionHandlers.end()) {
+            it->second(optarg);
+        } else {
+            resultReceiver_.append(HELP_MSG_UPDATE_APP_EXCRYPTED_STATUS);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    setuid(CODE_PROTECT_UID);
+    auto result = bundleMgrProxy_->UpdateAppEncryptedStatus(bundleName, static_cast<bool>(appEcrypted), appIndex);
+    setuid(Constants::ROOT_UID);
+    if (result == ERR_OK) {
+        resultReceiver_.append(STRING_UPDATE_APP_EXCRYPTED_STATUS_SUCCESSFULLY);
+    } else {
+        resultReceiver_.append(
+            STRING_UPDATE_APP_EXCRYPTED_STATUS_FAILED + "errCode is "+ std::to_string(result) + "\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::CheckImplicitQueryWantOption(int option, std::string &value)
+{
+    ErrCode result = OHOS::ERR_OK;
+    switch (option) {
+        case 'n': {
+            value = optarg;
+            break;
+        }
+        case 'a': {
+            value = optarg;
+            break;
+        }
+        case 'e': {
+            value = optarg;
+            break;
+        }
+        case 'u': {
+            value = optarg;
+            break;
+        }
+        case 't': {
+            value = optarg;
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            resultReceiver_.append(unknownOptionMsg);
+            result = OHOS::ERR_INVALID_VALUE;
+            break;
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ImplicitQuerySkillUriInfo(const std::string &bundleName,
+    const std::string &action, const std::string &entity, const std::string &uri,
+    const std::string &type, std::string &msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    AAFwk::Want want;
+    want.SetAction(action);
+    want.AddEntity(entity);
+    ElementName elementName("", bundleName, "", "");
+    want.SetElement(elementName);
+    want.SetUri(uri);
+    want.SetType(type);
+
+    int32_t userId = BundleCommandCommon::GetCurrentUserId(Constants::UNSPECIFIED_USERID);
+    std::vector<AbilityInfo> abilityInfos;
+    int32_t flags = static_cast<int32_t>(GetAbilityInfoFlag::GET_ABILITY_INFO_WITH_SKILL_URI);
+    ErrCode res = bundleMgrProxy_->QueryAbilityInfosV9(want, flags, userId, abilityInfos);
+    if (res != OHOS::ERR_OK) {
+        return res;
+    }
+    for (auto &ability: abilityInfos) {
+        msg += "Ability start\n";
+        for (auto &uri: ability.skillUri) {
+            msg += "{\n";
+            msg += "    scheme: " + uri.scheme + "\n";
+            msg += "    host: " + uri.host + "\n";
+            msg += "    port: " + uri.port + "\n";
+            msg += "    path: " + uri.path + "\n";
+            msg += "    pathStartWith: " + uri.pathStartWith + "\n";
+            msg += "    pathRegex: " + uri.pathRegex + "\n";
+            msg += "    type: " + uri.type + "\n";
+            msg += "    utd: " + uri.utd + "\n";
+            msg += "    maxFileSupported: " + std::to_string(uri.maxFileSupported) + "\n";
+            msg += "    linkFeature: " + uri.linkFeature + "\n";
+            msg += "    isMatch: " + std::to_string(uri.isMatch) + "\n";
+            msg += "}\n";
+        }
+        msg += "Ability end\n";
+    }
+    return res;
+}
+
+ErrCode BundleTestTool::RunAsImplicitQuerySkillUriInfo()
+{
+    APP_LOGI("RunAsGetAbilityInfoWithSkillUriFlag start");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string bundleName = "";
+    std::string action = "";
+    std::string entity = "";
+    std::string uri = "";
+    std::string type = "";
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_IMPLICIT_QUERY_SKILL_URI_INFO.c_str(),
+            LONG_OPTIONS_IMPLICIT_QUERY_SKILL_URI_INFO, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_NO_IMPLICIT_QUERY_SKILL_URI_INFO);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        std::string value = "";
+        result = CheckImplicitQueryWantOption(option, value);
+        bundleName = option == 'n' ? value : bundleName;
+        action = option == 'a' ? value : action;
+        entity = option == 'e' ? value : entity;
+        uri = option == 'u' ? value : uri;
+        type = option == 't' ? value : type;
+    }
+    APP_LOGI("bundleName: %{public}s, action: %{public}s, entity: %{public}s, uri: %{public}s, type: %{public}s",
+        bundleName.c_str(), action.c_str(), entity.c_str(), uri.c_str(), type.c_str());
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_NO_IMPLICIT_QUERY_SKILL_URI_INFO);
+    } else {
+        std::string msg;
+        result = ImplicitQuerySkillUriInfo(bundleName, action, entity, uri, type, msg);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(STRING_IMPLICIT_QUERY_SKILL_URI_INFO_NG);
+        } else {
+            resultReceiver_.append(msg);
+        }
+        resultReceiver_.append("\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsQueryAbilityInfoByContinueType()
+{
+    APP_LOGI("RunAsQueryAbilityInfoByContinueType start");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "queryAbilityInfoByContinueType";
+    std::string name = "";
+    std::string bundleName = "";
+    std::string continueType = "";
+    int userId = 100;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE.c_str(),
+            LONG_OPTIONS_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_NO_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        bundleName = option == 'n' ? name : bundleName;
+        continueType = option == 'c' ? name : continueType;
+        userId = option == 'u' ? temp : userId;
+    }
+    APP_LOGI("bundleName: %{public}s, continueType: %{public}s, userId: %{public}d",
+        bundleName.c_str(), continueType.c_str(), userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_NO_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE);
+    } else {
+        AbilityInfo abilityInfo;
+        result = bundleMgrProxy_->QueryAbilityInfoByContinueType(bundleName, continueType, abilityInfo, userId);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(STRING_QUERY_ABILITY_INFO_BY_CONTINUE_TYPE_NG);
+        } else {
+            nlohmann::json jsonObject = abilityInfo;
+            std::string results = jsonObject.dump(Constants::DUMP_INDENT);
+            resultReceiver_.append(results);
+        }
+        resultReceiver_.append("\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsQueryAbilityInfo()
+{
+    APP_LOGI("RunAsQueryAbilityInfo start");
+    std::string bundleName;
+    std::string moduleName;
+    std::string abilityName;
+    int32_t flags = static_cast<int32_t>(GetAbilityInfoFlag::GET_ABILITY_INFO_DEFAULT);
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    ErrCode result = ParseQueryAbilityInfoOptions(bundleName, moduleName, abilityName, flags, userId);
+    APP_LOGI("bundleName: %{public}s, moduleName: %{public}s, abilityName: %{public}s, flags: %{public}d, "
+        "userId: %{public}d", bundleName.c_str(), moduleName.c_str(), abilityName.c_str(), flags, userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_QUERY_ABILITY_INFO);
+        return result;
+    }
+    return ExecuteQueryAbilityInfo(bundleName, moduleName, abilityName, flags, userId);
+}
+
+ErrCode BundleTestTool::ParseQueryAbilityInfoOptions(std::string &bundleName, std::string &moduleName,
+    std::string &abilityName, int32_t &flags, int32_t &userId)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_QUERY_ABILITY_INFO.c_str(),
+            LONG_OPTIONS_QUERY_ABILITY_INFO, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == '?') {
+            resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+            result = OHOS::ERR_INVALID_VALUE;
+            break;
+        }
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                bundleName = optarg;
+                break;
+            }
+            case 'm': {
+                moduleName = optarg;
+                break;
+            }
+            case 'a': {
+                abilityName = optarg;
+                break;
+            }
+            case 'f': {
+                if (!OHOS::StrToInt(optarg, flags) || flags < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                std::string unknownOption;
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                resultReceiver_.append(unknownOptionMsg);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK && (bundleName.empty())) {
+        resultReceiver_.append(HELP_MSG_NO_QUERY_ABILITY_INFO);
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ExecuteQueryAbilityInfo(const std::string &bundleName, const std::string &moduleName,
+    const std::string &abilityName, int32_t flags, int32_t userId)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        resultReceiver_.append(STRING_QUERY_ABILITY_INFO_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    AAFwk::Want want;
+    ElementName elementName("", bundleName, abilityName, moduleName);
+    want.SetElement(elementName);
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+
+    AbilityInfo abilityInfo;
+    bool ret = bundleMgrProxy_->QueryAbilityInfo(want, flags, userId, abilityInfo);
+    if (!ret) {
+        resultReceiver_.append(STRING_QUERY_ABILITY_INFO_NG);
+        resultReceiver_.append("errCode is " + std::to_string(ret) + "\n");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    nlohmann::json jsonObject = abilityInfo;
+    resultReceiver_.append(STRING_QUERY_ABILITY_INFO_OK);
+    resultReceiver_.append(jsonObject.dump(Constants::DUMP_INDENT));
+    resultReceiver_.append("\n");
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsBatchQueryAbilityInfos()
+{
+    APP_LOGI("RunAsBatchQueryAbilityInfos start");
+    std::vector<AAFwk::Want> wants;
+    int32_t flags = static_cast<int32_t>(GetAbilityInfoFlag::GET_ABILITY_INFO_DEFAULT);
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    ErrCode result = ParseBatchQueryAbilityInfosOptions(wants, flags, userId);
+    APP_LOGI("wantCount: %{public}zu, flags: %{public}d, userId: %{public}d", wants.size(), flags, userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_BATCH_QUERY_ABILITY_INFOS);
+        return result;
+    }
+    return ExecuteBatchQueryAbilityInfos(wants, flags, userId);
+}
+
+ErrCode BundleTestTool::ParseBatchQueryAbilityInfosOptions(std::vector<AAFwk::Want> &wants,
+    int32_t &flags, int32_t &userId)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_BATCH_QUERY_ABILITY_INFOS.c_str(),
+            LONG_OPTIONS_BATCH_QUERY_ABILITY_INFOS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == '?') {
+            resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'w': {
+                std::string wantInfo = optarg;
+                auto firstPos = wantInfo.find(':');
+                auto secondPos = (firstPos == std::string::npos) ? std::string::npos :
+                    wantInfo.find(':', firstPos + 1);
+                if (firstPos == std::string::npos || secondPos == std::string::npos ||
+                    wantInfo.find(':', secondPos + 1) != std::string::npos) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+
+                std::string bundleName = wantInfo.substr(0, firstPos);
+                std::string moduleName = wantInfo.substr(firstPos + 1, secondPos - firstPos - 1);
+                std::string abilityName = wantInfo.substr(secondPos + 1);
+                if (bundleName.empty()) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+
+                AAFwk::Want want;
+                ElementName elementName("", bundleName, abilityName, moduleName);
+                want.SetElement(elementName);
+                wants.emplace_back(want);
+                break;
+            }
+            case 'f': {
+                if (!OHOS::StrToInt(optarg, flags) || flags < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                std::string unknownOption;
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                resultReceiver_.append(unknownOptionMsg);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK && wants.empty()) {
+        resultReceiver_.append(HELP_MSG_NO_BATCH_QUERY_ABILITY_INFOS);
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ExecuteBatchQueryAbilityInfos(const std::vector<AAFwk::Want> &wants,
+    int32_t flags, int32_t userId)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        resultReceiver_.append(STRING_BATCH_QUERY_ABILITY_INFOS_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    std::vector<AbilityInfo> abilityInfos;
+    ErrCode ret = bundleMgrProxy_->BatchQueryAbilityInfos(wants, flags, userId, abilityInfos);
+    if (ret != ERR_OK) {
+        resultReceiver_.append(STRING_BATCH_QUERY_ABILITY_INFOS_NG);
+        resultReceiver_.append("errCode is " + std::to_string(ret) + "\n");
+        return ret;
+    }
+
+    nlohmann::json jsonResult = nlohmann::json::array();
+    for (const auto &abilityInfo : abilityInfos) {
+        nlohmann::json jsonObject = abilityInfo;
+        jsonResult.push_back(jsonObject);
+    }
+    resultReceiver_.append(STRING_BATCH_QUERY_ABILITY_INFOS_OK);
+    resultReceiver_.append(jsonResult.dump(Constants::DUMP_INDENT));
+    resultReceiver_.append("\n");
+    return OHOS::ERR_OK;
+}
+
+
+ErrCode BundleTestTool::RunAsImplicitQueryInfos()
+{
+    APP_LOGI("RunAsImplicitQueryInfos start");
+    std::string bundleName;
+    std::string action;
+    std::string entity;
+    std::string uri;
+    std::string type;
+    int32_t flags = 0;
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    bool withDefault = false;
+    ErrCode result = ParseImplicitQueryInfosOptions(bundleName, action, entity, uri, type, flags, userId,
+        withDefault);
+    APP_LOGI("bundleName: %{public}s, action: %{public}s, entity: %{public}s, uri: %{public}s, type: %{public}s, "
+        "flags: %{public}d, userId: %{public}d, withDefault: %{public}d", bundleName.c_str(), action.c_str(),
+        entity.c_str(), uri.c_str(), type.c_str(), flags, userId, withDefault);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_IMPLICIT_QUERY_INFOS);
+        return result;
+    }
+    return ExecuteImplicitQueryInfos(bundleName, action, entity, uri, type, flags, userId, withDefault);
+}
+
+ErrCode BundleTestTool::ParseImplicitQueryInfosOptions(std::string &bundleName, std::string &action,
+    std::string &entity, std::string &uri, std::string &type, int32_t &flags, int32_t &userId,
+    bool &withDefault)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_IMPLICIT_QUERY_INFOS.c_str(),
+            LONG_OPTIONS_IMPLICIT_QUERY_INFOS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == '?') {
+            resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                bundleName = optarg;
+                break;
+            }
+            case 'a': {
+                action = optarg;
+                break;
+            }
+            case 'e': {
+                entity = optarg;
+                break;
+            }
+            case 'r': {
+                uri = optarg;
+                break;
+            }
+            case 't': {
+                type = optarg;
+                break;
+            }
+            case 'f': {
+                if (!OHOS::StrToInt(optarg, flags) || flags < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'd': {
+                int32_t withDefaultInt = 0;
+                if (!OHOS::StrToInt(optarg, withDefaultInt) || (withDefaultInt != 0 && withDefaultInt != 1)) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                withDefault = (withDefaultInt == 1);
+                break;
+            }
+            default: {
+                std::string unknownOption;
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                resultReceiver_.append(unknownOptionMsg);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK && bundleName.empty()) {
+        resultReceiver_.append(HELP_MSG_NO_IMPLICIT_QUERY_INFOS);
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ExecuteImplicitQueryInfos(const std::string &bundleName, const std::string &action,
+    const std::string &entity, const std::string &uri, const std::string &type, int32_t flags,
+    int32_t userId, bool withDefault)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        resultReceiver_.append(STRING_IMPLICIT_QUERY_INFOS_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    AAFwk::Want want;
+    want.SetAction(action);
+    want.AddEntity(entity);
+    ElementName elementName("", bundleName, "", "");
+    want.SetElement(elementName);
+    want.SetUri(uri);
+    want.SetType(type);
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+
+    std::vector<AbilityInfo> abilityInfos;
+    std::vector<ExtensionAbilityInfo> extensionInfos;
+    bool findDefaultApp = false;
+    bool ret = bundleMgrProxy_->ImplicitQueryInfos(want, flags, userId, withDefault, abilityInfos,
+        extensionInfos, findDefaultApp);
+    if (!ret) {
+        resultReceiver_.append(STRING_IMPLICIT_QUERY_INFOS_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    nlohmann::json jsonResult;
+    jsonResult["abilityInfos"] = nlohmann::json::array();
+    for (const auto &abilityInfo : abilityInfos) {
+        nlohmann::json jsonObject = abilityInfo;
+        jsonResult["abilityInfos"].push_back(jsonObject);
+    }
+    jsonResult["extensionInfos"] = nlohmann::json::array();
+    for (const auto &extensionInfo : extensionInfos) {
+        nlohmann::json jsonObject = extensionInfo;
+        jsonResult["extensionInfos"].push_back(jsonObject);
+    }
+    jsonResult["findDefaultApp"] = findDefaultApp;
+    resultReceiver_.append(STRING_IMPLICIT_QUERY_INFOS_OK);
+    resultReceiver_.append(jsonResult.dump(Constants::DUMP_INDENT));
+    resultReceiver_.append("\n");
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsGetCloneBundleInfoExt()
+{
+    APP_LOGI("RunAsGetCloneBundleInfoExt start");
+    std::string bundleName;
+    uint32_t flags = 0;
+    int32_t appIndex = 0;
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    ErrCode result = ParseGetCloneBundleInfoExtOptions(bundleName, flags, appIndex, userId);
+    APP_LOGI("bundleName: %{public}s, flags: %{public}u, appIndex: %{public}d, userId: %{public}d",
+        bundleName.c_str(), flags, appIndex, userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_CLONE_BUNDLE_INFO_EXT);
+        return result;
+    }
+    return ExecuteGetCloneBundleInfoExt(bundleName, flags, appIndex, userId);
+}
+
+ErrCode BundleTestTool::ParseGetCloneBundleInfoExtOptions(std::string &bundleName, uint32_t &flags,
+    int32_t &appIndex, int32_t &userId)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_CLONE_BUNDLE_INFO_EXT.c_str(),
+            LONG_OPTIONS_GET_CLONE_BUNDLE_INFO_EXT, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == '?') {
+            resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                bundleName = optarg;
+                break;
+            }
+            case 'f': {
+                int32_t parsedFlags = 0;
+                if (!OHOS::StrToInt(optarg, parsedFlags) || parsedFlags < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                flags = static_cast<uint32_t>(parsedFlags);
+                break;
+            }
+            case 'a': {
+                if (!OHOS::StrToInt(optarg, appIndex) || appIndex < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                std::string unknownOption;
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                resultReceiver_.append(unknownOptionMsg);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK && bundleName.empty()) {
+        resultReceiver_.append(HELP_MSG_NO_GET_CLONE_BUNDLE_INFO_EXT);
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ExecuteGetCloneBundleInfoExt(const std::string &bundleName, uint32_t flags,
+    int32_t appIndex, int32_t userId)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        resultReceiver_.append(STRING_GET_CLONE_BUNDLE_INFO_EXT_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    BundleInfo bundleInfo;
+    setuid(Constants::FOUNDATION_UID);
+    ErrCode ret = bundleMgrProxy_->GetCloneBundleInfoExt(bundleName, flags, appIndex, userId, bundleInfo);
+    setuid(Constants::ROOT_UID);
+    if (ret != ERR_OK) {
+        resultReceiver_.append(STRING_GET_CLONE_BUNDLE_INFO_EXT_NG);
+        resultReceiver_.append("errCode is " + std::to_string(ret) + "\n");
+        return ret;
+    }
+
+    nlohmann::json jsonObject = bundleInfo;
+    jsonObject["applicationInfo"] = bundleInfo.applicationInfo;
+    resultReceiver_.append(STRING_GET_CLONE_BUNDLE_INFO_EXT_OK);
+    resultReceiver_.append(jsonObject.dump(Constants::DUMP_INDENT));
+    resultReceiver_.append("\n");
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsAddResourceInfoByBundleName()
+{
+    std::string bundleName;
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    ErrCode result = ParseAddResourceInfoByBundleNameOptions(bundleName, userId);
+    APP_LOGI("bundleName: %{public}s, userId: %{public}d", bundleName.c_str(), userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_ADD_RESOURCE_INFO_BY_BUNDLE_NAME);
+        return result;
+    }
+    ReloadNativeTokenInfo();
+    return ExecuteAddResourceInfoByBundleName(bundleName, userId);
+}
+
+ErrCode BundleTestTool::ParseAddResourceInfoByBundleNameOptions(std::string &bundleName, int32_t &userId)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_ADD_RESOURCE_INFO_BY_BUNDLE_NAME.c_str(),
+            LONG_OPTIONS_ADD_RESOURCE_INFO_BY_BUNDLE_NAME, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == '?') {
+            resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                bundleName = optarg;
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                std::string unknownOption;
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                resultReceiver_.append(unknownOptionMsg);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK && bundleName.empty()) {
+        resultReceiver_.append(HELP_MSG_NO_ADD_RESOURCE_INFO_BY_BUNDLE_NAME);
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ExecuteAddResourceInfoByBundleName(const std::string &bundleName, int32_t userId)
+{
+    if (bundleResourceProxy_ == nullptr) {
+        APP_LOGE("bundleResourceProxy_ is nullptr");
+        resultReceiver_.append(STRING_ADD_RESOURCE_INFO_BY_BUNDLE_NAME_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    ErrCode ret = bundleResourceProxy_->AddResourceInfoByBundleName(bundleName, userId);
+    if (ret != ERR_OK) {
+        resultReceiver_.append(STRING_ADD_RESOURCE_INFO_BY_BUNDLE_NAME_NG);
+        resultReceiver_.append("errCode is " + std::to_string(ret) + "\n");
+        return ret;
+    }
+
+    resultReceiver_.append(STRING_ADD_RESOURCE_INFO_BY_BUNDLE_NAME_OK);
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsAddResourceInfoByAbility()
+{
+    std::string bundleName;
+    std::string moduleName;
+    std::string abilityName;
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    ErrCode result = ParseAddResourceInfoByAbilityOptions(bundleName, moduleName, abilityName, userId);
+    APP_LOGI("bundleName: %{public}s, moduleName: %{public}s, abilityName: %{public}s, userId: %{public}d",
+        bundleName.c_str(), moduleName.c_str(), abilityName.c_str(), userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_ADD_RESOURCE_INFO_BY_ABILITY);
+        return result;
+    }
+    ReloadNativeTokenInfo();
+    return ExecuteAddResourceInfoByAbility(bundleName, moduleName, abilityName, userId);
+}
+
+ErrCode BundleTestTool::ParseAddResourceInfoByAbilityOptions(std::string &bundleName, std::string &moduleName,
+    std::string &abilityName, int32_t &userId)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_ADD_RESOURCE_INFO_BY_ABILITY.c_str(),
+            LONG_OPTIONS_ADD_RESOURCE_INFO_BY_ABILITY, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == '?') {
+            resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                bundleName = optarg;
+                break;
+            }
+            case 'm': {
+                moduleName = optarg;
+                break;
+            }
+            case 'a': {
+                abilityName = optarg;
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                std::string unknownOption;
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                resultReceiver_.append(unknownOptionMsg);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK && (bundleName.empty() || moduleName.empty() || abilityName.empty())) {
+        resultReceiver_.append(HELP_MSG_NO_ADD_RESOURCE_INFO_BY_ABILITY);
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ExecuteAddResourceInfoByAbility(const std::string &bundleName,
+    const std::string &moduleName, const std::string &abilityName, int32_t userId)
+{
+    if (bundleResourceProxy_ == nullptr) {
+        APP_LOGE("bundleResourceProxy_ is nullptr");
+        resultReceiver_.append(STRING_ADD_RESOURCE_INFO_BY_ABILITY_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+    ErrCode ret = bundleResourceProxy_->AddResourceInfoByAbility(bundleName, moduleName, abilityName, userId);
+    if (ret != ERR_OK) {
+        resultReceiver_.append(STRING_ADD_RESOURCE_INFO_BY_ABILITY_NG);
+        resultReceiver_.append("errCode is " + std::to_string(ret) + "\n");
+        return ret;
+    }
+
+    resultReceiver_.append(STRING_ADD_RESOURCE_INFO_BY_ABILITY_OK);
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsDeleteResourceInfo()
+{
+    std::string key;
+    ErrCode result = ParseDeleteResourceInfoOptions(key);
+    APP_LOGI("key: %{public}s", key.c_str());
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_DELETE_RESOURCE_INFO);
+        return result;
+    }
+    ReloadNativeTokenInfo();
+    return ExecuteDeleteResourceInfo(key);
+}
+
+ErrCode BundleTestTool::ParseDeleteResourceInfoOptions(std::string &key)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_DELETE_RESOURCE_INFO.c_str(),
+            LONG_OPTIONS_DELETE_RESOURCE_INFO, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == '?') {
+            resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'k': {
+                key = optarg;
+                break;
+            }
+            default: {
+                std::string unknownOption;
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                resultReceiver_.append(unknownOptionMsg);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK && key.empty()) {
+        resultReceiver_.append(HELP_MSG_NO_DELETE_RESOURCE_INFO);
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ExecuteDeleteResourceInfo(const std::string &key)
+{
+    if (bundleResourceProxy_ == nullptr) {
+        APP_LOGE("bundleResourceProxy_ is nullptr");
+        resultReceiver_.append(STRING_DELETE_RESOURCE_INFO_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    ErrCode ret = bundleResourceProxy_->DeleteResourceInfo(key);
+    if (ret != ERR_OK) {
+        resultReceiver_.append(STRING_DELETE_RESOURCE_INFO_NG);
+        resultReceiver_.append("errCode is " + std::to_string(ret) + "\n");
+        return ret;
+    }
+
+    resultReceiver_.append(STRING_DELETE_RESOURCE_INFO_OK);
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsGetDirByBundleNameAndAppIndex()
+{
+    APP_LOGI("RunAsGetDirByBundleNameAndAppIndex start");
+    std::string commandName = "getDirByBundleNameAndAppIndex";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    std::string bundleName = "";
+    int32_t appIndex = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_DIR.c_str(),
+            LONG_OPTIONS_GET_DIR, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getDirByBundleNameAndAppIndex with no option.");
+                resultReceiver_.append(HELP_MSG_GET_DIR_BY_BUNDLENAME_AND_APP_INDEX);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        bundleName = option == 'n' ? name : bundleName;
+        appIndex = option == 'a' ? temp : appIndex;
+    }
+    APP_LOGI("bundleName: %{public}s, appIndex: %{public}d", bundleName.c_str(), appIndex);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_DIR_BY_BUNDLENAME_AND_APP_INDEX);
+    } else {
+        std::string dataDir = "";
+        BundleMgrClient client;
+        result = client.GetDirByBundleNameAndAppIndex(bundleName, appIndex, dataDir);
+        if (result == ERR_OK) {
+            resultReceiver_.append(STRING_GET_DIR_OK);
+            resultReceiver_.append(dataDir + "\n");
+        } else if (result == ERR_BUNDLE_MANAGER_GET_DIR_INVALID_APP_INDEX) {
+            resultReceiver_.append(STRING_GET_DIR_NG + "Please enter a valid appIndex\n");
+        } else {
+            resultReceiver_.append(STRING_GET_DIR_NG + "errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetAllBundleDirs()
+{
+    APP_LOGI("RunAsGetAllBundleDirs start");
+    std::string commandName = "getAllBundleDirs";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    int32_t userId = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_ALL_BUNDLE_DIRS.c_str(),
+            LONG_OPTIONS_GET_ALL_BUNDLE_DIRS, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getAllBundleDirs with no option.");
+                resultReceiver_.append(HELP_MSG_GET_ALL_BUNDLE_DIRS);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        userId = option == 'u' ? temp : userId;
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ALL_BUNDLE_DIRS);
+    } else {
+        std::string msg;
+        result = GetAllBundleDirs(userId, msg);
+        if (result == ERR_OK) {
+            resultReceiver_.append(STRING_GET_ALL_BUNDLE_DIRS_OK + msg);
+        } else {
+            resultReceiver_.append(STRING_GET_ALL_BUNDLE_DIRS_NG + "errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    APP_LOGI("RunAsGetAllBundleDirs end");
+    return result;
+}
+
+ErrCode BundleTestTool::GetAllBundleDirs(int32_t userId, std::string& msg)
+{
+    BundleMgrClient client;
+    std::vector<BundleDir> bundleDirs;
+    auto ret = client.GetAllBundleDirs(userId, bundleDirs);
+    if (ret == ERR_OK) {
+        msg = "bundleDirs:\n{\n";
+        for (const auto &bundleDir: bundleDirs) {
+            msg +="     ";
+            msg += bundleDir.ToString();
+            msg += "\n";
+        }
+        msg += "}\n";
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsGetAllJsonProfile()
+{
+    APP_LOGI("RunAsGetAllJsonProfile start");
+    std::string commandName = "getAllJsonProfile";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    int32_t userId = 100;
+    int32_t profileType = -1;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_ALL_JSON_PROFILE.c_str(),
+            LONG_OPTIONS_GET_ALL_JSON_PROFILE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getAllJsonProfile with no option.");
+                resultReceiver_.append(HELP_MSG_GET_ALL_JSON_PROFILE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        profileType = option == 'p' ? temp : profileType;
+        userId = option == 'u' ? temp : userId;
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ALL_JSON_PROFILE);
+    } else {
+        std::string msg;
+        result = GetAllJsonProfile(static_cast<ProfileType>(profileType), userId, msg);
+        if (result == ERR_OK) {
+            resultReceiver_.append(STRING_GET_ALL_JSON_PROFILE_OK + msg);
+        } else {
+            resultReceiver_.append(STRING_GET_ALL_JSON_PROFILE_NG + "errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    APP_LOGI("RunAsGetAllJsonProfile end");
+    return result;
+}
+
+ErrCode BundleTestTool::GetAllJsonProfile(ProfileType profileType, int32_t userId, std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    std::vector<JsonProfileInfo> profileInfos;
+    auto ret = bundleMgrProxy_->GetAllJsonProfile(profileType, userId, profileInfos);
+    if (ret == ERR_OK) {
+        msg = "JsonProfileInfos:\n{\n";
+        for (const auto &info: profileInfos) {
+            msg +="     ";
+            msg += info.ToString();
+            msg += "\n";
+        }
+        msg += "}\n";
+    }
+    return ret;
+}
+
+bool BundleTestTool::CheckSetAppDisableForbiddenCorrectOption(int32_t option, const std::string &commandName,
+    std::string &bundleName, int32_t &userId, int32_t &appIndex, int32_t &forbidden, int32_t &callerUid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return false;
+        }
+        case 'n': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            bundleName = optarg;
+            break;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        case 'a': {
+            StringToInt(optarg, commandName, appIndex, ret);
+            break;
+        }
+        case 'f': {
+            StringToInt(optarg, commandName, forbidden, ret);
+            break;
+        }
+        case 'c': {
+            StringToInt(optarg, commandName, callerUid, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return false;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsSetApplicationDisableForbidden()
+{
+    std::string commandName = "setApplicationDisableForbidden";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    std::string bundleName = "";
+    int32_t userId = 100;
+    int32_t appIndex = 0;
+    int32_t forbidden = 0;
+    int32_t callerUid = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_SET_APPLICATION_DISABLE_FORBIDDEN.c_str(),
+            LONG_OPTIONS_SET_APPLICATION_DISABLE_FORBIDDEN, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool setApplicationDisableForbidden with no option.");
+                resultReceiver_.append(HELP_MSG_SET_APPLICATION_DISABLE_FORBIDDEN);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        bool ret = CheckSetAppDisableForbiddenCorrectOption(
+            option, commandName, bundleName, userId, appIndex, forbidden, callerUid);
+        if (!ret) {
+            resultReceiver_.append(HELP_MSG_SET_APPLICATION_DISABLE_FORBIDDEN);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    APP_LOGI("-n: %{public}s -u: %{public}d -a: %{public}d -f: %{public}d -c: %{public}d",
+        bundleName.c_str(), userId, appIndex, forbidden, callerUid);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_SET_APPLICATION_DISABLE_FORBIDDEN);
+    } else {
+        setuid(callerUid);
+        result = SetApplicationDisableForbidden(bundleName, userId, appIndex, static_cast<bool>(forbidden));
+        setuid(Constants::ROOT_UID);
+        if (result == ERR_OK) {
+            resultReceiver_.append(STRING_SET_APPLICATION_DISABLE_FORBIDDEN_OK);
+        } else {
+            resultReceiver_.append(STRING_SET_APPLICATION_DISABLE_FORBIDDEN_NG +
+                "errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::SetApplicationDisableForbidden(const std::string &bundleName, int32_t userId, int32_t appIndex,
+    bool forbidden)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    return bundleMgrProxy_->SetApplicationDisableForbidden(bundleName, userId, appIndex, forbidden);
+}
+
+bool BundleTestTool::CheckSetDefaultAppForCustomOption(int32_t option, const std::string &commandName,
+    int32_t &userId, std::string &type, std::string &bundleName, std::string &moduleName,
+    std::string &abilityName, int32_t &callerUid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return false;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        case 't': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            type = optarg;
+            break;
+        }
+        case 'n': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            bundleName = optarg;
+            break;
+        }
+        case 'm': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            moduleName = optarg;
+            break;
+        }
+        case 'a': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            abilityName = optarg;
+            break;
+        }
+        case 'c': {
+            StringToInt(optarg, commandName, callerUid, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return false;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsSetDefaultApplicationForCustom()
+{
+    APP_LOGI("RunAsSetDefaultApplicationForCustom start");
+    ReloadNativeTokenInfo();
+    std::string commandName = "setDefaultApplicationForCustom";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    int32_t userId = 100;
+    std::string type = "";
+    std::string bundleName = "";
+    std::string moduleName = "";
+    std::string abilityName = "";
+    int32_t callerUid = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_SET_DEFAULT_APPLICATION_FOR_CUSTOM.c_str(),
+            LONG_OPTIONS_SET_DEFAULT_APPLICATION_FOR_CUSTOM, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool setDefaultApplicationForCustom with no option.");
+                resultReceiver_.append(HELP_MSG_SET_DEFAULT_APPLICATION_FOR_CUSTOM);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        bool ret = CheckSetDefaultAppForCustomOption(
+            option, commandName, userId, type, bundleName, moduleName, abilityName, callerUid);
+        if (!ret) {
+            resultReceiver_.append(HELP_MSG_SET_DEFAULT_APPLICATION_FOR_CUSTOM);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    APP_LOGI("-u: %{public}d -t: %{public}s -n: %{public}s -m: %{public}s -a: %{public}s -c:%{public}d",
+        userId, type.c_str(), bundleName.c_str(), moduleName.c_str(), abilityName.c_str(), callerUid);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_SET_DEFAULT_APPLICATION_FOR_CUSTOM);
+    } else {
+        setuid(callerUid);
+        result = SetDefaultApplicationForCustom(userId, type, bundleName, moduleName, abilityName);
+        setuid(Constants::ROOT_UID);
+        if (result == ERR_OK) {
+            resultReceiver_.append(STRING_SET_DEFAULT_APPLICATION_FOR_CUSTOM_OK);
+        } else {
+            resultReceiver_.append(STRING_SET_DEFAULT_APPLICATION_FOR_CUSTOM_NG +
+                "errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::SetDefaultApplicationForCustom(int32_t userId,
+    const std::string& type, const std::string &bundleName, const std::string &moduleName,
+    const std::string &abilityName)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    auto defaultAppProxy = bundleMgrProxy_->GetDefaultAppProxy();
+    if (defaultAppProxy == nullptr) {
+        APP_LOGE("defaultAppProxy is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    ElementName elementName("", bundleName, abilityName, moduleName);
+    AAFwk::Want want;
+    want.SetElement(elementName);
+    return defaultAppProxy->SetDefaultApplicationForCustom(userId, type, want);
+}
+
+ErrCode BundleTestTool::RunAsGetDisposedRules()
+{
+    APP_LOGI("RunAsGetDisposedRules start");
+    ReloadNativeTokenInfo();
+    std::string commandName = "getDisposedRules";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    int32_t userId = 100;
+    int32_t callerUid = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_DISPOSED_RULES.c_str(),
+            LONG_OPTIONS_GET_DISPOSED_RULES, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("getDisposedRules with no option.");
+                resultReceiver_.append(HELP_MSG_GET_DISPOSED_RULES);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = CheckGetDisposedRulesCorrectOption(option, commandName, userId, callerUid);
+        if (result != OHOS::ERR_OK) {
+            resultReceiver_.append(HELP_MSG_GET_DISPOSED_RULES);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    APP_LOGI("getDisposedRules with userId:%{public}d, callerUid:%{public}d", userId, callerUid);
+    setuid(callerUid);
+    std::string msg;
+    result = GetDisposedRules(userId, msg);
+    if (result == ERR_OK) {
+        resultReceiver_.append(STRING_GET_DISPOSED_RULES_OK + msg + "\n");
+    } else {
+        resultReceiver_.append(STRING_GET_DISPOSED_RULES_NG + "errCode is "+ std::to_string(result) + "\n");
+    }
+    APP_LOGI("RunAsGetDisposedRules end");
+    return result;
+}
+
+ErrCode BundleTestTool::GetDisposedRules(int32_t userId, std::string &msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    std::vector<DisposedRuleConfiguration> disposedRuleConfigurations;
+    auto appControlProxy = bundleMgrProxy_->GetAppControlProxy();
+    if (appControlProxy == nullptr) {
+        APP_LOGE("appControlProxy is nullptr");
+        return ERR_APPEXECFWK_NULL_PTR;
+    }
+    ErrCode result = appControlProxy->GetDisposedRules(userId, disposedRuleConfigurations);
+    if (result == ERR_OK) {
+        msg += "[\n";
+        for (const auto &configuration: disposedRuleConfigurations) {
+            msg += "    {\n";
+            msg += "        \"appId\": ";
+            msg += configuration.appId;
+            msg += ",\n";
+            msg += "        \"appIndex\": ";
+            msg += std::to_string(configuration.appIndex);
+            msg += ",\n";
+            msg += "        \"disposedRule\": ";
+            msg += configuration.disposedRule.ToString();
+            msg += ",\n";
+            msg += "    },\n";
+        }
+        msg += "]";
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::CheckGetDisposedRulesCorrectOption(int option, const std::string &commandName,
+    int &userId, int &callerUid)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        case 'u': {
+            StringToInt(optarg, commandName, userId, ret);
+            break;
+        }
+        case 'c': {
+            StringToInt(optarg, commandName, callerUid, ret);
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsGetAllBundleCacheStat()
+{
+    APP_LOGI("RunAsGetAllBundleCacheStat start");
+    std::string commandName = "getAllBundleCacheStat";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    std::string msg;
+    int uid = 0;
+    if (argc_ < 0 || argv_ == nullptr) {
+        APP_LOGE("invalid argc or argv");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    while (counter <= 1) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_ALL_BUNDLE_CACHE_STAT.c_str(),
+            LONG_OPTIONS_GET_ALL_BUNDLE_CACHE_STAT, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if (counter == 1) {
+                if (optind >= argc_ || argv_[optind] == nullptr) {
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                    msg = "with no option, set uid: 0";
+                    resultReceiver_.append(msg + "\n");
+                    setuid(uid);
+                    break;
+                }
+            }
+            if (counter > 1) {
+                msg = "get uid: " + std::to_string(uid);
+                resultReceiver_.append(msg + "\n");
+                break;
+            }
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        uid = option == 'u' ? temp : uid;
+        setuid(uid);
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ALL_BUNDLE_CACHE_STAT);
+    } else {
+        msg = "";
+        result = GetAllBundleCacheStat(msg);
+        if (ERR_OK == result) {
+            resultReceiver_.append(STRING_GET_ALL_BUNDLE_CACHE_STAT_OK + msg);
+        } else {
+            resultReceiver_.append(STRING_GET_ALL_BUNDLE_CACHE_STAT_NG + msg + "\n");
+        }
+    }
+    APP_LOGI("RunAsGetAllBundleCacheStat end");
+    return result;
+}
+
+ErrCode BundleTestTool::GetAllBundleCacheStat(std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    sptr<ProcessCacheCallbackImpl> processCacheCallBack(new (std::nothrow) ProcessCacheCallbackImpl());
+    if (processCacheCallBack == nullptr) {
+        APP_LOGE("processCacheCallBack is null");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    ErrCode ret = bundleMgrProxy_->GetAllBundleCacheStat(processCacheCallBack);
+    uint64_t cacheSize = 0;
+    if (ret ==ERR_OK) {
+        msg += "clean exec wait \n";
+        if (processCacheCallBack->WaitForStatCompletion()) {
+            cacheSize = processCacheCallBack->GetCacheStat();
+        } else {
+            msg += "clean exec timeout \n";
+        }
+    }
+    msg += "clean exec end \n";
+    if (ret == ERR_OK) {
+        msg += "AllBundleCacheStat:" + std::to_string(cacheSize) + "\n";
+    } else {
+        msg += "error code:" + std::to_string(ret) + "\n";
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsCleanAllBundleCache()
+{
+    APP_LOGI("RunAsCleanAllBundleCache start");
+    std::string commandName = "cleanAllBundleCache";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    std::string msg;
+    int uid = 0;
+    while (counter <= 1) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_CLEAN_ALL_BUNDLE_CACHE.c_str(),
+            LONG_OPTIONS_CLEAN_ALL_BUNDLE_CACHE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1 && strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                msg = "with no option, set uid: 0";
+                resultReceiver_.append(msg + "\n");
+                setuid(uid);
+                break;
+            }
+            if (counter > 1) {
+                msg = "get uid: " + std::to_string(uid);
+                resultReceiver_.append(msg + "\n");
+                break;
+            }
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        uid = option == 'u' ? temp : uid;
+        setuid(uid);
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_CLEAN_ALL_BUNDLE_CACHE);
+    } else {
+        msg = "";
+        result = CleanAllBundleCache(msg);
+        if (ERR_OK == result) {
+            resultReceiver_.append(STRING_CLEAN_ALL_BUNDLE_CACHE_OK + msg);
+        } else {
+            resultReceiver_.append(STRING_CLEAN_ALL_BUNDLE_CACHE_NG + msg + "\n");
+        }
+    }
+    APP_LOGI("RunAsCleanAllBundleCache end");
+    return result;
+}
+
+ErrCode BundleTestTool::CleanAllBundleCache(std::string& msg)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        return false;
+    }
+    sptr<ProcessCacheCallbackImpl> processCacheCallBack(new (std::nothrow) ProcessCacheCallbackImpl());
+    if (processCacheCallBack == nullptr) {
+        APP_LOGE("processCacheCallBack is null");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    ErrCode ret = bundleMgrProxy_->CleanAllBundleCache(processCacheCallBack);
+    int32_t cleanRet = 0;
+    std::string callbackMsg = "";
+    if (ret ==ERR_OK) {
+        callbackMsg += "clean exec wait \n";
+        if (processCacheCallBack->WaitForCleanCompletion()) {
+            cleanRet = processCacheCallBack->GetDelRet();
+        } else {
+            callbackMsg += "clean exec timeout \n";
+            cleanRet = -1;
+        }
+    }
+    callbackMsg += "clean exec end \n";
+    if (ret != ERR_OK || cleanRet != ERR_OK) {
+        callbackMsg += "return code:" + std::to_string(ret) + " cleanRet code:" + std::to_string(cleanRet) + "\n";
+        msg = callbackMsg;
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    return ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsIsBundleInstalled()
+{
+    APP_LOGI("RunAsIsBundleInstalled start");
+    std::string commandName = "isBundleInstalled";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    std::string bundleName = "";
+    int32_t userId = BundleCommandCommon::GetCurrentUserId(Constants::UNSPECIFIED_USERID);
+    int32_t appIndex = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_IS_BUNDLE_INSTALLED.c_str(),
+            LONG_OPTIONS_IS_BUNDLE_INSTALLED, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool isBundleInstalled with no option.");
+                resultReceiver_.append(HELP_MSG_IS_BUNDLE_INSTALLED);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        bundleName = option == 'n' ? name : bundleName;
+        userId = option == 'u' ? temp : userId;
+        appIndex = option == 'a' ? temp : appIndex;
+    }
+    APP_LOGI("bundleName: %{public}s, appIndex: %{public}d, userId: %{public}d", bundleName.c_str(), appIndex, userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_IS_BUNDLE_INSTALLED);
+    } else {
+        bool isBundleInstalled = false;
+        result = bundleMgrProxy_->IsBundleInstalled(bundleName, userId, appIndex, isBundleInstalled);
+        if (result == ERR_OK) {
+            resultReceiver_.append(STRING_IS_BUNDLE_INSTALLED_OK);
+            resultReceiver_.append("isBundleInstalled: ");
+            resultReceiver_.append(isBundleInstalled ? "true\n" : "false\n");
+        } else {
+            resultReceiver_.append(STRING_IS_BUNDLE_INSTALLED_NG + "errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetCompatibleDeviceType()
+{
+    APP_LOGI("RunAsGetCompatibleDeviceType start");
+    std::string commandName = "getCompatibleDeviceType";
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    std::string name = "";
+    std::string bundleName = "";
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_COMPATIBLE_DEVICE_TYPE.c_str(),
+            LONG_OPTIONS_GET_COMPATIBLE_DEVICE_TYPE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getCompatibleDeviceType with no option.");
+                resultReceiver_.append(HELP_MSG_GET_COMPATIBLE_DEVICE_TYPE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckGetStringCorrectOption(option, commandName, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        bundleName = option == 'n' ? name : bundleName;
+    }
+    APP_LOGI("bundleName: %{public}s", bundleName.c_str());
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_COMPATIBLE_DEVICE_TYPE);
+    } else {
+        std::string deviceType;
+        result = bundleMgrProxy_->GetCompatibleDeviceType(bundleName, deviceType);
+        if (result == ERR_OK) {
+            resultReceiver_.append(STRING_GET_COMPATIBLE_DEVICE_TYPE_OK);
+            resultReceiver_.append("deviceType: ");
+            resultReceiver_.append(deviceType + "\n");
+        } else {
+            resultReceiver_.append(STRING_GET_COMPATIBLE_DEVICE_TYPE_NG + "errCode is "+ std::to_string(result) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsBatchGetCompatibleDeviceType()
+{
+    APP_LOGI("RunAsBatchGetCompatibleDeviceType start");
+    ReloadNativeTokenInfo();
+    std::vector<std::string> bundleNames;
+    int32_t result = BatchBundleNameCommonFunc(
+        SHORT_OPTIONS_BATCH_GET_COMPATIBLE_DEVICE_TYPE,
+        LONG_OPTIONS_BATCH_GET_COMPATIBLE_DEVICE_TYPE,
+        bundleNames);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_BATCH_GET_COMPATIBLE_DEVICE_TYPE);
+    } else {
+        std::string msg;
+        std::vector<BundleCompatibleDeviceType> compatibleDeviceTypes;
+        result = bundleMgrProxy_->BatchGetCompatibleDeviceType(bundleNames, compatibleDeviceTypes);
+        if (result == ERR_OK) {
+            nlohmann::json jsonResult = nlohmann::json::array();
+            for (const auto &compatibleDeviceType : compatibleDeviceTypes) {
+                nlohmann::json rowData;
+                rowData["bundleName"] = compatibleDeviceType.bundleName;
+                if (compatibleDeviceType.errCode == ERR_OK) {
+                    rowData["compatibleDeviceType"] = compatibleDeviceType.compatibleDeviceType;
+                } else {
+                    rowData["errCode"] = compatibleDeviceType.errCode;
+                }
+                jsonResult.push_back(rowData);
+            }
+            msg = jsonResult.dump() + "\n";
+            resultReceiver_.append(msg);
+        }   else {
+            resultReceiver_.append(STRING_BATCH_GET_COMPATIBLE_DEVICE_TYPE_NG +
+                                   "errCode is " + std::to_string(result) +
+                                   "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::InnerGetSimpleAppInfoForUid(const int32_t &option, std::vector<std::int32_t> &uids)
+{
+    std::string commandName = "getSimpleAppInfoForUid";
+    int32_t uid = Constants::FOUNDATION_UID;
+    switch (option) {
+        case 'u': {
+            std::string arrayUId = optarg;
+            std::stringstream array(arrayUId);
+            std::string object;
+            bool ret = true;
+            while (getline(array, object, ',')) {
+                StringToInt(object, commandName, uid, ret);
+                if (!ret) {
+                    resultReceiver_.append(HELP_MSG_GET_SIMPLE_APP_INFO_FOR_UID);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                uids.emplace_back(uid);
+            }
+            APP_LOGD("bundle_test_tool %{public}s -u %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        default: {
+            resultReceiver_.append(HELP_MSG_GET_SIMPLE_APP_INFO_FOR_UID);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    return OHOS::ERR_OK;
+}
+
+ErrCode BundleTestTool::RunAsGetSimpleAppInfoForUid()
+{
+    APP_LOGI("RunAsGetSimpleAppInfoForUid start");
+    std::vector<std::int32_t> uids;
+    int32_t counter = 0;
+    while (counter <= 1) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_SIMPLE_APP_INFO_FOR_UID.c_str(),
+            LONG_OPTIONS_GET_SIMPLE_APP_INFO_FOR_UID, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool getSimpleAppInfoForUid with no option.");
+                resultReceiver_.append(HELP_MSG_GET_SIMPLE_APP_INFO_FOR_UID);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        auto ret = InnerGetSimpleAppInfoForUid(option, uids);
+        if (ret != OHOS::ERR_OK) {
+            return ret;
+        }
+    }
+    std::vector<SimpleAppInfo> simpleAppInfo;
+    auto result = bundleMgrProxy_->GetSimpleAppInfoForUid(uids, simpleAppInfo);
+    if (result == ERR_OK) {
+        resultReceiver_.append(STRING_GET_SIMPLE_APP_INFO_FOR_UID_OK);
+        for (size_t i = 0; i < simpleAppInfo.size(); i++) {
+            resultReceiver_.append(simpleAppInfo[i].ToString() + "\n");
+        }
+    } else {
+        resultReceiver_.append(STRING_GET_SIMPLE_APP_INFO_FOR_UID_NG + "errCode is "+ std::to_string(result) + "\n");
+    }
+    APP_LOGI("RunAsGetSimpleAppInfoForUid end");
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetBundleNameByAppId()
+{
+    APP_LOGI("RunAsGetBundleNameByAppId start");
+    std::string appId;
+    std::string bundleName;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_BUNDLENAME_BY_APPID.c_str(),
+            LONG_OPTIONS_GET_BUNDLENAME_BY_APPID, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool isBundleInstalled with no option.");
+                resultReceiver_.append(HELP_MSG_GET_BUNDLENAME_BY_APPID);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        switch (option) {
+            case 'a': {
+                appId = optarg;
+                break;
+            }
+            default: {
+                resultReceiver_.append(HELP_MSG_GET_BUNDLENAME_BY_APPID);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+        }
+    }
+    auto result = bundleMgrProxy_->GetBundleNameByAppId(appId, bundleName);
+    if (result == ERR_OK) {
+        resultReceiver_.append(STRING_GET_BUNDLENAME_BY_APPID_OK);
+        resultReceiver_.append(bundleName + "\n");
+    } else {
+        resultReceiver_.append(STRING_GET_BUNDLENAME_BY_APPID_NG + "errCode is "+ std::to_string(result) + "\n");
+    }
+    APP_LOGI("RunAsGetBundleNameByAppId end");
+    return result;
+}
+
+ErrCode BundleTestTool::UninstallPreInstallBundleOperation(
+    const std::string &bundleName, InstallParam &installParam) const
+{
+    sptr<StatusReceiverImpl> statusReceiver(new (std::nothrow) StatusReceiverImpl());
+    if (statusReceiver == nullptr) {
+        APP_LOGE("statusReceiver is null");
+        return IStatusReceiver::ERR_UNKNOWN;
+    }
+
+    sptr<BundleDeathRecipient> recipient(new (std::nothrow) BundleDeathRecipient(statusReceiver));
+    if (recipient == nullptr) {
+        APP_LOGE("recipient is null");
+        return IStatusReceiver::ERR_UNKNOWN;
+    }
+    bundleInstallerProxy_->AsObject()->AddDeathRecipient(recipient);
+    bundleInstallerProxy_->Uninstall(bundleName, installParam, statusReceiver);
+    return statusReceiver->GetResultCode();
+}
+
+bool BundleTestTool::CheckUnisntallCorrectOption(
+    int option, const std::string &commandName, int &temp, std::string &name)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            ret = false;
+            break;
+        }
+        case 'n': {
+            name = optarg;
+            APP_LOGD("bundle_test_tool %{public}s -n %{public}s", commandName.c_str(), argv_[optind - 1]);
+            break;
+        }
+        case 'u':{
+            if (!OHOS::StrToInt(optarg, temp)) {
+                APP_LOGE("bundle_test_tool %{public}s with error -u %{private}s", commandName.c_str(), optarg);
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                ret = false;
+            }
+            break;
+        }
+        case 'f':{
+            if (!OHOS::StrToInt(optarg, temp)) {
+                APP_LOGE("bundle_test_tool %{public}s with error -f %{private}s", commandName.c_str(), optarg);
+                resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                ret = false;
+            }
+            break;
+        }
+        default: {
+            ret = false;
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGW("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            break;
+        }
+    }
+    return ret;
+}
+
+bool BundleTestTool::CheckGetAppIdentifierAndAppIndexOption(int32_t option, const std::string &commandName,
+    uint32_t &accessTokenId)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'a': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            if (!StrToUint32(optarg, accessTokenId)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsGetAppIdentifierAndAppIndex()
+{
+    APP_LOGI("RunAsGetAppIdentifierAndAppIndex start");
+    int result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string commandName = "getAppIdentifierAndAppIndex";
+    uint32_t accessTokenId = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_APPIDENTIFIER_AND_APPINDEX.c_str(),
+            LONG_OPTIONS_GET_APPIDENTIFIER_AND_APPINDEX, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                resultReceiver_.append(HELP_MSG_GET_APPIDENTIFIER_AND_APPINDEX);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = !CheckGetAppIdentifierAndAppIndexOption(option, commandName, accessTokenId)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        APP_LOGE("accessTokenId = %{public}d", accessTokenId);
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_APPIDENTIFIER_AND_APPINDEX);
+    } else {
+        std::string appIdentifier = "";
+        int32_t appIndex;
+
+        auto res = bundleMgrProxy_->GetAppIdentifierAndAppIndex(accessTokenId, appIdentifier, appIndex);
+        if (res != OHOS::ERR_OK) {
+            resultReceiver_.append(STRING_GET_APPIDENTIFIER_AND_APPINDEX_NG);
+            return result;
+        } else {
+            resultReceiver_.append(STRING_GET_APPIDENTIFIER_AND_APPINDEX_OK);
+            resultReceiver_.append("appIdentifier:" + appIdentifier);
+            resultReceiver_.append("\n");
+            resultReceiver_.append("appIndex:" + std::to_string(appIndex));
+            resultReceiver_.append("\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsUninstallPreInstallBundleCommand()
+{
+    int32_t result = OHOS::ERR_OK;
+    int counter = 0;
+    std::string name = "";
+    std::string bundleName = "";
+    int32_t userId = 100;
+    int forceValue = 0;
+    while (counter <= MAX_PARAMS_FOR_UNINSTALL) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_PREINSTALL.c_str(), LONG_OPTIONS_PREINSTALL, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool uninstallPreInstallBundle with no option.");
+                resultReceiver_.append(HELP_MSG_UNINSTALL_PREINSTALL_BUNDLE);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        int temp = 0;
+        result = !CheckUnisntallCorrectOption(option, UNINSTALL_PREINSTALL_BUNDLE, temp, name)
+            ? OHOS::ERR_INVALID_VALUE : result;
+        bundleName = option == 'n' ? name : bundleName;
+        userId = option == 'u' ? temp : userId;
+        forceValue = option == 'f' ? temp : forceValue;
+    }
+    if (result != OHOS::ERR_OK || bundleName == "") {
+        resultReceiver_.append(HELP_MSG_UNINSTALL_PREINSTALL_BUNDLE);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    InstallParam installParam;
+    installParam.userId = userId;
+    if (forceValue > 0) {
+        OHOS::system::SetParameter(IS_ENTERPRISE_DEVICE, "true");
+        installParam.parameters.emplace(Constants::VERIFY_UNINSTALL_FORCED_KEY,
+            Constants::VERIFY_UNINSTALL_FORCED_VALUE);
+    }
+    result = UninstallPreInstallBundleOperation(bundleName, installParam);
+    if (result == OHOS::ERR_OK) {
+        resultReceiver_ = STRING_UNINSTALL_PREINSTALL_BUNDLE_SUCCESSFULLY + "\n";
+    } else {
+        resultReceiver_ = STRING_UNINSTALL_PREINSTALL_BUNDLE_FAILED + "\n";
+        resultReceiver_.append(GetMessageFromCode(result));
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetBundleNamesForUidExtCommand()
+{
+    APP_LOGI("RunAsGetBundleNameForUidExtCommand start");
+    std::string uid;
+    std::vector<std::string> bundleNames;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_BUNDLENAMES_FOR_UID_EXT.c_str(),
+            LONG_OPTIONS_GET_BUNDLENAMES_FOR_UID_EXT, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool isBundleInstalled with no option.");
+                resultReceiver_.append(HELP_MSG_GET_BUNDLENAMES_FOR_UID_EXT);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        switch (option) {
+            case 'u': {
+                uid = optarg;
+                break;
+            }
+            default: {
+                resultReceiver_.append(HELP_MSG_GET_BUNDLENAMES_FOR_UID_EXT);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+        }
+    }
+
+    ErrCode result = ERR_OK;
+    int32_t uidInt = 0;
+    if (StrToInt(uid, uidInt)) {
+        result = BundleMgrExtClient::GetInstance().GetBundleNamesForUidExt(uidInt, bundleNames);
+    } else {
+        APP_LOGE("Failed to convert uid");
+        return OHOS::ERR_INVALID_VALUE;
+    }
+    if (result == ERR_OK) {
+        resultReceiver_.append("GetBundleNamesForUidExt success");
+        std::string msg = "bundle name list:\n{\n";
+        for (const auto &name : bundleNames) {
+            msg +="     ";
+            msg += name;
+            msg += "\n";
+        }
+        msg += "}\n";
+        resultReceiver_.append(msg);
+        return ERR_OK;
+    } else {
+        resultReceiver_.append(STRING_GET_BUNDLENAMES_FOR_UID_EXT_NG + "errCode is "+ std::to_string(result) + "\n");
+    }
+    APP_LOGI("RunAsGetBundleNameForUidExtCommand end");
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetAssetGroupsInfo()
+{
+    APP_LOGI("RunAsGetAssetGroupsInfo start");
+    int result = OHOS::ERR_OK;
+    std::string commandName = "getAssetGroupsInfo";
+    std::string name = "";
+    int counter = 0;
+    int32_t uid = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(
+            argc_, argv_, SHORT_OPTIONS_GET_ASSET_GROUPS_INFO.c_str(), LONG_OPTIONS_GET_ASSET_GROUPS_INFO, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            break;
+        }
+
+        int temp = 0;
+        result = !CheckGetAllProxyDataCorrectOption(option, commandName, temp, name)
+                 ? OHOS::ERR_INVALID_VALUE : result;
+        uid = option == 'u' ? temp : uid;
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_ASSET_GROUPS_INFO);
+    } else {
+        AssetGroupInfo assetGroupInfo;
+        auto res = bundleMgrProxy_->GetAssetGroupsInfo(uid, assetGroupInfo);
+        if (res != OHOS::ERR_OK) {
+            resultReceiver_.append(STRING_GET_ASSET_GROUPS_INFO_NG);
+            return result;
+        }
+        resultReceiver_.append(STRING_GET_ASSET_GROUPS_INFO_OK);
+        nlohmann::json jsonObject = assetGroupInfo;
+        std::string results = jsonObject.dump(Constants::DUMP_INDENT);
+        resultReceiver_.append(results);
+        resultReceiver_.append("\n");
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsSetEnpDeviceCommand()
+{
+    APP_LOGI("start");
+    int fd = open(CODE_SIGN_PATH, O_RDONLY);
+    if (fd == -1) {
+        APP_LOGE("failed to open file");
+        resultReceiver_.append("failed to open file\n");
+        return -1;
+    }
+    int ret = ioctl(fd, CODESIGN_SET_ENP_DEVICE_FLAG, 1);
+    close(fd);
+    if (ret != 0) {
+        APP_LOGE("set enp flag failed");
+        resultReceiver_.append("set enp flag failed " + std::to_string(errno) + "\n");
+    } else {
+        resultReceiver_.append("set enp success\n");
+    }
+    APP_LOGI("end");
+    return ret;
+}
+
+bool BundleTestTool::CheckInstallEnterpriseResignCertOption(int32_t option, const std::string &commandName,
+    std::string& certAlias, std::string& certPath, int32_t& userId, bool& withPermission)
+{
+    bool ret = true;
+    switch (option) {
+        case 'h': {
+            APP_LOGD("bundle_test_tool %{public}s %{public}s", commandName.c_str(), argv_[optind - 1]);
+            ret = false;
+            break;
+        }
+        case 'a': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            certAlias = optarg;
+            break;
+        }
+        case 'f': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            certPath = optarg;
+            break;
+        }
+        case 'u': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            if (!StrToInt(optarg, userId)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        case 'p': {
+            APP_LOGD("'bundle_test_tool %{public}s %{public}s'", commandName.c_str(), argv_[optind - 1]);
+            withPermission = true;
+            break;
+        }
+        default: {
+            std::string unknownOption = "";
+            std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+            APP_LOGD("bundle_test_tool %{public}s with an unknown option.", commandName.c_str());
+            resultReceiver_.append(unknownOptionMsg);
+            ret = false;
+            break;
+        }
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsInstallEnterpriseResignCertCommand()
+{
+    APP_LOGI("start");
+    std::string certAlias;
+    std::string certPath;
+    int32_t userId = -1;
+    bool withPermission;
+    int32_t result = OHOS::ERR_OK;
+    std::string commandName = "installEnterpriseResignCert";
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_INSTALL_ENTERPRISE_RESIGN_CERT.c_str(),
+            LONG_OPTIONS_INSTALL_ENTERPRISE_RESIGN_CERT, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            // When scanning the first argument
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                APP_LOGD("bundle_test_tool installEnterpriseResignCert with no option.");
+                resultReceiver_.append(HELP_MSG_INSTALL_ENTERPRISE_RESIGN_CERT);
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        result = !CheckInstallEnterpriseResignCertOption(
+            option, commandName, certAlias, certPath, userId, withPermission)
+            ? OHOS::ERR_INVALID_VALUE : result;
+    }
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_INSTALL_ENTERPRISE_RESIGN_CERT);
+    } else {
+        if (withPermission) {
+            ReloadNativeTokenInfo();
+        }
+        int32_t fd = open(certPath.c_str(), O_RDONLY);
+        auto res = bundleInstallerProxy_->InstallEnterpriseReSignatureCert(certAlias, fd, userId);
+        close(fd);
+        if (res != OHOS::ERR_OK) {
+            resultReceiver_.append("ErrCode is " + std::to_string(res) + "\n");
+        } else {
+            resultReceiver_.append("Success\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsSetBundleFirstLaunch()
+{
+    std::string bundleName;
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    int32_t appIndex = 0;
+    int32_t isFirstLaunch = -1;
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_SET_BUNDLE_FIRST_LAUNCH.c_str(),
+            LONG_OPTIONS_SET_BUNDLE_FIRST_LAUNCH, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+
+        if (option == -1 || option == '?') {
+            if (counter == 1 && strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            break;
+        }
+
+        switch (option) {
+            case 'h': {
+                resultReceiver_.append(HELP_MSG_SET_BUNDLE_FIRST_LAUNCH);
+                return OHOS::ERR_OK;
+            }
+            case 'n': {
+                bundleName = optarg;
+                APP_LOGD("bundleName: %{public}s", bundleName.c_str());
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId)) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+                APP_LOGD("userId: %{public}d", userId);
+                break;
+            }
+            case 'a': {
+                if (!OHOS::StrToInt(optarg, appIndex)) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+                APP_LOGD("appIndex: %{public}d", appIndex);
+                break;
+            }
+            case 'i': {
+                if (!OHOS::StrToInt(optarg, isFirstLaunch)) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+                APP_LOGD("isFirstLaunch: %{public}d", isFirstLaunch);
+                break;
+            }
+            default: {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_SET_BUNDLE_FIRST_LAUNCH);
+        return result;
+    }
+
+    if (bundleName.empty()) {
+        resultReceiver_.append("error: bundle name is required.\n");
+        resultReceiver_.append(HELP_MSG_SET_BUNDLE_FIRST_LAUNCH);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    if (isFirstLaunch != 0 && isFirstLaunch != 1) {
+        resultReceiver_.append("error: is-first-launch must be 0 or 1.\n");
+        resultReceiver_.append(HELP_MSG_SET_BUNDLE_FIRST_LAUNCH);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        resultReceiver_.append(STRING_SET_BUNDLE_FIRST_LAUNCH_NG + "bundleMgrProxy is null\n");
+        return ERR_APPEXECFWK_SERVICE_NOT_READY;
+    }
+
+    bool isFirstLaunchBool = (isFirstLaunch == 1);
+    ErrCode ret = bundleMgrProxy_->SetBundleFirstLaunch(bundleName, userId, appIndex, isFirstLaunchBool);
+    if (ret == ERR_OK) {
+        resultReceiver_ = STRING_SET_BUNDLE_FIRST_LAUNCH_OK;
+    } else {
+        resultReceiver_ = STRING_SET_BUNDLE_FIRST_LAUNCH_NG + "error code: " + std::to_string(ret) + "\n";
+    }
+    return ret;
+}
+
+ErrCode BundleTestTool::RunAsBatchGetBundleInfo()
+{
+    APP_LOGI("RunAsBatchGetBundleInfo start");
+    std::vector<std::string> bundleNames;
+    int32_t flags = static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_DEFAULT);
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_BATCH_GET_BUNDLE_INFO.c_str(),
+            LONG_OPTIONS_BATCH_GET_BUNDLE_INFO, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if (counter == 1) {
+                if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                    resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+            }
+            break;
+        }
+
+        if (option == '?') {
+            switch (optopt) {
+                case 'n': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                case 'f': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                case 'u': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                default: {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    resultReceiver_.append(unknownOptionMsg);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+            }
+            break;
+        }
+
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                std::string names = optarg;
+                std::stringstream ss(names);
+                std::string name;
+                while (std::getline(ss, name, ',')) {
+                    if (!name.empty()) {
+                        APP_LOGD("bundleName: %{public}s", name.c_str());
+                        bundleNames.emplace_back(name);
+                    }
+                }
+                break;
+            }
+            case 'f': {
+                if (!OHOS::StrToInt(optarg, flags) || flags < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+
+    if (result == OHOS::ERR_OK) {
+        if (bundleNames.empty()) {
+            resultReceiver_.append(HELP_MSG_NO_BUNDLE_NAME_OPTION + "\n");
+            result = OHOS::ERR_INVALID_VALUE;
+        }
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_BATCH_GET_BUNDLE_INFO);
+    } else {
+        std::vector<BundleInfo> bundleInfos;
+        userId = BundleCommandCommon::GetCurrentUserId(userId);
+        ErrCode ret = bundleMgrProxy_->BatchGetBundleInfo(bundleNames, flags, bundleInfos, userId);
+        if (ret == ERR_OK) {
+            nlohmann::json jsonResult = nlohmann::json::array();
+            for (const auto &bundleInfo : bundleInfos) {
+                nlohmann::json jsonObject = bundleInfo;
+                jsonObject["applicationInfo"] = bundleInfo.applicationInfo;
+                jsonResult.push_back(jsonObject);
+            }
+            std::string msg = jsonResult.dump(Constants::DUMP_INDENT);
+            resultReceiver_.append(STRING_BATCH_GET_BUNDLE_INFO_OK);
+            resultReceiver_.append(msg);
+            resultReceiver_.append("\n");
+        } else {
+            resultReceiver_.append(STRING_BATCH_GET_BUNDLE_INFO_NG +
+                                   "errCode is " + std::to_string(ret) + "\n");
+        }
+        result = ret;
+    }
+    APP_LOGI("RunAsBatchGetBundleInfo end");
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsParseSpmModule()
+{
+    APP_LOGI("RunAsParseSpmModule start");
+    std::string moduleJsonPath;
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_PARSE_SPM_MODULE.c_str(),
+            LONG_OPTIONS_PARSE_SPM_MODULE, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if (counter == 1 && strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                result = OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+
+        if (option == '?') {
+            switch (optopt) {
+                case 'p': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                default: {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    resultReceiver_.append(unknownOptionMsg);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+            }
+            break;
+        }
+
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'p': {
+                moduleJsonPath = optarg;
+                break;
+            }
+            default: {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+
+    if (result == OHOS::ERR_OK) {
+        if (moduleJsonPath.empty()) {
+            resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+            result = OHOS::ERR_INVALID_VALUE;
+        }
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_PARSE_SPM_MODULE);
+    } else {
+        std::ifstream ifs(moduleJsonPath);
+        if (!ifs.is_open()) {
+            resultReceiver_.append(STRING_PARSE_SPM_MODULE_NG +
+                "failed to open file: " + moduleJsonPath + "\n");
+            APP_LOGI("RunAsParseSpmModule end");
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        std::string moduleJson((std::istreambuf_iterator<char>(ifs)),
+            std::istreambuf_iterator<char>());
+        ifs.close();
+
+        Spm::InnerModuleInfoForSpm moduleInfo;
+        bool ret = Spm::ParseSpmModule(moduleJson, moduleInfo);
+        if (ret) {
+            nlohmann::json jsonResult;
+            jsonResult["bundleName"] = moduleInfo.bundleName;
+            jsonResult["moduleName"] = moduleInfo.moduleName;
+            jsonResult["bundleType"] = static_cast<int32_t>(moduleInfo.bundleType);
+            jsonResult["apiTargetVersion"] = moduleInfo.apiTargetVersion;
+            jsonResult["skillName"] = moduleInfo.skillName;
+
+            nlohmann::json definePerms = nlohmann::json::array();
+            for (const auto &perm : moduleInfo.definePermission) {
+                nlohmann::json p;
+                p["name"] = perm.name;
+                p["grantMode"] = perm.grantMode;
+                p["availableLevel"] = perm.availableLevel;
+                p["availableType"] = perm.availableType;
+                p["provisionEnable"] = perm.provisionEnable;
+                p["distributedSceneEnable"] = perm.distributedSceneEnable;
+                definePerms.push_back(p);
+            }
+            jsonResult["definePermission"] = definePerms;
+
+            nlohmann::json requestPerms = nlohmann::json::array();
+            for (const auto &perm : moduleInfo.requestPermission) {
+                nlohmann::json p;
+                p["name"] = perm.name;
+                p["moduleName"] = perm.moduleName;
+                p["reason"] = perm.reason;
+                requestPerms.push_back(p);
+            }
+            jsonResult["requestPermission"] = requestPerms;
+
+            resultReceiver_.append(STRING_PARSE_SPM_MODULE_OK);
+            resultReceiver_.append(jsonResult.dump(Constants::DUMP_INDENT));
+            resultReceiver_.append("\n");
+        } else {
+            resultReceiver_.append(STRING_PARSE_SPM_MODULE_NG);
+            result = OHOS::ERR_INVALID_VALUE;
+        }
+    }
+    APP_LOGI("RunAsParseSpmModule end");
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetTopNLargestItemsInAppDataDir()
+{
+    std::string bundleName;
+    int32_t userId = 0;
+    int32_t appIndex = 0;
+    int32_t result = BundleNameAndUserIdCommonFunc(bundleName, userId, appIndex);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_TOP_N_LARGEST_ITEMS);
+    } else {
+        if (bundleMgrProxy_ == nullptr) {
+            APP_LOGE("bundleMgrProxy_ is nullptr");
+            resultReceiver_.append("error: bundleMgrProxy_ is nullptr\n");
+            return OHOS::ERR_INVALID_VALUE;
+        }
+
+        userId = BundleCommandCommon::GetCurrentUserId(userId);
+        sptr<GetLargestItemsCallbackImpl> getCallBack(new (std::nothrow) GetLargestItemsCallbackImpl());
+        if (getCallBack == nullptr) {
+            APP_LOGE("getCallBack is null");
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        ErrCode ret = bundleMgrProxy_->GetTopNLargestItemsInAppDataDir(bundleName, appIndex, userId,
+            getCallBack);
+        if (ret == ERR_OK) {
+            if (getCallBack->WaitForGetCompletion()) {
+                ErrCode code = getCallBack->GetResultCode();
+                std::string result = getCallBack->GetResultMsg();
+                if (code == ERR_OK) {
+                    resultReceiver_.append("Get top N largest items in app data dir success:\n");
+                    resultReceiver_.append(result);
+                    resultReceiver_.append("\n");
+                } else {
+                    resultReceiver_.append("Get top N largest items in app data dir failed, errCode is " +
+                    std::to_string(code) + "\n");
+                }
+            }
+        } else {
+            resultReceiver_.append("Get top N largest items in app data dir failed, errCode is " +
+                                   std::to_string(ret) + "\n");
+        }
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsGetMainAndCloneBundleInfo()
+{
+    APP_LOGI("RunAsGetMainAndCloneBundleInfo start");
+    std::string bundleName;
+    int32_t flags = static_cast<int32_t>(GetBundleInfoFlag::GET_BUNDLE_INFO_DEFAULT);
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    ErrCode result = OHOS::ERR_OK;
+    int32_t counter = 0;
+
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_, SHORT_OPTIONS_GET_MAIN_AND_CLONE_BUNDLE_INFO.c_str(),
+            LONG_OPTIONS_GET_MAIN_AND_CLONE_BUNDLE_INFO, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if (counter == 1) {
+                if (strcmp(argv_[optind], cmd_.c_str()) == 0) {
+                    resultReceiver_.append(HELP_MSG_NO_OPTION + "\n");
+                    result = OHOS::ERR_INVALID_VALUE;
+                }
+            }
+            break;
+        }
+
+        if (option == '?') {
+            switch (optopt) {
+                case 'n': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                case 'f': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                case 'u': {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+                default: {
+                    std::string unknownOption = "";
+                    std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                    resultReceiver_.append(unknownOptionMsg);
+                    result = OHOS::ERR_INVALID_VALUE;
+                    break;
+                }
+            }
+            break;
+        }
+
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'n': {
+                bundleName = optarg;
+                APP_LOGD("bundleName: %{public}s", bundleName.c_str());
+                break;
+            }
+            case 'f': {
+                if (!OHOS::StrToInt(optarg, flags) || flags < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                APP_LOGD("flags: %{public}d", flags);
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                APP_LOGD("userId: %{public}d", userId);
+                break;
+            }
+            default: {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+
+    if (result == OHOS::ERR_OK) {
+        if (bundleName.empty()) {
+            resultReceiver_.append(HELP_MSG_NO_BUNDLE_NAME_OPTION + "\n");
+            result = OHOS::ERR_INVALID_VALUE;
+        }
+    }
+
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_GET_MAIN_AND_CLONE_BUNDLE_INFO);
+    } else {
+        if (bundleMgrProxy_ == nullptr) {
+            APP_LOGE("bundleMgrProxy_ is nullptr");
+            resultReceiver_.append(STRING_GET_MAIN_AND_CLONE_BUNDLE_INFO_NG + "bundleMgrProxy is null\n");
+            APP_LOGI("RunAsGetMainAndCloneBundleInfo end");
+            return ERR_APPEXECFWK_SERVICE_NOT_READY;
+        }
+        std::vector<BundleInfo> bundleInfos;
+        userId = BundleCommandCommon::GetCurrentUserId(userId);
+        ErrCode ret = bundleMgrProxy_->GetMainAndCloneBundleInfo(bundleName, flags, userId, bundleInfos);
+        if (ret == ERR_OK) {
+            nlohmann::json jsonResult = nlohmann::json::array();
+            for (const auto &bundleInfo : bundleInfos) {
+                nlohmann::json jsonObject = bundleInfo;
+                jsonObject["applicationInfo"] = bundleInfo.applicationInfo;
+                jsonResult.push_back(jsonObject);
+            }
+            std::string msg = jsonResult.dump(Constants::DUMP_INDENT);
+            resultReceiver_.append(STRING_GET_MAIN_AND_CLONE_BUNDLE_INFO_OK);
+            resultReceiver_.append(msg);
+            resultReceiver_.append("\n");
+        } else {
+            resultReceiver_.append(STRING_GET_MAIN_AND_CLONE_BUNDLE_INFO_NG +
+                                   "errCode is " + std::to_string(ret) + "\n");
+        }
+        result = ret;
+    }
+    APP_LOGI("RunAsGetMainAndCloneBundleInfo end");
+    return result;
+}
+
+ErrCode BundleTestTool::RunAsQuerySandboxCloneAbilityInfo()
+{
+    APP_LOGI("RunAsQuerySandboxCloneAbilityInfo start");
+    std::string creatorBundleName;
+    std::string bundleName;
+    std::string moduleName;
+    std::string abilityName;
+    int32_t flags = static_cast<int32_t>(GetAbilityInfoFlag::GET_ABILITY_INFO_DEFAULT);
+    int32_t appIndex = 0;
+    int32_t userId = Constants::UNSPECIFIED_USERID;
+    ErrCode result = ParseQuerySandboxCloneAbilityInfoOptions(creatorBundleName, bundleName, moduleName,
+        abilityName, flags, appIndex, userId);
+    APP_LOGI("creatorBundleName: %{public}s, bundleName: %{public}s, moduleName: %{public}s, "
+        "abilityName: %{public}s, flags: %{public}d, appIndex: %{public}d, userId: %{public}d",
+        creatorBundleName.c_str(), bundleName.c_str(), moduleName.c_str(), abilityName.c_str(),
+        flags, appIndex, userId);
+    if (result != OHOS::ERR_OK) {
+        resultReceiver_.append(HELP_MSG_QUERY_SANDBOX_CLONE_ABILITY_INFO);
+        return result;
+    }
+    return ExecuteQuerySandboxCloneAbilityInfo(creatorBundleName, bundleName, moduleName,
+        abilityName, flags, appIndex, userId);
+}
+
+ErrCode BundleTestTool::ParseQuerySandboxCloneAbilityInfoOptions(std::string &creatorBundleName,
+    std::string &bundleName, std::string &moduleName, std::string &abilityName,
+    int32_t &flags, int32_t &appIndex, int32_t &userId)
+{
+    int32_t result = OHOS::ERR_OK;
+    int32_t counter = 0;
+    while (true) {
+        counter++;
+        int32_t option = getopt_long(argc_, argv_,
+            SHORT_OPTIONS_QUERY_SANDBOX_CLONE_ABILITY_INFO.c_str(),
+            LONG_OPTIONS_QUERY_SANDBOX_CLONE_ABILITY_INFO, nullptr);
+        APP_LOGD("option: %{public}d, optopt: %{public}d, optind: %{public}d", option, optopt, optind);
+        if (optind < 0 || optind > argc_) {
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        if (option == -1) {
+            if ((counter == 1) && (strcmp(argv_[optind], cmd_.c_str()) == 0)) {
+                return OHOS::ERR_INVALID_VALUE;
+            }
+            break;
+        }
+        if (option == '?') {
+            resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+            return OHOS::ERR_INVALID_VALUE;
+        }
+        switch (option) {
+            case 'h': {
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+            case 'c': {
+                creatorBundleName = optarg;
+                break;
+            }
+            case 'n': {
+                bundleName = optarg;
+                break;
+            }
+            case 'm': {
+                moduleName = optarg;
+                break;
+            }
+            case 'a': {
+                abilityName = optarg;
+                break;
+            }
+            case 'f': {
+                if (!OHOS::StrToInt(optarg, flags) || flags < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'i': {
+                if (!OHOS::StrToInt(optarg, appIndex) || appIndex < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            case 'u': {
+                if (!OHOS::StrToInt(optarg, userId) || userId < 0) {
+                    resultReceiver_.append(STRING_REQUIRE_CORRECT_VALUE);
+                    return OHOS::ERR_INVALID_VALUE;
+                }
+                break;
+            }
+            default: {
+                std::string unknownOption;
+                std::string unknownOptionMsg = GetUnknownOptionMsg(unknownOption);
+                resultReceiver_.append(unknownOptionMsg);
+                result = OHOS::ERR_INVALID_VALUE;
+                break;
+            }
+        }
+    }
+    if (result == OHOS::ERR_OK && creatorBundleName.empty()) {
+        resultReceiver_.append(HELP_MSG_NO_QUERY_SANDBOX_CLONE_ABILITY_INFO);
+        result = OHOS::ERR_INVALID_VALUE;
+    }
+    return result;
+}
+
+ErrCode BundleTestTool::ExecuteQuerySandboxCloneAbilityInfo(const std::string &creatorBundleName,
+    const std::string &bundleName, const std::string &moduleName, const std::string &abilityName,
+    int32_t flags, int32_t appIndex, int32_t userId)
+{
+    if (bundleMgrProxy_ == nullptr) {
+        APP_LOGE("bundleMgrProxy_ is nullptr");
+        resultReceiver_.append(STRING_QUERY_SANDBOX_CLONE_ABILITY_INFO_NG);
+        return OHOS::ERR_INVALID_VALUE;
+    }
+
+    ElementName element("", bundleName, abilityName, moduleName);
+    userId = BundleCommandCommon::GetCurrentUserId(userId);
+
+    AbilityInfo abilityInfo;
+    ErrCode ret = bundleMgrProxy_->QuerySandboxCloneAbilityInfo(creatorBundleName, element,
+        flags, appIndex, abilityInfo, userId);
+    if (ret != ERR_OK) {
+        resultReceiver_.append(STRING_QUERY_SANDBOX_CLONE_ABILITY_INFO_NG);
+        resultReceiver_.append("errCode is " + std::to_string(ret) + "\n");
+        return ret;
+    }
+
+    nlohmann::json jsonObject = abilityInfo;
+    resultReceiver_.append(STRING_QUERY_SANDBOX_CLONE_ABILITY_INFO_OK);
+    resultReceiver_.append(jsonObject.dump(Constants::DUMP_INDENT));
+    resultReceiver_.append("\n");
+    return OHOS::ERR_OK;
+}
+} // AppExecFwk
+} // OHOS

@@ -1,0 +1,528 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "async_stack.h"
+
+#include <dlfcn.h>
+#include <pthread.h>
+#include <securec.h>
+#include <threads.h>
+#include <mutex>
+#include <atomic>
+#include <cstdio>
+#include <unistd.h>
+#include <fcntl.h>
+
+#include "dfx_frame_formatter.h"
+#include "dfx_log.h"
+#include "fp_backtrace.h"
+#include "unique_stack_table.h"
+#include "unwinder.h"
+#include "parameters.h"
+#include "async_context_manager.h"
+
+using namespace OHOS::HiviewDFX;
+static std::atomic<bool> g_init{false};
+static std::atomic<HiDebugSetSwitchCallbackFunc> g_hiDebugCallback{nullptr};
+static std::atomic<uint32_t> g_maxAsyncChainLayers{DEFAULT_MAX_ASYNC_CHAIN_LAYERS};
+static std::atomic<uint32_t> g_maxStackDepth{DEFAULT_MAX_STACK_DEPTH};
+static std::atomic<uint32_t> g_chainPoolSize{CHAIN_POOL_SIZE};
+
+uint32_t GetMaxAsyncChainLayers()
+{
+    return g_maxAsyncChainLayers.load();
+}
+
+uint32_t GetChainPoolSize()
+{
+    return g_chainPoolSize.load();
+}
+
+#if defined(__aarch64__)
+// Filter out illegal requests
+static std::atomic<uint64_t> g_enabledAsyncType = DEFAULT_ASYNC_TYPE;
+constexpr uint64_t UNSUPPORTED_CHAINED_STACK_TYPE =
+    ASYNC_TYPE_JSVM | ASYNC_TYPE_ARKWEB | ASYNC_TYPE_PROFILER;
+
+static pthread_key_t g_stackidKey;
+static std::unique_ptr<OHOS::HiviewDFX::FpBacktrace> g_fpBacktrace = nullptr;
+using SetStackIdFn = void(*)(uint64_t stackId);
+using CollectAsyncStackFn = uint64_t(*)(uint64_t type);
+using ReleaseContextFn = void(*)(uint64_t stackId);
+using GenericSetAsyncStackFn = void(*)(CollectAsyncStackFn collectAsyncStackFn, SetStackIdFn setStackIdFn);
+using GenericSetReleaseAsyncStackFn = void(*)(ReleaseContextFn releaseFn);
+
+typedef uint64_t(*GetStackIdFunc)(void);
+extern "C" void DFX_SetAsyncStackCallback(GetStackIdFunc func) __attribute__((weak));
+
+static std::atomic<DfxAsyncMode> g_mode{MODE_LAST_STACKTRACE};
+
+namespace {
+
+static void* PreloadArkWebEngineLib(const std::string arkwebEngineSandboxLibPath)
+{
+    Dl_namespace dlns;
+    Dl_namespace ndkns;
+    dlns_init(&dlns, "nweb_ns");
+    std::string bundleName = OHOS::system::GetParameter("persist.arkwebcore.package_name", "");
+    if (bundleName.empty()) {
+        DFXLOGE("Fail to get persist.arkwebcore.package_name");
+        return nullptr;
+    }
+    const std::string arkWebEngineLibPath = "/data/app/el1/bundle/public/" + bundleName + "/libs/arm64";
+
+    std::string libNsPath = arkWebEngineLibPath + ":" + arkwebEngineSandboxLibPath;
+    const std::string LIB_ARKWEB_ENGINE = "libarkweb_engine.so";
+    dlns_create(&dlns, libNsPath.c_str());
+    dlns_get("ndk", &ndkns);
+    dlns_inherit(&dlns, &ndkns, "allow_all_shared_libs");
+
+    void *webEngineHandle = dlopen_ns(&dlns, LIB_ARKWEB_ENGINE.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    if (webEngineHandle == nullptr) {
+        DFXLOGE("Fail to dlopen libarkweb_engine.so");
+    }
+    return webEngineHandle;
+}
+
+static inline void* OpenAsyncLib(uint64_t mask)
+{
+    if (mask & ASYNC_TYPE_ARKWEB) {
+        const std::string arkwebEngineSandboxLibPath = "/data/storage/el1/bundle/arkwebcore/libs/arm64";
+        return PreloadArkWebEngineLib(arkwebEngineSandboxLibPath);
+    }
+    if (mask & ASYNC_TYPE_JSVM) {
+        const char* v8SharedLibPath = "/system/lib64/libv8_shared.so";
+        return dlopen(v8SharedLibPath, RTLD_LAZY | RTLD_LOCAL);
+    }
+    return nullptr;
+}
+
+static void* GetArkwebHandle(uint64_t mask)
+{
+    static void* handle = OpenAsyncLib(mask);
+    return handle;
+}
+
+static void* GetJsvmHandle(uint64_t mask)
+{
+    static void* handle = OpenAsyncLib(mask);
+    return handle;
+}
+
+struct AsyncCallback {
+    const char* funcName;
+    const char* releaseFuncName;
+    uint64_t mask;
+};
+
+void SetAsyncStackCallback(const AsyncCallback& callback,
+    CollectAsyncStackFn collectAsyncStackFn, SetStackIdFn setStackIdFn, ReleaseContextFn releaseFn)
+{
+    void* handle = nullptr;
+    if (callback.mask & ASYNC_TYPE_ARKWEB) {
+        handle = GetArkwebHandle(callback.mask);
+    } else if (callback.mask & ASYNC_TYPE_JSVM) {
+        handle = GetJsvmHandle(callback.mask);
+    }
+    if (callback.releaseFuncName != nullptr) {
+        auto releaseFunc = reinterpret_cast<GenericSetReleaseAsyncStackFn>(
+            dlsym(handle == nullptr ? RTLD_DEFAULT : handle, callback.releaseFuncName));
+        if (releaseFunc != nullptr) {
+            releaseFunc(releaseFn);
+        }
+    }
+    auto asyncStackFn = reinterpret_cast<GenericSetAsyncStackFn>(
+        dlsym(handle == nullptr ? RTLD_DEFAULT : handle, callback.funcName));
+    if (asyncStackFn != nullptr) {
+        asyncStackFn(collectAsyncStackFn, setStackIdFn);
+    }
+}
+
+void UpdateAsyncStackCallbacks(uint64_t lastType, uint64_t currentType)
+{
+    static const AsyncCallback callbacks[] = {
+        {"EventSetAsyncStackFunc", nullptr, ASYNC_TYPE_EVENTHANDLER},
+        {"PromiseSetAsyncStackFunc", nullptr, ASYNC_TYPE_PROMISE},
+        {"CustomizeSetAsyncStackFunc", nullptr, ASYNC_TYPE_CUSTOMIZE},
+        {"FFRTSetAsyncStackFunc", nullptr, ASYNC_TYPE_FFRT_POOL | ASYNC_TYPE_FFRT_QUEUE},
+        {"ArkWebSetAsyncStackFunc", "ArkWebSetAsyncStackReleaseFunc", ASYNC_TYPE_ARKWEB},
+        {"JsvmSetAsyncStackFunc", "JsvmSetAsyncStackReleaseFunc", ASYNC_TYPE_JSVM}
+    };
+    for (const auto& callback : callbacks) {
+        // Whether this async type was enabled before the update (lastType).
+        const bool lastEnabled = (lastType & callback.mask) != 0;
+        // Whether this async type is enabled after the update (currentType).
+        const bool currentEnabled = (currentType & callback.mask) != 0;
+        if (lastEnabled && !currentEnabled) {
+            SetAsyncStackCallback(callback, nullptr, nullptr, nullptr);
+            continue;
+        }
+        if (!lastEnabled && currentEnabled) {
+            SetAsyncStackCallback(callback, DfxCollectAsyncStack, DfxSetSubmitterStackId, ReleaseAsyncContext);
+        }
+    }
+}
+} // namespace
+
+extern "C" DfxAsyncMode SetAsyncStackMode(DfxAsyncMode mode)
+{
+    if (mode == g_mode.load()) {
+        return g_mode.load();
+    }
+
+    if (mode == MODE_CHAINED_STACKTRACE) {
+        if (!DfxAsyncContextManager::Instance()->Init()) {
+            DFXLOGE("SetAsyncStackMode init async context manager failed");
+            return g_mode.load();
+        }
+        auto releaseFuncEH =
+        reinterpret_cast<GenericSetReleaseAsyncStackFn>(dlsym(RTLD_DEFAULT, "EventSetReleaseAsyncStackFunc"));
+        if (releaseFuncEH != nullptr) {
+            releaseFuncEH(ReleaseAsyncContext);
+        } else {
+            DFXLOGE("failed to set EventSetReleaseAsyncContext.");
+        }
+
+        auto releaseFuncUV =
+            reinterpret_cast<GenericSetReleaseAsyncStackFn>(dlsym(RTLD_DEFAULT, "LibuvSetReleaseAsyncContextFunc"));
+        if (releaseFuncUV != nullptr) {
+            releaseFuncUV(ReleaseAsyncContext);
+        } else {
+            DFXLOGE("failed to set LibuvSetReleaseAsyncContextFunc.");
+        }
+
+        auto uvSetAsyncStackFn =
+            reinterpret_cast<GenericSetAsyncStackFn>(dlsym(RTLD_DEFAULT, "LibuvSetAsyncStackFunc"));
+        if (uvSetAsyncStackFn != nullptr) {
+            uvSetAsyncStackFn(DfxCollectAsyncStack, DfxSetSubmitterStackId);
+        } else {
+            DFXLOGE("failed to set LibuvSetAsyncStackFunc.");
+        }
+
+        auto releaseFuncFFRT =
+            reinterpret_cast<GenericSetReleaseAsyncStackFn>(dlsym(RTLD_DEFAULT, "FFRTSetAsyncStackReleaseFunc"));
+        if (releaseFuncFFRT != nullptr) {
+            releaseFuncFFRT(ReleaseAsyncContext);
+        } else {
+            DFXLOGE("failed to set FFRTSetAsyncStackReleaseFunc.");
+        }
+        UpdateAsyncStackCallbacks(0, g_enabledAsyncType);
+    } else {
+        DfxAsyncContextManager::Instance()->DeInit();
+    }
+    DfxAsyncMode prev = g_mode.load();
+    g_mode.store(mode);
+    DFXLOGI("SetAsyncStackMode %{public}d", static_cast<int>(g_mode.load()));
+    return prev;
+}
+
+extern "C" int GetAsyncStackMode()
+{
+    return static_cast<int>(g_mode.load());
+}
+
+extern "C" int GetCurrentChainedAsyncContext(DfxAsyncCtx buffer[], size_t sz)
+{
+    if (sz == 0) {
+        DFXLOGW("GetCurrentChainedAsyncContext sz is 0");
+        return 0;
+    }
+    DfxAsyncContext* ctx = DfxAsyncContextManager::Instance()->GetCurrentContext();
+    if (ctx == nullptr) {
+        DFXLOGD("GetCurrentContext failed, ctx is nullptr");
+        return 0;
+    }
+    int32_t count = 0;
+    uint32_t layerLimit = g_maxAsyncChainLayers.load();
+    size_t loopCount = sz > static_cast<size_t>(layerLimit) ? static_cast<size_t>(layerLimit) : sz;
+    for (size_t i = 0; i < loopCount; i++) {
+        if (ctx->ctxs[i].id == 0) {
+            break;
+        }
+        buffer[i].type = ctx->ctxs[i].type;
+        buffer[i].id = ctx->ctxs[i].id;
+        count++;
+    }
+    return count;
+}
+
+extern "C" void ReleaseAsyncContext(uint64_t stackId)
+{
+    if (g_mode.load() == MODE_LAST_STACKTRACE) {
+        return;
+    }
+
+    DfxAsyncContextManager::Instance()->RecycleAsyncContext(reinterpret_cast<DfxAsyncContext*>(stackId));
+}
+
+static inline uint64_t CollectStackByFp(void** pcArray, uint32_t depth)
+{
+    size_t size = g_fpBacktrace->BacktraceFromFp(__builtin_frame_address(0), pcArray, depth, true);
+    uint64_t stackId = 0;
+    auto stackIdPtr = reinterpret_cast<StackId*>(&stackId);
+    uintptr_t* pcs = reinterpret_cast<uintptr_t*>(pcArray);
+    UniqueStackTable::Instance()->PutPcsInTable(stackIdPtr, pcs, size);
+    return stackId;
+}
+
+extern "C" uint64_t DfxCollectAsyncStack(uint64_t type)
+{
+    if (!g_init.load() || g_fpBacktrace == nullptr) {
+        return DFX_INVALID_STACK_ID;
+    }
+    uint64_t isTargetType = type & g_enabledAsyncType;
+    if (isTargetType == 0) {
+        return DFX_INVALID_STACK_ID;
+    }
+    const uint32_t maxDepthLimit = MAX_STACK_DEPTH_LIMIT;
+    uint32_t depth = g_maxStackDepth.load();
+    if (depth > maxDepthLimit) {
+        depth = maxDepthLimit;
+    }
+    void* pcArray[maxDepthLimit] = {0};
+    uint64_t stackId = CollectStackByFp(pcArray, depth);
+    if ((g_mode.load() == MODE_CHAINED_STACKTRACE) &&
+        !(type & UNSUPPORTED_CHAINED_STACK_TYPE)) {
+        stackId =
+            reinterpret_cast<uint64_t>(DfxAsyncContextManager::Instance()->HandleCollectAsyncStack(stackId, type));
+    }
+    return stackId;
+}
+
+extern "C" uint64_t DfxCollectStackWithDepth(uint64_t type, size_t depth)
+{
+    if (!g_init.load() || g_fpBacktrace == nullptr) {
+        return DFX_INVALID_STACK_ID;
+    }
+    uint64_t isTargetType = type & g_enabledAsyncType;
+    if (isTargetType == 0) {
+        return DFX_INVALID_STACK_ID;
+    }
+    // Maximum collection of 256 frames
+    const uint32_t maxSize = 256;
+    const uint32_t realDepth = depth > maxSize ? maxSize : static_cast<uint32_t>(depth);
+    void* pcArray[maxSize] = {0};
+    uint64_t stackId = CollectStackByFp(pcArray, realDepth);
+    if ((g_mode.load() == MODE_CHAINED_STACKTRACE) &&
+        !(type & UNSUPPORTED_CHAINED_STACK_TYPE)) {
+        stackId =
+            reinterpret_cast<uint64_t>(DfxAsyncContextManager::Instance()->HandleCollectAsyncStack(stackId, type));
+    }
+    return stackId;
+}
+
+extern "C" uint64_t DfxSetAsyncStackType(uint64_t asyncType)
+{
+    uint64_t lastType = g_enabledAsyncType.exchange(asyncType);
+    UpdateAsyncStackCallbacks(lastType, asyncType);
+    return lastType;
+}
+
+extern "C" void DfxSetSubmitterStackId(uint64_t stackId)
+{
+    if (!g_init.load()) {
+        return;
+    }
+
+    if (g_mode.load() == MODE_LAST_STACKTRACE) {
+        pthread_setspecific(g_stackidKey, reinterpret_cast<void *>(stackId));
+    } else {
+        DfxAsyncContextManager::Instance()->SetCurrentThreadContext(stackId);
+    }
+}
+
+extern "C" void DfxPopSubmitterStackId(uint64_t stackId)
+{
+    if (!g_init.load()) {
+        return;
+    }
+
+    if (g_mode.load() == MODE_LAST_STACKTRACE) {
+        if (stackId == reinterpret_cast<uint64_t>(pthread_getspecific(g_stackidKey))) {
+            pthread_setspecific(g_stackidKey, reinterpret_cast<void *>(0));
+        }
+    } else {
+        DfxAsyncContextManager::Instance()->PopCurrentThreadContext(stackId);
+    }
+}
+
+void DfxSetAsyncStackCallback(void)
+{
+    // set callback for DfxSignalHandler to read stackId
+    if (DFX_SetAsyncStackCallback == nullptr) {
+        return;
+    }
+    DFX_SetAsyncStackCallback(DfxGetSubmitterStackId);
+    const char* uvSetAsyncStackFnName = "LibuvSetAsyncStackFunc";
+    auto uvSetAsyncStackFn = reinterpret_cast<GenericSetAsyncStackFn>(dlsym(RTLD_DEFAULT, uvSetAsyncStackFnName));
+    if (uvSetAsyncStackFn != nullptr) {
+        uvSetAsyncStackFn(DfxCollectAsyncStack, DfxSetSubmitterStackId);
+    }
+    const char* debuggableEnv = getenv("HAP_DEBUGGABLE");
+    if (debuggableEnv != nullptr && strcmp(debuggableEnv, "true") == 0) {
+        const char* ffrtSetAsyncStackFnName = "FFRTSetAsyncStackFunc";
+        auto ffrtSetAsyncStackFn = reinterpret_cast<GenericSetAsyncStackFn>(
+            dlsym(RTLD_DEFAULT, ffrtSetAsyncStackFnName));
+        if (ffrtSetAsyncStackFn != nullptr) {
+            g_enabledAsyncType.fetch_or(ASYNC_TYPE_FFRT_QUEUE | ASYNC_TYPE_FFRT_POOL);
+            ffrtSetAsyncStackFn(DfxCollectAsyncStack, DfxSetSubmitterStackId);
+        }
+    }
+}
+#endif
+
+bool DfxInitAsyncStack()
+{
+#if defined(__aarch64__)
+    // init unique stack table
+    if (!OHOS::HiviewDFX::UniqueStackTable::Instance()->Init()) {
+        DFXLOGE("failed to init unique stack table?.");
+        return false;
+    }
+
+    if (pthread_key_create(&g_stackidKey, nullptr) != 0) {
+        DFXLOGE("failed to create key for stackId.");
+        return false;
+    }
+    g_fpBacktrace = std::unique_ptr<OHOS::HiviewDFX::FpBacktrace>(OHOS::HiviewDFX::FpBacktrace::CreateInstance());
+    DfxSetAsyncStackCallback();
+    g_init.store(true);
+#endif
+    return g_init.load();
+}
+
+extern "C" void DfxSetHiDebugAsyncStackCallback(HiDebugSetSwitchCallbackFunc func)
+{
+    g_hiDebugCallback.store(func, std::memory_order_release);
+}
+
+#if defined(__aarch64__)
+static void DfxInvokeHiDebugCallback()
+{
+    const char* debuggableEnv = getenv("HAP_DEBUGGABLE");
+    if (debuggableEnv == nullptr || strcmp(debuggableEnv, "true") != 0) {
+        DFXLOGW("No debuggable env!");
+        return;
+    }
+
+    HiDebugSetSwitchCallbackFunc callback = g_hiDebugCallback.load(std::memory_order_acquire);
+    if (callback != nullptr) {
+        const std::string enableDeveloperStackParam =
+            OHOS::system::GetParameter("hilog.debug.async_stack.enable_developer_stack", "false");
+        bool enableDeveloperStack = (enableDeveloperStackParam == "true");
+        callback(enableDeveloperStack);
+    }
+}
+#endif
+
+extern "C" bool DfxInitProfilerAsyncStack(void* buffer, size_t size)
+{
+#if defined(__aarch64__)
+    // init unique stack table
+    static std::mutex profilerInitMutex;
+    std::lock_guard<std::mutex> guard(profilerInitMutex);
+    if (!OHOS::HiviewDFX::UniqueStackTable::Instance()->SwitchExternalBuffer(buffer, size)) {
+        DFXLOGE("failed to init unique stack table?.");
+        return false;
+    }
+    DfxInvokeHiDebugCallback();
+    if (g_init.load()) {
+        return g_init.load();
+    }
+    if (pthread_key_create(&g_stackidKey, nullptr) != 0) {
+        DFXLOGE("failed to create key for stackId.");
+        return false;
+    }
+    g_fpBacktrace = std::unique_ptr<OHOS::HiviewDFX::FpBacktrace>(OHOS::HiviewDFX::FpBacktrace::CreateInstance());
+    DfxSetAsyncStackCallback();
+    g_init.store(true);
+#endif
+    return g_init.load();
+}
+
+extern "C" void SetChainedAsyncStackConfig(uint32_t maxLayer, uint32_t maxStackDepth, uint32_t maxChainPoolSize)
+{
+    if (maxLayer == 0) {
+        DFXLOGW("SetChainedAsyncStackConfig clamp maxLayer %{public}u to 1", maxLayer);
+        maxLayer = 1;
+    } else if (maxLayer > MAX_ASYNC_CHAIN_LAYERS_LIMIT) {
+        DFXLOGW("SetChainedAsyncStackConfig clamp maxLayer %{public}u to %{public}u",
+            maxLayer, MAX_ASYNC_CHAIN_LAYERS_LIMIT);
+        maxLayer = MAX_ASYNC_CHAIN_LAYERS_LIMIT;
+    }
+    if (maxStackDepth == 0) {
+        DFXLOGW("SetChainedAsyncStackConfig clamp maxStackDepth %{public}u to 1", maxStackDepth);
+        maxStackDepth = 1;
+    } else if (maxStackDepth > MAX_STACK_DEPTH_LIMIT) {
+        DFXLOGW("SetChainedAsyncStackConfig clamp maxStackDepth %{public}u to %{public}u",
+            maxStackDepth, MAX_STACK_DEPTH_LIMIT);
+        maxStackDepth = MAX_STACK_DEPTH_LIMIT;
+    }
+    if (maxChainPoolSize < maxLayer + 1) {
+        DFXLOGW("SetChainedAsyncStackConfig clamp maxChainPoolSize %{public}u to %{public}u",
+            maxChainPoolSize, maxLayer + 1);
+        maxChainPoolSize = maxLayer + 1;
+    } else if (maxChainPoolSize > MAX_CHAIN_POOL_SIZE_LIMIT) {
+        DFXLOGW("SetChainedAsyncStackConfig clamp maxChainPoolSize %{public}u to %{public}u",
+            maxChainPoolSize, MAX_CHAIN_POOL_SIZE_LIMIT);
+        maxChainPoolSize = MAX_CHAIN_POOL_SIZE_LIMIT;
+    }
+    g_maxAsyncChainLayers.store(maxLayer);
+    g_maxStackDepth.store(maxStackDepth);
+    g_chainPoolSize.store(maxChainPoolSize);
+    DFXLOGI("SetChainedAsyncStackConfig maxLayer %{public}u, maxStackDepth %{public}u, maxChainPoolSize %{public}u",
+        maxLayer, maxStackDepth, maxChainPoolSize);
+}
+
+extern "C" uint64_t DfxGetSubmitterStackId()
+{
+#if defined(__aarch64__)
+    if (!g_init.load()) {
+        return 0;
+    }
+    return reinterpret_cast<uint64_t>(pthread_getspecific(g_stackidKey));
+#else
+    return 0;
+#endif
+}
+
+extern "C" int DfxGetSubmitterStackLocal(char* stackTraceBuf, size_t bufferSize)
+{
+#if defined(__aarch64__)
+    uint64_t stackId = reinterpret_cast<uint64_t>(pthread_getspecific(g_stackidKey));
+    std::vector<uintptr_t> pcs;
+    StackId id;
+    id.value = stackId;
+    if (!OHOS::HiviewDFX::UniqueStackTable::Instance()->GetPcsByStackId(id, pcs)) {
+        DFXLOGW("Failed to get pcs by stackId");
+        return -1;
+    }
+    std::vector<DfxFrame> submitterFrames;
+    Unwinder unwinder;
+    std::string stackTrace;
+    unwinder.GetFramesByPcs(submitterFrames, pcs);
+    for (const auto& frame : submitterFrames) {
+        stackTrace += DfxFrameFormatter::GetFrameStr(frame);
+    }
+    auto result = strncpy_s(stackTraceBuf, bufferSize, stackTrace.c_str(), stackTrace.size());
+    if (result != EOK) {
+        DFXLOGE("strncpy failed, err = %{public}d.", result);
+        return -1;
+    }
+    return 0;
+#else
+    return -1;
+#endif
+}

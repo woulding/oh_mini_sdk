@@ -1,0 +1,108 @@
+{
+    "string":[
+        {
+            "name":"dm_enter_connect_code",
+            "value":"[TS_917660]_Enter the connection code shown on the other device."
+        },
+        {
+            "name":"dm_is_trust_device",
+            "value":"[TS_917651]_%s Trust this device?"
+        },
+        {
+            "name":"ServiceExtAbility_desc",
+            "value":"[TS_917650]_ServiceExtAbility_desc"
+        },
+        {
+            "name":"dm_connect_code",
+            "value":"[TS_917664]_Connection code"
+        },
+        {
+            "name":"dm_cancel",
+            "value":"[TS_917654]_Cancel"
+        },
+        {
+            "name":"dm_authenticating",
+            "value":"[TS_917655]_Authenticating…"
+        },
+        {
+            "name":"dm_connect_device",
+            "value":"[TS_917648]_%s would like to connect to your device."
+        },
+        {
+            "name":"dm_connect",
+            "value":"[TS_917653]_Connect to %s"
+        },
+        {
+            "name":"dm_allow_temp",
+            "value":"[TS_917659]_Trust this time"
+        },
+        {
+            "name":"entry_desc",
+            "value":"[TS_917656]_entry_desc"
+        },
+        {
+            "name":"ServiceExtAbility_label",
+            "value":"[TS_917665]_ServiceExtAbility_label"
+        },
+        {
+            "name":"MainAbility_desc",
+            "value":"[TS_917662]_manager device manager dialog"
+        },
+        {
+            "name":"MainAbility_label",
+            "value":"[TS_917663]_device manager ui"
+        },
+        {
+            "name":"dm_allow_always",
+            "value":"[TS_917657]_Always trust"
+        },
+        {
+            "name":"dm_confirm_title_cast",
+            "value":"[TS_931359]_%s would like to mirror their screen on your device. Trust this device?"
+        },
+        {
+            "name":"dm_confirm_title_hap",
+            "value":"[TS_931358]_%1$s on %2$s would like to access this device. Trust this app?"
+        },
+        {
+            "name":"dm_bluetooth_dialog_close",
+            "value":"[TS_933058]_OK"
+        },
+        {
+            "name":"dm_bluetooth_dialog_content",
+            "value":"[TS_933059]_Bluetooth needs to be enabled to connect to another device. Please enable it and try again."
+        },
+        {
+            "name":"dm_confirm_intention",
+            "value":"[TS_931360]_This is required for cross-device data syncing and collaboration."
+        },
+        {
+            "name":"dm_password_error",
+            "value":"[TS_958913]_Incorrect password. Connection failed."
+        },
+        {
+            "name":"dm_enter_peer_connect_code",
+            "value":"[TS_949559]_Enter connection code"
+        },
+        {
+            "name":"dm_allow_this_time",
+            "value":"[TS_1054456]_Trust this time only"
+        },
+        {
+            "name":"dm_confirm_proxy",
+            "value":"[TS_1085103]_\"%s\" would like to connect to this device. Please select which services it can access:"
+        },
+        {
+            "name":"serve_confirm_trust_nohost",
+            "value":"[TS_1174758]_%1$s would like to access the %2$s service on your device. Trust this device?"
+        },
+        {
+            "name":"serve_confirm_trust",
+            "value":"[TS_1174759]_The %2$s app on %1$s would like to access the %3$s service on your device. Trust this app?"
+        },
+        {
+            "name":"serve_agency_confirm_proxy",
+            "value":"[TS_1174760]_%s would like to connect to services on your device. Select services to authorize:"
+        }
+    ]
+}

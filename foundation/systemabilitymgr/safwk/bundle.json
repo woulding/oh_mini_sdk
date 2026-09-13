@@ -1,0 +1,97 @@
+{
+    "name": "@ohos/safwk",
+    "description": "system ability framework",
+    "homePage": "https://gitee.com/openharmony",
+    "version": "3.1",
+    "license": "Apache License 2.0",
+    "repository": "https://gitee.com/openharmony/systemabilitymgr_safwk",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "foundation/systemabilitymgr/safwk"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "safwk",
+        "subsystem": "systemabilitymgr",
+        "features": [
+            "safwk_feature_coverage",
+            "safwk_enable_run_on_demand_qos",
+            "safwk_feature_support_saspawn"
+        ],
+        "adapted_system_type": [
+            "standard"
+        ],
+        "rom": "200KB",
+        "ram": "7130KB",
+        "deps": {
+            "components": [
+                "ffrt",
+                "hilog",
+                "hitrace",
+                "ipc",
+                "init",
+                "json",
+                "samgr",
+                "c_utils",
+                "access_token",
+                "rust_cxx",
+                "ylong_runtime",
+                "hisysevent"
+            ]
+        },
+        "build": {
+            "group_type": {
+                "base_group": [
+                    "//foundation/systemabilitymgr/safwk/etc/profile:foundation_cfg",
+                    "//foundation/systemabilitymgr/safwk/etc/profile:foundation_trust",
+                    "//foundation/systemabilitymgr/safwk/services/safwk:sa_main",
+                    "//foundation/systemabilitymgr/safwk/svc:svc",
+                    "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk:system_ability_fwk",
+                    "//foundation/systemabilitymgr/safwk/services/safwk:sa_start_group"
+                ],
+                "fwk_group": [],
+                "service_group": []
+            },
+            "inner_kits": [
+                {
+                    "header": {
+                        "header_base": "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk",
+                        "header_files": [
+                            "system_ability.h",
+                            "system_ability_ondemand_reason.h"
+                        ]
+                    },
+                    "name": "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk:system_ability_fwk"
+                },
+                {
+                    "header": {
+                        "header_base": [],
+                        "header_files": []
+                    },
+                    "name": "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk/rust:system_ability_fwk_rust"
+                },
+                {
+                    "header": {
+                        "header_base": [],
+                        "header_files": []
+                    },
+                    "name": "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk:system_ability_ondemand_reason"
+                },
+                {
+                    "header": {
+                        "header_base": "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk",
+                        "header_files": [
+                            "api_cache_manager.h"
+                        ]
+                    },
+                    "name": "//foundation/systemabilitymgr/safwk/interfaces/innerkits/safwk:api_cache_manager"
+                }
+            ],
+            "test": [
+                "//foundation/systemabilitymgr/safwk/test:unittest",
+                "//foundation/systemabilitymgr/safwk/test/fuzztest/systemabilityfwk_fuzzer:fuzztest"
+            ]
+        }
+    }
+}

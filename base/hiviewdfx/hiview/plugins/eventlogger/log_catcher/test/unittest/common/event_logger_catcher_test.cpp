@@ -1,0 +1,2024 @@
+ /*
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#include "event_logger_catcher_test.h"
+
+#include <ctime>
+#include <fstream>
+#include <iostream>
+#include <memory>
+
+#include <fcntl.h>
+#include <sys/prctl.h>
+#include <unistd.h>
+#include <string>
+
+#include "securec.h"
+#include "common_utils.h"
+#include "file_util.h"
+#define private public
+#ifdef DMESG_CATCHER_ENABLE
+#include "dmesg_catcher.h"
+#include "time_util.h"
+#endif // DMESG_CATCHER_ENABLE
+#include "event_log_task.h"
+#ifdef STACKTRACE_CATCHER_ENABLE
+#include "open_stacktrace_catcher.h"
+#endif // STACKTRACE_CATCHER_ENABLE
+#include "shell_catcher.h"
+#ifdef BINDER_CATCHER_ENABLE
+#include "peer_binder_catcher.h"
+#include "parameter_ex.h"
+#endif // BINDER_CATCHER_ENABLE
+#ifdef USAGE_CATCHER_ENABLE
+#include "cpu_core_info_catcher.h"
+#include "memory_catcher.h"
+#endif // USAGE_CATCHER_ENABLE
+#include "summary_log_info_catcher.h"
+#undef private
+#ifdef BINDER_CATCHER_ENABLE
+#include "binder_catcher.h"
+#endif // BINDER_CATCHER_ENABLE
+#ifdef OTHER_CATCHER_ENABLE
+#include "ffrt_catcher.h"
+#endif // OTHER_CATCHER_ENABLE
+#include "event_logger.h"
+#include "event_log_catcher.h"
+#include "sys_event.h"
+#include "hisysevent.h"
+#include "eventlogger_util_test.h"
+#include "log_catcher_utils.h"
+#include "thermal_info_catcher.h"
+#ifdef HILOG_CATCHER_ENABLE
+#include "light_hilog_catcher.h"
+#endif
+
+using namespace testing::ext;
+using namespace OHOS::HiviewDFX;
+
+namespace OHOS {
+namespace HiviewDFX {
+void EventloggerCatcherTest::SetUp()
+{
+    /**
+     * @tc.setup: create an event loop and multiple event handlers
+     */
+    printf("SetUp.\n");
+    InitSeLinuxEnabled();
+}
+
+void EventloggerCatcherTest::TearDown()
+{
+    /**
+     * @tc.teardown: destroy the event loop we have created
+     */
+    CancelSeLinuxEnabled();
+    printf("TearDown.\n");
+}
+
+/**
+ * @tc.name: EventLogCatcher
+ * @tc.desc: test EventLogCatcher
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventLogCatcherTest_001, TestSize.Level3)
+{
+    auto eventLogCatcher = std::make_shared<EventLogCatcher>();
+    EXPECT_TRUE(eventLogCatcher->GetLogSize() == -1);
+    eventLogCatcher->SetLogSize(1);
+    EXPECT_TRUE(eventLogCatcher->GetLogSize() == 1);
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    int res = eventLogCatcher->Catch(fd, 1);
+    EXPECT_TRUE(res == 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventLogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_001, TestSize.Level0)
+{
+    auto fd = open("/data/test/testFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create testFile. errno: %d\n", errno);
+        FAIL();
+    }
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(fd, 1, sysEvent);
+    logTask->AddStopReason(fd, nullptr, "Test");
+    auto eventLogCatcher = std::make_shared<EventLogCatcher>();
+    logTask->AddStopReason(fd, eventLogCatcher, "Test");
+    logTask->AddSeparator(fd, eventLogCatcher);
+    bool ret = logTask->ShouldStopLogTask(fd, 1, -1, eventLogCatcher);
+    EXPECT_EQ(ret, false);
+    ret = logTask->ShouldStopLogTask(fd, 1, 20000, eventLogCatcher);
+    EXPECT_EQ(ret, false);
+    logTask->status_ = EventLogTask::Status::TASK_TIMEOUT;
+    ret = logTask->ShouldStopLogTask(fd, 0, 1, eventLogCatcher);
+    EXPECT_EQ(ret, true);
+    close(fd);
+}
+
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventlogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_002, TestSize.Level3)
+{
+    auto fd = open("/data/test/testFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create testFile. errno: %d\n", errno);
+        FAIL();
+    }
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(fd, 1, sysEvent);
+    EXPECT_EQ(logTask->GetTaskStatus(), EventLogTask::Status::TASK_RUNNABLE);
+    auto ret = logTask->StartCompose();
+    EXPECT_EQ(ret, 2);
+    EXPECT_EQ(logTask->GetTaskStatus(), EventLogTask::Status::TASK_RUNNING);
+    ret = logTask->StartCompose();
+    EXPECT_EQ(ret, 1);
+    EXPECT_EQ(logTask->GetLogSize(), 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventlogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_003, TestSize.Level3)
+{
+    auto fd = open("/data/test/testFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create testFile. errno: %d\n", errno);
+        FAIL();
+    }
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(fd, 1, sysEvent);
+    logTask->AddLog("cmd:scbCS");
+#ifdef STACKTRACE_CATCHER_ENABLE
+    logTask->AppStackCapture();
+    logTask->SystemStackCapture();
+    logTask->RemoteStackCapture();
+    logTask->GetGPUProcessStack();
+#endif // STACKTRACE_CATCHER_ENABLE
+
+#ifdef BINDER_CATCHER_ENABLE
+    logTask->BinderLogCapture();
+    EXPECT_EQ(logTask->PeerBinderCapture("Test"), false);
+    EXPECT_EQ(logTask->PeerBinderCapture("pb"), false);
+    EXPECT_EQ(logTask->PeerBinderCapture("pb:1:a"), true);
+#endif // BINDER_CATCHER_ENABLE
+
+#ifdef HILOG_CATCHER_ENABLE
+    logTask->HilogCapture();
+    logTask->LightHilogCapture();
+    logTask->InputHilogCapture();
+#endif // HILOG_CATCHER_ENABLE
+
+#ifdef SCB_CATCHER_ENABLE
+    logTask->SCBSessionCapture();
+    logTask->SCBViewParamCapture();
+    logTask->SCBWMSCapture();
+    logTask->SCBWMSEVTCapture();
+#endif // SCB_CATCHER_ENABLE
+
+#ifdef USAGE_CATCHER_ENABLE
+    logTask->DumpAppMapCapture();
+    logTask->WMSUsageCapture();
+    logTask->AMSUsageCapture();
+    logTask->PMSUsageCapture();
+    logTask->DPMSUsageCapture();
+    logTask->RSUsageCapture();
+    logTask->MemoryUsageCapture();
+    logTask->CpuUsageCapture();
+    logTask->CpuCoreInfoCapture();
+#endif // USAGE_CATCHER_ENABLE
+
+#ifdef DMESG_CATCHER_ENABLE
+    logTask->DmesgCapture(0, 0);
+    logTask->DmesgCapture(0, 1);
+    logTask->DmesgCapture(0, 1, true);
+    logTask->DmesgCapture(1, 1);
+    logTask->DmesgCapture(0, 2);
+    logTask->DmesgCapture(0, 2, true);
+    logTask->DmesgCapture(1, 2);
+    logTask->DmesgCapture(0, 3);
+    logTask->DmesgCapture(1, 3);
+#endif // DMESG_CATCHER_ENABLE
+
+#ifdef OTHER_CATCHER_ENABLE
+    logTask->Screenshot();
+    logTask->FfrtCapture();
+    logTask->DMSUsageCapture();
+    logTask->MMIUsageCapture();
+    logTask->EECStateCapture();
+    logTask->GECStateCapture();
+    logTask->UIStateCapture();
+#endif // OTHER_CATCHER_ENABLE
+
+#ifdef HITRACE_CATCHER_ENABLE
+    logTask->HitraceCapture(false);
+    sysEvent->eventName_ = "THREAD_BLOCK_6S";
+    sysEvent->SetValue("PROCESS_NAME", "EventloggerCatcherTest");
+    logTask->HitraceCapture(true);
+#endif // HITRACE_CATCHER_ENABLE
+    logTask->GetThermalInfoCapture();
+    logTask->AddLog("Test");
+    logTask->AddLog("cmd:w");
+    logTask->status_ = EventLogTask::Status::TASK_RUNNING;
+    auto ret = logTask->StartCompose();
+    printf("task size: %d\n", static_cast<int>(logTask->tasks_.size()));
+
+    close(fd);
+}
+
+#ifdef STACKTRACE_CATCHER_ENABLE
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventlogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_004, TestSize.Level3)
+{
+    auto fd = open("/data/test/testFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create testFile. errno: %d\n", errno);
+        FAIL();
+    }
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(fd, 1, sysEvent);
+    logTask->GetStackByProcessName();
+    sysEvent->SetEventValue("PROCESS_NAME", "EventloggerCatcherTest");
+    logTask->GetStackByProcessName();
+    EXPECT_TRUE(logTask != nullptr);
+}
+#endif // STACKTRACE_CATCHER_ENABLE
+
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventlogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_005, TestSize.Level3)
+{
+    auto fd = open("/data/test/vreFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create vreFile. errno: %d\n", errno);
+        FAIL();
+    }
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    sysEvent->SetEventValue("PID", getpid());
+    sysEvent->SetEventValue("APPNODEID", 2025);
+    sysEvent->SetEventValue("APPNODENAME", "test appNodeName");
+    sysEvent->SetEventValue("LEASHWINDOWID", 319);
+    sysEvent->SetEventValue("LEASHWINDOWNAME", "test leashWindowName");
+    sysEvent->SetEventValue("EXT_INFO", "test ext_info");
+    sysEvent->SetEventValue("PROCESS_NAME", "EventloggerCatcherTest");
+ 
+    sysEvent->domain_ = "AAFWK";
+    sysEvent->eventName_ = "APP_INPUT_BLOCK";
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(fd, 1, sysEvent);
+    logTask->SaveRsVulKanError();
+    sysEvent->domain_ = "GRAPHIC";
+    sysEvent->eventName_ = "RS_VULKAN_ERROR";
+    logTask->SaveRsVulKanError();
+    close(fd);
+ 
+    std::string line;
+    std::ifstream ifs("/data/test/vreFile", std::ios::in);
+    if (ifs.is_open()) {
+        while (std::getline(ifs, line)) {
+            if (line.find("APPNODEID") != std::string::npos) {
+                printf("%s", line.c_str());
+                EXPECT_EQ(line, "APPNODEID=2025");
+            }
+            if (line.find("EXT_INFO") != std::string::npos) {
+                printf("%s", line.c_str());
+                EXPECT_EQ(line, "EXT_INFO=test ext_info");
+            }
+        }
+    }
+    EXPECT_EQ(sysEvent->GetEventValue("PROCESS_NAME"), "EventloggerCatcherTest");
+}
+
+#if defined(KERNELSTACK_CATCHER_ENABLE) && defined(DMESG_CATCHER_ENABLE)
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventlogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_006, TestSize.Level3)
+{
+    auto fd = open("/data/test/testFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create testFile. errno: %d\n", errno);
+        FAIL();
+    }
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(fd, 1, sysEvent);
+    logTask->SysrqCapture(true);
+    sysEvent->SetEventValue("SPECIFICSTACK_NAME", "foundation");
+    logTask->SysrqCapture(true);
+    EXPECT_TRUE(logTask != nullptr);
+}
+#endif
+
+#ifdef SCB_CATCHER_ENABLE
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventLogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_SCBWMSCapture_001, TestSize.Level0)
+{
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(-1, 1, sysEvent);
+    WindowIdInfo windowInfo;
+    windowInfo.focusWindowId = "focusWindowId";
+    windowInfo.softKeyboardWindowId = "softKeyboardWindowId";
+    windowInfo.screenLockWindowId = "screenLockWindowId";
+    windowInfo.statusBarWindowId = "statusBarWindowId";
+    logTask->SetFocusWindowId(windowInfo);
+    logTask->SCBWMSCapture();
+
+    printf("task size: %d\n", static_cast<int>(logTask->tasks_.size()));
+
+    EXPECT_EQ(logTask->tasks_.size(), 4);
+}
+
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventLogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_SCBWMSCapture_002, TestSize.Level0)
+{
+    /**
+     * @tc.steps: step1. Create EventLogTask with focus window only
+     */
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(-1, 1, sysEvent);
+    WindowIdInfo windowInfo;
+    windowInfo.focusWindowId = "focusWindowId";
+    logTask->SetFocusWindowId(windowInfo);
+
+    /**
+     * @tc.steps: step2. Call SCBWMSCapture
+     */
+    logTask->SCBWMSCapture();
+
+    /**
+     * @tc.steps: step3. Verify tasks_ vector contains exactly one task
+     */
+    printf("task size: %d\n", static_cast<int>(logTask->tasks_.size()));
+    EXPECT_EQ(logTask->tasks_.size(), 1);
+
+    /**
+     * @tc.steps: step4. Verify the task is ShellCatcher with correct properties
+     */
+    auto shellCatcher = std::static_pointer_cast<ShellCatcher>(logTask->tasks_[0]);
+    ASSERT_NE(shellCatcher, nullptr);
+    
+    EXPECT_EQ(shellCatcher->focusWindowId_, "focusWindowId");
+    EXPECT_EQ(shellCatcher->catcherType_, ShellCatcher::CATCHER_SCBWMS);
+    EXPECT_TRUE(shellCatcher->catcherCmd_.find("focusWindowId") != std::string::npos);
+    EXPECT_TRUE(shellCatcher->catcherCmd_.find("-simplify") != std::string::npos);
+}
+
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventLogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_SCBWMSCapture_003, TestSize.Level0)
+{
+    /**
+     * @tc.steps: step1. Create EventLogTask with focus window and softKeyboard window
+     */
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(-1, 1, sysEvent);
+    WindowIdInfo windowInfo;
+    windowInfo.focusWindowId = "focusWindowId";
+    windowInfo.softKeyboardWindowId = "softKeyboardWindowId";
+    logTask->SetFocusWindowId(windowInfo);
+
+    /**
+     * @tc.steps: step2. Call SCBWMSCapture
+     */
+    logTask->SCBWMSCapture();
+
+    /**
+     * @tc.steps: step3. Verify tasks_ vector contains exactly two task
+     */
+    printf("task size: %d\n", static_cast<int>(logTask->tasks_.size()));
+    EXPECT_EQ(logTask->tasks_.size(), 2);
+
+    /**
+     * @tc.steps: step4. Verify the task is ShellCatcher with correct properties
+     */
+    auto shellCatcher = std::static_pointer_cast<ShellCatcher>(logTask->tasks_[1]);
+    ASSERT_NE(shellCatcher, nullptr);
+    
+    EXPECT_EQ(shellCatcher->focusWindowId_, "softKeyboardWindowId");
+    EXPECT_EQ(shellCatcher->catcherType_, ShellCatcher::CATCHER_SCBWMS);
+    EXPECT_TRUE(shellCatcher->catcherCmd_.find("softKeyboardWindowId") != std::string::npos);
+    EXPECT_TRUE(shellCatcher->catcherCmd_.find("-simplify") != std::string::npos);
+}
+
+/**
+ * @tc.name: EventlogTask
+ * @tc.desc: test EventLogTask
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, EventlogTask_SCBWMSCapture_004, TestSize.Level0)
+{
+    /**
+     * @tc.steps: step1. Create EventLogTask with focus window ，screenLock window and statusBar window
+     */
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(-1, 1, sysEvent);
+    WindowIdInfo windowInfo;
+    windowInfo.focusWindowId = "focusWindowId";
+    windowInfo.screenLockWindowId = "screenLockWindowId";
+    windowInfo.statusBarWindowId = "statusBarWindowId";
+    logTask->SetFocusWindowId(windowInfo);
+
+    /**
+     * @tc.steps: step2. Call SCBWMSCapture
+     */
+    logTask->SCBWMSCapture();
+
+    /**
+     * @tc.steps: step3. Verify tasks_ vector contains exactly three task
+     */
+    printf("task size: %d\n", static_cast<int>(logTask->tasks_.size()));
+    EXPECT_EQ(logTask->tasks_.size(), 3);
+
+    /**
+     * @tc.steps: step4. Verify the task is ShellCatcher with correct properties
+     */
+    auto shellCatcherLock = std::static_pointer_cast<ShellCatcher>(logTask->tasks_[1]);
+    ASSERT_NE(shellCatcherLock, nullptr);
+    
+    EXPECT_EQ(shellCatcherLock->focusWindowId_, "screenLockWindowId");
+    EXPECT_EQ(shellCatcherLock->catcherType_, ShellCatcher::CATCHER_SCBWMS);
+    EXPECT_TRUE(shellCatcherLock->catcherCmd_.find("screenLockWindowId") != std::string::npos);
+    EXPECT_TRUE(shellCatcherLock->catcherCmd_.find("-simplify -compname SCBScreenLock") != std::string::npos);
+
+    auto shellCatcherBar = std::static_pointer_cast<ShellCatcher>(logTask->tasks_[2]);
+    ASSERT_NE(shellCatcherBar, nullptr);
+    
+    EXPECT_EQ(shellCatcherBar->focusWindowId_, "statusBarWindowId");
+    EXPECT_EQ(shellCatcherBar->catcherType_, ShellCatcher::CATCHER_SCBWMS);
+    EXPECT_TRUE(shellCatcherBar->catcherCmd_.find("statusBarWindowId") != std::string::npos);
+    EXPECT_TRUE(shellCatcherBar->catcherCmd_.find("-simplify -compname SCBStatusBar") != std::string::npos);
+}
+#endif // SCB_CATCHER_ENABLE
+
+#ifdef BINDER_CATCHER_ENABLE
+/**
+ * @tc.name: BinderCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, BinderCatcherTest_001, TestSize.Level1)
+{
+    auto binderCatcher = std::make_shared<BinderCatcher>();
+    bool ret = binderCatcher->Initialize("test", 1, 2);
+    EXPECT_EQ(ret, true);
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    int res = binderCatcher->Catch(fd, 1);
+    EXPECT_TRUE(res > 0);
+    close(fd);
+}
+#endif // BINDER_CATCHER_ENABLE
+
+#ifdef USAGE_CATCHER_ENABLE
+/**
+ * @tc.name: MemoryCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, MemoryCatcherTest_001, TestSize.Level0)
+{
+    auto memoryCatcher = std::make_shared<MemoryCatcher>();
+    bool ret = memoryCatcher->Initialize("test", 1, 2);
+    EXPECT_EQ(ret, true);
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    sysEvent->SetEventValue("FREEZE_MEMORY", "Get freeze memory end time:\\n12300 45600 78900 36001 96300");
+    memoryCatcher->SetEvent(sysEvent);
+    int res = memoryCatcher->Catch(fd, 1);
+    EXPECT_TRUE(res > 0);
+    res = memoryCatcher->Catch(0, 1);
+    EXPECT_EQ(res, 0);
+    printf("memoryCatcher result: %d\n", res);
+    close(fd);
+}
+
+/**
+ * @tc.name: MemoryCatcherTest_002
+ * @tc.desc: EventloggerCatcherTest
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, MemoryCatcherTest_002, TestSize.Level3)
+{
+    auto memoryCatcher = std::make_shared<MemoryCatcher>();
+    EXPECT_EQ(memoryCatcher->GetStringFromFile("/data/log/test"), "");
+}
+
+/**
+ * @tc.name: MemoryCatcherTest_003
+ * @tc.desc: EventloggerCatcherTest
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, MemoryCatcherTest_003, TestSize.Level3)
+{
+    auto memoryCatcher = std::make_shared<MemoryCatcher>();
+    int ret = memoryCatcher->GetNumFromString("abc");
+    EXPECT_EQ(ret, 0);
+    ret = memoryCatcher->GetNumFromString("100");
+    EXPECT_EQ(ret, 100);
+}
+
+/**
+ * @tc.name: MemoryCatcherTest_004
+ * @tc.desc: EventloggerCatcherTest
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, MemoryCatcherTest_004, TestSize.Level3)
+{
+    auto memoryCatcher = std::make_shared<MemoryCatcher>();
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    memoryCatcher->SetEvent(sysEvent);
+    std::string data;
+    memoryCatcher->CheckString("abc: 100", data, "abcd", "/data/log/test");
+    EXPECT_TRUE(data.empty());
+    memoryCatcher->CheckString("abc: 100", data, "abc", "");
+    EXPECT_EQ(sysEvent->GetEventValue("HOST_RESOURCE_WARNING"), "TRUE");
+    memoryCatcher->CheckString("abc: 3000000", data, "abc", "/proc/ashmem_process_info");
+}
+
+/**
+ * @tc.name: MemoryCatcherTest_004
+ * @tc.desc: EventloggerCatcherTest
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, MemoryCatcherTest_005, TestSize.Level3)
+{
+    auto memoryCatcher = std::make_shared<MemoryCatcher>();
+    std::string memInfo = memoryCatcher->CollectFreezeSysMemory();
+    EXPECT_TRUE(!memInfo.empty());
+}
+
+/**
+ * @tc.name: MemoryCatcherTest_006
+ * @tc.desc: EventloggerCatcherTest
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, MemoryCatcherTest_006, TestSize.Level3)
+{
+    auto fd = open("/data/test/testFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create testFile. errno: %d\n", errno);
+        FAIL();
+    }
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    sysEvent->SetEventValue("FREEZE_MEMORY", "test\\ntest");
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(fd, 1, sysEvent);
+    logTask->MemoryUsageCapture();
+    EXPECT_TRUE(logTask != nullptr);
+
+    sysEvent->SetEventValue("FREEZE_MEMORY", "freeze Get freeze memory end time:\\n123 456 789 100 200");
+    logTask->MemoryUsageCapture();
+    EXPECT_TRUE(logTask != nullptr);
+    close(fd);
+}
+
+/**
+ * @tc.name: MemoryCatcherTest_007
+ * @tc.desc: EventloggerCatcherTest
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, MemoryCatcherTest_007, TestSize.Level3)
+{
+    auto fd = open("/data/test/testFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create testFile. errno: %d\n", errno);
+        FAIL();
+    }
+
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    sysEvent->SetEventValue("FREEZE_MEMORY", "AshmemUsed  3200000 kB\\n"
+        "DMAHEAP  3200000 kB");
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(fd, 1, sysEvent);
+    logTask->MemoryUsageCapture();
+    EXPECT_TRUE(logTask != nullptr);
+    close(fd);
+}
+
+/**
+ * @tc.name: CpuCoreInfoCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, CpuCoreInfoCatcherTest_001, TestSize.Level1)
+{
+    auto cpuCoreInfoCatcher = std::make_shared<CpuCoreInfoCatcher>();
+    bool ret = cpuCoreInfoCatcher->Initialize("test", 1, 2);
+    EXPECT_EQ(ret, true);
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    auto eventLogCatcher = std::make_shared<EventLogCatcher>();
+    int originSize = eventLogCatcher->GetFdSize(fd);
+    printf("Get testFile originSize: %d\n", originSize);
+
+    int res = cpuCoreInfoCatcher->Catch(fd, 1);
+    EXPECT_TRUE(res > 0);
+    int currentSize = eventLogCatcher->GetFdSize(fd) - originSize;
+    printf("Get testFile size: %d\n", currentSize);
+    close(fd);
+}
+#endif // USAGE_CATCHER_ENABLE
+
+#ifdef OTHER_CATCHER_ENABLE
+/**
+ * @tc.name: FfrtCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, FfrtCatcherTest_001, TestSize.Level0)
+{
+    auto fd = open("/data/test/FfrtCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create FfrtCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+
+    auto ffrtCatcher = std::make_shared<FfrtCatcher>();
+    int pid = CommonUtils::GetPidByName("foundation");
+    if (pid > 0) {
+        bool res = ffrtCatcher->Initialize("", pid, 0);
+        EXPECT_TRUE(res);
+
+        int jsonFd = 1;
+        EXPECT_TRUE(ffrtCatcher->Catch(fd, jsonFd) > 0);
+    }
+    EXPECT_TRUE(true);
+    close(fd);
+}
+
+/**
+ * @tc.name: FfrtCatcherTest_002
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, FfrtCatcherTest_002, TestSize.Level1)
+{
+    auto ffrtCatcher = std::make_shared<FfrtCatcher>();
+    bool ret = ffrtCatcher->Initialize("test", 1, 2);
+    EXPECT_EQ(ret, true);
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    int res = ffrtCatcher->Catch(fd, 1);
+    EXPECT_TRUE(res > 0);
+    res = ffrtCatcher->Catch(0, 1);
+    EXPECT_EQ(res, 0);
+    printf("ffrtCatcher result: %d\n", res);
+    close(fd);
+}
+#endif // OTHER_CATCHER_ENABLE
+
+#ifdef DMESG_CATCHER_ENABLE
+/**
+ * @tc.name: DmesgCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, DmesgCatcherTest_001, TestSize.Level0)
+{
+    auto dmesgCatcher = std::make_shared<DmesgCatcher>();
+    auto jsonStr = "{\"domain_\":\"KERNEL_VENDOR\"}";
+    std::shared_ptr<SysEvent> event = std::make_shared<SysEvent>("DmesgCatcherTest_001",
+        nullptr, jsonStr);
+    event->eventId_ = 0;
+    event->domain_ = "KERNEL_VENDOR";
+    event->eventName_ = "HUNGTASK";
+    event->SetEventValue("PID", 0);
+    EXPECT_TRUE(dmesgCatcher->Init(event));
+}
+
+/**
+ * @tc.name: DmesgCatcherTest_002
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, DmesgCatcherTest_002, TestSize.Level1)
+{
+    auto dmesgCatcher = std::make_shared<DmesgCatcher>();
+    auto fd = open("/data/test/dmesgCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create dmesgCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+
+    dmesgCatcher->Initialize("", 0, 0);
+    int jsonFd = 1;
+    EXPECT_TRUE(dmesgCatcher->Catch(fd, jsonFd) > 0);
+
+    dmesgCatcher->Initialize("", 0, 1);
+    EXPECT_TRUE(dmesgCatcher->Catch(fd, jsonFd) > 0);
+
+    dmesgCatcher->Initialize("", 1, 1);
+    printf("dmesgCatcher result: %d\n", dmesgCatcher->Catch(fd, jsonFd));
+
+    dmesgCatcher->Initialize("", 0, 2);
+    printf("dmesgCatcher result: %d\n", dmesgCatcher->Catch(fd, jsonFd));
+
+    dmesgCatcher->Initialize("", 1, 2);
+    printf("dmesgCatcher result: %d\n", dmesgCatcher->Catch(fd, jsonFd));
+
+    close(fd);
+}
+
+/**
+ * @tc.name: DmesgCatcherTest_003
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, DmesgCatcherTest_003, TestSize.Level1)
+{
+    auto jsonStr = "{\"domain_\":\"KERNEL_VENDOR\"}";
+    std::shared_ptr<SysEvent> event = std::make_shared<SysEvent>("DmesgCatcherTest_003",
+        nullptr, jsonStr);
+    event->SetEventValue("SYSRQ_TIME", "20250124");
+    auto dmesgCatcher = std::make_shared<DmesgCatcher>();
+    dmesgCatcher->Init(event);
+
+    bool ret = dmesgCatcher->DumpDmesgLog(-1, -1);
+    EXPECT_EQ(ret, false);
+    ret = dmesgCatcher->WriteSysrqTrigger();
+    EXPECT_EQ(ret, true);
+
+    auto fd1 = open("/data/test/dmesgCatcherFile1", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd1 < 0) {
+        printf("Fail to create dmesgCatcherFile1. errno: %d\n", errno);
+        FAIL();
+    }
+    dmesgCatcher->Initialize("", true, 1);
+    ret = dmesgCatcher->DumpDmesgLog(fd1, -1);
+    close(fd1);
+    EXPECT_EQ(ret, true);
+
+    auto fd2 = open("/data/test/dmesgCatcherFile2", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd2 < 0) {
+        printf("Fail to create dmesgCatcherFile2. errno: %d\n", errno);
+        FAIL();
+    }
+    dmesgCatcher->Initialize("", true, 2);
+    ret = dmesgCatcher->DumpDmesgLog(-1, fd2);
+    close(fd2);
+    EXPECT_EQ(ret, true);
+
+    auto fd3 = open("/data/test/dmesgCatcherFile3", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd3 < 0) {
+        printf("Fail to create dmesgCatcherFile3. errno: %d\n", errno);
+        FAIL();
+    }
+
+    auto fd4 = open("/data/test/dmesgCatcherFile4", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd4 < 0) {
+        printf("Fail to create dmesgCatcherFile4. errno: %d\n", errno);
+        FAIL();
+    }
+    dmesgCatcher->Initialize("", true, 3);
+    ret = dmesgCatcher->DumpDmesgLog(fd3, fd4);
+    EXPECT_EQ(ret, true);
+
+    dmesgCatcher->Initialize("", false, 3);
+    ret = dmesgCatcher->DumpDmesgLog(fd3, fd4);
+    EXPECT_EQ(ret, true);
+    close(fd3);
+    close(fd4);
+}
+
+/**
+ * @tc.name: DmesgCatcherTest_004
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, DmesgCatcherTest_004, TestSize.Level1)
+{
+    auto dmesgCatcher = std::make_shared<DmesgCatcher>();
+    auto fd5 = open("/data/test/dmesgCatcherFile5", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd5 < 0) {
+        printf("Fail to create dmesgCatcherFile5. errno: %d\n", errno);
+        FAIL();
+    }
+
+    auto fd6 = open("/data/test/dmesgCatcherFile6", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd6 < 0) {
+        printf("Fail to create dmesgCatcherFile6. errno: %d\n", errno);
+        FAIL();
+    }
+    dmesgCatcher->extraFile_ = true;
+    dmesgCatcher->Initialize("", false, 1);
+    bool ret = dmesgCatcher->DumpDmesgLog(fd5, fd6);
+    EXPECT_EQ(ret, true);
+
+    dmesgCatcher->Initialize("", false, 2);
+    ret = dmesgCatcher->DumpDmesgLog(fd5, fd6);
+    EXPECT_EQ(ret, true);
+    close(fd5);
+    close(fd6);
+}
+
+/**
+ * @tc.name: DmesgCatcherTest_005
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, DmesgCatcherTest_005, TestSize.Level1)
+{
+    auto dmesgCatcher = std::make_shared<DmesgCatcher>();
+    std::string dataStr = "testDataStr";
+    std::string sysrqStr;
+    std::string hungtaskStr;
+
+    dmesgCatcher->writeNewFile_ = 1;
+
+    dmesgCatcher->GetSysrq(dataStr, sysrqStr);
+    EXPECT_TRUE(sysrqStr.empty());
+
+    dataStr = "sysrq start:testInfo";
+    dmesgCatcher->GetSysrq(dataStr, sysrqStr);
+    EXPECT_TRUE(sysrqStr.empty());
+
+    dataStr = "sysrq start:testInfo sysrq end:";
+    dmesgCatcher->GetSysrq(dataStr, sysrqStr);
+    EXPECT_TRUE(!sysrqStr.empty());
+
+    dmesgCatcher->GetHungTask(dataStr, hungtaskStr);
+    EXPECT_TRUE(hungtaskStr.empty());
+
+    dataStr = "testInfo:hguard-worker\n xxx \n sys-lmk-debug-t";
+    dmesgCatcher->GetHungTask(dataStr, hungtaskStr);
+    EXPECT_TRUE(!hungtaskStr.empty());
+
+    dmesgCatcher->writeNewFile_ = 0;
+
+    sysrqStr = "";
+
+    dmesgCatcher->GetSysrq(dataStr, sysrqStr, false);
+    EXPECT_TRUE(sysrqStr.empty());
+
+    dmesgCatcher->GetSysrq(dataStr, sysrqStr);
+    EXPECT_EQ(sysrqStr, "\nSysrqCatcher -- \n");
+
+    sysrqStr = "";
+    dataStr = "sysrq start:testInfo";
+    dmesgCatcher->GetSysrq(dataStr, sysrqStr);
+    EXPECT_EQ(sysrqStr, "\nSysrqCatcher -- \n");
+
+    hungtaskStr = "";
+
+    dmesgCatcher->GetHungTask(dataStr, hungtaskStr, false);
+    EXPECT_TRUE(hungtaskStr.empty());
+
+    dmesgCatcher->GetHungTask(dataStr, hungtaskStr);
+    EXPECT_EQ(hungtaskStr, "\nHungTaskCatcher -- \n");
+
+    std::string fileName = "/data/test/dmesgCatcherFileTest004";
+    int fd = open(fileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create dmesgCatcherFileTest004. errno: %d\n", errno);
+        FAIL();
+    }
+    close(fd);
+    FILE* fp = dmesgCatcher->GetFileInfoByName(fileName.c_str(), fd);
+    EXPECT_EQ(fp, nullptr);
+}
+
+#ifdef KERNELSTACK_CATCHER_ENABLE
+/**
+ * @tc.name: DmesgCatcherTest_006
+ * @tc.desc: add test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, DmesgCatcherTest_006, TestSize.Level1)
+{
+    int pid = getpid();
+    auto dmesgCatcher = std::make_shared<DmesgCatcher>();
+    int ret = dmesgCatcher->DumpKernelStacktrace(-1, pid);
+    EXPECT_EQ(ret, -1);
+    auto fd = open("/data/test/logCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create logCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    ret = dmesgCatcher->DumpKernelStacktrace(fd, pid);
+    EXPECT_EQ(ret, 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: DmesgCatcherTest_007
+ * @tc.desc: add test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, DmesgCatcherTest_007, TestSize.Level1)
+{
+    std::vector<pid_t> tids;
+    auto dmesgCatcher = std::make_shared<DmesgCatcher>();
+    dmesgCatcher->GetTidsByPid(-1, tids);
+    EXPECT_TRUE(tids.size() == 0);
+    dmesgCatcher->GetTidsByPid(getpid(), tids);
+    EXPECT_TRUE(tids.size() > 0);
+}
+#endif // KERNELSTACK_CATCHER_ENABLE
+
+#endif // DMESG_CATCHER_ENABLE
+
+#ifdef STACKTRACE_CATCHER_ENABLE
+/**
+ * @tc.name: OpenStacktraceCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, OpenStacktraceCatcherTest_001, TestSize.Level0)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+
+    auto openStackCatcher = std::make_shared<OpenStacktraceCatcher>();
+    ASSERT_EQ(openStackCatcher->Initialize("", 0, 0), false);
+
+    int jsonFd = 1;
+    bool ret = openStackCatcher->Catch(fd, jsonFd);
+    EXPECT_TRUE(ret == 0);
+
+    EXPECT_EQ(openStackCatcher->Initialize("test", 0, 0), false);
+    ret = openStackCatcher->Catch(fd, jsonFd);
+    EXPECT_TRUE(ret == 0);
+
+    EXPECT_EQ(openStackCatcher->Initialize("", 1, 0), true);
+    EXPECT_EQ(openStackCatcher->Initialize("test", 1, 0), true);
+    ret = openStackCatcher->Catch(fd, jsonFd);
+    EXPECT_TRUE(ret > 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: OpenStacktraceCatcherTest_002
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, OpenStacktraceCatcherTest_002, TestSize.Level1)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    
+    auto openStackCatcher = std::make_shared<OpenStacktraceCatcher>();
+    bool ret = openStackCatcher->Catch(fd, 1);
+    EXPECT_TRUE(ret == 0);
+    EXPECT_EQ(openStackCatcher->ForkAndDumpStackTrace(fd), 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: LogCatcherUtils_GetPidByProcessName_001
+ * @tc.desc: test GetPidByProcessName with non-existing process name
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtils_GetPidByProcessName_001, TestSize.Level1)
+{
+    pid_t pid = LogCatcherUtils::GetPidByProcessName("nonexistent_process_name_xyz");
+    EXPECT_EQ(pid, -1);
+}
+
+/**
+ * @tc.name: LogCatcherUtils_GetPidByProcessName_002
+ * @tc.desc: test GetPidByProcessName with empty process name
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtils_GetPidByProcessName_002, TestSize.Level1)
+{
+    pid_t pid = LogCatcherUtils::GetPidByProcessName("");
+    EXPECT_EQ(pid, -1);
+}
+
+/**
+ * @tc.name: LogCatcherUtils_GetPidByProcessName_003
+ * @tc.desc: test GetPidByProcessName with system process
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtils_GetPidByProcessName_003, TestSize.Level1)
+{
+    int foundationPid = CommonUtils::GetPidByName("foundation");
+    if (foundationPid > 0) {
+        pid_t pid = LogCatcherUtils::GetPidByProcessName("foundation");
+        printf("foundationPid: %d\n", foundationPid);
+        printf("pid: %d\n", pid);
+        EXPECT_GT(pid, 0);
+        EXPECT_EQ(pid, foundationPid);
+    }
+}
+
+/**
+ * @tc.name: LogCatcherUtils_GetPidByProcessName_004
+ * @tc.desc: test GetPidByProcessName with system process
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtils_GetPidByProcessName_004, TestSize.Level1)
+{
+    int abilityPid = CommonUtils::GetPidByName("com.ohos.sceneboard.MainAbility");
+    if (abilityPid > 0) {
+        pid_t pid = LogCatcherUtils::GetPidByProcessName("com.ohos.sceneboard.MainAbility");
+        printf("abilityPid: %d\n", abilityPid);
+        printf("pid: %d\n", pid);
+        EXPECT_GT(pid, 0);
+        EXPECT_EQ(pid, abilityPid);
+    }
+}
+#endif // STACKTRACE_CATCHER_ENABLE
+
+#ifdef BINDER_CATCHER_ENABLE
+/**
+ * @tc.name: PeerBinderCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_001, TestSize.Level0)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    peerBinderCatcher->Initialize("PeerBinderCatcherTest", 0, 0);
+    int jsonFd = 1;
+    int res = peerBinderCatcher->Catch(fd, jsonFd);
+    EXPECT_TRUE(res < 0);
+
+    peerBinderCatcher->Initialize("a", 0, 0);
+    peerBinderCatcher->Initialize("a", 1, 0);
+    res = peerBinderCatcher->Catch(fd, jsonFd);
+    EXPECT_TRUE(res < 0);
+
+    peerBinderCatcher->Initialize("a", 1, 1);
+    peerBinderCatcher->Catch(fd, jsonFd);
+
+    int pid = CommonUtils::GetPidByName("foundation");
+#ifdef HAS_HIPERF
+    std::set<int> pids;
+    pids.insert(pid);
+    peerBinderCatcher->DoExecHiperf("peerBinderCatcher", pids, pid, "r");
+#endif
+    peerBinderCatcher->Initialize("", 0, pid);
+    peerBinderCatcher->Initialize("foundation", 0, pid);
+    peerBinderCatcher->Initialize("foundation", 1, pid);
+    peerBinderCatcher->CatcherFfrtStack(fd, pid);
+    peerBinderCatcher->CatcherStacktrace(fd, pid);
+    close(fd);
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_002
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_002, TestSize.Level1)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    peerBinderCatcher->Initialize("a", 1, 0);
+    auto jsonStr = "{\"domain_\":\"KERNEL_VENDOR\"}";
+    std::shared_ptr<SysEvent> event = std::make_shared<SysEvent>("PeerBinderCatcherTest_002",
+        nullptr, jsonStr);
+    event->eventId_ = 0;
+    event->domain_ = "KERNEL_VENDOR";
+    event->eventName_ = "HUNGTASK";
+    event->SetEventValue("PID", 0);
+    std::string filePath = "/data/test/catcherFile";
+    std::set<int> catchedPids;
+    catchedPids.insert(0);
+    catchedPids.insert(1);
+    int pid = CommonUtils::GetPidByName("foundation");
+    catchedPids.insert(pid);
+    peerBinderCatcher->Init(event, filePath, catchedPids);
+    peerBinderCatcher->Initialize("foundation", 1, pid);
+    int res = peerBinderCatcher->Catch(fd, 1);
+    if (Parameter::IsOversea()) {
+        EXPECT_EQ(res, 0);
+    } else {
+        EXPECT_GT(res, 0);
+    }
+    close(fd);
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_003
+ * @tc.desc: test Catch with HICOLLIE_BINDER_INFO containing PROCESS_NAME
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_003, TestSize.Level1)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    int pid = CommonUtils::GetPidByName("foundation");
+    peerBinderCatcher->Initialize("a", 1, pid);
+    auto jsonStr = "{\"domain_\":\"KERNEL_VENDOR\"}";
+    std::shared_ptr<SysEvent> event = std::make_shared<SysEvent>("PeerBinderCatcherTest_Hicollie",
+        nullptr, jsonStr);
+    event->eventId_ = 0;
+    event->domain_ = "KERNEL_VENDOR";
+    event->eventName_ = "HUNGTASK";
+    event->SetEventValue("PID", pid);
+    event->SetEventValue("HICOLLIE_BINDER_INFO",
+        "syncPids:100(process1);200(process2) PROCESS_NAME:app1,app2 asyncPids:300,400 terminalBinder:500,600");
+    std::string filePath = "/data/test/catcherFile";
+    std::set<int> catchedPids;
+    peerBinderCatcher->Init(event, filePath, catchedPids);
+    int res = peerBinderCatcher->Catch(fd, 1);
+    if (Parameter::IsOversea()) {
+        EXPECT_EQ(res, 0);
+    } else {
+        EXPECT_GT(res, 0);
+    }
+    close(fd);
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_004
+ * @tc.desc: test Catch with HICOLLIE_BINDER_INFO without PROCESS_NAME
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_004, TestSize.Level1)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    int pid = CommonUtils::GetPidByName("foundation");
+    peerBinderCatcher->Initialize("a", 1, pid);
+    auto jsonStr = "{\"domain_\":\"KERNEL_VENDOR\"}";
+    std::shared_ptr<SysEvent> event = std::make_shared<SysEvent>("PeerBinderCatcherTest_HicollieNoPN",
+        nullptr, jsonStr);
+    event->eventId_ = 0;
+    event->domain_ = "KERNEL_VENDOR";
+    event->eventName_ = "HUNGTASK";
+    event->SetEventValue("PID", pid);
+    event->SetEventValue("HICOLLIE_BINDER_INFO", "syncPids:100(process1);200(process2) asyncPids:300,400");
+    std::string filePath = "/data/test/catcherFile";
+    std::set<int> catchedPids;
+    peerBinderCatcher->Init(event, filePath, catchedPids);
+    int res = peerBinderCatcher->Catch(fd, 1);
+    if (Parameter::IsOversea()) {
+        EXPECT_EQ(res, 0);
+    } else {
+        EXPECT_GT(res, 0);
+    }
+    close(fd);
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_005
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_005, TestSize.Level1)
+{
+    std::map<int, std::list<OHOS::HiviewDFX::PeerBinderCatcher::BinderInfo>> manager;
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::set<int> pids;
+    int eventPid = 1;
+    int eventTid = 3;
+    PeerBinderCatcher::ParseBinderParam params = {eventPid, eventTid};
+
+    PeerBinderCatcher::BinderInfo info = {2, 0, 4, 0, 1};
+    manager[info.clientPid].push_back(info);
+    peerBinderCatcher->ParseBinderCallChain(manager, pids, eventPid, params, true);
+    EXPECT_TRUE(pids.empty());
+
+    PeerBinderCatcher::BinderInfo info1 = {1, 3, 5, 7, 3};
+    manager[info1.clientPid].push_back(info1);
+    PeerBinderCatcher::BinderInfo info2 = {5, 7, 9, 13, 3};
+    manager[info2.clientPid].push_back(info2);
+    PeerBinderCatcher::BinderInfo info3 = {5, 6, 10, 120, 3};
+    manager[info3.clientPid].push_back(info3);
+    PeerBinderCatcher::BinderInfo info4 = {9, 10, 11, 120, 3};
+    manager[info4.clientPid].push_back(info4);
+    PeerBinderCatcher::BinderInfo info5 = {9, 13, 19, 12666, 3};
+    manager[info5.clientPid].push_back(info5);
+    peerBinderCatcher->ParseBinderCallChain(manager, pids, eventPid, params, true);
+    EXPECT_EQ(pids.size(), 5);
+    EXPECT_EQ(peerBinderCatcher->terminalBinder_.pid, info5.serverPid);
+    EXPECT_EQ(peerBinderCatcher->terminalBinder_.tid, info5.serverTid);
+#ifdef HAS_HIPERF
+    pids.insert(3);
+    pids.insert(4);
+    int processId = getpid();
+    std::string perfCmd = "r";
+    peerBinderCatcher->DoExecHiperf("peerBinderCatcher", pids, processId, perfCmd);
+    peerBinderCatcher->DumpHiperf(pids, processId, perfCmd);
+#endif
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_006
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_006, TestSize.Level1)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::set<int> asyncPids;
+    std::set<int> pids = peerBinderCatcher->GetBinderPeerPids(fd, 1, asyncPids);
+    EXPECT_TRUE(pids.empty());
+    close(fd);
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_007
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_007, TestSize.Level1)
+{
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::list<PeerBinderCatcher::OutputBinderInfo> infoList;
+    peerBinderCatcher->AddBinderJsonInfo(infoList, -1);
+    PeerBinderCatcher::OutputBinderInfo info = {
+        .info = "Test",
+        .pid = 0
+    };
+    infoList.push_back(info);
+    peerBinderCatcher->AddBinderJsonInfo(infoList, 1);
+    PeerBinderCatcher::OutputBinderInfo info1 = {
+        .info = "Test",
+        .pid = getpid()
+    };
+    infoList.push_back(info1);
+    peerBinderCatcher->AddBinderJsonInfo(infoList, 1);
+    std::string str = "/proc/" + std::to_string(getpid()) + "/cmdline";
+    printf("%s\n", str.c_str());
+    EXPECT_TRUE(!str.empty());
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_008
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_008, TestSize.Level1)
+{
+    auto fd = open("/data/test/peerFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create peerFile. errno: %d\n", errno);
+        FAIL();
+    }
+    std::ofstream testFile;
+    std::string path = "/data/test/peerFile";
+    testFile.open(path);
+    testFile << "0:pid\tcontext:binder\t0:request\t3:started\t"
+        "16:max\t4:ready\t521092:free_space\n";
+    testFile.close();
+    close(fd);
+
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::ifstream fin;
+    fin.open(path.c_str());
+    if (!fin.is_open()) {
+        printf("open binder file failed, %s\n.", path.c_str());
+        FAIL();
+    }
+    auto fd1 = open("/data/test/peerTestFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd1 < 0) {
+        printf("Fail to create peerTestFile. errno: %d\n", errno);
+        FAIL();
+    }
+    std::set<int> asyncPids;
+    peerBinderCatcher->BinderInfoParser(fin, fd1, 1, asyncPids);
+    std::set<int> pids = peerBinderCatcher->GetBinderPeerPids(fd, 1, asyncPids);
+    EXPECT_TRUE(pids.empty());
+    pids = peerBinderCatcher->GetBinderPeerPids(-1, 1, asyncPids);
+    EXPECT_TRUE(pids.empty());
+    fin.close();
+    close(fd1);
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_009
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_009, TestSize.Level1)
+{
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    bool ret = peerBinderCatcher->IsAncoProc(getpid());
+    EXPECT_TRUE(!ret);
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_010
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_010, TestSize.Level1)
+{
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::string str = "123";
+    uint16_t index = 1;
+    std::string ret = peerBinderCatcher->StrSplit(str, index);
+    EXPECT_EQ(ret, "");
+    str = "123:456";
+    ret = peerBinderCatcher->StrSplit(str, index);
+    EXPECT_EQ(ret, "456");
+
+    bool isBinderMatchup = false;
+    std::string line = "    async_space";
+
+    auto fd = open("/data/test/peerBinderTestFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create peerBinderTestFile. errno: %d\n", errno);
+        FAIL();
+    }
+    peerBinderCatcher->SaveBinderLineToFd(fd, line, isBinderMatchup);
+    EXPECT_FALSE(isBinderMatchup);
+
+    line = "    free_async_space";
+    peerBinderCatcher->SaveBinderLineToFd(fd, line, isBinderMatchup);
+    EXPECT_TRUE(isBinderMatchup);
+
+    peerBinderCatcher->SaveBinderLineToFd(fd, line, isBinderMatchup);
+    EXPECT_TRUE(isBinderMatchup);
+
+    fsync(fd);
+    close(fd);
+
+    std::ifstream testFile("/data/test/peerBinderTestFile");
+    if (testFile.is_open()) {
+        std::string line;
+        while (std::getline(testFile, line)) {
+            printf("%s\n", line.c_str());
+            EXPECT_TRUE(line.find("async_space") != std::string::npos);
+        }
+        testFile.close();
+    }
+}
+
+/**
+ * @tc.name: PeerBinderCatcherTest_009
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, PeerBinderCatcherTest_011, TestSize.Level1)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    auto jsonStr = "{\"domain_\":\"KERNEL_VENDOR\"}";
+    std::shared_ptr<SysEvent> event = std::make_shared<SysEvent>("PeerBinderCatcherTest_009",
+        nullptr, jsonStr);
+    event->eventId_ = 0;
+
+    event->SetEventValue("EVENT_TYPE", "sys");
+    std::set<int> catchedPids;
+    peerBinderCatcher->Init(event, "", catchedPids);
+    bool result = peerBinderCatcher->IsSysFreezeEvent();
+    EXPECT_TRUE(result);
+
+    event->SetEventValue("EVENT_TYPE", "");
+    result = peerBinderCatcher->IsSysFreezeEvent();
+    EXPECT_TRUE(!result);
+
+    close(fd);
+}
+#endif // BINDER_CATCHER_ENABLE
+
+/**
+ * @tc.name: ShellCatcherTest
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ShellCatcherTest_001, TestSize.Level0)
+{
+    auto fd = open("/data/test/shellCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create shellCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+
+    auto shellCatcher = std::make_shared<ShellCatcher>();
+    int pid = CommonUtils::GetPidByName("foundation");
+
+#ifdef USAGE_CATCHER_ENABLE
+    bool res = shellCatcher->Initialize("", ShellCatcher::CATCHER_WMS, pid);
+    EXPECT_TRUE(res);
+#endif // USAGE_CATCHER_ENABLE
+
+    int jsonFd = 1;
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) < 0);
+
+    std::string cmd = "ShellCatcherTest_001";
+#ifdef USAGE_CATCHER_ENABLE
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_WMS, pid);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_AMS, pid);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_CPU, pid);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_PMS, pid);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_DPMS, pid);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_RS, pid);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+#endif // USAGE_CATCHER_ENABLE
+
+#ifdef HILOG_CATCHER_ENABLE
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_HILOG, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+#endif // HILOG_CATCHER_ENABLE
+
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_SNAPSHOT, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: ShellCatcherTest
+ * @tc.desc: GET_DISPLAY_SNAPSHOT test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ShellCatcherTest_002, TestSize.Level1)
+{
+    auto fd = open("/data/test/shellCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create shellCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    auto shellCatcher = std::make_shared<ShellCatcher>();
+    int jsonFd = 1;
+    std::string cmd = "ShellCatcherTest_002";
+#ifdef HILOG_CATCHER_ENABLE
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_INPUT_HILOG, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_INPUT_EVENT_HILOG, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+#endif // HILOG_CATCHER_ENABLE
+
+#ifdef OTHER_CATCHER_ENABLE
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_EEC, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_GEC, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_UI, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_SNAPSHOT, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) > 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_MMI, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_DMS, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+#endif // OTHER_CATCHER_ENABLE
+    auto jsonStr = "{\"domain_\":\"KERNEL_VENDOR\"}";
+    std::shared_ptr<SysEvent> event = std::make_shared<SysEvent>("ShellCatcherTest", nullptr, jsonStr);
+    event->SetValue("FOCUS_WINDOW", 4); // 4 test value
+    shellCatcher->SetEvent(event);
+#ifdef SCB_CATCHER_ENABLE
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_SCBWMSEVT, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_SCBVIEWPARAM, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+    shellCatcher->Initialize(cmd, ShellCatcher::CATCHER_SCBWMS, 0);
+    EXPECT_TRUE(shellCatcher->Catch(fd, jsonFd) >= 0);
+#endif // SCB_CATCHER_ENABLE
+    close(fd);
+}
+
+/**
+ * @tc.name: ShellCatcherTest
+ * @tc.desc: add test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ShellCatcherTest_003, TestSize.Level1)
+{
+    auto shellCatcher = std::make_shared<ShellCatcher>();
+    shellCatcher->SetFocusWindowId("ShellCatcherTest_003");
+    EXPECT_TRUE(!shellCatcher->focusWindowId_.empty());
+}
+
+/**
+ * @tc.name: ShellCatcherTest
+ * @tc.desc: add test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ShellCatcherTest_004, TestSize.Level1)
+{
+    auto shellCatcher = std::make_shared<ShellCatcher>();
+    shellCatcher->SetComponentName("ShellCatcherTest_004");
+    EXPECT_TRUE(!shellCatcher->componentName_.empty());
+}
+
+/**
+ * @tc.name: LogCatcherUtilsTest_001
+ * @tc.desc: add test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtilsTest_001, TestSize.Level0)
+{
+    auto fd = open("/data/test/dumpstacktrace_file", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create dumpstacktrace_file. errno: %d\n", errno);
+        FAIL();
+    }
+    int pid = getpid();
+    std::string threadStack;
+    LogCatcherUtils::TerminalBinderInfo binderInfo;
+    int ret = LogCatcherUtils::DumpStacktrace(-1, pid, threadStack, binderInfo);
+    EXPECT_EQ(ret, -1);
+    std::thread thread1([pid]{
+        auto fd1 = open("/data/test/dumpstacktrace_file1", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+        if (fd1 < 0) {
+            printf("Fail to create dumpstacktrace_file1. errno: %d\n", errno);
+            FAIL();
+        }
+        std::string threadStack1;
+        LogCatcherUtils::TerminalBinderInfo binderInfo;
+        LogCatcherUtils::DumpStacktrace(fd1, pid, threadStack1, binderInfo);
+        close(fd1);
+    });
+    if (thread1.joinable()) {
+        thread1.detach();
+    }
+    ret = LogCatcherUtils::DumpStacktrace(fd, pid, threadStack, binderInfo);
+    close(fd);
+    EXPECT_TRUE(threadStack.empty());
+    EXPECT_EQ(ret, 0);
+    ret = LogCatcherUtils::WriteKernelStackToFd(200, "Test 01\n", getprocpid());
+    EXPECT_EQ(ret, 0);
+    ret = LogCatcherUtils::WriteKernelStackToFd(200, "Test 02\n", getprocpid());
+    EXPECT_EQ(ret, 0);
+    ret = LogCatcherUtils::WriteKernelStackToFd(2, "Test", -1);
+    EXPECT_EQ(ret, -1);
+}
+
+/**
+ * @tc.name: LogCatcherUtilsTest_002
+ * @tc.desc: add test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtilsTest_002, TestSize.Level1)
+{
+    std::string processStack = "LogCatcherUtilsTest_002";
+    std::string stack = "";
+    LogCatcherUtils::GetThreadStack(processStack, stack, 0);
+    EXPECT_TRUE(stack.empty());
+    int tid = gettid();
+    processStack = "Tid:1234, Name: TestThread\n#00 pc 0017888c /system/lib/libark_jsruntime.so\n"
+        "#01 pc 00025779 /system/lib/platformsdk/libipc_core.z.so";
+    stack.clear();
+    LogCatcherUtils::GetThreadStack(processStack, stack, tid);
+    EXPECT_TRUE(stack.empty());
+
+    constexpr int testTid = 1234;
+    stack.clear();
+    processStack = "Tid:1234, Name: TestThread\n"
+        "#00 pc 0017888c /system/lib/libark_jsruntime.so\n"
+        "#01 pc 00025779 /system/lib/platformsdk/libipc_core.z.so";
+    LogCatcherUtils::GetThreadStack(processStack, stack, testTid);
+    EXPECT_FALSE(stack.empty());
+
+    stack.clear();
+    processStack = "Tid:1234, Name: TestThread\n"
+        "ThreadInfo:state=SLEEP, utime=1, stime=2, cutime=0, schedstat={254042, 0, 3}\n"
+        "#00 pc 0017888c /system/lib/libark_jsruntime.so\n"
+        "#01 pc 00025779 /system/lib/platformsdk/libipc_core.z.so";
+    LogCatcherUtils::GetThreadStack(processStack, stack, testTid);
+    const string result = "#00 pc 0017888c /system/lib/libark_jsruntime.so\n"
+        "#01 pc 00025779 /system/lib/platformsdk/libipc_core.z.so\n";
+    EXPECT_EQ(stack, result);
+
+    stack.clear();
+    processStack = "Tid:1234, Name: TestThread\n"
+        "ThreadInfo:state=SLEEP, utime=1, stime=2, cutime=0, schedstat={254042, 0, 3}\n"
+        "#00 pc 0017888c /system/lib/libark_jsruntime.so\n"
+        "#01 pc 00025779 /system/lib/platformsdk/libipc_core.z.so\n"
+        "Tid:1235, Name: TestThread\n"
+        "ThreadInfo:state=SLEEP, utime=1, stime=2, cutime=0, schedstat={254042, 0, 3}\n"
+        "#00 pc 0028888c /system/lib/libark_jsruntime.so\n"
+        "#01 pc 00036881 /system/lib/platformsdk/libipc_core.z.so";
+    LogCatcherUtils::GetThreadStack(processStack, stack, testTid);
+    EXPECT_EQ(stack, result);
+}
+
+/**
+ * @tc.name: LogCatcherUtilsTest_003
+ * @tc.desc: test GetThreadStack with name limit
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtilsTest_003, TestSize.Level1)
+{
+    constexpr int testTid = 1234;
+    std::string stack;
+    std::string processStack = "Tid:1234, Name: TestThreadNameOverThirtyTwoCharactersLimit\n"
+        "#00 pc 0017888c /system/lib/libark_jsruntime.so\n";
+    LogCatcherUtils::GetThreadStack(processStack, stack, testTid);
+    EXPECT_TRUE(stack.empty());
+}
+
+/**
+ * @tc.name: LogCatcherUtilsTest_004
+ * @tc.desc: test GetThreadStack with invalid stack line
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtilsTest_004, TestSize.Level1)
+{
+    constexpr int testTid = 1234;
+    std::string stack;
+    std::string processStack = "Tid:1234, Name: TestThread\n"
+        "#0 pc 0017888c /system/lib/libark_jsruntime.so\n";
+    LogCatcherUtils::GetThreadStack(processStack, stack, testTid);
+    EXPECT_TRUE(stack.empty());
+
+    stack.clear();
+    processStack = "Tid:1234, Name: TestThread\n"
+        "#00000 pc 0017888c /system/lib/libark_jsruntime.so\n";
+    LogCatcherUtils::GetThreadStack(processStack, stack, testTid);
+    EXPECT_TRUE(stack.empty());
+
+    stack.clear();
+    processStack = "Tid:1234, Name: TestThread\n"
+        "#00 invalid 0017888c /system/lib/libark_jsruntime.so\n";
+    LogCatcherUtils::GetThreadStack(processStack, stack, testTid);
+    EXPECT_TRUE(stack.empty());
+}
+
+/**
+ * @tc.name: LogCatcherUtilsTest_005
+ * @tc.desc: test GetThreadStack with at keyword
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtilsTest_005, TestSize.Level1)
+{
+    constexpr int testTid = 1234;
+    std::string stack;
+    std::string processStack = "Tid:1234, Name: TestThread\n"
+        "#00 at com.test.MainActivity(MainActivity.java:10)\n"
+        "#01 at com.test.TestClass(TestClass.java:20)\n";
+    LogCatcherUtils::GetThreadStack(processStack, stack, testTid);
+    EXPECT_FALSE(stack.empty());
+    EXPECT_TRUE(stack.find("#00 at") != std::string::npos);
+    EXPECT_TRUE(stack.find("#01 at") != std::string::npos);
+}
+
+/**
+ * @tc.name: LogCatcherUtilsTest_006
+ * @tc.desc: add test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtilsTest_006, TestSize.Level1)
+{
+    auto fd = open("/data/test/logCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create logCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    int ret = LogCatcherUtils::DumpStackFfrt(fd, "");
+    EXPECT_EQ(ret, 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: LogCatcherUtilsTest_007
+ * @tc.desc: add test
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LogCatcherUtilsTest_007, TestSize.Level1)
+{
+    auto fd = open("/data/test/logCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create logCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    std::string serviceName = "ApplicationManagerService";
+    std::string cmd = "Test";
+    int count = 0;
+    LogCatcherUtils::ReadShellToFile(fd, serviceName, cmd, count);
+    EXPECT_EQ(count, 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: ThermalInfoCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ThermalInfoCatcherTest_001, TestSize.Level1)
+{
+    auto fd = open("/data/test/catcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create catcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    
+    auto thermalInfoCatcher = std::make_shared<ThermalInfoCatcher>();
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    thermalInfoCatcher->SetEvent(sysEvent);
+    int ret = thermalInfoCatcher->Catch(fd, 1);
+    EXPECT_TRUE(ret > 0);
+    close(fd);
+}
+
+/**
+ * @tc.name: SummaryLogInfoCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, SummaryLogInfoCatcherTest_001, TestSize.Level1)
+{
+    auto fd = open("/data/test/summaryLogInfoFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create summaryLogInfoFile. errno: %d\n", errno);
+        FAIL();
+    }
+    uint64_t faultTime = TimeUtil::GetMilliseconds() / 1000;
+    std::string formatTime = TimeUtil::TimestampFormatToDate(faultTime, "%Y/%m/%d-%H:%M:%S");
+
+    SysEventCreator sysEventCreator("HIVIEWDFX", "EventlogTask", SysEventCreator::FAULT);
+    std::shared_ptr<SysEvent> sysEvent = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    sysEvent->SetEventValue("MSG", "Fault time:" + formatTime + "\n");
+    std::unique_ptr<EventLogTask> logTask = std::make_unique<EventLogTask>(0, 0, sysEvent);
+    logTask->SaveSummaryLogInfo();
+
+    auto summaryLogInfoCatcher = std::make_shared<SummaryLogInfoCatcher>();
+    summaryLogInfoCatcher->SetFaultTime(static_cast<int64_t>(logTask->GetFaultTime()));
+    int ret = summaryLogInfoCatcher->Catch(fd, 1);
+    close(fd);
+    EXPECT_TRUE(ret >= 0);
+    EXPECT_EQ(logTask->GetFaultTime(), faultTime);
+
+    EXPECT_EQ(summaryLogInfoCatcher->CharArrayStr(nullptr, 8), "");
+    char chars[8] = {'s', 'u', 'm', 'm', 'a', 'r', 'y', '\0'};
+    EXPECT_EQ(summaryLogInfoCatcher->CharArrayStr(chars, 8), "summary");
+
+    std::shared_ptr<SysEvent> sysEvent1 = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    sysEvent1->SetEventValue("MSG", "Fault time:xx:");
+    sysEvent1->happenTime_ = TimeUtil::GetMilliseconds();
+    logTask->faultTime_ = 0;
+    logTask = std::make_unique<EventLogTask>(0, 0, sysEvent1);
+    EXPECT_EQ(logTask->GetFaultTime(), sysEvent1->happenTime_ / 1000);
+
+    std::shared_ptr<SysEvent> sysEvent2 = std::make_shared<SysEvent>("EventlogTask", nullptr, sysEventCreator);
+    sysEvent2->SetEventValue("MSG", "Fault time:2025/07/14-18:28/59\\n");
+    sysEvent2->happenTime_ = TimeUtil::GetMilliseconds();
+    logTask->faultTime_ = 0;
+    logTask = std::make_unique<EventLogTask>(0, 0, sysEvent2);
+    EXPECT_EQ(logTask->GetFaultTime(), sysEvent2->happenTime_ / 1000);
+}
+
+#ifdef BINDER_CATCHER_ENABLE
+/**
+ * @tc.name: CatchSyncPidTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, CatchSyncPidTest_001, TestSize.Level1)
+{
+    auto fd = open("/data/test/peerBinderCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create peerBinderCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+    
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    int pid = getpid();
+    peerBinderCatcher->Initialize("test", 1, pid);
+    std::set<int> asyncPids;
+    auto systemuiPid = CommonUtils::GetPidByName("com.ohos.systemui");
+    auto launcherPid = CommonUtils::GetPidByName("com.ohos.sceneboard");
+    auto hiviewPid = CommonUtils::GetPidByName("hiview");
+    asyncPids.insert(systemuiPid);
+    asyncPids.insert(launcherPid);
+    asyncPids.insert(hiviewPid);
+    asyncPids.insert(pid);
+    asyncPids.insert(-1);
+
+    std::set<int> syncPids;
+    syncPids.insert(hiviewPid);
+    syncPids.insert(launcherPid);
+    syncPids.insert(pid);
+    peerBinderCatcher->catchedPids_.insert(pid);
+    std::string ret = peerBinderCatcher->CatchSyncPid(fd, asyncPids, syncPids);
+    printf("ret: %s\n", ret.c_str());
+    peerBinderCatcher->Initialize("test", 1, 1);
+    ret = peerBinderCatcher->CatchSyncPid(fd, asyncPids, syncPids);
+    printf("ret: %s\n", ret.c_str());
+    EXPECT_TRUE(pid > 0);
+    close(fd);
+}
+#endif // BINDER_CATCHER_ENABLE
+
+#ifdef HILOG_CATCHER_ENABLE
+/**
+ * @tc.name: LightHilogCatcherTest_001
+ * @tc.desc: add testcase code coverage
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, LightHilogCatcherTest_001, TestSize.Level1)
+{
+    auto fd = open("/data/test/TestLightHilogCatcherFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create TestLightHilogCatcherFile. errno: %d\n", errno);
+        FAIL();
+    }
+
+    auto jsFd = open("/data/test/TestLightHilogCatcherJsonFile", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (jsFd < 0) {
+        printf("Fail to create TestLightHilogCatcherJsonFile. errno: %d\n", errno);
+        FAIL();
+    }
+
+    auto lightHilogCatcher = std::make_shared<LightHilogCatcher>();
+    lightHilogCatcher->Initialize("testLightHilogCatcher", 0, 0);
+    lightHilogCatcher->Catch(fd, jsFd);
+
+    int pid = CommonUtils::GetPidByName("foundation");
+    lightHilogCatcher->Initialize("testLightHilogCatcher", 0, pid);
+    lightHilogCatcher->Initialize("testLightHilogCatcher", 1, pid);
+    lightHilogCatcher->Catch(fd, jsFd);
+    close(fd);
+    close(jsFd);
+    EXPECT_TRUE(pid > 0);
+}
+#endif // HILOG_CATCHER_ENABLE
+
+#ifdef BINDER_CATCHER_ENABLE
+/**
+ * @tc.name: GetHicollieBinderPosTest
+ * @tc.desc: test GetHicollieBinderPos function
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, GetHicollieBinderPosTest_001, TestSize.Level1)
+{
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::string hicollieBinderInfo = "syncPids:123 asyncPids:456 terminalBinder:789,101";
+    size_t syncPos, asyncPos, terminalPos;
+    peerBinderCatcher->GetHicollieBinderPos(hicollieBinderInfo, syncPos, asyncPos, terminalPos);
+    EXPECT_EQ(syncPos, 0);
+    EXPECT_TRUE(asyncPos > 0);
+    EXPECT_TRUE(terminalPos > 0);
+}
+ 
+/**
+ * @tc.name: ParseBinderInfoFromHicollieTest
+ * @tc.desc: test ParseBinderInfoFromHicollie function
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ParseBinderInfoFromHicollieTest_001, TestSize.Level1)
+{
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    auto fd = open("/data/test/ParseBinderInfoFromHicollieTest", O_CREAT | O_WRONLY | O_TRUNC, DEFAULT_MODE);
+    if (fd < 0) {
+        printf("Fail to create test file. errno: %d\n", errno);
+        FAIL();
+    }
+    std::string hicollieBinderInfo = "syncPids:123(abc) asyncPids:456,789 terminalBinder:111,222";
+    std::set<int> syncPids;
+    std::set<int> asyncPids;
+    peerBinderCatcher->ParseBinderInfoFromHicollie(fd, hicollieBinderInfo, syncPids, asyncPids);
+    EXPECT_GT(syncPids.size(), 0);
+    EXPECT_GT(asyncPids.size(), 0);
+    close(fd);
+}
+ 
+/**
+ * @tc.name: ParseSyncPidsFromHicollieTest
+ * @tc.desc: test ParseSyncPidsFromHicollie function
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ParseSyncPidsFromHicollieTest_001, TestSize.Level1)
+{
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::string hicollieBinderInfo = "syncPids:100(test1);200(test2);300(test3)";
+    std::set<int> syncPids;
+    peerBinderCatcher->ParseSyncPidsFromHicollie(hicollieBinderInfo, 0, std::string::npos, syncPids);
+    EXPECT_EQ(syncPids.size(), 3);
+    EXPECT_TRUE(syncPids.find(100) != syncPids.end());
+    EXPECT_TRUE(syncPids.find(200) != syncPids.end());
+    EXPECT_TRUE(syncPids.find(300) != syncPids.end());
+}
+ 
+/**
+ * @tc.name: ParseAsyncPidsFromHicollieTest
+ * @tc.desc: test ParseAsyncPidsFromHicollie function
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ParseAsyncPidsFromHicollieTest_001, TestSize.Level1)
+{
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::string hicollieBinderInfo = "asyncPids:100,200,300";
+    std::set<int> asyncPids;
+    peerBinderCatcher->ParseAsyncPidsFromHicollie(hicollieBinderInfo, 0, std::string::npos, asyncPids);
+    EXPECT_EQ(asyncPids.size(), 3);
+    EXPECT_TRUE(asyncPids.find(100) != asyncPids.end());
+    EXPECT_TRUE(asyncPids.find(200) != asyncPids.end());
+    EXPECT_TRUE(asyncPids.find(300) != asyncPids.end());
+}
+ 
+/**
+ * @tc.name: ParseTerminalFromHicollieTest
+ * @tc.desc: test ParseTerminalFromHicollie function
+ * @tc.type: FUNC
+ */
+HWTEST_F(EventloggerCatcherTest, ParseTerminalFromHicollieTest_001, TestSize.Level1)
+{
+    auto peerBinderCatcher = std::make_shared<PeerBinderCatcher>();
+    std::string hicollieBinderInfo = "terminalBinder:12345,6789";
+    peerBinderCatcher->ParseTerminalFromHicollie(hicollieBinderInfo, 0);
+    EXPECT_EQ(peerBinderCatcher->terminalBinder_.pid, 12345);
+    EXPECT_EQ(peerBinderCatcher->terminalBinder_.tid, 6789);
+}
+#endif // BINDER_CATCHER_ENABLE
+} // namespace HiviewDFX
+} // namespace OHOS

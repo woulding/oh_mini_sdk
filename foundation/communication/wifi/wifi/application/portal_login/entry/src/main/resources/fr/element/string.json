@@ -1,0 +1,130 @@
+{
+    "string":[
+        {
+            "name":"compatibility_mode_of_the_PC_version",
+            "value":"Site pour ordinateur",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"actions_menu_user_agent",
+            "value":"Navigateur UA",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"confirm_dialog_cancel",
+            "value":"Annuler",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"contextmenu_open_in_browser",
+            "value":"Ouvrir dans Navigateur",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"compatibility_mode_of_the_mobile_version",
+            "value":"Site pour mobile",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"ssl_normal_error_msg",
+            "value":"Le certificat SSL de ce site a expiré ou n'est pas de confiance. Il pourrait y avoir un risque de sécurité si vous continuez.",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"ssl_error_dialog_continue_btn",
+            "value":"Continuer",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"user_agent_harmony",
+            "value":"HarmonyOS",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"continue_visit",
+            "value":"Continuer sur ce site ?",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"site_setting_single_website_title",
+            "value":"Paramètres %s",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"website_permission_never_allowed",
+            "value":"Refuser",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_content",
+            "value":"Le site que vous visitez peut comporter du contenu inapproprié ou interdit. Veuillez procéder avec prudence.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"web_risk_warning_level3_Phone_title",
+            "value":"Contenu dangereux détecté",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"camera_permission_message",
+            "value":"Autoriser %s à utiliser l'appareil photo ?",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"permission_reason_camera",
+            "value":"Ceci est utilisé pour prendre des photos et des vidéos.",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"website_permission_allowed",
+            "value":"Autoriser",
+            "attr":{
+                "priority":"LT"
+            }
+        },
+        {
+            "name":"ok",
+            "value":"OK",
+            "attr":{
+                "priority":"translate"
+            }
+        },
+        {
+            "name":"dialog_title_tips",
+            "value":"Message de %s :",
+            "attr":{
+                "priority":"translate"
+            }
+        }
+    ]
+}

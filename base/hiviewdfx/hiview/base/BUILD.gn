@@ -1,0 +1,134 @@
+# Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import("//base/hiviewdfx/hiview/hiview.gni")
+import("//build/ohos.gni")
+
+config("hiview_base_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [
+    "$hiview_root/include",
+    "$hiview_base/event_publish/include",
+    "$hiview_base/event_raw/include",
+    "$hiview_base/event_store/include",
+    "$hiview_base/include",
+    "$hiview_base/logstore/include",
+    "$hiview_base/running_status_logger/include",
+    "$hiview_base/utility/include",
+  ]
+
+  cflags_cc = [ "-D__HIVIEW_OHOS__" ]
+  if (is_standard_system) {
+    cflags_cc += [ "-D__OHOS_STANDARD_SYSTEM__" ]
+  }
+}
+
+config("logger_config") {
+  visibility = [ "*:*" ]
+
+  include_dirs = [ "include" ]
+}
+
+ohos_source_set("logger") {
+  cflags_cc = [ "-Os" ]
+  branch_protector_ret = "pac_ret"
+
+  public_configs = [ ":logger_config" ]
+
+  external_deps = [ "hilog:libhilog" ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_source_set("hiview_base") {
+  cflags_cc = [ "-Os" ]
+  branch_protector_ret = "pac_ret"
+
+  public_configs = [ ":hiview_base_config" ]
+  sources = [
+    "dispatch_rule_parser.cpp",
+    "event.cpp",
+    "event_dispatch_queue.cpp",
+    "event_json_parser.cpp",
+    "domain_json_parser.cpp",
+    "event_loop.cpp",
+    "event_source.cpp",
+    "hiview_global.cpp",
+    "hiview_xcollie_timer.cpp",
+    "pipeline.cpp",
+    "plugin.cpp",
+    "plugin_factory.cpp",
+    "plugin_proxy.cpp",
+    "privacy_manager.cpp",
+    "sys_event.cpp",
+    "version_config_parser.cpp",
+    "obj_sys_event.cpp",
+  ]
+
+  deps = [
+    ":logger",
+    "event_publish:hiview_event_publish",
+    "event_raw:hiview_event_raw_base",
+    "event_raw:hiview_event_raw_decode",
+    "event_raw:hiview_event_raw_encode",
+    "event_report:hiview_event_report",
+    "event_store:event_store_source",
+    "logstore:log_store",
+    "running_status_logger:running_status_logger_source",
+    "utility:hiview_utility",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "ffrt:libffrt",
+    "hicollie:libhicollie",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+  ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+}
+
+ohos_shared_library("hiviewbase") {
+  cflags_cc = [ "-Os" ]
+  branch_protector_ret = "pac_ret"
+
+  public_configs = [ ":hiview_base_config" ]
+  public_configs += [ "event_report:hiview_event_report_config" ]
+
+  deps = [ ":hiview_base" ]
+
+  version_script = "libhiviewbase.map"
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  external_deps = [ "hilog:libhilog" ]
+}
+
+ohos_static_library("hiviewbase_static_lib_for_tdd") {
+  public_configs = [ ":hiview_base_config" ]
+  public_configs += [ "event_report:hiview_event_report_config" ]
+
+  deps = [
+    ":hiview_base",
+    "logstore:log_store",
+  ]
+
+  part_name = "hiview"
+  subsystem_name = "hiviewdfx"
+  external_deps = [ "hilog:libhilog" ]
+}

@@ -1,0 +1,49 @@
+{
+    "name": "@ohos/qrcode_generator",
+    "description": "Generate qrcode",
+    "description_cn": "二维码生成器",
+    "version": "7.0",
+    "license": "Apache License 2.0",
+    "publishAs": "code-segment",
+    "segment": {
+        "destPath": "commonlibrary/qrcode_generator"
+    },
+    "dirs": {},
+    "scripts": {},
+    "component": {
+        "name": "qrcode_generator",
+        "subsystem": "commonlibrary",
+        "syscap": [],
+        "features": [],
+        "adapted_system_type": [
+            "mini",
+            "small",
+            "standard"
+        ],
+        "rom": "8.7K",
+        "ram": "0.185K",
+        "deps": {
+            "components": [
+                "bounds_checking_function"
+            ],
+            "third_party": []
+        },
+        "build": {
+            "sub_component": [],
+            "inner_kits": [
+                {
+                    "name": "//commonlibrary/qrcode_generator:qrcodegen",
+                    "header": {
+                        "header_base": "//commonlibrary/qrcode_generator/interfaces/kits/",
+                        "header_files": [
+                            "qrcode_generator.h"
+                        ]
+                    }
+                }
+            ],
+            "test": [
+                "//commonlibrary/qrcode_generator/test/unittest/common:unittest"
+            ]
+        }
+    }
+}
