@@ -25,48 +25,6 @@ import re
 
 remote_sha256_cache = dict()
 _cache_lock = threading.Lock()
-_bysha_lock = threading.Lock()
-_bysha_index_dir = os.path.join(os.path.expanduser("~"), ".prebuilts_cache", ".by-sha256")
-
-
-def get_local_path(download_root: str, remote_url: str):
-    """根据远程URL生成本地路径,本地文件名为url的MD5值+远程文件名
-    """
-    remote_file_name = os.path.basename(remote_url)
-    remote_url_md5_value = hashlib.md5((remote_url + '\n').encode()).hexdigest()
-    local_path = os.path.join(download_root, '{}.{}'.format(remote_url_md5_value, remote_file_name))
-    return local_path
-
-
-def find_reusable_local_path(download_root: str, remote_url: str, remote_sha256: str):
-    """内容寻址复用: 若缓存中已存在同sha256的压缩包(即使URL不同), 返回其本地路径, 否则返回None
-    索引文件: ~/.prebuilts_cache/.by-sha256/<sha256> 为实际缓存包路径
-    """
-    if not remote_sha256 or not is_valid_sh256(remote_sha256):
-        return None
-    index_path = os.path.join(_bysha_index_dir, remote_sha256)
-    try:
-        with open(index_path, "r") as f:
-            cached_path = f.read().strip()
-        if cached_path and os.path.isfile(cached_path):
-            return cached_path
-        os.remove(index_path)
-    except (OSError, ValueError):
-        pass
-    return None
-
-
-def register_local_path_by_sha(local_path: str, remote_sha256: str):
-    """下载/校验成功后登记 sha256 -> 本地路径 索引, 供其他URL复用"""
-    if not remote_sha256 or not is_valid_sh256(remote_sha256) or not os.path.isfile(local_path):
-        return
-    try:
-        os.makedirs(_bysha_index_dir, exist_ok=True)
-        tmp_path = index_path = os.path.join(_bysha_index_dir, remote_sha256)
-        with os.fdopen(os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode=0o644), "w") as f:
-            f.write(os.path.abspath(local_path))
-    except OSError:
-        pass
 
 
 def import_rich_module():
@@ -183,6 +141,15 @@ def obtain_sha256_by_sha_sums256(remote_url: str) -> str:
     else:
         print(f"get remote sha256 for {remote_url} by SHASUMS256.txt file failed.")
         return ""
+
+
+def get_local_path(download_root: str, remote_url: str):
+    """根据远程URL生成本地路径,本地文件名为url的MD5值+远程文件名
+    """
+    remote_file_name = os.path.basename(remote_url)
+    remote_url_md5_value = hashlib.md5((remote_url + '\n').encode()).hexdigest()
+    local_path = os.path.join(download_root, '{}.{}'.format(remote_url_md5_value, remote_file_name))
+    return local_path
 
 
 def extract_compress_files_and_gen_mark(source_file: str, unzip_dir: str, mark_file_path: str):

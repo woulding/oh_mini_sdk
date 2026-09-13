@@ -1,6 +1,6 @@
 {
     "download_root": {
-        "src": "~/.prebuilts_cache",
+        "src": "../openharmony_prebuilts",
         "indep": "~/.prebuilts_cache"
     },
     "tool_list": [
